@@ -1,57 +1,12 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useGlobal } from '../context/GlobalContext';
 
 function EventApproval() {
   const [searchParams] = useSearchParams();
   const initialClient = searchParams.get('client') || '';
 
-  const [approvals, setApprovals] = useState([
-    {
-      id: 1,
-      submittedOn: '2026-08-20',
-      sessionName: 'Annual Corporate Wellness',
-      clientName: 'MantraCare Internal',
-      sessionDate: '2026-09-15',
-      sessionType: 'onsite',
-      location: '123 Wellness Blvd, NY',
-      expertExp: 5,
-      genderPref: 'no_preference',
-      budget: 1500,
-      otherCosts: 200,
-      requirements: 'Need a certified yoga instructor and a nutritionist for a full day onsite event.',
-      status: 'Pending'
-    },
-    {
-      id: 2,
-      submittedOn: '2026-08-22',
-      sessionName: 'Mental Health Workshop',
-      clientName: 'Comprehensive Wellness',
-      sessionDate: '2026-10-05',
-      sessionType: 'online',
-      location: 'Zoom',
-      expertExp: 3,
-      genderPref: 'female',
-      budget: 800,
-      otherCosts: 0,
-      requirements: '1 hour virtual interactive session for 50 employees focusing on stress management.',
-      status: 'Approved'
-    },
-    {
-      id: 3,
-      submittedOn: '2026-08-23',
-      sessionName: 'Ergonomics Assessment',
-      clientName: 'Tech Corp LLC',
-      sessionDate: '2026-11-10',
-      sessionType: 'onsite',
-      location: 'Tech Park, SF',
-      expertExp: 7,
-      genderPref: 'no_preference',
-      budget: 300,
-      otherCosts: 50,
-      requirements: 'Quick walkthrough of office setups.',
-      status: 'Rejected'
-    }
-  ]);
+  const { events: approvals, updateEventStatus } = useGlobal();
 
   const [searchQuery, setSearchQuery] = useState(initialClient);
   const [statusFilter, setStatusFilter] = useState('All');
@@ -89,9 +44,7 @@ function EventApproval() {
   const rejectedRequests = approvals.filter(r => r.status === 'Rejected').length;
 
   const handleUpdateStatus = (id, newStatus, reason = '') => {
-    setApprovals(approvals.map(req => 
-      req.id === id ? { ...req, status: newStatus, rejectReason: reason } : req
-    ));
+    updateEventStatus(id, newStatus, reason);
   };
 
   const activeDetails = approvals.find(r => r.id === activeDetailsId);

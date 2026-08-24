@@ -1,41 +1,9 @@
 import { useState } from 'react';
+import { useGlobal } from '../context/GlobalContext';
 
 function ExpertAssignment() {
-  const [assignments, setAssignments] = useState([
-    {
-      id: 1,
-      approvedOn: '2026-08-20',
-      sessionName: 'Mindfulness Webinar',
-      clientName: 'MantraCare Internal',
-      sessionDate: '2026-08-25',
-      type: 'Online',
-      budget: 500,
-      assignedExpert: '',
-      expertCost: 0
-    },
-    {
-      id: 2,
-      approvedOn: '2026-08-21',
-      sessionName: 'Ergonomics Assessment',
-      clientName: 'Tech Corp LLC',
-      sessionDate: '2026-09-10',
-      type: 'Onsite',
-      budget: 1200,
-      assignedExpert: '',
-      expertCost: 0
-    },
-    {
-      id: 3,
-      approvedOn: '2026-08-22',
-      sessionName: 'Mental Health Workshop',
-      clientName: 'Comprehensive Wellness',
-      sessionDate: '2026-09-15',
-      type: 'Online',
-      budget: 800,
-      assignedExpert: 'Dr. Sarah Jenkins',
-      expertCost: 400
-    }
-  ]);
+  const { events, assignExpert } = useGlobal();
+  const assignments = events.filter(ev => ev.status === 'Approved');
 
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -95,13 +63,8 @@ function ExpertAssignment() {
       return;
     }
 
-    setAssignments(prev => prev.map(a => 
-      a.id === assigningId 
-        ? { ...a, assignedExpert: selectedExpert, expertCost: parseFloat(expertCost) } 
-        : a
-    ));
-    
-    alert('Expert successfully assigned!');
+    assignExpert(assigningId, selectedExpert, parseFloat(expertCost));
+
     setAssigningId(null);
     setSelectedExpert('');
     setExpertCost('');
@@ -161,11 +124,11 @@ function ExpertAssignment() {
               {paginatedAssignments.length > 0 ? (
                 paginatedAssignments.map(assignment => (
                   <tr key={assignment.id}>
-                    <td>{assignment.approvedOn}</td>
+                    <td>{assignment.submittedOn || '2026-08-20'}</td>
                     <td><span style={{ fontWeight: '500', color: 'var(--text-main)' }}>{assignment.sessionName}</span></td>
                     <td>{assignment.clientName}</td>
                     <td>{assignment.sessionDate}</td>
-                    <td>{assignment.type}</td>
+                    <td style={{ textTransform: 'capitalize' }}>{assignment.sessionType || assignment.type}</td>
                     <td>{formatCurrency(assignment.budget)}</td>
                     <td>
                       {assignment.assignedExpert ? (

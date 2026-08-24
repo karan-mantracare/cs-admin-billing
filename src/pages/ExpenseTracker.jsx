@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useGlobal } from '../context/GlobalContext';
 
 function ExpenseTracker() {
   const navigate = useNavigate();
+  const { expenses: globalExpenses } = useGlobal();
 
   const [expenses] = useState([
     {
@@ -52,7 +54,15 @@ function ExpenseTracker() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15);
 
-  const filteredExpenses = expenses.filter(exp => 
+  const enrichedExpenses = useMemo(() => {
+    return expenses.map(exp => {
+      const clientExpenses = globalExpenses.filter(ge => ge.clientName === exp.clientName && ge.status === 'Approved');
+      const calculatedOtherCost = clientExpenses.reduce((sum, current) => sum + current.amount, 0);
+      return { ...exp, otherCost: exp.otherCost + calculatedOtherCost };
+    });
+  }, [expenses, globalExpenses]);
+
+  const filteredExpenses = enrichedExpenses.filter(exp => 
     exp.clientName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 

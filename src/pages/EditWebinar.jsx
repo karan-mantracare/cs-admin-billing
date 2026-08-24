@@ -1,12 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ApprovalModal from '../components/ApprovalModal';
+import { useGlobal } from '../context/GlobalContext';
 
 function EditWebinar() {
-  const [status, setStatus] = useState('tentative');
+  const { addExpense, addEvent, events } = useGlobal();
+  const pageTitle = "Mindfulness Webinar-1";
+  const currentEvent = events.find(ev => ev.sessionName === pageTitle);
+
+  const [status, setStatus] = useState(currentEvent ? currentEvent.status.toLowerCase() : 'tentative');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOtherExpModalOpen, setIsOtherExpModalOpen] = useState(false);
-  
+
   // New Other Expense state
   const [otherExpData, setOtherExpData] = useState({
     expenseType: 'Flight',
@@ -15,9 +20,18 @@ function EditWebinar() {
     deliveredBy: ''
   });
   const [isSessionInfoOpen, setIsSessionInfoOpen] = useState(false);
-  const [assignedExpert, setAssignedExpert] = useState(null);
   const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
-  
+
+  const providerDetails = currentEvent && currentEvent.assignedExpert ? {
+    name: currentEvent.assignedExpert,
+    location: 'New York, USA',
+    expertise: 'Mindfulness, CBT',
+    exp: '10 Years',
+    language: 'English, Spanish',
+    photo: 'https://i.pravatar.cc/150?u=sarah',
+    link: 'https://mantracare.org'
+  } : null;
+
   // Lifted modal state
   const [modalData, setModalData] = useState({
     sessionType: '',
@@ -30,8 +44,7 @@ function EditWebinar() {
   });
   const [isLocked, setIsLocked] = useState(false);
 
-  const pageTitle = "Mindfulness Webinar";
-  const [pageDate, setPageDate] = useState("2026-04-08");
+  const [pageDate, setPageDate] = useState("2026-08-25");
 
   return (
     <main className="main-content">
@@ -71,7 +84,7 @@ function EditWebinar() {
       <div className="section-card">
         <div className="section-title">
           <i className='bx bx-info-circle'></i>
-          <h2>About Mindfulness Webinar :</h2>
+          <h2>About Mindfulness Webinar-1 :</h2>
         </div>
         <div className="section-content">
           <p>This enriching session is designed to introduce participants to the transformative power of mindfulness, guided by experienced facilitators. Explore the art of being fully present, cultivating awareness, and incorporating mindfulness practices into daily life.</p>
@@ -167,7 +180,7 @@ function EditWebinar() {
           <div className="stats-box">
             <div>
               <span className="stats-label">Session Cost</span>
-              <h3 className="stats-value">{isLocked && modalData.budget ? modalData.budget : '0'}</h3>
+              <h3 className="stats-value">{currentEvent && currentEvent.expertCost ? `$${currentEvent.expertCost}` : (isLocked && modalData.budget ? `$${modalData.budget}` : '0')}</h3>
             </div>
             <button className="stats-action"><i className='bx bx-log-in-circle'></i></button>
           </div>
@@ -188,23 +201,22 @@ function EditWebinar() {
             <div className="stats-box">
               <div>
                 <span className="stats-label">Expert Assigned</span>
-                {assignedExpert ? (
+                {currentEvent && currentEvent.assignedExpert ? (
                   <h3 className="stats-value" style={{ cursor: 'pointer', color: 'var(--primary)', textDecoration: 'underline', fontSize: '1.1rem', marginTop: '0.25rem' }} onClick={() => setIsProviderModalOpen(true)}>
-                    {assignedExpert.name}
+                    {currentEvent.assignedExpert}
                   </h3>
                 ) : (
                   <h3 className="stats-value" style={{ fontSize: '1rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Expert not assigned</h3>
                 )}
               </div>
-              <button 
-                className="stats-action" 
-                title={assignedExpert ? "View Provider" : "Simulate Assignment"} 
+              <button
+                className="stats-action"
+                title={currentEvent && currentEvent.assignedExpert ? "View Provider" : "Simulate Assignment"}
                 onClick={() => {
-                  if (assignedExpert) setIsProviderModalOpen(true);
-                  else setAssignedExpert({ name: 'Dr. Sarah Jenkins', location: 'New York, USA', expertise: 'Mindfulness, CBT', exp: '10 Years', language: 'English, Spanish', photo: 'https://i.pravatar.cc/150?u=sarah', link: 'https://mantracare.org' });
+                  if (currentEvent && currentEvent.assignedExpert) setIsProviderModalOpen(true);
                 }}
               >
-                 <i className={`bx ${assignedExpert ? 'bx-user-check' : 'bx-user-plus'}`}></i>
+                <i className={`bx ${(currentEvent && currentEvent.assignedExpert) ? 'bx-user-check' : 'bx-user-plus'}`}></i>
               </button>
             </div>
           </div>
@@ -222,9 +234,9 @@ function EditWebinar() {
         </div>
       </div>
 
-      <ApprovalModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <ApprovalModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         pageTitle={pageTitle}
         pageDate={pageDate}
         modalData={modalData}
@@ -232,6 +244,21 @@ function EditWebinar() {
         isLocked={isLocked}
         setIsLocked={setIsLocked}
         status={status}
+        onSubmit={(data) => {
+          addEvent({
+            submittedOn: new Date().toISOString().split('T')[0],
+            sessionName: pageTitle,
+            clientName: 'MantraCare Internal',
+            sessionDate: pageDate,
+            sessionType: data.sessionType,
+            location: data.sessionLocation || 'Online',
+            expertExp: parseInt(data.expertExp) || 0,
+            genderPref: data.genderPref,
+            budget: parseFloat(data.budget) || 0,
+            otherCosts: parseFloat(data.otherCosts) || 0,
+            requirements: 'Generated from Edit Webinar flow.'
+          });
+        }}
       />
 
       {/* Add Other Session Exp Modal */}
@@ -244,9 +271,20 @@ function EditWebinar() {
                 <i className='bx bx-x'></i>
               </button>
             </div>
-            <form 
+            <form
               onSubmit={(e) => {
                 e.preventDefault();
+                addExpense({
+                  date: new Date().toISOString().split('T')[0],
+                  clientName: 'MantraCare Internal',
+                  sessionName: pageTitle,
+                  sessionDate: pageDate,
+                  addedBy: 'Admin',
+                  expenseType: otherExpData.expenseType,
+                  details: otherExpData.details,
+                  deliveredBy: otherExpData.deliveredBy,
+                  amount: parseFloat(otherExpData.amount)
+                });
                 alert("Expense Request Sent Successfully!");
                 setModalData(prev => ({ ...prev, otherCosts: (parseFloat(prev.otherCosts || 0) + parseFloat(otherExpData.amount)).toString() }));
                 setIsOtherExpModalOpen(false);
@@ -257,14 +295,14 @@ function EditWebinar() {
               <div className="modal-body" style={{ overflowY: 'auto' }}>
                 {/* Section 1 */}
                 <div style={{ marginBottom: '1.5rem' }}>
-                  <div 
+                  <div
                     style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}
                     onClick={() => setIsSessionInfoOpen(!isSessionInfoOpen)}
                   >
                     <h3 className="modal-section-title" style={{ margin: 0, border: 'none', padding: 0 }}>Section 1 - Session Information</h3>
                     <i className={`bx bx-chevron-${isSessionInfoOpen ? 'up' : 'down'}`} style={{ fontSize: '1.25rem', color: 'var(--primary)' }}></i>
                   </div>
-                  
+
                   {isSessionInfoOpen && (
                     <>
                       <div className="form-group" style={{ marginBottom: '1rem' }}>
@@ -288,53 +326,53 @@ function EditWebinar() {
                   <h3 className="modal-section-title">Section 2 - Expense Information</h3>
                   <div className="form-group" style={{ marginBottom: '1rem' }}>
                     <label>Expense Type <span className="text-red">*</span></label>
-                  <select 
-                    className="form-control" 
-                    required 
-                    value={otherExpData.expenseType} 
-                    onChange={(e) => setOtherExpData({...otherExpData, expenseType: e.target.value})}
-                  >
-                    <option value="Flight">Flight</option>
-                    <option value="Promotional">Promotional</option>
-                    <option value="Goodies">Goodies</option>
-                    <option value="Session Material">Session Material</option>
-                  </select>
-                </div>
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label>Delivery By <span className="text-red">*</span></label>
-                  <input 
-                    type="date" 
-                    className="form-control" 
-                    required
-                    value={otherExpData.deliveredBy}
-                    onChange={(e) => setOtherExpData({...otherExpData, deliveredBy: e.target.value})}
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label>Details <span className="text-red">*</span></label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    required
-                    maxLength="200"
-                    placeholder="Brief description (max 200 chars)"
-                    value={otherExpData.details}
-                    onChange={(e) => setOtherExpData({...otherExpData, details: e.target.value})}
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label>Amount (USD) <span className="text-red">*</span></label>
-                  <input 
-                    type="number" 
-                    className="form-control" 
-                    required
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={otherExpData.amount}
-                    onChange={(e) => setOtherExpData({...otherExpData, amount: e.target.value})}
-                  />
-                </div>
+                    <select
+                      className="form-control"
+                      required
+                      value={otherExpData.expenseType}
+                      onChange={(e) => setOtherExpData({ ...otherExpData, expenseType: e.target.value })}
+                    >
+                      <option value="Flight">Flight</option>
+                      <option value="Promotional">Promotional</option>
+                      <option value="Goodies">Goodies</option>
+                      <option value="Session Material">Session Material</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label>Delivery By <span className="text-red">*</span></label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      required
+                      value={otherExpData.deliveredBy}
+                      onChange={(e) => setOtherExpData({ ...otherExpData, deliveredBy: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label>Details <span className="text-red">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      required
+                      maxLength="200"
+                      placeholder="Brief description (max 200 chars)"
+                      value={otherExpData.details}
+                      onChange={(e) => setOtherExpData({ ...otherExpData, details: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label>Amount (USD) <span className="text-red">*</span></label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      required
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={otherExpData.amount}
+                      onChange={(e) => setOtherExpData({ ...otherExpData, amount: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
@@ -347,7 +385,7 @@ function EditWebinar() {
       )}
 
       {/* Provider Details Modal */}
-      {isProviderModalOpen && assignedExpert && (
+      {isProviderModalOpen && providerDetails && (
         <div className="modal-overlay" onClick={() => setIsProviderModalOpen(false)}>
           <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
             <div className="modal-header">
@@ -357,15 +395,15 @@ function EditWebinar() {
               </button>
             </div>
             <div className="modal-body text-center">
-              <img src={assignedExpert.photo} alt={assignedExpert.name} style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', marginBottom: '1rem', border: '3px solid var(--primary-light)' }} />
-              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary)', fontSize: '1.25rem' }}>{assignedExpert.name}</h3>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontWeight: '500' }}>{assignedExpert.expertise}</p>
-              
+              <img src={providerDetails.photo} alt={providerDetails.name} style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', marginBottom: '1rem', border: '3px solid var(--primary-light)' }} />
+              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary)', fontSize: '1.25rem' }}>{providerDetails.name}</h3>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontWeight: '500' }}>{providerDetails.expertise}</p>
+
               <div style={{ textAlign: 'left', background: 'var(--bg-main)', padding: '1.25rem', borderRadius: 'var(--radius-md)' }}>
-                <p style={{ margin: '0 0 0.75rem 0' }}><i className='bx bx-map text-primary' style={{ marginRight: '8px' }}></i><strong>Location:</strong> {assignedExpert.location}</p>
-                <p style={{ margin: '0 0 0.75rem 0' }}><i className='bx bx-briefcase text-primary' style={{ marginRight: '8px' }}></i><strong>Experience:</strong> {assignedExpert.exp}</p>
-                <p style={{ margin: '0 0 0.75rem 0' }}><i className='bx bx-world text-primary' style={{ marginRight: '8px' }}></i><strong>Language:</strong> {assignedExpert.language}</p>
-                <p style={{ margin: '0' }}><i className='bx bx-link-external text-primary' style={{ marginRight: '8px' }}></i><strong>Other Info:</strong> <a href={assignedExpert.link} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>View Profile URL</a></p>
+                <p style={{ margin: '0 0 0.75rem 0' }}><i className='bx bx-map text-primary' style={{ marginRight: '8px' }}></i><strong>Location:</strong> {providerDetails.location}</p>
+                <p style={{ margin: '0 0 0.75rem 0' }}><i className='bx bx-briefcase text-primary' style={{ marginRight: '8px' }}></i><strong>Experience:</strong> {providerDetails.exp}</p>
+                <p style={{ margin: '0 0 0.75rem 0' }}><i className='bx bx-world text-primary' style={{ marginRight: '8px' }}></i><strong>Language:</strong> {providerDetails.language}</p>
+                <p style={{ margin: '0' }}><i className='bx bx-link-external text-primary' style={{ marginRight: '8px' }}></i><strong>Other Info:</strong> <a href={providerDetails.link} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>View Profile URL</a></p>
               </div>
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)' }}>

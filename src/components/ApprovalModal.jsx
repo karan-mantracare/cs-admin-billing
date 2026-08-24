@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setModalData, isLocked, setIsLocked, status }) {
+function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setModalData, isLocked, setIsLocked, status, onSubmit }) {
   const [tempParticipantCount, setTempParticipantCount] = useState('');
 
   useEffect(() => {
@@ -20,6 +20,7 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
     e.preventDefault();
     if (e.target.checkValidity()) {
       setIsLocked(true);
+      if (onSubmit) onSubmit(modalData);
       alert("Approval Request Sent Successfully!");
       onClose();
     } else {

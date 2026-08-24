@@ -1,68 +1,12 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useGlobal } from '../context/GlobalContext';
 
 function ExpenseApproval() {
   const [searchParams] = useSearchParams();
   const initialClient = searchParams.get('client') || '';
 
-  const [approvals, setApprovals] = useState([
-    {
-      id: 4,
-      date: '2026-08-24',
-      clientName: 'MantraCare Internal',
-      sessionName: 'Mindfulness Webinar',
-      sessionDate: '2026-08-04',
-      addedBy: 'Admin',
-      expenseType: 'Flight',
-      details: 'Flight tickets for the guest speaker',
-      deliveredBy: '2026-07-20',
-      amount: 450,
-      status: 'Pending',
-      rejectReason: ''
-    },
-    {
-      id: 1,
-      date: '2026-08-20',
-      clientName: 'MantraCare Internal',
-      sessionName: 'Annual Corporate Wellness',
-      sessionDate: '2026-09-15',
-      addedBy: 'John Doe',
-      expenseType: 'Standee',
-      details: 'Two standees for the wellness fair',
-      deliveredBy: '2026-09-01',
-      amount: 150,
-      status: 'Pending',
-      rejectReason: ''
-    },
-    {
-      id: 2,
-      date: '2026-08-22',
-      clientName: 'Comprehensive Wellness',
-      sessionName: 'Mental Health Workshop',
-      sessionDate: '2026-10-05',
-      addedBy: 'Jane Smith',
-      expenseType: 'Goodies',
-      details: 'Custom branded stress balls for attendees',
-      deliveredBy: '2026-09-10',
-      amount: 300,
-      status: 'Approved',
-      rejectReason: ''
-    },
-    {
-      id: 3,
-      date: '2026-08-23',
-      clientName: 'Tech Corp LLC',
-      sessionName: 'Ergonomics Assessment',
-      sessionDate: '2026-11-10',
-      addedBy: 'Mike Johnson',
-      expenseType: 'Eatables',
-      details: 'Catering sandwiches and snacks for the workshop',
-      deliveredBy: '2026-08-25',
-      amount: 450,
-      status: 'Rejected',
-      rejectReason: 'Over budget.'
-    }
-  ]);
+  const { expenses: approvals, updateExpenseStatus } = useGlobal();
 
   const [searchQuery, setSearchQuery] = useState(initialClient);
   const [statusFilter, setStatusFilter] = useState('All');
@@ -104,9 +48,7 @@ function ExpenseApproval() {
   const rejectedRequests = approvals.filter(r => r.status === 'Rejected').length;
 
   const handleUpdateStatus = (id, newStatus, reason = '') => {
-    setApprovals(approvals.map(req => 
-      req.id === id ? { ...req, status: newStatus, rejectReason: reason } : req
-    ));
+    updateExpenseStatus(id, newStatus, reason);
   };
 
   const formatCurrency = (amount) => `$${amount.toLocaleString()}`;
