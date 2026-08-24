@@ -1,7 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useGlobal } from '../context/GlobalContext';
 
 function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
+  const { resetData } = useGlobal();
 
   const links = [
     { path: '/calendar', label: 'Calendar', icon: 'bx-calendar' },
@@ -41,6 +43,20 @@ function Sidebar({ isOpen, onClose }) {
             ))}
           </ul>
         </nav>
+        <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', marginTop: 'auto' }}>
+          <button 
+            className="btn-outline" 
+            style={{ width: '100%', borderColor: 'var(--red)', color: 'var(--red)', justifyContent: 'center' }}
+            onClick={() => {
+              if (window.confirm('Are you sure you want to delete all saved data and reset to defaults?')) {
+                resetData();
+                window.location.reload();
+              }
+            }}
+          >
+            <i className='bx bx-reset'></i> Reset Data
+          </button>
+        </div>
       </aside>
     </>
   );

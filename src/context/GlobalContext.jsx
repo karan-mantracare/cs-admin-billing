@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const GlobalContext = createContext();
 
@@ -6,144 +6,169 @@ export function useGlobal() {
   return useContext(GlobalContext);
 }
 
-export function GlobalProvider({ children }) {
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      submittedOn: '2026-08-20',
-      sessionName: 'Annual Corporate Wellness',
-      clientName: 'MantraCare Internal',
-      sessionDate: '2026-09-15',
-      sessionType: 'onsite',
-      location: '123 Wellness Blvd, NY',
-      expertExp: 5,
-      genderPref: 'no_preference',
-      budget: 1500,
-      otherCosts: 200,
-      requirements: 'Need a certified yoga instructor and a nutritionist for a full day onsite event.',
-      status: 'Pending',
-      assignedExpert: null,
-      expertCost: 0
-    },
-    {
-      id: 2,
-      submittedOn: '2026-08-22',
-      sessionName: 'Mental Health Workshop',
-      clientName: 'Comprehensive Wellness',
-      sessionDate: '2026-10-05',
-      sessionType: 'online',
-      location: 'Zoom',
-      expertExp: 3,
-      genderPref: 'female',
-      budget: 800,
-      otherCosts: 0,
-      requirements: '1 hour virtual interactive session for 50 employees focusing on stress management.',
-      status: 'Approved',
-      assignedExpert: 'Dr. Sarah Jenkins',
-      expertCost: 400
-    },
-    {
-      id: 3,
-      submittedOn: '2026-08-23',
-      sessionName: 'Ergonomics Assessment',
-      clientName: 'Tech Corp LLC',
-      sessionDate: '2026-11-10',
-      sessionType: 'onsite',
-      location: 'Tech Park, SF',
-      expertExp: 7,
-      genderPref: 'no_preference',
-      budget: 300,
-      otherCosts: 50,
-      requirements: 'Quick walkthrough of office setups.',
-      status: 'Rejected',
-      assignedExpert: null,
-      expertCost: 0
-    },
-    {
-      id: 4,
-      submittedOn: '2026-08-24',
-      sessionName: 'Mindfulness Webinar-1',
-      clientName: 'MantraCare Internal',
-      sessionDate: '2026-08-25',
-      sessionType: 'online',
-      location: 'Google Meet',
-      expertExp: 5,
-      genderPref: 'no_preference',
-      budget: 500,
-      otherCosts: 0,
-      requirements: 'Monthly mindfulness session.',
-      status: 'Approved',
-      assignedExpert: null,
-      expertCost: 0,
-      comments: [
-        { name: 'Admin', text: 'Confirmed the speaker lineup for the session.', date: '2026-08-24' },
-        { name: 'John Doe', text: 'Initial marketing materials have been distributed.', date: '2026-08-19' },
-        { name: 'Jane Smith', text: 'Checked the budget approval with the finance team.', date: '2026-08-14' },
-        { name: 'Admin', text: 'Please ensure we have a backup expert on standby.', date: '2026-08-09' },
-        { name: 'Dr. Sarah Jenkins', text: 'I am available for this webinar on the selected date.', date: '2026-08-04' },
-        { name: 'MantraCare Internal', text: 'Created the initial draft for the session outline.', date: '2026-07-30' }
-      ]
-    }
-  ]);
+const defaultEvents = [
+  {
+    id: 1,
+    submittedOn: '2026-08-20',
+    sessionName: 'Annual Corporate Wellness',
+    clientName: 'MantraCare Internal',
+    sessionDate: '2026-09-15',
+    sessionType: 'onsite',
+    location: '123 Wellness Blvd, NY',
+    expertExp: 5,
+    genderPref: 'no_preference',
+    budget: 1500,
+    otherCosts: 200,
+    requirements: 'Need a certified yoga instructor and a nutritionist for a full day onsite event.',
+    status: 'Pending',
+    assignedExpert: null,
+    expertCost: 0
+  },
+  {
+    id: 2,
+    submittedOn: '2026-08-22',
+    sessionName: 'Mental Health Workshop',
+    clientName: 'Comprehensive Wellness',
+    sessionDate: '2026-10-05',
+    sessionType: 'online',
+    location: 'Zoom',
+    expertExp: 3,
+    genderPref: 'female',
+    budget: 800,
+    otherCosts: 0,
+    requirements: '1 hour virtual interactive session for 50 employees focusing on stress management.',
+    status: 'Approved',
+    assignedExpert: 'Dr. Sarah Jenkins',
+    expertCost: 400
+  },
+  {
+    id: 3,
+    submittedOn: '2026-08-23',
+    sessionName: 'Ergonomics Assessment',
+    clientName: 'Tech Corp LLC',
+    sessionDate: '2026-11-10',
+    sessionType: 'onsite',
+    location: 'Tech Park, SF',
+    expertExp: 7,
+    genderPref: 'no_preference',
+    budget: 300,
+    otherCosts: 50,
+    requirements: 'Quick walkthrough of office setups.',
+    status: 'Rejected',
+    assignedExpert: null,
+    expertCost: 0
+  },
+  {
+    id: 4,
+    submittedOn: '2026-08-24',
+    sessionName: 'Mindfulness Webinar-1',
+    clientName: 'MantraCare Internal',
+    sessionDate: '2026-08-25',
+    sessionType: 'online',
+    location: 'Google Meet',
+    expertExp: 5,
+    genderPref: 'no_preference',
+    budget: 500,
+    otherCosts: 0,
+    requirements: 'Monthly mindfulness session.',
+    status: 'Approved',
+    assignedExpert: null,
+    expertCost: 0,
+    comments: [
+      { name: 'Admin', text: 'Confirmed the speaker lineup for the session.', date: '2026-08-24' },
+      { name: 'John Doe', text: 'Initial marketing materials have been distributed.', date: '2026-08-19' },
+      { name: 'Jane Smith', text: 'Checked the budget approval with the finance team.', date: '2026-08-14' },
+      { name: 'Admin', text: 'Please ensure we have a backup expert on standby.', date: '2026-08-09' },
+      { name: 'Dr. Sarah Jenkins', text: 'I am available for this webinar on the selected date.', date: '2026-08-04' },
+      { name: 'MantraCare Internal', text: 'Created the initial draft for the session outline.', date: '2026-07-30' }
+    ]
+  }
+];
 
-  const [expenses, setExpenses] = useState([
-    {
-      id: 4,
-      date: '2026-08-24',
-      clientName: 'MantraCare Internal',
-      sessionName: 'Mindfulness Webinar-1',
-      sessionDate: '2026-08-04', // Using a different date to match original mock but linking it
-      addedBy: 'Admin',
-      expenseType: 'Flight',
-      details: 'Flight tickets for the guest speaker',
-      deliveredBy: '2026-07-20',
-      amount: 450,
-      status: 'Pending',
-      rejectReason: ''
-    },
-    {
-      id: 1,
-      date: '2026-08-20',
-      clientName: 'MantraCare Internal',
-      sessionName: 'Annual Corporate Wellness',
-      sessionDate: '2026-09-15',
-      addedBy: 'John Doe',
-      expenseType: 'Standee',
-      details: 'Two standees for the wellness fair',
-      deliveredBy: '2026-09-01',
-      amount: 150,
-      status: 'Pending',
-      rejectReason: ''
-    },
-    {
-      id: 2,
-      date: '2026-08-22',
-      clientName: 'Comprehensive Wellness',
-      sessionName: 'Mental Health Workshop',
-      sessionDate: '2026-10-05',
-      addedBy: 'Jane Smith',
-      expenseType: 'Goodies',
-      details: 'Custom branded stress balls for attendees',
-      deliveredBy: '2026-09-10',
-      amount: 300,
-      status: 'Approved',
-      rejectReason: ''
-    },
-    {
-      id: 3,
-      date: '2026-08-23',
-      clientName: 'Tech Corp LLC',
-      sessionName: 'Ergonomics Assessment',
-      sessionDate: '2026-11-10',
-      addedBy: 'Mike Johnson',
-      expenseType: 'Eatables',
-      details: 'Catering sandwiches and snacks for the workshop',
-      deliveredBy: '2026-08-25',
-      amount: 450,
-      status: 'Rejected',
-      rejectReason: 'Over budget.'
-    }
-  ]);
+const defaultExpenses = [
+  {
+    id: 4,
+    date: '2026-08-24',
+    clientName: 'MantraCare Internal',
+    sessionName: 'Mindfulness Webinar-1',
+    sessionDate: '2026-08-04',
+    addedBy: 'Admin',
+    expenseType: 'Flight',
+    details: 'Flight tickets for the guest speaker',
+    deliveredBy: '2026-07-20',
+    amount: 450,
+    status: 'Pending',
+    rejectReason: ''
+  },
+  {
+    id: 1,
+    date: '2026-08-20',
+    clientName: 'MantraCare Internal',
+    sessionName: 'Annual Corporate Wellness',
+    sessionDate: '2026-09-15',
+    addedBy: 'John Doe',
+    expenseType: 'Standee',
+    details: 'Two standees for the wellness fair',
+    deliveredBy: '2026-09-01',
+    amount: 150,
+    status: 'Pending',
+    rejectReason: ''
+  },
+  {
+    id: 2,
+    date: '2026-08-22',
+    clientName: 'Comprehensive Wellness',
+    sessionName: 'Mental Health Workshop',
+    sessionDate: '2026-10-05',
+    addedBy: 'Jane Smith',
+    expenseType: 'Goodies',
+    details: 'Custom branded stress balls for attendees',
+    deliveredBy: '2026-09-10',
+    amount: 300,
+    status: 'Approved',
+    rejectReason: ''
+  },
+  {
+    id: 3,
+    date: '2026-08-23',
+    clientName: 'Tech Corp LLC',
+    sessionName: 'Ergonomics Assessment',
+    sessionDate: '2026-11-10',
+    addedBy: 'Mike Johnson',
+    expenseType: 'Eatables',
+    details: 'Catering sandwiches and snacks for the workshop',
+    deliveredBy: '2026-08-25',
+    amount: 450,
+    status: 'Rejected',
+    rejectReason: 'Over budget.'
+  }
+];
+
+export function GlobalProvider({ children }) {
+  const [events, setEvents] = useState(() => {
+    const saved = localStorage.getItem('cs-admin-events');
+    return saved ? JSON.parse(saved) : defaultEvents;
+  });
+
+  const [expenses, setExpenses] = useState(() => {
+    const saved = localStorage.getItem('cs-admin-expenses');
+    return saved ? JSON.parse(saved) : defaultExpenses;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('cs-admin-events', JSON.stringify(events));
+  }, [events]);
+
+  useEffect(() => {
+    localStorage.setItem('cs-admin-expenses', JSON.stringify(expenses));
+  }, [expenses]);
+
+  const resetData = () => {
+    localStorage.removeItem('cs-admin-events');
+    localStorage.removeItem('cs-admin-expenses');
+    setEvents(defaultEvents);
+    setExpenses(defaultExpenses);
+  };
 
   // Actions
   const updateEventStatus = (id, status, rejectReason = '') => {
@@ -213,7 +238,8 @@ export function GlobalProvider({ children }) {
       addExpense,
       addEvent,
       addComment,
-      updateEventDetails
+      updateEventDetails,
+      resetData
     }}>
       {children}
     </GlobalContext.Provider>
