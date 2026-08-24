@@ -7,7 +7,7 @@ function EventApproval() {
   const initialClient = searchParams.get('client') || '';
 
   const { events: allEvents, updateEventStatus } = useGlobal();
-  const approvals = allEvents.filter(ev => ev.sessionName !== 'Mindfulness Webinar-1');
+  const approvals = allEvents;
 
   const [searchQuery, setSearchQuery] = useState(initialClient);
   const [statusFilter, setStatusFilter] = useState('All');

@@ -7,7 +7,7 @@ function ExpenseApproval() {
   const initialClient = searchParams.get('client') || '';
 
   const { expenses: allExpenses, updateExpenseStatus } = useGlobal();
-  const approvals = allExpenses.filter(exp => exp.sessionName !== 'Mindfulness Webinar-1');
+  const approvals = allExpenses;
 
   const [searchQuery, setSearchQuery] = useState(initialClient);
   const [statusFilter, setStatusFilter] = useState('All');
