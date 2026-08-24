@@ -23,6 +23,14 @@ function Clients() {
     autoInvite: false,
     enforceOTP: true
   });
+  
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [expenseData, setExpenseData] = useState({
+    type: 'Standee',
+    details: '',
+    amount: '',
+    deliveredBy: ''
+  });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -92,16 +100,29 @@ function Clients() {
                   <option value="premium">Premium</option>
                 </select>
               </div>
-              <div className="form-group summary-box" onClick={() => navigate('/client-payments?client=Comprehensive%20Wellness')} title="Go to Client Payments" style={{ cursor: 'pointer' }}>
-                <div className="summary-content">
-                  <div className="summary-item">
-                    <span>Total Received:</span>
-                    <strong>${formData.totalReceived}</strong>
+              <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
+                <div className="form-group summary-box" onClick={() => navigate('/client-payments?client=Comprehensive%20Wellness')} title="Go to Client Payments" style={{ cursor: 'pointer', flex: '60%', margin: 0 }}>
+                  <div className="summary-content">
+                    <div className="summary-item">
+                      <span>Total Received:</span>
+                      <strong>${formData.totalReceived}</strong>
+                    </div>
+                    <div className="summary-item due">
+                      <span>Total Due:</span>
+                      <strong>${(parseFloat(formData.amount || 0) - parseFloat(formData.totalReceived || 0)).toFixed(2)}</strong>
+                    </div>
                   </div>
-                  <div className="summary-item due">
-                    <span>Total Due:</span>
-                    <strong>${(parseFloat(formData.amount || 0) - parseFloat(formData.totalReceived || 0)).toFixed(2)}</strong>
-                  </div>
+                </div>
+                <div style={{ flex: '40%', display: 'flex', alignItems: 'center' }}>
+                  <button 
+                    type="button" 
+                    className="btn-primary" 
+                    style={{ width: '100%', height: '100%', minHeight: '60px', whiteSpace: 'normal', padding: '0.5rem' }} 
+                    onClick={() => setIsExpenseModalOpen(true)}
+                  >
+                    <i className='bx bx-plus' style={{ marginRight: '0.5rem' }}></i>
+                    Add Other Expenses
+                  </button>
                 </div>
               </div>
             </div>
@@ -216,6 +237,83 @@ function Clients() {
           </button>
         </div>
       </form>
+
+      {/* Other Expenses Modal */}
+      {isExpenseModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsExpenseModalOpen(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>Add Other Expenses</h2>
+              <button className="close-btn" onClick={() => setIsExpenseModalOpen(false)}>
+                <i className='bx bx-x'></i>
+              </button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              alert("Expense Request Sent Successfully!");
+              setIsExpenseModalOpen(false);
+              setExpenseData({ type: 'Standee', details: '', amount: '', deliveredBy: '' });
+            }}>
+              <div className="modal-body">
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>Expense Type <span className="text-red">*</span></label>
+                  <select 
+                    className="form-control" 
+                    required 
+                    value={expenseData.type} 
+                    onChange={(e) => setExpenseData({...expenseData, type: e.target.value})}
+                  >
+                    <option value="Standee">Standee</option>
+                    <option value="Flyers">Flyers</option>
+                    <option value="Goodies">Goodies</option>
+                    <option value="Promotional Articles">Promotional Articles</option>
+                    <option value="Eatables">Eatables</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>Details <span className="text-red">*</span></label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    required
+                    maxLength="200"
+                    placeholder="Brief description (max 200 chars)"
+                    value={expenseData.details}
+                    onChange={(e) => setExpenseData({...expenseData, details: e.target.value})}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>Amount (USD) <span className="text-red">*</span></label>
+                  <input 
+                    type="number" 
+                    className="form-control" 
+                    required
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={expenseData.amount}
+                    onChange={(e) => setExpenseData({...expenseData, amount: e.target.value})}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>To be Delivered By <span className="text-red">*</span></label>
+                  <input 
+                    type="date" 
+                    className="form-control" 
+                    required
+                    value={expenseData.deliveredBy}
+                    onChange={(e) => setExpenseData({...expenseData, deliveredBy: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button type="button" className="btn-outline" onClick={() => setIsExpenseModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Request Approval</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

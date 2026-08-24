@@ -9,6 +9,8 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/clients-1', label: 'Test Billing (Clients 1)', icon: 'bx-layer' },
     { path: '/client-payments', label: 'Client Payments', icon: 'bx-credit-card' },
     { path: '/event-approval', label: 'Event Approval', icon: 'bx-check-shield' },
+    { path: '/expert-assignment', label: 'Expert Assignment', icon: 'bx-user-plus' },
+    { path: '/expense-approval', label: 'Expense Approval', icon: 'bx-receipt' },
     { path: '/expense-tracker', label: 'Expense Tracker', icon: 'bx-money' },
   ];
 

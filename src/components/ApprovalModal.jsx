@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
 
 function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setModalData, isLocked, setIsLocked, status }) {
-  const [tempOtherCost, setTempOtherCost] = useState('');
   const [tempParticipantCount, setTempParticipantCount] = useState('');
 
   useEffect(() => {
     if (isOpen) {
-      setTempOtherCost(modalData.otherCosts || '');
       setTempParticipantCount(modalData.participantCount || '');
     }
-  }, [isOpen, modalData.otherCosts, modalData.participantCount]);
+  }, [isOpen, modalData.participantCount]);
 
   if (!isOpen) return null;
 
@@ -87,40 +85,9 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
 
             <h3 className="modal-section-title mt-4">Section Three - Budget & Cost</h3>
             <div className="form-grid">
-              <div className="form-group">
+              <div className="form-group full-width">
                 <label>Budget (in USD) *</label>
                 <input type="number" className="form-control" required min="0" name="budget" value={modalData.budget} onChange={handleChange} disabled={isLocked} />
-              </div>
-              <div className="form-group">
-                <label>Other Costs</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input 
-                    type="number" 
-                    className="form-control" 
-                    min="0" 
-                    name="otherCosts" 
-                    value={isLocked ? tempOtherCost : modalData.otherCosts} 
-                    onChange={(e) => {
-                      if (isLocked) setTempOtherCost(e.target.value);
-                      else handleChange(e);
-                    }} 
-                  />
-                  {isLocked && (
-                    <button 
-                      type="button" 
-                      className="btn-primary" 
-                      style={{ padding: '0 0.75rem', borderRadius: 'var(--radius-md)' }}
-                      onClick={() => {
-                        setModalData(prev => ({ ...prev, otherCosts: tempOtherCost }));
-                        alert("Other Costs updated successfully!");
-                        onClose();
-                      }}
-                      title="Update Other Costs"
-                    >
-                      <i className='bx bx-check' style={{ fontSize: '1.25rem' }}></i>
-                    </button>
-                  )}
-                </div>
               </div>
               
               {status === 'complete' && (
@@ -154,7 +121,7 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
             
             <div className="modal-footer mt-4" style={{ margin: '-1.5rem', marginTop: '1.5rem' }}>
               <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={isLocked}>
-                {isLocked ? 'Approval Request Sent' : 'Send for Approval'}
+                {isLocked ? 'Approval Request Sent' : 'Submit'}
               </button>
             </div>
           </form>

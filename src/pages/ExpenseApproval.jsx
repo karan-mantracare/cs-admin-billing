@@ -1,82 +1,97 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-function EventApproval() {
+function ExpenseApproval() {
   const [searchParams] = useSearchParams();
   const initialClient = searchParams.get('client') || '';
 
   const [approvals, setApprovals] = useState([
     {
-      id: 1,
-      submittedOn: '2026-08-20',
-      sessionName: 'Annual Corporate Wellness',
+      id: 4,
+      date: '2026-08-24',
       clientName: 'MantraCare Internal',
+      sessionName: 'Mindfulness Webinar',
+      sessionDate: '2026-08-04',
+      addedBy: 'Admin',
+      expenseType: 'Flight',
+      details: 'Flight tickets for the guest speaker',
+      deliveredBy: '2026-07-20',
+      amount: 450,
+      status: 'Pending',
+      rejectReason: ''
+    },
+    {
+      id: 1,
+      date: '2026-08-20',
+      clientName: 'MantraCare Internal',
+      sessionName: 'Annual Corporate Wellness',
       sessionDate: '2026-09-15',
-      sessionType: 'onsite',
-      location: '123 Wellness Blvd, NY',
-      expertExp: 5,
-      genderPref: 'no_preference',
-      budget: 1500,
-      otherCosts: 200,
-      requirements: 'Need a certified yoga instructor and a nutritionist for a full day onsite event.',
-      status: 'Pending'
+      addedBy: 'John Doe',
+      expenseType: 'Standee',
+      details: 'Two standees for the wellness fair',
+      deliveredBy: '2026-09-01',
+      amount: 150,
+      status: 'Pending',
+      rejectReason: ''
     },
     {
       id: 2,
-      submittedOn: '2026-08-22',
-      sessionName: 'Mental Health Workshop',
+      date: '2026-08-22',
       clientName: 'Comprehensive Wellness',
+      sessionName: 'Mental Health Workshop',
       sessionDate: '2026-10-05',
-      sessionType: 'online',
-      location: 'Zoom',
-      expertExp: 3,
-      genderPref: 'female',
-      budget: 800,
-      otherCosts: 0,
-      requirements: '1 hour virtual interactive session for 50 employees focusing on stress management.',
-      status: 'Approved'
+      addedBy: 'Jane Smith',
+      expenseType: 'Goodies',
+      details: 'Custom branded stress balls for attendees',
+      deliveredBy: '2026-09-10',
+      amount: 300,
+      status: 'Approved',
+      rejectReason: ''
     },
     {
       id: 3,
-      submittedOn: '2026-08-23',
-      sessionName: 'Ergonomics Assessment',
+      date: '2026-08-23',
       clientName: 'Tech Corp LLC',
+      sessionName: 'Ergonomics Assessment',
       sessionDate: '2026-11-10',
-      sessionType: 'onsite',
-      location: 'Tech Park, SF',
-      expertExp: 7,
-      genderPref: 'no_preference',
-      budget: 300,
-      otherCosts: 50,
-      requirements: 'Quick walkthrough of office setups.',
-      status: 'Rejected'
+      addedBy: 'Mike Johnson',
+      expenseType: 'Eatables',
+      details: 'Catering sandwiches and snacks for the workshop',
+      deliveredBy: '2026-08-25',
+      amount: 450,
+      status: 'Rejected',
+      rejectReason: 'Over budget.'
     }
   ]);
 
   const [searchQuery, setSearchQuery] = useState(initialClient);
   const [statusFilter, setStatusFilter] = useState('All');
-  const [typeFilter, setTypeFilter] = useState('All');
-  const [activeDetailsId, setActiveDetailsId] = useState(null);
   
   // Rejection State
   const [rejectingRequestId, setRejectingRequestId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  
+  // View State
+  const [viewingRequestId, setViewingRequestId] = useState(null);
+  const viewingDetails = approvals.find(r => r.id === viewingRequestId);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(15);
 
   // Filtering Logic
   const filteredApprovals = approvals.filter(req => {
     const matchesSearch = 
-      req.sessionName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      req.clientName.toLowerCase().includes(searchQuery.toLowerCase());
+      req.clientName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      req.expenseType.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      req.addedBy.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = statusFilter === 'All' || req.status === statusFilter;
-    const matchesType = typeFilter === 'All' || req.sessionType === typeFilter.toLowerCase();
     
-    return matchesSearch && matchesStatus && matchesType;
+    return matchesSearch && matchesStatus;
   });
 
   // Pagination Logic
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(15);
   const totalItems = filteredApprovals.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -94,10 +109,14 @@ function EventApproval() {
     ));
   };
 
-  const activeDetails = approvals.find(r => r.id === activeDetailsId);
+  const formatCurrency = (amount) => `$${amount.toLocaleString()}`;
 
   return (
     <main className="main-content">
+      <div className="page-header" style={{ marginBottom: '1.5rem' }}>
+        <h1>Expense Approval</h1>
+      </div>
+
       {/* Summary Dashboard */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
         <div className="summary-box" style={{ flex: 1 }}>
@@ -133,7 +152,7 @@ function EventApproval() {
           <input 
             type="text" 
             className="search-input"
-            placeholder="Search Session or Client..." 
+            placeholder="Search Client, Expense Type, Added By..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -145,11 +164,6 @@ function EventApproval() {
             <option value="Approved">Approved</option>
             <option value="Rejected">Rejected</option>
           </select>
-          <select className="form-control" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-            <option value="All">All Types</option>
-            <option value="Online">Online</option>
-            <option value="Onsite">Onsite</option>
-          </select>
         </div>
       </div>
 
@@ -158,12 +172,13 @@ function EventApproval() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>SUBMITTED ON</th>
-              <th>SESSION NAME</th>
-              <th>CLIENT</th>
-              <th>SESSION DATE</th>
-              <th>TYPE</th>
-              <th>BUDGET</th>
+              <th>DATE</th>
+              <th>CLIENT NAME</th>
+              <th>ADDED BY</th>
+              <th>EXPENSE TYPE</th>
+              <th>DETAILS</th>
+              <th>DELIVERED BY</th>
+              <th>AMOUNT</th>
               <th>STATUS</th>
               <th>ACTIONS</th>
             </tr>
@@ -171,15 +186,15 @@ function EventApproval() {
           <tbody>
             {paginatedApprovals.map((req) => (
               <tr key={req.id}>
-                <td style={{ whiteSpace: 'nowrap' }}>{req.submittedOn}</td>
-                <td className="event-name">{req.sessionName}</td>
-                <td>{req.clientName}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{req.sessionDate}</td>
-                <td style={{ textTransform: 'capitalize' }}>
-                  {req.sessionType}
-                  {req.sessionType === 'onsite' && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{req.location}</div>}
+                <td style={{ whiteSpace: 'nowrap' }}>{req.date}</td>
+                <td className="event-name">{req.clientName}</td>
+                <td>{req.addedBy}</td>
+                <td>{req.expenseType}</td>
+                <td style={{ maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={req.details}>
+                  {req.details}
                 </td>
-                <td>${req.budget}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{req.deliveredBy}</td>
+                <td>{formatCurrency(req.amount)}</td>
                 <td>
                   <span className={`badge badge-${req.status === 'Approved' ? 'success' : req.status === 'Rejected' ? 'danger' : 'warning'}`}>
                     {req.status}
@@ -187,10 +202,10 @@ function EventApproval() {
                 </td>
                 <td>
                   <div className="action-buttons">
-                    <button className="icon-btn" title="View Details" onClick={() => setActiveDetailsId(req.id)}>
+                    <button className="icon-btn text-blue" title="View Details" onClick={() => setViewingRequestId(req.id)}>
                       <i className='bx bx-show'></i>
                     </button>
-                    {req.status === 'Pending' && (
+                    {req.status === 'Pending' ? (
                       <>
                         <button className="icon-btn text-success" title="Approve" onClick={() => handleUpdateStatus(req.id, 'Approved')}>
                           <i className='bx bx-check-circle'></i>
@@ -199,18 +214,20 @@ function EventApproval() {
                           <i className='bx bx-x-circle'></i>
                         </button>
                       </>
-                    )}
+                    ) : null}
                   </div>
                 </td>
               </tr>
             ))}
             {filteredApprovals.length === 0 && (
               <tr>
-                <td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>No approval requests found</td>
+                <td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>No expense approvals found</td>
               </tr>
             )}
           </tbody>
         </table>
+
+        {/* Pagination Footer */}
         {totalItems > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--border-color)', background: '#fff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -258,61 +275,81 @@ function EventApproval() {
       </div>
 
       {/* View Details Modal */}
-      {activeDetailsId !== null && activeDetails && (
-        <div className="modal-overlay" onClick={() => setActiveDetailsId(null)}>
+      {viewingRequestId !== null && viewingDetails && (
+        <div className="modal-overlay" onClick={() => setViewingRequestId(null)}>
           <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <div className="modal-header">
-              <h2>Request Details</h2>
-              <button className="close-btn" onClick={() => setActiveDetailsId(null)}>
+              <h2>Expense Request Details</h2>
+              <button className="close-btn" onClick={() => setViewingRequestId(null)}>
                 <i className='bx bx-x'></i>
               </button>
             </div>
-            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>Session Info</h3>
-                <div className="form-grid">
-                  <div><strong>Session Name:</strong><br/>{activeDetails.sessionName}</div>
-                  <div><strong>Client Name:</strong><br/>{activeDetails.clientName}</div>
-                  <div><strong>Date:</strong><br/>{activeDetails.sessionDate}</div>
-                  <div><strong>Type:</strong><br/><span style={{ textTransform: 'capitalize' }}>{activeDetails.sessionType}</span></div>
-                  {activeDetails.sessionType === 'onsite' && (
-                    <div className="full-width"><strong>Location:</strong><br/>{activeDetails.location}</div>
-                  )}
+            <div className="modal-body">
+              <h3 className="modal-section-title">Session Information</h3>
+              <div className="form-grid" style={{ marginBottom: '1.5rem' }}>
+                <div className="form-group">
+                  <label>Session Name</label>
+                  <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)' }}>{viewingDetails.sessionName || 'N/A'}</div>
+                </div>
+                <div className="form-group">
+                  <label>Session Date</label>
+                  <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)' }}>{viewingDetails.sessionDate || 'N/A'}</div>
+                </div>
+                <div className="form-group">
+                  <label>Client Name</label>
+                  <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)' }}>{viewingDetails.clientName}</div>
                 </div>
               </div>
 
-              <div style={{ marginBottom: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>Expert Info</h3>
-                <div className="form-grid">
-                  <div><strong>Required Experience:</strong><br/>{activeDetails.expertExp} Years</div>
-                  <div><strong>Gender Preference:</strong><br/><span style={{ textTransform: 'capitalize' }}>{activeDetails.genderPref.replace('_', ' ')}</span></div>
+              <h3 className="modal-section-title">Expense Information</h3>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Expense Type</label>
+                  <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)' }}>{viewingDetails.expenseType}</div>
                 </div>
-              </div>
-
-              <div style={{ marginBottom: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>Budget & Costs</h3>
-                <div className="form-grid">
-                  <div><strong>Budget:</strong><br/>${activeDetails.budget}</div>
-                  <div><strong>Other Costs:</strong><br/>${activeDetails.otherCosts}</div>
+                <div className="form-group">
+                  <label>Delivery By</label>
+                  <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)' }}>{viewingDetails.deliveredBy}</div>
                 </div>
-              </div>
-
-              <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>Requirements Description</h3>
-                <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '4px', fontSize: '0.95rem' }}>
-                  {activeDetails.requirements}
+                <div className="form-group">
+                  <label>Amount</label>
+                  <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)', fontWeight: 'bold' }}>{formatCurrency(viewingDetails.amount)}</div>
                 </div>
+                <div className="form-group full-width">
+                  <label>Details</label>
+                  <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)', whiteSpace: 'pre-wrap' }}>{viewingDetails.details}</div>
+                </div>
+                <div className="form-group">
+                  <label>Added By</label>
+                  <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)' }}>{viewingDetails.addedBy}</div>
+                </div>
+                <div className="form-group">
+                  <label>Status</label>
+                  <div style={{ padding: '0.5rem' }}>
+                    <span className={`badge badge-${viewingDetails.status === 'Approved' ? 'success' : viewingDetails.status === 'Rejected' ? 'danger' : 'warning'}`}>
+                      {viewingDetails.status}
+                    </span>
+                  </div>
+                </div>
+                {viewingDetails.status === 'Rejected' && (
+                  <div className="form-group full-width">
+                    <label>Rejection Reason</label>
+                    <div style={{ padding: '0.5rem', background: '#fee2e2', color: 'var(--red)', borderRadius: 'var(--radius-md)', border: '1px solid #fca5a5' }}>
+                      {viewingDetails.rejectReason}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              {activeDetails.status === 'Pending' && (
+              {viewingDetails.status === 'Pending' && (
                 <>
-                  <button className="btn-outline text-red" style={{ borderColor: 'var(--red)' }} onClick={() => setRejectingRequestId(activeDetails.id)}>Reject</button>
-                  <button className="btn-primary" style={{ background: 'var(--green)', borderColor: 'var(--green)' }} onClick={() => { handleUpdateStatus(activeDetails.id, 'Approved'); setActiveDetailsId(null); }}>Approve</button>
+                  <button className="btn-outline text-danger" style={{ borderColor: 'var(--danger)' }} onClick={() => { setRejectingRequestId(viewingDetails.id); setViewingRequestId(null); }}>Reject</button>
+                  <button className="btn-primary" style={{ background: 'var(--success)', borderColor: 'var(--success)' }} onClick={() => { handleUpdateStatus(viewingDetails.id, 'Approved'); setViewingRequestId(null); }}>Approve</button>
                 </>
               )}
-              {activeDetails.status !== 'Pending' && (
-                <button className="btn-outline" onClick={() => setActiveDetailsId(null)}>Close</button>
+              {viewingDetails.status !== 'Pending' && (
+                <button className="btn-outline" onClick={() => setViewingRequestId(null)}>Close</button>
               )}
             </div>
           </div>
@@ -334,7 +371,6 @@ function EventApproval() {
               handleUpdateStatus(rejectingRequestId, 'Rejected', rejectReason);
               setRejectingRequestId(null);
               setRejectReason('');
-              setActiveDetailsId(null); // Close details modal if open
             }}>
               <div className="modal-body">
                 <div className="form-group">
@@ -343,7 +379,7 @@ function EventApproval() {
                     className="form-control" 
                     rows="4" 
                     required 
-                    placeholder="Please explain why this request is being rejected..."
+                    placeholder="Please explain why this expense is being rejected..."
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
                   ></textarea>
@@ -361,4 +397,4 @@ function EventApproval() {
   );
 }
 
-export default EventApproval;
+export default ExpenseApproval;

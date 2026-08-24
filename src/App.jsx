@@ -7,6 +7,8 @@ import Clients1 from './pages/Clients1';
 import ClientPayments from './pages/ClientPayments';
 import EventApproval from './pages/EventApproval';
 import ExpenseTracker from './pages/ExpenseTracker';
+import ExpenseApproval from './pages/ExpenseApproval';
+import ExpertAssignment from './pages/ExpertAssignment';
 import Sidebar from './components/Sidebar';
 
 function App() {
@@ -37,7 +39,9 @@ function App() {
         <Route path="/clients-1" element={<Clients1 />} />
         <Route path="/client-payments" element={<ClientPayments />} />
         <Route path="/event-approval" element={<EventApproval />} />
-        <Route path="/expence-tracker" element={<ExpenseTracker />} />
+        <Route path="/expert-assignment" element={<ExpertAssignment />} />
+        <Route path="/expense-tracker" element={<ExpenseTracker />} />
+        <Route path="/expense-approval" element={<ExpenseApproval />} />
       </Routes>
     </div>
   );
