@@ -4,7 +4,7 @@ import ApprovalModal from '../components/ApprovalModal';
 import { useGlobal } from '../context/GlobalContext';
 
 function EditWebinar() {
-  const { addExpense, addEvent, events } = useGlobal();
+  const { addExpense, addEvent, addComment, events } = useGlobal();
   const pageTitle = "Mindfulness Webinar-1";
   const currentEvent = events.find(ev => ev.sessionName === pageTitle);
 
@@ -21,6 +21,12 @@ function EditWebinar() {
   });
   const [isSessionInfoOpen, setIsSessionInfoOpen] = useState(false);
   const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
+  
+  // Comments state
+  const eventComments = currentEvent && currentEvent.comments ? currentEvent.comments : [];
+  const [visibleCommentsCount, setVisibleCommentsCount] = useState(5);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [newComment, setNewComment] = useState({ name: '', text: '' });
 
   const providerDetails = currentEvent && currentEvent.assignedExpert ? {
     name: currentEvent.assignedExpert,
@@ -225,12 +231,38 @@ function EditWebinar() {
 
       <div className="section-card comments-card">
         <div className="section-title">
-          <i className='bx bx-info-circle'></i>
-          <h2>Comments :</h2>
+          <i className='bx bx-message-square-detail'></i>
+          <h2>Comments : ({eventComments.length})</h2>
         </div>
-        <div className="section-content text-center">
-          <p className="no-comments">No comments yet</p>
-          <button className="btn-primary mt-3">Add Comments</button>
+        <div className="section-content" style={{ padding: '0' }}>
+          {eventComments.length === 0 ? (
+            <div className="text-center" style={{ padding: '2rem' }}>
+              <p className="no-comments" style={{ color: 'var(--text-muted)' }}>No comments yet.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {eventComments.slice(0, visibleCommentsCount).map((comment, idx) => (
+                <div key={idx} style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <strong style={{ color: 'var(--text-main)', fontSize: '0.95rem' }}>{comment.name}</strong>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{comment.date}</span>
+                  </div>
+                  <p style={{ margin: '0', color: 'var(--text-muted)', fontSize: '0.95rem' }}>{comment.text}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+            <button className="btn-primary" onClick={() => setIsCommentModalOpen(true)}>Add Comment</button>
+            {visibleCommentsCount < eventComments.length && (
+              <button 
+                className="btn-outline" 
+                onClick={() => setVisibleCommentsCount(prev => prev + 5)}
+              >
+                Show More
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -409,6 +441,61 @@ function EditWebinar() {
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)' }}>
               <button className="btn-outline" onClick={() => setIsProviderModalOpen(false)}>Close</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Comment Modal */}
+      {isCommentModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsCommentModalOpen(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>Add Comment</h2>
+              <button className="close-btn" onClick={() => setIsCommentModalOpen(false)}>
+                <i className='bx bx-x'></i>
+              </button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (currentEvent && currentEvent.id) {
+                addComment(currentEvent.id, {
+                  name: newComment.name,
+                  text: newComment.text,
+                  date: new Date().toISOString().split('T')[0]
+                });
+                setNewComment({ name: '', text: '' });
+                setIsCommentModalOpen(false);
+              } else {
+                alert('Event not found. Cannot add comment.');
+              }
+            }}>
+              <div className="modal-body">
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>Name <span className="text-red">*</span></label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    required
+                    value={newComment.name}
+                    onChange={(e) => setNewComment({...newComment, name: e.target.value})}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>Comment <span className="text-red">*</span></label>
+                  <textarea 
+                    className="form-control" 
+                    required
+                    rows="4"
+                    value={newComment.text}
+                    onChange={(e) => setNewComment({...newComment, text: e.target.value})}
+                  ></textarea>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button type="button" className="btn-outline" onClick={() => setIsCommentModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Post Comment</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

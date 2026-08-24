@@ -74,7 +74,15 @@ export function GlobalProvider({ children }) {
       requirements: 'Monthly mindfulness session.',
       status: 'Approved',
       assignedExpert: null,
-      expertCost: 0
+      expertCost: 0,
+      comments: [
+        { name: 'Admin', text: 'Confirmed the speaker lineup for the session.', date: '2026-08-24' },
+        { name: 'John Doe', text: 'Initial marketing materials have been distributed.', date: '2026-08-19' },
+        { name: 'Jane Smith', text: 'Checked the budget approval with the finance team.', date: '2026-08-14' },
+        { name: 'Admin', text: 'Please ensure we have a backup expert on standby.', date: '2026-08-09' },
+        { name: 'Dr. Sarah Jenkins', text: 'I am available for this webinar on the selected date.', date: '2026-08-04' },
+        { name: 'MantraCare Internal', text: 'Created the initial draft for the session outline.', date: '2026-07-30' }
+      ]
     }
   ]);
 
@@ -166,14 +174,27 @@ export function GlobalProvider({ children }) {
   };
 
   const addEvent = (eventData) => {
-    setEvents(prev => [{
+    const newEvent = {
       ...eventData,
       id: Date.now(),
       status: 'Pending',
-      rejectReason: '',
       assignedExpert: null,
-      expertCost: 0
-    }, ...prev]);
+      expertCost: 0,
+      comments: []
+    };
+    setEvents([newEvent, ...events]);
+  };
+
+  const addComment = (eventId, commentData) => {
+    setEvents(events.map(ev => {
+      if (ev.id === eventId) {
+        return {
+          ...ev,
+          comments: [commentData, ...(ev.comments || [])]
+        };
+      }
+      return ev;
+    }));
   };
 
   const updateEventDetails = (id, updates) => {
@@ -191,6 +212,7 @@ export function GlobalProvider({ children }) {
       updateExpenseStatus,
       addExpense,
       addEvent,
+      addComment,
       updateEventDetails
     }}>
       {children}
