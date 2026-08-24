@@ -4,7 +4,8 @@ import { useGlobal } from '../context/GlobalContext';
 
 function ExpenseTracker() {
   const navigate = useNavigate();
-  const { expenses: globalExpenses } = useGlobal();
+  const { expenses: allExpenses } = useGlobal();
+  const globalExpenses = allExpenses.filter(exp => exp.sessionName !== 'Mindfulness Webinar-1');
 
   const [expenses] = useState([
     {

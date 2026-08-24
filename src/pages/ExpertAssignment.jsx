@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useGlobal } from '../context/GlobalContext';
 
 function ExpertAssignment() {
-  const { events, assignExpert } = useGlobal();
+  const { events: allEvents, assignExpert } = useGlobal();
+  const events = allEvents.filter(ev => ev.sessionName !== 'Mindfulness Webinar-1');
   const assignments = events.filter(ev => ev.status === 'Approved');
 
   const [searchQuery, setSearchQuery] = useState('');
