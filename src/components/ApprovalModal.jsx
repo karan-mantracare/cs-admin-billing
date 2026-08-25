@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setModalData, isLocked, setIsLocked, status, onSubmit }) {
+function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setModalData, isLocked, setIsLocked, status, onSubmit, isHrRole }) {
   const [tempParticipantCount, setTempParticipantCount] = useState('');
 
   useEffect(() => {
@@ -37,7 +37,7 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
         </div>
         <div className="modal-body">
           <form id="approvalForm" onSubmit={handleSubmit}>
-            <h3 className="modal-section-title">Section One - Session Information</h3>
+            {!isHrRole && <h3 className="modal-section-title">Section One - Session Information</h3>}
             <div className="form-grid">
               <div className="form-group">
                 <label>Session Name</label>
@@ -51,78 +51,105 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
                 <label>Client Name</label>
                 <input type="text" className="form-control" readOnly value="MantraCare Internal" />
               </div>
-              <div className="form-group">
-                <label>Session Type *</label>
-                <select className="form-control" required name="sessionType" value={modalData.sessionType} onChange={handleChange} disabled={isLocked}>
-                  <option value="">Select Type</option>
-                  <option value="online">Online</option>
-                  <option value="onsite">Onsite</option>
-                </select>
-              </div>
-              {modalData.sessionType === 'onsite' && (
-                <div className="form-group full-width">
-                  <label>Session Location (Full Address) *</label>
-                  <textarea className="form-control" rows="2" name="sessionLocation" value={modalData.sessionLocation} onChange={handleChange} required disabled={isLocked}></textarea>
+              {isHrRole && (
+                <div className="form-group">
+                  <label>Gender Preference *</label>
+                  <select className="form-control" required name="genderPref" value={modalData.genderPref} onChange={handleChange} disabled={isLocked}>
+                    <option value="">Select Preference</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="non_binary">Non Binary</option>
+                  </select>
                 </div>
+              )}
+              {!isHrRole && (
+                <>
+                  <div className="form-group">
+                    <label>Session Type *</label>
+                    <select className="form-control" required name="sessionType" value={modalData.sessionType} onChange={handleChange} disabled={isLocked}>
+                      <option value="">Select Type</option>
+                      <option value="online">Online</option>
+                      <option value="onsite">Onsite</option>
+                    </select>
+                  </div>
+                  {modalData.sessionType === 'onsite' && (
+                    <div className="form-group full-width">
+                      <label>Session Location (Full Address) *</label>
+                      <textarea className="form-control" rows="2" name="sessionLocation" value={modalData.sessionLocation} onChange={handleChange} required disabled={isLocked}></textarea>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
-            <h3 className="modal-section-title mt-4">Section Two - Expert Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Expert Exp (no of Years) *</label>
-                <input type="number" className="form-control" required min="0" name="expertExp" value={modalData.expertExp} onChange={handleChange} disabled={isLocked} />
-              </div>
-              <div className="form-group">
-                <label>Gender Preference *</label>
-                <select className="form-control" required name="genderPref" value={modalData.genderPref} onChange={handleChange} disabled={isLocked}>
-                  <option value="">Select Preference</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="non_binary">Non Binary</option>
-                </select>
-              </div>
-            </div>
-
-            <h3 className="modal-section-title mt-4">Section Three - Budget & Cost</h3>
-            <div className="form-grid">
-              <div className="form-group full-width">
-                <label>Budget (in USD) *</label>
-                <input type="number" className="form-control" required min="0" name="budget" value={modalData.budget} onChange={handleChange} disabled={isLocked} />
-              </div>
-              
-              {status === 'complete' && (
-                <div className="form-group full-width">
-                  <label>Update Participant Count</label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input 
-                      type="number" 
-                      className="form-control" 
-                      min="0" 
-                      value={tempParticipantCount} 
-                      onChange={(e) => setTempParticipantCount(e.target.value)} 
-                    />
-                    <button 
-                      type="button" 
-                      className="btn-primary" 
-                      style={{ padding: '0 0.75rem', borderRadius: 'var(--radius-md)' }}
-                      onClick={() => {
-                        setModalData(prev => ({ ...prev, participantCount: tempParticipantCount }));
-                        alert("Participant Count updated successfully!");
-                        onClose();
-                      }}
-                      title="Update Participant Count"
-                    >
-                      <i className='bx bx-check' style={{ fontSize: '1.25rem' }}></i>
-                    </button>
+            {!isHrRole && (
+              <>
+                <h3 className="modal-section-title mt-4">Section Two - Expert Information</h3>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Expert Exp (no of Years) *</label>
+                    <input type="number" className="form-control" required min="0" name="expertExp" value={modalData.expertExp} onChange={handleChange} disabled={isLocked} />
+                  </div>
+                  <div className="form-group">
+                    <label>Gender Preference *</label>
+                    <select className="form-control" required name="genderPref" value={modalData.genderPref} onChange={handleChange} disabled={isLocked}>
+                      <option value="">Select Preference</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="non_binary">Non Binary</option>
+                    </select>
                   </div>
                 </div>
-              )}
-            </div>
+              </>
+            )}
+
+            {!isHrRole && (
+              <>
+                <h3 className="modal-section-title mt-4">Section Three - Budget & Cost</h3>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Budget (in USD) *</label>
+                    <input type="number" className="form-control" required min="0" name="budget" value={modalData.budget} onChange={handleChange} disabled={isLocked} />
+                  </div>
+                  
+                  {(status === 'complete' || status === 'approved') && (
+                    <div className="form-group">
+                      <label>Update Participant Count</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input 
+                          type="number" 
+                          className="form-control" 
+                          min="0" 
+                          value={tempParticipantCount} 
+                          onChange={(e) => setTempParticipantCount(e.target.value)} 
+                        />
+                        <button 
+                          type="button" 
+                          className="btn-primary" 
+                          style={{ padding: '0 0.75rem', borderRadius: 'var(--radius-md)' }}
+                          onClick={() => {
+                            const updatedData = { ...modalData, participantCount: tempParticipantCount };
+                            setModalData(updatedData);
+                            if (onSubmit) {
+                              onSubmit(updatedData);
+                            }
+                            alert("Participant Count updated successfully!");
+                            onClose();
+                          }}
+                          title="Update Participant Count"
+                        >
+                          <i className='bx bx-check' style={{ fontSize: '1.25rem' }}></i>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
             
             <div className="modal-footer mt-4" style={{ margin: '-1.5rem', marginTop: '1.5rem' }}>
               <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={isLocked}>
-                {isLocked ? 'Approval Request Sent' : 'Submit'}
+                {isLocked ? (isHrRole ? 'Request Sent' : 'Approval Request Sent') : (isHrRole ? 'Request Session' : 'Submit')}
               </button>
             </div>
           </form>

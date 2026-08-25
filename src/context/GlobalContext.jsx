@@ -21,6 +21,7 @@ const defaultEvents = [
     otherCosts: 0,
     requirements: 'Monthly mindfulness session.',
     status: 'Tentative',
+    createdBy: 'CS-Karan',
     assignedExpert: null,
     expertCost: 0,
     comments: [
@@ -108,7 +109,7 @@ export function GlobalProvider({ children }) {
     const newEvent = {
       ...eventData,
       id: Date.now(),
-      status: 'Pending',
+      status: eventData.status || 'Pending',
       assignedExpert: null,
       expertCost: 0,
       comments: []

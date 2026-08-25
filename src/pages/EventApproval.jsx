@@ -7,7 +7,7 @@ function EventApproval() {
   const initialClient = searchParams.get('client') || '';
 
   const { events: allEvents, updateEventStatus } = useGlobal();
-  const approvals = allEvents;
+  const approvals = allEvents.filter(ev => ev.status !== 'hr_requested' && ev.status !== 'Tentative');
 
   const [searchQuery, setSearchQuery] = useState(initialClient);
   const [statusFilter, setStatusFilter] = useState('All');

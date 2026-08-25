@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGlobal } from '../context/GlobalContext';
 
 function CustomSelect({ label, options, value, onChange, id }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -94,13 +95,10 @@ function Dashboard() {
   const [division, setDivision] = useState({ value: 'mc', label: 'MantraCare Intern...' });
   const [time, setTime] = useState(timeOptions[0]);
 
-  const webinars = [
-    { date: '3 Mar 2025', updateAt: '-', createdBy: '-', category: 'Webinar', name: 'Employee Induction Webinar', status: 'complete', comment: 'Hey I need help with this activity', participants: 1 },
-    { date: '12 Jan 2025', updateAt: '-', createdBy: '-', category: 'Assessment', name: 'Holistic Wellbeing Assessment', status: 'approved', comment: '-', participants: 0 },
-    { date: '28 Jan 2025', updateAt: '-', createdBy: '-', category: 'Webinar', name: '#Happify: The Secret To Happiness', status: 'approved', comment: '-', participants: 0 },
-    { date: '25 Apr 2025', updateAt: '-', createdBy: '-', category: 'Webinar', name: 'Art & Mindfulness', status: 'tentative', comment: '-', participants: 0 },
-    { date: '14 May 2025', updateAt: '-', createdBy: '-', category: 'Training', name: 'Time Management & Productivity: Beating Procrastination', status: 'tentative', comment: '-', participants: 0 },
-  ];
+  const { events } = useGlobal();
+
+  // We map the global events to the dashboard table.
+  // Instead of static webinars, we use actual events.
 
   const renderStatus = (status) => {
     switch (status) {
@@ -166,16 +164,21 @@ function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            {webinars.map((w, i) => (
+            {events.map((w, i) => (
               <tr key={i}>
-                <td>{w.date}</td>
-                <td>{w.updateAt}</td>
-                <td>{w.createdBy}</td>
-                <td>{w.category}</td>
-                <td className="event-name">{w.name}</td>
-                <td>{renderStatus(w.status)}</td>
-                <td className="comment">{w.comment}</td>
-                <td>{w.participants}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{w.sessionDate}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{w.submittedOn}</td>
+                <td>
+                  <div style={{ whiteSpace: 'nowrap' }}>
+                    {w.createdBy || 'CS-Karan'}<br/>
+                    <small style={{ color: 'var(--text-muted)' }}>{w.submittedOn}</small>
+                  </div>
+                </td>
+                <td style={{ textTransform: 'capitalize' }}>{w.sessionType || 'Webinar'}</td>
+                <td className="event-name">{w.sessionName}</td>
+                <td>{renderStatus(w.status ? w.status.toLowerCase() : 'tentative')}</td>
+                <td className="comment">{w.comments && w.comments.length > 0 ? w.comments[0].text : '-'}</td>
+                <td>{0}</td>
                 <td className="actions">
                   <button className="action-btn edit" title="Edit" onClick={() => navigate('/edit')}>
                     <i className='bx bx-pencil'></i>

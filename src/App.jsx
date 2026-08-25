@@ -10,6 +10,8 @@ import ExpenseTracker from './pages/ExpenseTracker';
 import ExpenseApproval from './pages/ExpenseApproval';
 import ExpertAssignment from './pages/ExpertAssignment';
 import Sidebar from './components/Sidebar';
+import HrDash from './pages/HrDash';
+import HrApproval from './pages/HrApproval';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -35,6 +37,8 @@ function App() {
         <Route path="/" element={<Navigate to="/calendar" replace />} />
         <Route path="/calendar" element={<Dashboard />} />
         <Route path="/edit" element={<EditWebinar />} />
+        <Route path="/hr-dash" element={<HrDash />} />
+        <Route path="/hr-approval" element={<HrApproval />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/clients-1" element={<Clients1 />} />
         <Route path="/client-payments" element={<ClientPayments />} />

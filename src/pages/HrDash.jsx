@@ -3,23 +3,13 @@ import { Link } from 'react-router-dom';
 import ApprovalModal from '../components/ApprovalModal';
 import { useGlobal } from '../context/GlobalContext';
 
-function EditWebinar() {
-  const { addExpense, addEvent, addComment, updateEventDetails, events } = useGlobal();
+function HrDash() {
+  const { addEvent, addComment, events } = useGlobal();
   const pageTitle = "Mindfulness Webinar-1";
   const currentEvent = events.find(ev => ev.sessionName === pageTitle);
 
   const [status, setStatus] = useState(currentEvent ? currentEvent.status.toLowerCase() : 'tentative');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isOtherExpModalOpen, setIsOtherExpModalOpen] = useState(false);
-
-  // New Other Expense state
-  const [otherExpData, setOtherExpData] = useState({
-    expenseType: 'Flight',
-    details: '',
-    amount: '',
-    deliveredBy: ''
-  });
-  const [isSessionInfoOpen, setIsSessionInfoOpen] = useState(false);
   const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
   
   // Comments state
@@ -64,21 +54,8 @@ function EditWebinar() {
             <div className="date-picker-wrapper">
               <input type="date" value={pageDate} onChange={(e) => setPageDate(e.target.value)} className="form-control" />
             </div>
-            <select className="form-control status-select" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="tentative">Tentative</option>
-              <option value="reschedule">Reschedule</option>
-              <option value="approved">Approved</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="complete">Complete</option>
-              <option value="special_approval">Special_approval</option>
-            </select>
-            {(status === 'tentative' || status === 'complete' || status === 'special_approval' || status === 'hr_requested' || status === 'approved') && (
-              <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-                {(status === 'complete' || status === 'approved') ? 'Update Details' : (isLocked ? 'Update Details' : (status === 'hr_requested' ? 'Request Session' : 'Submit Request'))}
-              </button>
-            )}
-            <button className="btn-outline" onClick={() => setIsOtherExpModalOpen(true)} style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}>
-              Add Other Expense
+            <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
+              {isLocked ? 'Update Details' : 'Request Session'}
             </button>
           </div>
         </div>
@@ -182,26 +159,6 @@ function EditWebinar() {
           </div>
         </div>
 
-        <div className="small-card" style={{ marginBottom: 0 }}>
-          <div className="stats-box">
-            <div>
-              <span className="stats-label">Session Cost</span>
-              <h3 className="stats-value">{currentEvent && currentEvent.expertCost ? `$${currentEvent.expertCost}` : (isLocked && modalData.budget ? `$${modalData.budget}` : '0')}</h3>
-            </div>
-            <button className="stats-action"><i className='bx bx-log-in-circle'></i></button>
-          </div>
-        </div>
-
-        <div className="small-card" style={{ marginBottom: 0 }}>
-          <div className="stats-box">
-            <div>
-              <span className="stats-label">Other Cost</span>
-              <h3 className="stats-value">{modalData.otherCosts ? modalData.otherCosts : '0'}</h3>
-            </div>
-            <button className="stats-action"><i className='bx bx-log-in-circle'></i></button>
-          </div>
-        </div>
-
         {(status === 'approved' || status === 'complete' || status === 'special_approval') && (
           <div className="small-card" style={{ marginBottom: 0 }}>
             <div className="stats-box">
@@ -276,160 +233,25 @@ function EditWebinar() {
         isLocked={isLocked}
         setIsLocked={setIsLocked}
         status={status}
+        isHrRole={true}
         onSubmit={(data) => {
-          if (currentEvent && currentEvent.id) {
-            const isSubmitForApproval = currentEvent.status === 'hr_requested' || currentEvent.status === 'tentative';
-            updateEventDetails(currentEvent.id, {
-              sessionType: data.sessionType,
-              location: data.sessionLocation || 'Online',
-              expertExp: parseInt(data.expertExp) || 0,
-              genderPref: data.genderPref,
-              budget: parseFloat(data.budget) || 0,
-              otherCosts: parseFloat(data.otherCosts) || 0,
-              participantCount: data.participantCount !== undefined ? data.participantCount : (currentEvent.participantCount || 0),
-              status: isSubmitForApproval ? 'Pending' : currentEvent.status,
-              requirements: currentEvent.requirements || 'Generated from Edit Webinar flow.'
-            });
-          } else {
-            addEvent({
-              submittedOn: new Date().toISOString().split('T')[0],
-              sessionName: pageTitle,
-              clientName: 'MantraCare Internal',
-              sessionDate: pageDate,
-              sessionType: data.sessionType,
-              location: data.sessionLocation || 'Online',
-              expertExp: parseInt(data.expertExp) || 0,
-              genderPref: data.genderPref,
-              budget: parseFloat(data.budget) || 0,
-              otherCosts: parseFloat(data.otherCosts) || 0,
-              requirements: 'Generated from Edit Webinar flow.'
-            });
-          }
+          addEvent({
+            submittedOn: new Date().toISOString().split('T')[0],
+            sessionName: pageTitle,
+            clientName: 'MantraCare Internal',
+            sessionDate: pageDate,
+            sessionType: data.sessionType,
+            location: data.sessionLocation || 'Online',
+            expertExp: parseInt(data.expertExp) || 0,
+            genderPref: data.genderPref,
+            budget: 0,
+            otherCosts: 0,
+            requirements: 'Generated from HR Dash flow.',
+            status: 'hr_requested',
+            createdBy: 'HR-Rakesh'
+          });
         }}
       />
-
-      {/* Add Other Session Exp Modal */}
-      {isOtherExpModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsOtherExpModalOpen(false)}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <h2>Add Other Expense</h2>
-              <button className="close-btn" onClick={() => setIsOtherExpModalOpen(false)}>
-                <i className='bx bx-x'></i>
-              </button>
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                addExpense({
-                  date: new Date().toISOString().split('T')[0],
-                  clientName: 'MantraCare Internal',
-                  sessionName: pageTitle,
-                  sessionDate: pageDate,
-                  addedBy: 'Admin',
-                  expenseType: otherExpData.expenseType,
-                  details: otherExpData.details,
-                  deliveredBy: otherExpData.deliveredBy,
-                  amount: parseFloat(otherExpData.amount)
-                });
-                alert("Expense Request Sent Successfully!");
-                setModalData(prev => ({ ...prev, otherCosts: (parseFloat(prev.otherCosts || 0) + parseFloat(otherExpData.amount)).toString() }));
-                setIsOtherExpModalOpen(false);
-                setOtherExpData({ expenseType: 'Flight', details: '', amount: '', deliveredBy: '' });
-              }}
-              style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}
-            >
-              <div className="modal-body" style={{ overflowY: 'auto' }}>
-                {/* Section 1 */}
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <div
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}
-                    onClick={() => setIsSessionInfoOpen(!isSessionInfoOpen)}
-                  >
-                    <h3 className="modal-section-title" style={{ margin: 0, border: 'none', padding: 0 }}>Section 1 - Session Information</h3>
-                    <i className={`bx bx-chevron-${isSessionInfoOpen ? 'up' : 'down'}`} style={{ fontSize: '1.25rem', color: 'var(--primary)' }}></i>
-                  </div>
-
-                  {isSessionInfoOpen && (
-                    <>
-                      <div className="form-group" style={{ marginBottom: '1rem' }}>
-                        <label>Session Name</label>
-                        <input type="text" className="form-control" readOnly value={pageTitle} />
-                      </div>
-                      <div className="form-group" style={{ marginBottom: '1rem' }}>
-                        <label>Session Date</label>
-                        <input type="date" className="form-control" readOnly value={pageDate} />
-                      </div>
-                      <div className="form-group" style={{ marginBottom: '1rem' }}>
-                        <label>Client Name</label>
-                        <input type="text" className="form-control" readOnly value="MantraCare Internal" />
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Section 2 */}
-                <div>
-                  <h3 className="modal-section-title">Section 2 - Expense Information</h3>
-                  <div className="form-group" style={{ marginBottom: '1rem' }}>
-                    <label>Expense Type <span className="text-red">*</span></label>
-                    <select
-                      className="form-control"
-                      required
-                      value={otherExpData.expenseType}
-                      onChange={(e) => setOtherExpData({ ...otherExpData, expenseType: e.target.value })}
-                    >
-                      <option value="Flight">Flight</option>
-                      <option value="Promotional">Promotional</option>
-                      <option value="Goodies">Goodies</option>
-                      <option value="Session Material">Session Material</option>
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ marginBottom: '1rem' }}>
-                    <label>Delivery By <span className="text-red">*</span></label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      required
-                      value={otherExpData.deliveredBy}
-                      onChange={(e) => setOtherExpData({ ...otherExpData, deliveredBy: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: '1rem' }}>
-                    <label>Details <span className="text-red">*</span></label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      required
-                      maxLength="200"
-                      placeholder="Brief description (max 200 chars)"
-                      value={otherExpData.details}
-                      onChange={(e) => setOtherExpData({ ...otherExpData, details: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: '1rem' }}>
-                    <label>Amount (USD) <span className="text-red">*</span></label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      required
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={otherExpData.amount}
-                      onChange={(e) => setOtherExpData({ ...otherExpData, amount: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                <button type="button" className="btn-outline" onClick={() => setIsOtherExpModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Request for Approval</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Provider Details Modal */}
       {isProviderModalOpen && providerDetails && (
@@ -518,4 +340,4 @@ function EditWebinar() {
   );
 }
 
-export default EditWebinar;
+export default HrDash;
