@@ -35,6 +35,8 @@ function Sidebar({ isOpen, onClose }) {
       links: [
         { path: '/event-approval', label: 'Event Approval', icon: 'bx-check-shield' },
         { path: '/expert-assignment', label: 'Expert Assignment', icon: 'bx-user-plus' },
+        { path: '/clients', label: 'Clients', icon: 'bx-group' },
+        { path: '/clients-1', label: 'Clients 1', icon: 'bx-user-detail' },
         { path: '/client-payments', label: 'Client Payments', icon: 'bx-credit-card' },
         { path: '/expense-approval', label: 'Expense Approval', icon: 'bx-receipt' },
         { path: '/expense-tracker', label: 'Expense Tracker', icon: 'bx-money' },
