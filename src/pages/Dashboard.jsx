@@ -95,17 +95,46 @@ function Dashboard() {
   const [division, setDivision] = useState({ value: 'mc', label: 'MantraCare Intern...' });
   const [time, setTime] = useState(timeOptions[0]);
 
-  const { events } = useGlobal();
+  const { events, updateEventStatus, requestReschedule, updateEventDetails } = useGlobal();
+
+  // Reschedule Prompt State
+  const [showReschedulePrompt, setShowReschedulePrompt] = useState(false);
+  const [showRescheduleDatepicker, setShowRescheduleDatepicker] = useState(false);
+  const [newRescheduleDate, setNewRescheduleDate] = useState('');
+  const [reschedulingEventId, setReschedulingEventId] = useState(null);
+
+  // Today and Mark Complete State
+  const [todayActionId, setTodayActionId] = useState(null);
+  const [markCompleteId, setMarkCompleteId] = useState(null);
+  const [participantCount, setParticipantCount] = useState('');
+
+  const today = new Date().toISOString().split('T')[0];
 
   // We map the global events to the dashboard table.
   // Instead of static webinars, we use actual events.
 
-  const renderStatus = (status) => {
+  const renderStatus = (status, createdBy) => {
     switch (status) {
-      case 'complete': return <span className="status-pill status-complete"><i className='bx bx-check-double'></i> Complete</span>;
+      case 'pending_confirmation': 
+        return <span className="status-pill status-tentative"><i className='bx bx-time'></i> {createdBy && createdBy.startsWith('HR') ? `Added by ${createdBy}` : 'Pending Confirmation'}</span>;
+      case 'provider_allocation_pending': 
+        return <span className="status-pill status-approved"><i className='bx bx-user-plus'></i> Provider Allocation Pending</span>;
+      case 'event_scheduled': 
+        return <span className="status-pill status-complete"><i className='bx bx-check-circle'></i> Event Scheduled</span>;
+      case 'event_completed': 
+        return <span className="status-pill status-complete"><i className='bx bx-check-double'></i> Event Completed</span>;
+      case 'reschedule_requested':
+        return <span className="status-pill status-tentative" style={{ color: 'var(--orange)', borderColor: 'var(--orange)' }}><i className='bx bx-calendar-exclamation'></i> Reschedule Requested</span>;
+      case 'date_change_requested':
+        return <span className="status-pill status-tentative" title="Request to Change the Date: click on edit and change the session date" style={{ color: 'var(--orange)', borderColor: 'var(--orange)', cursor: 'help' }}><i className='bx bx-calendar-edit'></i> Request to Change Date</span>;
+      case 'complete': return <span className="status-pill status-approved"><i className='bx bx-check-circle'></i> Complete</span>;
       case 'approved': return <span className="status-pill status-approved"><i className='bx bx-check-circle'></i> Approved</span>;
       case 'tentative': return <span className="status-pill status-tentative"><i className='bx bx-time'></i> Tentative</span>;
-      default: return null;
+      case 'canceled_by_cs':
+      case 'canceled_by_hr':
+        const byWhom = status === 'canceled_by_cs' ? 'CS' : 'HR';
+        return <span className="status-pill" style={{ color: 'var(--text-muted)', borderColor: 'var(--text-muted)', backgroundColor: 'var(--bg-light)' }}><i className='bx bx-x-circle'></i> Canceled by {byWhom}</span>;
+      default: return <span className="status-pill status-tentative"><i className='bx bx-time'></i> {status}</span>;
     }
   };
 
@@ -136,7 +165,7 @@ function Dashboard() {
 
       <div className="toolbar">
         <div className="status-legends">
-          <span className="legend"><i className='bx bx-check-double text-blue'></i> Complete</span>
+          <span className="legend"><i className='bx bx-check-circle text-green'></i> Complete</span>
           <span className="legend"><i className='bx bx-check-circle text-green'></i> Approved</span>
           <span className="legend"><i className='bx bx-time text-orange'></i> Tentative</span>
           <span className="legend"><i className='bx bx-error-circle text-red'></i> Reschedule</span>
@@ -176,22 +205,176 @@ function Dashboard() {
                 </td>
                 <td style={{ textTransform: 'capitalize' }}>{w.sessionType || 'Webinar'}</td>
                 <td className="event-name">{w.sessionName}</td>
-                <td>{renderStatus(w.status ? w.status.toLowerCase() : 'tentative')}</td>
+                <td>{renderStatus(w.status ? w.status.toLowerCase() : 'tentative', w.createdBy)}</td>
                 <td className="comment">{w.comments && w.comments.length > 0 ? w.comments[0].text : '-'}</td>
                 <td>{0}</td>
                 <td className="actions">
-                  <button className="action-btn edit" title="Edit" onClick={() => navigate('/edit')}>
-                    <i className='bx bx-pencil'></i>
+                  <button className="action-btn edit" title="View" onClick={() => navigate(`/edit?id=${w.id}`)}>
+                    <i className='bx bx-show'></i>
                   </button>
-                  <button className="action-btn delete" title="Delete">
-                    <i className='bx bx-minus-circle'></i>
-                  </button>
+                  {w.status === 'event_scheduled' ? (
+                    w.sessionDate > today ? (
+                      <button className="action-btn delete" title="Cancel/Reschedule" onClick={() => {
+                        setReschedulingEventId(w.id);
+                        setShowReschedulePrompt(true);
+                      }}>
+                        <i className='bx bx-minus-circle'></i>
+                      </button>
+                    ) : w.sessionDate === today ? (
+                      <button className="action-btn edit" title="Update Session" onClick={() => {
+                        setTodayActionId(w.id);
+                      }}>
+                        <i className='bx bx-pencil'></i>
+                      </button>
+                    ) : (
+                      <button className="action-btn" title="Mark Complete" style={{ color: 'var(--green)', background: 'transparent' }} onClick={() => {
+                        setMarkCompleteId(w.id);
+                      }}>
+                        <i className='bx bx-check-circle' style={{ fontSize: '1.25rem' }}></i>
+                      </button>
+                    )
+                  ) : (
+                    (!w.status || (w.status.toLowerCase() !== 'canceled_by_cs' && w.status.toLowerCase() !== 'canceled_by_hr' && w.status.toLowerCase() !== 'complete' && w.status.toLowerCase() !== 'event_completed')) && (
+                      <button className="action-btn delete" title="Cancel" onClick={() => {
+                        if (window.confirm('Are you sure you want to cancel this event?')) {
+                          updateEventStatus(w.id, 'canceled_by_cs');
+                        }
+                      }}>
+                        <i className='bx bx-minus-circle'></i>
+                      </button>
+                    )
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Reschedule Prompt Modal */}
+      {showReschedulePrompt && (
+        <div className="modal-overlay" onClick={() => { setShowReschedulePrompt(false); setShowRescheduleDatepicker(false); setReschedulingEventId(null); }}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Action Not Allowed</h2>
+              <button className="close-btn" onClick={() => { setShowReschedulePrompt(false); setShowRescheduleDatepicker(false); setReschedulingEventId(null); }}><i className='bx bx-x'></i></button>
+            </div>
+            <div className="modal-body text-center">
+              {!showRescheduleDatepicker ? (
+                <>
+                  <p style={{ marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                    Since the expert is assigned it can not be Deleted. Do you instead want to raise a reschedule request?
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                    <button className="btn-primary" onClick={() => setShowRescheduleDatepicker(true)}>Yes</button>
+                    <button className="btn-outline" onClick={() => setShowReschedulePrompt(false)}>No</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p style={{ marginBottom: '1rem' }}>Please select a new date:</p>
+                  <input 
+                    type="date" 
+                    className="form-control" 
+                    value={newRescheduleDate} 
+                    onChange={e => setNewRescheduleDate(e.target.value)} 
+                    style={{ marginBottom: '1.5rem', width: '100%' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                    <button className="btn-primary" onClick={() => {
+                      if (!newRescheduleDate) { alert('Please select a date.'); return; }
+                      if (reschedulingEventId) {
+                        requestReschedule(reschedulingEventId, newRescheduleDate);
+                        alert("Request sent to the Team.");
+                        setShowReschedulePrompt(false);
+                        setShowRescheduleDatepicker(false);
+                        setNewRescheduleDate('');
+                        setReschedulingEventId(null);
+                      }
+                    }}>Submit Request</button>
+                    <button className="btn-outline" onClick={() => { setShowReschedulePrompt(false); setShowRescheduleDatepicker(false); setNewRescheduleDate(''); setReschedulingEventId(null); }}>Cancel</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Today Action Modal */}
+      {todayActionId && (
+        <div className="modal-overlay" onClick={() => setTodayActionId(null)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Update Today's Session</h2>
+              <button className="close-btn" onClick={() => setTodayActionId(null)}><i className='bx bx-x'></i></button>
+            </div>
+            <div className="modal-body text-center">
+              <p style={{ marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                How would you like to update this session?
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0 2rem' }}>
+                <button className="btn-primary" style={{ background: 'var(--green)', borderColor: 'var(--green)' }} onClick={() => {
+                  setMarkCompleteId(todayActionId);
+                  setTodayActionId(null);
+                }}>Mark as Complete</button>
+                <button className="btn-primary" onClick={() => {
+                  setReschedulingEventId(todayActionId);
+                  setShowRescheduleDatepicker(true);
+                  setShowReschedulePrompt(true);
+                  setTodayActionId(null);
+                }}>Reschedule Session</button>
+                <button className="btn-outline" onClick={() => setTodayActionId(null)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark Complete Modal */}
+      {markCompleteId && (
+        <div className="modal-overlay" onClick={() => { setMarkCompleteId(null); setParticipantCount(''); }}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Mark as Complete</h2>
+              <button className="close-btn" onClick={() => { setMarkCompleteId(null); setParticipantCount(''); }}><i className='bx bx-x'></i></button>
+            </div>
+            <div className="modal-body">
+              <div style={{ backgroundColor: 'rgba(255, 152, 0, 0.1)', borderLeft: '4px solid var(--orange)', padding: '1rem', marginBottom: '1.5rem', borderRadius: '4px' }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-color)' }}>
+                  <i className='bx bx-error-circle' style={{ color: 'var(--orange)', marginRight: '6px', verticalAlign: 'middle', fontSize: '1.2rem' }}></i>
+                  <strong>Warning:</strong> Please add any Session Expenses before proceeding. Once marked as complete, you will not be able to add any session expenses.
+                </p>
+              </div>
+              <div className="form-group">
+                <label>Update Participant Count <span className="text-red">*</span></label>
+                <input 
+                  type="number" 
+                  className="form-control" 
+                  min="0"
+                  required
+                  value={participantCount}
+                  onChange={(e) => setParticipantCount(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button className="btn-outline" onClick={() => { setMarkCompleteId(null); setParticipantCount(''); }}>Cancel</button>
+              <button className="btn-primary" style={{ background: 'var(--green)', borderColor: 'var(--green)' }} onClick={() => {
+                if (!participantCount) {
+                  alert('Please enter a participant count.');
+                  return;
+                }
+                updateEventDetails(markCompleteId, { 
+                  participantCount: parseInt(participantCount, 10), 
+                  status: 'complete' 
+                });
+                setMarkCompleteId(null);
+                setParticipantCount('');
+              }}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

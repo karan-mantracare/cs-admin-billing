@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useGlobal } from '../context/GlobalContext';
 
 function ExpertAssignment() {
-  const { events: allEvents, assignExpert } = useGlobal();
+  const { events: allEvents, assignExpert, acceptReschedule, requestAlternativeDate } = useGlobal();
   const events = allEvents;
-  const assignments = events.filter(ev => ev.status === 'Approved');
+  const assignments = events.filter(ev => ev.status === 'provider_allocation_pending' || ev.status === 'event_scheduled');
 
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -12,6 +12,10 @@ function ExpertAssignment() {
   const [assigningId, setAssigningId] = useState(null);
   const [selectedExpert, setSelectedExpert] = useState('');
   const [expertCost, setExpertCost] = useState('');
+
+  // Rescheduled Section State
+  const [isRescheduledCollapsed, setIsRescheduledCollapsed] = useState(true);
+  const rescheduledEvents = allEvents.filter(ev => ev.status === 'reschedule_requested');
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -93,6 +97,79 @@ function ExpertAssignment() {
         <p className="text-muted">Assign experts to approved events and manage session costs.</p>
       </div>
 
+      {rescheduledEvents.length > 0 && (
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <div 
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+            onClick={() => setIsRescheduledCollapsed(!isRescheduledCollapsed)}
+          >
+            <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--orange)' }}>
+              <i className='bx bx-calendar-exclamation' style={{ marginRight: '8px' }}></i>
+              Session Rescheduled ({rescheduledEvents.length})
+            </h2>
+            <i className={`bx bx-chevron-${isRescheduledCollapsed ? 'down' : 'up'}`} style={{ fontSize: '1.5rem', color: 'var(--text-muted)' }}></i>
+          </div>
+          
+          {!isRescheduledCollapsed && (
+            <div className="table-responsive" style={{ marginTop: '1rem' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Session Name</th>
+                    <th>Client Name</th>
+                    <th>Old Date</th>
+                    <th>Requested Date</th>
+                    <th>Expert</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rescheduledEvents.map(ev => (
+                    <tr key={ev.id}>
+                      <td><span style={{ fontWeight: '500', color: 'var(--text-main)' }}>{ev.sessionName}</span></td>
+                      <td>{ev.clientName}</td>
+                      <td>{ev.sessionDate}</td>
+                      <td style={{ color: 'var(--orange)', fontWeight: '600' }}>{ev.requestedDate}</td>
+                      <td>{ev.assignedExpert}</td>
+                      <td style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          className="btn-primary" 
+                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.85rem', background: 'var(--green)', borderColor: 'var(--green)' }}
+                          onClick={() => {
+                            if (window.confirm("This confirms that the same expert will be conducting the session on the rescheduled date. Confirm or cancel.")) {
+                              acceptReschedule(ev.id);
+                            }
+                          }}
+                        >
+                          Accept
+                        </button>
+                        <button 
+                          className="btn-outline" 
+                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.85rem' }}
+                          onClick={() => openAssignModal(ev)}
+                        >
+                          Update Expert
+                        </button>
+                        <button 
+                          className="btn-outline" 
+                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.85rem', borderColor: 'var(--red)', color: 'var(--red)' }}
+                          onClick={() => {
+                            alert("This will send notification to the required team to change the date.");
+                            requestAlternativeDate(ev.id);
+                          }}
+                        >
+                          Request Another Date
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="card">
         <div className="table-controls" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', gap: '1rem', flexWrap: 'wrap' }}>
           <div className="search-box" style={{ flex: 1, minWidth: '250px' }}>
@@ -143,7 +220,7 @@ function ExpertAssignment() {
                     </td>
                     <td>
                       <button className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => openAssignModal(assignment)}>
-                        {assignment.assignedExpert ? 'Reassign' : 'Assign Expert'}
+                        {assignment.assignedExpert ? (assignment.status === 'reschedule_requested' ? 'Update Expert' : 'Reassign') : 'Assign Expert'}
                       </button>
                     </td>
                   </tr>
@@ -242,7 +319,9 @@ function ExpertAssignment() {
 
               <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                 <button type="button" className="btn-outline" onClick={() => setAssigningId(null)}>Cancel</button>
-                <button type="submit" className="btn-primary" disabled={!selectedExpert || !isCostValid()}>Assign Expert</button>
+                <button type="submit" className="btn-primary" disabled={!selectedExpert || !isCostValid()}>
+                  {activeAssignment.status === 'reschedule_requested' ? 'Update Expert & Reschedule' : 'Assign Expert'}
+                </button>
               </div>
             </form>
           </div>

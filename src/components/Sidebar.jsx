@@ -7,9 +7,8 @@ function Sidebar({ isOpen, onClose }) {
   const { resetData } = useGlobal();
 
   const [openGroups, setOpenGroups] = useState({
-    'CS': false,
-    'HR Dash': false,
-    'Admin Dash': false
+    'Session Management': false,
+    'Client Billing': false
   });
 
   const toggleGroup = (group) => {
@@ -18,26 +17,30 @@ function Sidebar({ isOpen, onClose }) {
 
   const menuGroups = [
     {
-      title: 'CS',
-      links: [
-        { path: '/calendar', label: 'Calendar', icon: 'bx-calendar' },
-        { path: '/hr-approval', label: 'HR Approval', icon: 'bx-check-square' },
+      title: 'Session Management',
+      subGroups: [
+        {
+          title: 'cs-mantra',
+          links: [
+            { path: '/calendar', label: 'CS Calendar', icon: 'bx-calendar' },
+            { path: '/hr-dash', label: 'HR Calendar', icon: 'bx-user-circle' },
+          ]
+        },
+        {
+          title: 'Admin-Mantra',
+          links: [
+            { path: '/event-approval', label: 'Event Approval', icon: 'bx-check-shield' },
+            { path: '/expert-assignment', label: 'Expert Assignment', icon: 'bx-user-plus' },
+          ]
+        }
       ]
     },
     {
-      title: 'HR Dash',
+      title: 'Client Billing',
       links: [
-        { path: '/hr-dash', label: 'Hr Dash', icon: 'bx-user-circle' },
-      ]
-    },
-    {
-      title: 'Admin Dash',
-      links: [
-        { path: '/event-approval', label: 'Event Approval', icon: 'bx-check-shield' },
-        { path: '/expert-assignment', label: 'Expert Assignment', icon: 'bx-user-plus' },
-        { path: '/clients', label: 'Clients', icon: 'bx-group' },
-        { path: '/clients-1', label: 'Clients 1', icon: 'bx-user-detail' },
-        { path: '/client-payments', label: 'Client Payments', icon: 'bx-credit-card' },
+        { path: '/clients', label: 'Client 1', icon: 'bx-group' },
+        { path: '/clients-1', label: 'Client 2', icon: 'bx-user' },
+        { path: '/client-payments', label: 'Client Payment', icon: 'bx-credit-card' },
         { path: '/expense-approval', label: 'Expense Approval', icon: 'bx-receipt' },
         { path: '/expense-tracker', label: 'Expense Tracker', icon: 'bx-money' },
       ]
@@ -74,20 +77,47 @@ function Sidebar({ isOpen, onClose }) {
                 </div>
                 
                 {openGroups[group.title] && (
-                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    {group.links.map(link => (
-                      <li key={link.path}>
-                        <Link 
-                          to={link.path} 
-                          className={`nav-link ${location.pathname === link.path ? 'active' : ''}`}
-                          onClick={onClose}
-                        >
-                          <i className={`bx ${link.icon}`}></i>
-                          <span>{link.label}</span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+                  <div style={{ marginTop: '0.5rem' }}>
+                    {group.subGroups ? (
+                      group.subGroups.map(subGroup => (
+                        <div key={subGroup.title} style={{ marginBottom: '0.75rem' }}>
+                          <div style={{ padding: '0.25rem 1.25rem 0.25rem 2rem', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {subGroup.title}
+                          </div>
+                          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem' }}>
+                            {subGroup.links.map(link => (
+                              <li key={link.path}>
+                                <Link 
+                                  to={link.path} 
+                                  className={`nav-link ${location.pathname === link.path || (link.path === '/calendar' && location.pathname === '/') ? 'active' : ''}`}
+                                  onClick={onClose}
+                                  style={{ paddingLeft: '2.5rem' }}
+                                >
+                                  <i className={`bx ${link.icon}`}></i>
+                                  <span>{link.label}</span>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))
+                    ) : (
+                      <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        {group.links.map(link => (
+                          <li key={link.path}>
+                            <Link 
+                              to={link.path} 
+                              className={`nav-link ${location.pathname === link.path ? 'active' : ''}`}
+                              onClick={onClose}
+                            >
+                              <i className={`bx ${link.icon}`}></i>
+                              <span>{link.label}</span>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 )}
               </div>
             ))}

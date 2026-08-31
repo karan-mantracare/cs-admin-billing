@@ -6,50 +6,9 @@ export function useGlobal() {
   return useContext(GlobalContext);
 }
 
-const defaultEvents = [
-  {
-    id: 4,
-    submittedOn: '2026-08-24',
-    sessionName: 'Mindfulness Webinar-1',
-    clientName: 'MantraCare Internal',
-    sessionDate: '2026-08-25',
-    sessionType: 'online',
-    location: 'Google Meet',
-    expertExp: 5,
-    genderPref: 'no_preference',
-    budget: 500,
-    otherCosts: 0,
-    requirements: 'Monthly mindfulness session.',
-    status: 'Tentative',
-    createdBy: 'CS-Karan',
-    assignedExpert: null,
-    expertCost: 0,
-    comments: [
-      { name: 'Admin', text: 'Confirmed the speaker lineup for the session.', date: '2026-08-24' },
-      { name: 'John Doe', text: 'Initial marketing materials have been distributed.', date: '2026-08-19' },
-      { name: 'Jane Smith', text: 'Checked the budget approval with the finance team.', date: '2026-08-14' },
-      { name: 'Admin', text: 'Please ensure we have a backup expert on standby.', date: '2026-08-09' },
-      { name: 'Dr. Sarah Jenkins', text: 'I am available for this webinar on the selected date.', date: '2026-08-04' },
-      { name: 'MantraCare Internal', text: 'Created the initial draft for the session outline.', date: '2026-07-30' }
-    ]
-  }
-];
+const defaultEvents = [];
 
-const defaultExpenses = [
-  {
-    id: 4,
-    date: '2026-08-24',
-    clientName: 'MantraCare Internal',
-    sessionName: 'Mindfulness Webinar-1',
-    sessionDate: '2026-08-04',
-    addedBy: 'Admin',
-    expenseType: 'Flight',
-    details: 'Flight tickets for the guest speaker',
-    deliveredBy: '2026-07-20',
-    amount: 450,
-    status: 'Pending',
-  }
-];
+const defaultExpenses = [];
 
 export function GlobalProvider({ children }) {
   const [events, setEvents] = useState(() => {
@@ -86,7 +45,7 @@ export function GlobalProvider({ children }) {
 
   const assignExpert = (id, expertName, cost) => {
     setEvents(prev => prev.map(ev => 
-      ev.id === id ? { ...ev, assignedExpert: expertName, expertCost: cost } : ev
+      ev.id === id ? { ...ev, assignedExpert: expertName, expertCost: cost, status: 'event_scheduled' } : ev
     ));
   };
 
@@ -109,7 +68,7 @@ export function GlobalProvider({ children }) {
     const newEvent = {
       ...eventData,
       id: Date.now(),
-      status: eventData.status || 'Pending',
+      status: eventData.status || 'pending_confirmation',
       assignedExpert: null,
       expertCost: 0,
       comments: []
@@ -135,6 +94,31 @@ export function GlobalProvider({ children }) {
     ));
   };
 
+  const deleteEvent = (id) => {
+    setEvents(prev => prev.filter(ev => ev.id !== id));
+  };
+
+  const requestReschedule = (id, newDate) => {
+    setEvents(prev => prev.map(ev => 
+      ev.id === id ? { ...ev, status: 'reschedule_requested', requestedDate: newDate } : ev
+    ));
+  };
+
+  const acceptReschedule = (id) => {
+    setEvents(prev => prev.map(ev => {
+      if (ev.id === id) {
+        return { ...ev, status: 'event_scheduled', sessionDate: ev.requestedDate || ev.sessionDate, requestedDate: null };
+      }
+      return ev;
+    }));
+  };
+
+  const requestAlternativeDate = (id) => {
+    setEvents(prev => prev.map(ev => 
+      ev.id === id ? { ...ev, status: 'date_change_requested' } : ev
+    ));
+  };
+
   return (
     <GlobalContext.Provider value={{
       events,
@@ -146,6 +130,10 @@ export function GlobalProvider({ children }) {
       addEvent,
       addComment,
       updateEventDetails,
+      deleteEvent,
+      requestReschedule,
+      acceptReschedule,
+      requestAlternativeDate,
       resetData
     }}>
       {children}

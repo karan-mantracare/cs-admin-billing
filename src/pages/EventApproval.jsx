@@ -40,9 +40,9 @@ function EventApproval() {
 
   // Summary Logic
   const totalRequests = approvals.length;
-  const pendingRequests = approvals.filter(r => r.status === 'Pending').length;
-  const approvedRequests = approvals.filter(r => r.status === 'Approved').length;
-  const rejectedRequests = approvals.filter(r => r.status === 'Rejected').length;
+  const pendingRequests = approvals.filter(r => r.status === 'pending_confirmation' || r.status === 'Pending').length;
+  const approvedRequests = approvals.filter(r => r.status === 'provider_allocation_pending').length;
+  const rejectedRequests = approvals.filter(r => r.status === 'rejected').length;
 
   const handleUpdateStatus = (id, newStatus, reason = '') => {
     updateEventStatus(id, newStatus, reason);
@@ -95,9 +95,9 @@ function EventApproval() {
         <div style={{ display: 'flex', gap: '1rem' }}>
           <select className="form-control" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="All">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
+            <option value="pending_confirmation">Pending Confirmation</option>
+            <option value="provider_allocation_pending">Provider Allocation Pending</option>
+            <option value="rejected">Rejected</option>
           </select>
           <select className="form-control" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
             <option value="All">All Types</option>
@@ -135,8 +135,8 @@ function EventApproval() {
                 </td>
                 <td>${req.budget}</td>
                 <td>
-                  <span className={`badge badge-${req.status === 'Approved' ? 'success' : req.status === 'Rejected' ? 'danger' : 'warning'}`}>
-                    {req.status}
+                  <span className={`badge badge-${req.status === 'provider_allocation_pending' ? 'success' : req.status === 'rejected' ? 'danger' : 'warning'}`}>
+                    {req.status.replace(/_/g, ' ')}
                   </span>
                 </td>
                 <td>
@@ -144,9 +144,9 @@ function EventApproval() {
                     <button className="icon-btn" title="View Details" onClick={() => setActiveDetailsId(req.id)}>
                       <i className='bx bx-show'></i>
                     </button>
-                    {req.status === 'Pending' && (
+                    {(req.status === 'pending_confirmation' || req.status === 'Pending') && (
                       <>
-                        <button className="icon-btn text-success" title="Approve" onClick={() => handleUpdateStatus(req.id, 'Approved')}>
+                        <button className="icon-btn text-success" title="Approve" onClick={() => handleUpdateStatus(req.id, 'provider_allocation_pending')}>
                           <i className='bx bx-check-circle'></i>
                         </button>
                         <button className="icon-btn text-danger" title="Reject" onClick={() => setRejectingRequestId(req.id)}>
@@ -259,13 +259,13 @@ function EventApproval() {
               </div>
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              {activeDetails.status === 'Pending' && (
+              {(activeDetails.status === 'pending_confirmation' || activeDetails.status === 'Pending') && (
                 <>
                   <button className="btn-outline text-red" style={{ borderColor: 'var(--red)' }} onClick={() => setRejectingRequestId(activeDetails.id)}>Reject</button>
-                  <button className="btn-primary" style={{ background: 'var(--green)', borderColor: 'var(--green)' }} onClick={() => { handleUpdateStatus(activeDetails.id, 'Approved'); setActiveDetailsId(null); }}>Approve</button>
+                  <button className="btn-primary" style={{ background: 'var(--green)', borderColor: 'var(--green)' }} onClick={() => { handleUpdateStatus(activeDetails.id, 'provider_allocation_pending'); setActiveDetailsId(null); }}>Approve</button>
                 </>
               )}
-              {activeDetails.status !== 'Pending' && (
+              {(activeDetails.status !== 'pending_confirmation' && activeDetails.status !== 'Pending') && (
                 <button className="btn-outline" onClick={() => setActiveDetailsId(null)}>Close</button>
               )}
             </div>

@@ -235,11 +235,41 @@ function ClientPayments() {
     return matchesSearch && matchesClient && matchesStatus && matchesInvoiceDate && matchesDueDate;
   });
 
+  // Sorting Logic
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    if (sortConfig.key === key) {
+      if (sortConfig.direction === 'asc') {
+        setSortConfig({ key, direction: 'desc' });
+      } else if (sortConfig.direction === 'desc') {
+        setSortConfig({ key: null, direction: 'asc' });
+      }
+    } else {
+      setSortConfig({ key, direction: 'asc' });
+    }
+  };
+
+  let sortedPayments = [...filteredPayments];
+  if (sortConfig.key) {
+    sortedPayments.sort((a, b) => {
+      let valA = a[sortConfig.key];
+      let valB = b[sortConfig.key];
+      
+      if (valA === '-') valA = '';
+      if (valB === '-') valB = '';
+
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
   // Pagination Logic
-  const totalItems = filteredPayments.length;
+  const totalItems = sortedPayments.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
-  const paginatedPayments = filteredPayments.slice(startIndex, startIndex + rowsPerPage);
+  const paginatedPayments = sortedPayments.slice(startIndex, startIndex + rowsPerPage);
 
   const totalBilled = filteredPayments.filter(p => p.status !== 'To be Raised').reduce((sum, p) => sum + p.amount, 0);
   const totalReceived = filteredPayments.filter(p => p.status === 'Received').reduce((sum, p) => sum + p.amount, 0);
@@ -303,15 +333,27 @@ function ClientPayments() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>IDEAL DATE</th>
+              <th onClick={() => handleSort('idealDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                IDEAL DATE {sortConfig.key === 'idealDate' && <i className={`bx bx-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>}
+                {sortConfig.key !== 'idealDate' && <i className="bx bx-sort text-muted" style={{ opacity: 0.3 }}></i>}
+              </th>
               <th>CLIENT NAME</th>
-              <th>INVOICE DATE</th>
+              <th onClick={() => handleSort('invoiceDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                INVOICE DATE {sortConfig.key === 'invoiceDate' && <i className={`bx bx-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>}
+                {sortConfig.key !== 'invoiceDate' && <i className="bx bx-sort text-muted" style={{ opacity: 0.3 }}></i>}
+              </th>
               <th>INVOICE NUMBER</th>
-              <th>DUE DATE</th>
+              <th onClick={() => handleSort('dueDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                DUE DATE {sortConfig.key === 'dueDate' && <i className={`bx bx-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>}
+                {sortConfig.key !== 'dueDate' && <i className="bx bx-sort text-muted" style={{ opacity: 0.3 }}></i>}
+              </th>
               <th>AMOUNT</th>
               <th>PAYMENT RECEIVED</th>
               <th>PAYMENT DATE</th>
-              <th>PAYMENT STATUS</th>
+              <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                PAYMENT STATUS {sortConfig.key === 'status' && <i className={`bx bx-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>}
+                {sortConfig.key !== 'status' && <i className="bx bx-sort text-muted" style={{ opacity: 0.3 }}></i>}
+              </th>
               <th>CREATED ON</th>
               <th>UPDATED ON</th>
               <th>ACTIONS</th>
@@ -533,14 +575,6 @@ function ClientPayments() {
               </button>
             </div>
             <div className="modal-body">
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label>Payment Status</label>
-                <select className="form-control">
-                  <option value="Received">Received</option>
-                  <option value="Overdue">Overdue</option>
-                  <option value="Due">Due</option>
-                </select>
-              </div>
               <div className="form-group" style={{ marginBottom: '1rem' }}>
                 <label>Amount Received</label>
                 <div style={{ position: 'relative' }}>

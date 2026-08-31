@@ -1,16 +1,28 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import ApprovalModal from '../components/ApprovalModal';
 import { useGlobal } from '../context/GlobalContext';
 
 function EditWebinar() {
-  const { addExpense, addEvent, addComment, updateEventDetails, events } = useGlobal();
-  const pageTitle = "Mindfulness Webinar-1";
-  const currentEvent = events.find(ev => ev.sessionName === pageTitle);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const eventId = searchParams.get('id');
+  const { addExpense, addEvent, addComment, updateEventDetails, events, deleteEvent, requestReschedule, updateEventStatus } = useGlobal();
+  
+  const currentEvent = eventId 
+    ? events.find(ev => ev.id.toString() === eventId) 
+    : events.find(ev => ev.sessionName === "Mindfulness Webinar-1");
+    
+  const pageTitle = currentEvent ? currentEvent.sessionName : "Mindfulness Webinar-1";
 
   const [status, setStatus] = useState(currentEvent ? currentEvent.status.toLowerCase() : 'tentative');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOtherExpModalOpen, setIsOtherExpModalOpen] = useState(false);
+
+  // Reschedule State
+  const [showReschedulePrompt, setShowReschedulePrompt] = useState(false);
+  const [showRescheduleDatepicker, setShowRescheduleDatepicker] = useState(false);
+  const [newRescheduleDate, setNewRescheduleDate] = useState('');
 
   // New Other Expense state
   const [otherExpData, setOtherExpData] = useState({
@@ -50,7 +62,29 @@ function EditWebinar() {
   });
   const [isLocked, setIsLocked] = useState(false);
 
-  const [pageDate, setPageDate] = useState("2026-08-25");
+  const [pageDate, setPageDate] = useState(currentEvent ? currentEvent.sessionDate : "2026-08-25");
+
+  useEffect(() => {
+    if (currentEvent) {
+      setStatus(currentEvent.status.toLowerCase());
+      setModalData(prev => ({
+        ...prev,
+        sessionType: currentEvent.sessionType === 'seminar' ? 'onsite' : (currentEvent.sessionType === 'webinar' ? 'online' : (currentEvent.sessionType || '')),
+        sessionLocation: currentEvent.location || ''
+      }));
+    }
+  }, [currentEvent]);
+
+  const getStatusLabel = () => {
+    if (status === 'tentative' || status === 'pending_confirmation') return 'Tentative';
+    if (status === 'provider_allocation_pending') return 'Event Approved';
+    if (status === 'event_scheduled') return 'Expert Assigned';
+    if (status === 'reschedule_requested') return 'Reschedule Requested';
+    if (status === 'date_change_requested') return 'Date Change Requested';
+    if (status === 'canceled_by_cs') return 'Canceled by CS';
+    if (status === 'canceled_by_hr') return 'Canceled by HR';
+    return status;
+  };
 
   return (
     <main className="main-content">
@@ -62,24 +96,43 @@ function EditWebinar() {
           </div>
           <div className="edit-actions">
             <div className="date-picker-wrapper">
-              <input type="date" value={pageDate} onChange={(e) => setPageDate(e.target.value)} className="form-control" />
+              <input 
+                type="date" 
+                value={pageDate} 
+                onChange={(e) => setPageDate(e.target.value)} 
+                className="form-control" 
+                disabled={status === 'complete' || status === 'event_completed' || status === 'canceled_by_cs' || status === 'canceled_by_hr'} 
+              />
             </div>
-            <select className="form-control status-select" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="tentative">Tentative</option>
-              <option value="reschedule">Reschedule</option>
-              <option value="approved">Approved</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="complete">Complete</option>
-              <option value="special_approval">Special_approval</option>
-            </select>
-            {(status === 'tentative' || status === 'complete' || status === 'special_approval' || status === 'hr_requested' || status === 'approved') && (
-              <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-                {(status === 'complete' || status === 'approved') ? 'Update Details' : (isLocked ? 'Update Details' : (status === 'hr_requested' ? 'Request Session' : 'Submit Request'))}
+            <div className="status-box" style={{ padding: '0.4rem 1rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', fontWeight: '500', color: 'var(--primary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center' }}>
+              {getStatusLabel()}
+            </div>
+            
+            {(status !== 'canceled_by_cs' && status !== 'canceled_by_hr' && status !== 'complete' && status !== 'event_completed') && (
+              <button className="btn-outline" style={{ borderColor: 'var(--red)', color: 'var(--red)' }} onClick={() => {
+                if (status === 'event_scheduled') {
+                  setShowReschedulePrompt(true);
+                } else {
+                  if (window.confirm("Are you sure you want to cancel this event?")) {
+                    updateEventStatus(currentEvent.id, 'canceled_by_cs');
+                    setStatus('canceled_by_cs');
+                  }
+                }
+              }} title="Cancel Event">
+                <i className='bx bx-minus-circle'></i>
               </button>
             )}
-            <button className="btn-outline" onClick={() => setIsOtherExpModalOpen(true)} style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}>
-              Add Other Expense
-            </button>
+
+            {(status === 'tentative' || status === 'pending_confirmation' || status === 'special_approval' || status === 'hr_requested' || status === 'approved' || status === 'provider_allocation_pending') && (
+              <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
+                {(status === 'approved' || status === 'provider_allocation_pending' || status === 'pending_confirmation') ? 'Update Details' : (isLocked ? 'Update Details' : (status === 'hr_requested' ? 'Request Session' : 'Submit Request'))}
+              </button>
+            )}
+            {(status !== 'canceled_by_cs' && status !== 'canceled_by_hr' && status !== 'complete' && status !== 'event_completed') && (
+              <button className="btn-outline" onClick={() => setIsOtherExpModalOpen(true)} style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}>
+                Add Other Expense
+              </button>
+            )}
           </div>
         </div>
         <p className="edit-description">
@@ -277,17 +330,19 @@ function EditWebinar() {
         setIsLocked={setIsLocked}
         status={status}
         onSubmit={(data) => {
+          const finalSessionType = (currentEvent && currentEvent.sessionType === 'seminar') ? 'onsite' : data.sessionType;
+          
           if (currentEvent && currentEvent.id) {
             const isSubmitForApproval = currentEvent.status === 'hr_requested' || currentEvent.status === 'tentative';
             updateEventDetails(currentEvent.id, {
-              sessionType: data.sessionType,
+              sessionType: finalSessionType,
               location: data.sessionLocation || 'Online',
               expertExp: parseInt(data.expertExp) || 0,
               genderPref: data.genderPref,
               budget: parseFloat(data.budget) || 0,
               otherCosts: parseFloat(data.otherCosts) || 0,
               participantCount: data.participantCount !== undefined ? data.participantCount : (currentEvent.participantCount || 0),
-              status: isSubmitForApproval ? 'Pending' : currentEvent.status,
+              status: isSubmitForApproval ? 'pending_confirmation' : currentEvent.status,
               requirements: currentEvent.requirements || 'Generated from Edit Webinar flow.'
             });
           } else {
@@ -296,7 +351,7 @@ function EditWebinar() {
               sessionName: pageTitle,
               clientName: 'MantraCare Internal',
               sessionDate: pageDate,
-              sessionType: data.sessionType,
+              sessionType: finalSessionType,
               location: data.sessionLocation || 'Online',
               expertExp: parseInt(data.expertExp) || 0,
               genderPref: data.genderPref,
@@ -511,6 +566,54 @@ function EditWebinar() {
                 <button type="submit" className="btn-primary">Post Comment</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Reschedule Prompt Modal */}
+      {showReschedulePrompt && (
+        <div className="modal-overlay" onClick={() => { setShowReschedulePrompt(false); setShowRescheduleDatepicker(false); }}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Action Not Allowed</h2>
+              <button className="close-btn" onClick={() => { setShowReschedulePrompt(false); setShowRescheduleDatepicker(false); }}><i className='bx bx-x'></i></button>
+            </div>
+            <div className="modal-body text-center">
+              {!showRescheduleDatepicker ? (
+                <>
+                  <p style={{ marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                    Since the expert is assigned it can not be Deleted. Do you instead want to raise a reschedule request?
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                    <button className="btn-primary" onClick={() => setShowRescheduleDatepicker(true)}>Yes</button>
+                    <button className="btn-outline" onClick={() => setShowReschedulePrompt(false)}>No</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p style={{ marginBottom: '1rem' }}>Please select a new date:</p>
+                  <input 
+                    type="date" 
+                    className="form-control" 
+                    value={newRescheduleDate} 
+                    onChange={e => setNewRescheduleDate(e.target.value)} 
+                    style={{ marginBottom: '1.5rem', width: '100%' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                    <button className="btn-primary" onClick={() => {
+                      if (!newRescheduleDate) { alert('Please select a date.'); return; }
+                      if (currentEvent && currentEvent.id) {
+                        requestReschedule(currentEvent.id, newRescheduleDate);
+                        alert("Request sent to the Team.");
+                        setShowReschedulePrompt(false);
+                        setShowRescheduleDatepicker(false);
+                        setNewRescheduleDate('');
+                      }
+                    }}>Submit Request</button>
+                    <button className="btn-outline" onClick={() => { setShowReschedulePrompt(false); setShowRescheduleDatepicker(false); setNewRescheduleDate(''); }}>Cancel</button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
