@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGlobal } from '../context/GlobalContext';
 
 function Clients() {
   const navigate = useNavigate();
+  const { showToast } = useGlobal();
   const [formData, setFormData] = useState({
     plan: 'Comprehensive Wellness (Therapy, Weight, Dia...',
     programCode: 'mantrainternal-',
@@ -232,7 +234,7 @@ function Clients() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '2rem' }}>
-          <button type="button" className="btn-primary" onClick={() => alert('Order Updated!')}>
+          <button type="button" className="btn-primary" onClick={() => showToast('Order Updated!', 5000)}>
             Update Order
           </button>
         </div>
@@ -250,7 +252,7 @@ function Clients() {
             </div>
             <form onSubmit={(e) => {
               e.preventDefault();
-              alert("Expense Request Sent Successfully!");
+              showToast("Expense Request Sent Successfully!", 5000);
               setIsExpenseModalOpen(false);
               setExpenseData({ type: 'Standee', details: '', amount: '', deliveredBy: '' });
             }}>

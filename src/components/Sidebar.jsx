@@ -8,7 +8,8 @@ function Sidebar({ isOpen, onClose }) {
 
   const [openGroups, setOpenGroups] = useState({
     'Session Management': false,
-    'Client Billing': false
+    'Client Billing': false,
+    'Expense Management': false
   });
 
   const toggleGroup = (group) => {
@@ -41,6 +42,11 @@ function Sidebar({ isOpen, onClose }) {
         { path: '/clients', label: 'Client 1', icon: 'bx-group' },
         { path: '/clients-1', label: 'Client 2', icon: 'bx-user' },
         { path: '/client-payments', label: 'Client Payment', icon: 'bx-credit-card' },
+      ]
+    },
+    {
+      title: 'Expense Management',
+      links: [
         { path: '/expense-approval', label: 'Expense Approval', icon: 'bx-receipt' },
         { path: '/expense-tracker', label: 'Expense Tracker', icon: 'bx-money' },
       ]

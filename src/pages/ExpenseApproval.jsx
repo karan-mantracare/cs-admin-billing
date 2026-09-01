@@ -6,7 +6,7 @@ function ExpenseApproval() {
   const [searchParams] = useSearchParams();
   const initialClient = searchParams.get('client') || '';
 
-  const { expenses: allExpenses, updateExpenseStatus } = useGlobal();
+  const { expenses: allExpenses, updateExpenseStatus, showToast } = useGlobal();
   const approvals = allExpenses;
 
   const [searchQuery, setSearchQuery] = useState(initialClient);
@@ -19,6 +19,8 @@ function ExpenseApproval() {
   // View State
   const [viewingRequestId, setViewingRequestId] = useState(null);
   const viewingDetails = approvals.find(r => r.id === viewingRequestId);
+
+  // Toast Notification State (Removed local toast since we use global showToast)
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -50,6 +52,11 @@ function ExpenseApproval() {
 
   const handleUpdateStatus = (id, newStatus, reason = '') => {
     updateExpenseStatus(id, newStatus, reason);
+    if (newStatus === 'Approved') {
+      showToast('Expense request approved successfully.', 5000);
+    } else if (newStatus === 'Rejected') {
+      showToast('Expense request rejected.', 5000);
+    }
   };
 
   const formatCurrency = (amount) => `$${amount.toLocaleString()}`;
@@ -288,7 +295,7 @@ function ExpenseApproval() {
               {viewingDetails.status === 'Pending' && (
                 <>
                   <button className="btn-outline text-danger" style={{ borderColor: 'var(--danger)' }} onClick={() => { setRejectingRequestId(viewingDetails.id); setViewingRequestId(null); }}>Reject</button>
-                  <button className="btn-primary" style={{ background: 'var(--success)', borderColor: 'var(--success)' }} onClick={() => { handleUpdateStatus(viewingDetails.id, 'Approved'); setViewingRequestId(null); }}>Approve</button>
+                  <button className="btn-primary" style={{ background: 'var(--green)', borderColor: 'var(--green)' }} onClick={() => { handleUpdateStatus(viewingDetails.id, 'Approved'); setViewingRequestId(null); }}>Approve</button>
                 </>
               )}
               {viewingDetails.status !== 'Pending' && (

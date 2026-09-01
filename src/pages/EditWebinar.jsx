@@ -7,7 +7,7 @@ function EditWebinar() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get('id');
-  const { addExpense, addEvent, addComment, updateEventDetails, events, deleteEvent, requestReschedule, updateEventStatus } = useGlobal();
+  const { addExpense, addEvent, addComment, updateEventDetails, events, deleteEvent, requestReschedule, updateEventStatus, showToast } = useGlobal();
   
   const currentEvent = eventId 
     ? events.find(ev => ev.id.toString() === eventId) 
@@ -387,7 +387,7 @@ function EditWebinar() {
                   deliveredBy: otherExpData.deliveredBy,
                   amount: parseFloat(otherExpData.amount)
                 });
-                alert("Expense Request Sent Successfully!");
+                showToast("Expense Request Sent Successfully!", 5000);
                 setModalData(prev => ({ ...prev, otherCosts: (parseFloat(prev.otherCosts || 0) + parseFloat(otherExpData.amount)).toString() }));
                 setIsOtherExpModalOpen(false);
                 setOtherExpData({ expenseType: 'Flight', details: '', amount: '', deliveredBy: '' });
@@ -536,7 +536,7 @@ function EditWebinar() {
                 setNewComment({ name: '', text: '' });
                 setIsCommentModalOpen(false);
               } else {
-                alert('Event not found. Cannot add comment.');
+                showToast('Event not found. Cannot add comment.', 3000);
               }
             }}>
               <div className="modal-body">
@@ -600,10 +600,10 @@ function EditWebinar() {
                   />
                   <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
                     <button className="btn-primary" onClick={() => {
-                      if (!newRescheduleDate) { alert('Please select a date.'); return; }
+                      if (!newRescheduleDate) { showToast('Please select a date.', 3000); return; }
                       if (currentEvent && currentEvent.id) {
                         requestReschedule(currentEvent.id, newRescheduleDate);
-                        alert("Request sent to the Team.");
+                        showToast("Request sent to the Team.", 5000);
                         setShowReschedulePrompt(false);
                         setShowRescheduleDatepicker(false);
                         setNewRescheduleDate('');

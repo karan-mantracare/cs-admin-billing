@@ -95,7 +95,42 @@ function Dashboard() {
   const [division, setDivision] = useState({ value: 'mc', label: 'MantraCare Intern...' });
   const [time, setTime] = useState(timeOptions[0]);
 
-  const { events, updateEventStatus, requestReschedule, updateEventDetails, addEvent } = useGlobal();
+  const { events, updateEventStatus, requestReschedule, updateEventDetails, addEvent, addExpense, showToast } = useGlobal();
+
+  // Add Expense State
+  const [expenseModalEventId, setExpenseModalEventId] = useState(null);
+  const [expenseData, setExpenseData] = useState({
+    expenseType: 'Session Expense',
+    deliveredBy: 'CS-Karan',
+    amount: '',
+    details: ''
+  });
+
+  const handleAddExpense = (e) => {
+    e.preventDefault();
+    const event = events.find(ev => ev.id === expenseModalEventId);
+    
+    addExpense({
+      date: new Date().toISOString().split('T')[0],
+      clientName: event?.clientName || 'MantraCare Internal',
+      expenseType: expenseData.expenseType,
+      details: expenseData.details,
+      deliveredBy: expenseData.deliveredBy,
+      amount: parseFloat(expenseData.amount),
+      addedBy: 'CS-Karan',
+      eventId: expenseModalEventId
+    });
+
+    showToast('Expense added successfully. Pending approval.', 5000);
+
+    setExpenseModalEventId(null);
+    setExpenseData({
+      expenseType: 'Session Expense',
+      deliveredBy: 'CS-Karan',
+      amount: '',
+      details: ''
+    });
+  };
 
   // Inline Row State
   const [isAdding, setIsAdding] = useState(false);
@@ -251,6 +286,9 @@ function Dashboard() {
                 <td className="actions">
                   <button className="action-btn edit" title="View" onClick={() => navigate(`/edit?id=${w.id}`)}>
                     <i className='bx bx-show'></i>
+                  </button>
+                  <button className="action-btn edit" title="Add Expense" onClick={() => setExpenseModalEventId(w.id)} style={{ color: 'var(--primary)', marginLeft: '4px' }}>
+                    <i className='bx bx-money'></i>
                   </button>
                   {w.status === 'event_scheduled' ? (
                     w.sessionDate > today ? (
@@ -477,6 +515,71 @@ function Dashboard() {
                 setParticipantCount('');
               }}>Confirm</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Expense Modal */}
+      {expenseModalEventId && (
+        <div className="modal-overlay" onClick={() => setExpenseModalEventId(null)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>Add Session Expense</h2>
+              <button className="close-btn" onClick={() => setExpenseModalEventId(null)}><i className='bx bx-x'></i></button>
+            </div>
+            <form onSubmit={handleAddExpense}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Expense Type <span className="text-red">*</span></label>
+                  <select 
+                    className="form-control" 
+                    required
+                    value={expenseData.expenseType}
+                    onChange={(e) => setExpenseData({...expenseData, expenseType: e.target.value})}
+                  >
+                    <option value="Session Expense">Session Expense</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Equipment">Equipment</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Amount <span className="text-red">*</span></label>
+                  <input 
+                    type="number" 
+                    className="form-control" 
+                    min="0"
+                    step="0.01"
+                    required
+                    value={expenseData.amount}
+                    onChange={(e) => setExpenseData({...expenseData, amount: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Delivered By <span className="text-red">*</span></label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    required
+                    value={expenseData.deliveredBy}
+                    onChange={(e) => setExpenseData({...expenseData, deliveredBy: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Details</label>
+                  <textarea 
+                    className="form-control" 
+                    rows="3"
+                    value={expenseData.details}
+                    onChange={(e) => setExpenseData({...expenseData, details: e.target.value})}
+                  ></textarea>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button type="button" className="btn-outline" onClick={() => setExpenseModalEventId(null)}>Cancel</button>
+                <button type="submit" className="btn-primary" style={{ background: 'var(--green)', borderColor: 'var(--green)' }}>Submit Expense</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
