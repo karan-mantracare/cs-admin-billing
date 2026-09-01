@@ -95,7 +95,47 @@ function Dashboard() {
   const [division, setDivision] = useState({ value: 'mc', label: 'MantraCare Intern...' });
   const [time, setTime] = useState(timeOptions[0]);
 
-  const { events, updateEventStatus, requestReschedule, updateEventDetails } = useGlobal();
+  const { events, updateEventStatus, requestReschedule, updateEventDetails, addEvent } = useGlobal();
+
+  // Inline Row State
+  const [isAdding, setIsAdding] = useState(false);
+  const eventNameOptions = {
+    webinar: ['Remote Work Wellness Webinar', 'Diversity & Inclusion Webinar'],
+    seminar: ['Leadership Seminar 2026', 'Team Building Seminar'],
+    assessment: ['Q3 Performance Assessment', 'Annual Culture Assessment']
+  };
+
+  const [newActivity, setNewActivity] = useState({
+    sessionDate: '',
+    sessionType: 'webinar',
+    sessionName: eventNameOptions.webinar[0]
+  });
+
+  const handleSaveInline = () => {
+    if (!newActivity.sessionDate || !newActivity.sessionName) {
+      alert('Please fill out Date and Event Name');
+      return;
+    }
+
+    addEvent({
+      submittedOn: new Date().toISOString().split('T')[0],
+      sessionName: newActivity.sessionName,
+      clientName: 'MantraCare Internal',
+      sessionDate: newActivity.sessionDate,
+      sessionType: newActivity.sessionType,
+      location: 'Online',
+      expertExp: 0,
+      genderPref: 'no_preference',
+      budget: 0,
+      otherCosts: 0,
+      requirements: 'Generated from inline CS Calendar.',
+      status: 'tentative',
+      createdBy: 'CS-Karan'
+    });
+
+    setIsAdding(false);
+    setNewActivity({ sessionDate: '', sessionType: 'webinar', sessionName: eventNameOptions.webinar[0] });
+  };
 
   // Reschedule Prompt State
   const [showReschedulePrompt, setShowReschedulePrompt] = useState(false);
@@ -247,8 +287,73 @@ function Dashboard() {
                 </td>
               </tr>
             ))}
+            
+            {/* Inline Add Row */}
+            {isAdding && (
+              <tr style={{ background: 'var(--bg-light)' }}>
+                <td>
+                  <input 
+                    type="date" 
+                    className="form-control" 
+                    style={{ padding: '0.25rem', width: '130px', fontSize: '0.85rem' }} 
+                    value={newActivity.sessionDate}
+                    onChange={(e) => setNewActivity({...newActivity, sessionDate: e.target.value})}
+                  />
+                </td>
+                <td>-</td>
+                <td>CS-Karan</td>
+                <td>
+                  <select 
+                    className="form-control" 
+                    style={{ padding: '0.25rem', fontSize: '0.85rem' }}
+                    value={newActivity.sessionType}
+                    onChange={(e) => {
+                      const newType = e.target.value;
+                      setNewActivity({
+                        ...newActivity, 
+                        sessionType: newType,
+                        sessionName: eventNameOptions[newType][0]
+                      });
+                    }}
+                  >
+                    <option value="webinar">Webinar</option>
+                    <option value="seminar">Seminar</option>
+                    <option value="assessment">Assessment</option>
+                  </select>
+                </td>
+                <td>
+                  <select 
+                    className="form-control" 
+                    style={{ padding: '0.25rem', fontSize: '0.85rem' }}
+                    value={newActivity.sessionName}
+                    onChange={(e) => setNewActivity({...newActivity, sessionName: e.target.value})}
+                  >
+                    {eventNameOptions[newActivity.sessionType].map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </td>
+                <td><span className="status-pill status-tentative">Tentative</span></td>
+                <td>-</td>
+                <td>0</td>
+                <td className="actions" style={{ gap: '0.5rem' }}>
+                  <button className="btn-primary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }} onClick={handleSaveInline}>
+                    Save
+                  </button>
+                  <button className="btn-outline" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }} onClick={() => setIsAdding(false)}>
+                    Cancel
+                  </button>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
+      </div>
+
+      <div style={{ marginTop: '1.5rem', display: 'flex' }}>
+        <button className="btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding}>
+          <i className='bx bx-plus'></i> Add Activity
+        </button>
       </div>
 
       {/* Reschedule Prompt Modal */}
