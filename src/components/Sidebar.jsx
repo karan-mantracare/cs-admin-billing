@@ -9,7 +9,7 @@ function Sidebar({ isOpen, onClose }) {
   const [openGroups, setOpenGroups] = useState({
     'Session Management': false,
     'Client Billing': false,
-    'Expense Management': false
+    'Management': false
   });
 
   const toggleGroup = (group) => {
@@ -45,10 +45,10 @@ function Sidebar({ isOpen, onClose }) {
       ]
     },
     {
-      title: 'Expense Management',
+      title: 'Management',
       links: [
         { path: '/expense-approval', label: 'Expense Approval', icon: 'bx-receipt' },
-        { path: '/expense-tracker', label: 'Expense Tracker', icon: 'bx-money' },
+        { path: '/expense-tracker', label: 'Client P&L', icon: 'bx-money' },
       ]
     }
   ];
@@ -68,7 +68,7 @@ function Sidebar({ isOpen, onClose }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {menuGroups.map(group => (
               <div key={group.title} className="menu-group">
-                <div 
+                <div
                   className="group-header"
                   onClick={() => toggleGroup(group.title)}
                   style={{
@@ -81,7 +81,7 @@ function Sidebar({ isOpen, onClose }) {
                   <span>{group.title}</span>
                   <i className={`bx bx-chevron-${openGroups[group.title] ? 'up' : 'down'}`}></i>
                 </div>
-                
+
                 {openGroups[group.title] && (
                   <div style={{ marginTop: '0.5rem' }}>
                     {group.subGroups ? (
@@ -93,8 +93,8 @@ function Sidebar({ isOpen, onClose }) {
                           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem' }}>
                             {subGroup.links.map(link => (
                               <li key={link.path}>
-                                <Link 
-                                  to={link.path} 
+                                <Link
+                                  to={link.path}
                                   className={`nav-link ${location.pathname === link.path || (link.path === '/calendar' && location.pathname === '/') ? 'active' : ''}`}
                                   onClick={onClose}
                                   style={{ paddingLeft: '2.5rem' }}
@@ -111,8 +111,8 @@ function Sidebar({ isOpen, onClose }) {
                       <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         {group.links.map(link => (
                           <li key={link.path}>
-                            <Link 
-                              to={link.path} 
+                            <Link
+                              to={link.path}
                               className={`nav-link ${location.pathname === link.path ? 'active' : ''}`}
                               onClick={onClose}
                             >
@@ -130,8 +130,8 @@ function Sidebar({ isOpen, onClose }) {
           </div>
         </nav>
         <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', marginTop: 'auto' }}>
-          <button 
-            className="btn-outline" 
+          <button
+            className="btn-outline"
             style={{ width: '100%', borderColor: 'var(--red)', color: 'var(--red)', justifyContent: 'center' }}
             onClick={() => {
               if (window.confirm('Are you sure you want to delete all saved data and reset to defaults?')) {

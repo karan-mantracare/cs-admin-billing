@@ -11,8 +11,18 @@ function ExpenseTracker() {
     {
       id: 1,
       clientName: 'MantraCare Internal',
+      division: 'Healthcare',
       divisionStatus: 'Active',
+      csResponsible: 'John Doe',
+      orderName: 'Wellness Plan 2026',
+      orderActive: 'Yes',
       orderStatus: 'In Progress',
+      startDate: '2026-01-15',
+      endDate: '2027-01-15',
+      employeeCovered: 500,
+      engagements: 120,
+      contractAmount: 15000,
+      sessionCount: 50,
       orderEndDate: '2027-01-15',
       totalOrderAmount: 15000,
       totalReceived: 5000,
@@ -24,8 +34,18 @@ function ExpenseTracker() {
     {
       id: 2,
       clientName: 'Comprehensive Wellness',
+      division: 'Wellness',
       divisionStatus: 'Active',
+      csResponsible: 'Jane Smith',
+      orderName: 'Corp Wellness 2026',
+      orderActive: 'Yes',
       orderStatus: 'Completed',
+      startDate: '2025-06-30',
+      endDate: '2026-06-30',
+      employeeCovered: 200,
+      engagements: 80,
+      contractAmount: 8000,
+      sessionCount: 20,
       orderEndDate: '2026-06-30',
       totalOrderAmount: 8000,
       totalReceived: 8000,
@@ -37,8 +57,18 @@ function ExpenseTracker() {
     {
       id: 3,
       clientName: 'Tech Corp LLC',
+      division: 'Tech',
       divisionStatus: 'Inactive',
+      csResponsible: 'Mike Johnson',
+      orderName: 'Tech Corp Plan',
+      orderActive: 'No',
       orderStatus: 'Cancelled',
+      startDate: '2025-08-01',
+      endDate: '2026-08-01',
+      employeeCovered: 100,
+      engagements: 30,
+      contractAmount: 5000,
+      sessionCount: 10,
       orderEndDate: '2026-08-01',
       totalOrderAmount: 5000,
       totalReceived: 1000,
@@ -50,7 +80,7 @@ function ExpenseTracker() {
   ]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15);
@@ -63,7 +93,7 @@ function ExpenseTracker() {
     });
   }, [expenses, globalExpenses]);
 
-  const filteredExpenses = enrichedExpenses.filter(exp => 
+  const filteredExpenses = enrichedExpenses.filter(exp =>
     exp.clientName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -77,7 +107,7 @@ function ExpenseTracker() {
   const sumOrderAmount = filteredExpenses.reduce((sum, e) => sum + e.totalOrderAmount, 0);
   const sumReceived = filteredExpenses.reduce((sum, e) => sum + e.totalReceived, 0);
   const sumDue = filteredExpenses.reduce((sum, e) => sum + e.totalDue, 0);
-  
+
   const totalProfit = filteredExpenses.reduce((sum, e) => {
     return sum + (e.totalReceived - e.totalSessionCost - e.totalWebinarCost - e.otherCost);
   }, 0);
@@ -85,7 +115,22 @@ function ExpenseTracker() {
   const formatCurrency = (amount) => `$${amount.toLocaleString()}`;
 
   return (
-    <main className="main-content">
+    <main className="main-content expense-tracker-page">
+      <style>{`
+        .expense-tracker-page .data-table th,
+        .expense-tracker-page .data-table td {
+          font-size: 10px !important;
+          padding: 4px 6px !important;
+        }
+        .expense-tracker-page .summary-item span,
+        .expense-tracker-page .summary-item strong {
+          font-size: 10px !important;
+        }
+        .expense-tracker-page .badge {
+          font-size: 10px !important;
+          padding: 2px 6px !important;
+        }
+      `}</style>
       {/* Summary Dashboard */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
         <div className="summary-box" style={{ flex: 1 }}>
@@ -108,7 +153,7 @@ function ExpenseTracker() {
         </div>
         <div className="summary-box" style={{ flex: 1 }}>
           <div className="summary-item">
-            <span style={{ color: 'var(--blue)' }}>Net Profit</span>
+            <span style={{ color: 'var(--blue)' }}>Net Revenue</span>
             <strong style={{ color: 'var(--blue)' }}>{formatCurrency(totalProfit)}</strong>
           </div>
         </div>
@@ -118,10 +163,10 @@ function ExpenseTracker() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', gap: '1rem', flexWrap: 'wrap' }}>
         <div className="search-input-wrapper">
           <i className='bx bx-search'></i>
-          <input 
-            type="text" 
+          <input
+            type="text"
             className="search-input"
-            placeholder="Search Client Name..." 
+            placeholder="Search Client Name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -135,8 +180,18 @@ function ExpenseTracker() {
             <tr>
               <th>S. NO.</th>
               <th>CLIENT NAME</th>
+              <th>DIVISION</th>
               <th>DIVISION STATUS</th>
+              <th>CS RESPONSIBLE</th>
+              <th>ORDER NAME</th>
+              <th>ORDER ACTIVE</th>
               <th>ORDER STATUS</th>
+              <th>START DATE</th>
+              <th>END DATE</th>
+              <th>EMPLOYEE COVERED</th>
+              <th>ENGAGEMENTS</th>
+              <th>CONTRACT AMOUNT</th>
+              <th>SESSION COUNT</th>
               <th>ORDER END DATE</th>
               <th>TOTAL ORDER AMOUNT</th>
               <th>TOTAL RECEIVED</th>
@@ -144,66 +199,84 @@ function ExpenseTracker() {
               <th>SESSION COST</th>
               <th>WEBINAR COST</th>
               <th>OTHER COST</th>
-              <th>NET PROFIT</th>
+              <th>NET REVENUE</th>
             </tr>
           </thead>
           <tbody>
             {paginatedExpenses.map((exp, index) => {
-              const netProfit = exp.totalReceived - exp.totalSessionCost - exp.totalWebinarCost - exp.otherCost;
+              const netRevenue = exp.totalReceived - exp.totalSessionCost - exp.totalWebinarCost - exp.otherCost;
+              const margin = exp.totalReceived > 0 ? (netRevenue / exp.totalReceived) * 100 : 0;
+              let revenueColor = 'var(--red)';
+              if (margin > 50) revenueColor = 'var(--green)';
+              else if (margin >= 11) revenueColor = 'var(--orange)';
+
               return (
                 <tr key={exp.id}>
                   <td>{startIndex + index + 1}</td>
-                  
+
                   {/* Routes to /clients */}
                   <td className="event-name" style={{ cursor: 'pointer' }} onClick={() => navigate('/clients')}>
                     {exp.clientName}
                   </td>
-                  
+
+                  <td>{exp.division}</td>
+
                   <td>
                     <span className={`badge badge-${exp.divisionStatus === 'Active' ? 'success' : 'danger'}`}>
                       {exp.divisionStatus}
                     </span>
                   </td>
-                  
+
+                  <td>{exp.csResponsible}</td>
+                  <td>{exp.orderName}</td>
+                  <td>{exp.orderActive}</td>
+
                   {/* Routes to /clients */}
                   <td style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate('/clients')}>
                     {exp.orderStatus}
                   </td>
-                  
+
+                  <td>{exp.startDate}</td>
+                  <td>{exp.endDate}</td>
+                  <td>{exp.employeeCovered}</td>
+                  <td>{exp.engagements}</td>
+                  <td>{formatCurrency(exp.contractAmount)}</td>
+                  <td>{exp.sessionCount}</td>
+
                   {/* Routes to /clients */}
                   <td style={{ cursor: 'pointer', color: 'var(--primary)', whiteSpace: 'nowrap' }} onClick={() => navigate('/clients')}>
                     {exp.orderEndDate}
                   </td>
-                  
+
                   {/* Routes to /clients */}
                   <td style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate('/clients')}>
                     {formatCurrency(exp.totalOrderAmount)}
                   </td>
-                  
+
                   {/* Routes to /client-payments */}
                   <td style={{ cursor: 'pointer', color: 'var(--success)', fontWeight: '500' }} onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}>
                     {formatCurrency(exp.totalReceived)}
                   </td>
-                  
+
                   {/* Routes to /client-payments */}
                   <td style={{ cursor: 'pointer', color: 'var(--warning)', fontWeight: '500' }} onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}>
                     {formatCurrency(exp.totalDue)}
                   </td>
-                  
+
                   <td>{formatCurrency(exp.totalSessionCost)}</td>
-                  
+
                   {/* Routes to /event-approval */}
                   <td style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate(`/event-approval?client=${encodeURIComponent(exp.clientName)}`)}>
                     {formatCurrency(exp.totalWebinarCost)}
                   </td>
-                  
+
                   {/* Routes to /expense-approval */}
                   <td style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate(`/expense-approval?client=${encodeURIComponent(exp.clientName)}`)}>
                     {formatCurrency(exp.otherCost)}
                   </td>
-                  
-                  <td style={{ fontWeight: '600', color: netProfit >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                    {formatCurrency(netProfit)}
+
+                  <td style={{ fontWeight: '600', color: revenueColor }}>
+                    {formatCurrency(netRevenue)}
                   </td>
                 </tr>
               );
@@ -215,7 +288,7 @@ function ExpenseTracker() {
             )}
           </tbody>
         </table>
-        
+
         {/* Pagination Footer */}
         {totalItems > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--border-color)', background: '#fff' }}>
@@ -225,10 +298,10 @@ function ExpenseTracker() {
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <label>Rows per page:</label>
-                <select 
-                  className="form-control" 
+                <select
+                  className="form-control"
                   style={{ width: 'auto', padding: '0.25rem 0.5rem' }}
-                  value={rowsPerPage} 
+                  value={rowsPerPage}
                   onChange={(e) => {
                     setRowsPerPage(Number(e.target.value));
                     setCurrentPage(1);
@@ -242,18 +315,18 @@ function ExpenseTracker() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                className="btn-outline" 
+              <button
+                className="btn-outline"
                 style={{ padding: '0.25rem 0.75rem', fontSize: '0.9rem' }}
-                disabled={currentPage === 1} 
+                disabled={currentPage === 1}
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               >
                 Previous
               </button>
-              <button 
-                className="btn-outline" 
+              <button
+                className="btn-outline"
                 style={{ padding: '0.25rem 0.75rem', fontSize: '0.9rem' }}
-                disabled={currentPage === totalPages} 
+                disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               >
                 Next

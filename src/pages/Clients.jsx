@@ -4,7 +4,7 @@ import { useGlobal } from '../context/GlobalContext';
 
 function Clients() {
   const navigate = useNavigate();
-  const { showToast } = useGlobal();
+  const { showToast, addExpense } = useGlobal();
   const [formData, setFormData] = useState({
     plan: 'Comprehensive Wellness (Therapy, Weight, Dia...',
     programCode: 'mantrainternal-',
@@ -252,6 +252,15 @@ function Clients() {
             </div>
             <form onSubmit={(e) => {
               e.preventDefault();
+              addExpense({
+                date: new Date().toISOString().split('T')[0],
+                clientName: 'MantraCare Internal',
+                addedBy: 'Admin',
+                expenseType: expenseData.type,
+                details: expenseData.details,
+                deliveredBy: expenseData.deliveredBy,
+                amount: parseFloat(expenseData.amount) || 0
+              });
               showToast("Expense Request Sent Successfully!", 5000);
               setIsExpenseModalOpen(false);
               setExpenseData({ type: 'Standee', details: '', amount: '', deliveredBy: '' });
