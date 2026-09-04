@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useGlobal } from '../context/GlobalContext';
+import LanguageDropdown from './LanguageDropdown';
 
 function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setModalData, isLocked, setIsLocked, status, onSubmit, isHrRole }) {
   const [tempParticipantCount, setTempParticipantCount] = useState('');
+  const { showToast } = useGlobal();
 
   useEffect(() => {
     if (isOpen) {
@@ -21,7 +24,7 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
     if (e.target.checkValidity()) {
       setIsLocked(true);
       if (onSubmit) onSubmit(modalData);
-      alert("Approval Request Sent Successfully!");
+      showToast("Approval Request Sent Successfully!", 5000);
       onClose();
     } else {
       e.target.reportValidity();
@@ -36,6 +39,16 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
           <button className="close-modal" onClick={onClose}><i className='bx bx-x'></i></button>
         </div>
         <div className="modal-body">
+          {modalData.status === 'rejected' && (
+            <div style={{ background: 'var(--bg-light)', border: '1px solid var(--red)', borderLeft: '4px solid var(--red)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
+              <h4 style={{ color: 'var(--red)', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className='bx bx-error-circle'></i> Request Rejected
+              </h4>
+              <p style={{ margin: 0, color: 'var(--text-color)' }}>
+                <strong>Reason:</strong> {modalData.rejectionReason || 'No reason provided.'}
+              </p>
+            </div>
+          )}
           <form id="approvalForm" onSubmit={handleSubmit}>
             {!isHrRole && <h3 className="modal-section-title">Section One - Session Information</h3>}
             <div className="form-grid">
@@ -46,6 +59,10 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
               <div className="form-group">
                 <label>Session Date</label>
                 <input type="date" className="form-control" readOnly value={pageDate} />
+              </div>
+              <div className="form-group">
+                <label>Session Time *</label>
+                <input type="time" className="form-control" required name="sessionTime" value={modalData.sessionTime || ''} onChange={handleChange} disabled={isLocked} />
               </div>
               <div className="form-group">
                 <label>Client Name</label>
@@ -66,11 +83,30 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
                 <>
                   <div className="form-group">
                     <label>Session Type *</label>
-                    <select className="form-control" required name="sessionType" value={modalData.sessionType} onChange={handleChange} disabled={isLocked}>
+                    <select 
+                      className="form-control" 
+                      required 
+                      name="sessionType" 
+                      value={modalData.sessionType} 
+                      onChange={handleChange} 
+                      disabled={isLocked}
+                      style={{
+                        color: modalData.sessionType === 'onsite' ? 'var(--orange)' : modalData.sessionType === 'online' ? 'var(--primary)' : '',
+                        fontWeight: modalData.sessionType ? '500' : 'normal'
+                      }}
+                    >
                       <option value="">Select Type</option>
-                      <option value="online">Online</option>
-                      <option value="onsite">Onsite</option>
+                      <option value="online" style={{ color: 'var(--primary)', fontWeight: '500' }}>Online</option>
+                      <option value="onsite" style={{ color: 'var(--orange)', fontWeight: '500' }}>Onsite</option>
                     </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Language *</label>
+                    <LanguageDropdown 
+                      value={modalData.language} 
+                      onChange={(val) => setModalData(prev => ({ ...prev, language: val }))} 
+                      disabled={isLocked}
+                    />
                   </div>
                   {modalData.sessionType === 'onsite' && (
                     <div className="form-group full-width">
@@ -133,7 +169,7 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
                             if (onSubmit) {
                               onSubmit(updatedData);
                             }
-                            alert("Participant Count updated successfully!");
+                            showToast("Participant Count updated successfully!", 5000);
                             onClose();
                           }}
                           title="Update Participant Count"
@@ -149,7 +185,8 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
             
             <div className="modal-footer mt-4" style={{ margin: '-1.5rem', marginTop: '1.5rem' }}>
               <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={isLocked}>
-                {isLocked ? (isHrRole ? 'Request Sent' : 'Approval Request Sent') : (isHrRole ? 'Request Session' : 'Submit')}
+                {isLocked ? (isHrRole ? 'Request Sent' : 'Approval Request Sent') : 
+                 (modalData.status === 'rejected' ? 'Resubmit Request' : (isHrRole ? 'Request Session' : 'Submit'))}
               </button>
             </div>
           </form>

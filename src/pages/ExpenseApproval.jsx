@@ -337,7 +337,7 @@ function ExpenseApproval() {
               </div>
               <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                 <button type="button" className="btn-outline" onClick={() => { setRejectingRequestId(null); setRejectReason(''); }}>Cancel</button>
-                <button type="submit" className="btn-primary" style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}>Confirm Reject</button>
+                <button type="submit" className="btn-primary" style={{ background: '#ef4444', borderColor: '#ef4444' }}>Confirm Reject</button>
               </div>
             </form>
           </div>

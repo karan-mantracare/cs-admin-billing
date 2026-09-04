@@ -202,7 +202,10 @@ function Dashboard() {
         return <span className="status-pill status-tentative" style={{ color: 'var(--orange)', borderColor: 'var(--orange)' }}><i className='bx bx-calendar-exclamation'></i> Reschedule Requested</span>;
       case 'date_change_requested':
         return <span className="status-pill status-tentative" title="Request to Change the Date: click on edit and change the session date" style={{ color: 'var(--orange)', borderColor: 'var(--orange)', cursor: 'help' }}><i className='bx bx-calendar-edit'></i> Request to Change Date</span>;
-      case 'complete': return <span className="status-pill status-approved"><i className='bx bx-check-circle'></i> Complete</span>;
+      case 'complete': 
+      case 'completed':
+      case 'event_completed':
+        return <span className="status-pill status-approved"><i className='bx bx-check-circle'></i> Completed</span>;
       case 'approved': return <span className="status-pill status-approved"><i className='bx bx-check-circle'></i> Approved</span>;
       case 'tentative': return <span className="status-pill status-tentative"><i className='bx bx-time'></i> Tentative</span>;
       case 'canceled_by_cs':
@@ -278,18 +281,24 @@ function Dashboard() {
                     <small style={{ color: 'var(--text-muted)' }}>{w.submittedOn}</small>
                   </div>
                 </td>
-                <td style={{ textTransform: 'capitalize' }}>{w.sessionType || 'Webinar'}</td>
+                <td>
+                  <span style={{
+                    color: (w.sessionType || 'webinar').toLowerCase() === 'onsite' ? 'var(--orange)' : 'var(--primary)',
+                    fontWeight: '500',
+                    textTransform: 'capitalize'
+                  }}>
+                    {w.sessionType || 'Webinar'}
+                  </span>
+                </td>
                 <td className="event-name">{w.sessionName}</td>
                 <td>{renderStatus(w.status ? w.status.toLowerCase() : 'tentative', w.createdBy)}</td>
                 <td className="comment">{w.comments && w.comments.length > 0 ? w.comments[0].text : '-'}</td>
-                <td>{0}</td>
+                <td>{w.participantCount || 0}</td>
                 <td className="actions">
                   <button className="action-btn edit" title="View" onClick={() => navigate(`/edit?id=${w.id}`)}>
                     <i className='bx bx-show'></i>
                   </button>
-                  <button className="action-btn edit" title="Add Expense" onClick={() => setExpenseModalEventId(w.id)} style={{ color: 'var(--primary)', marginLeft: '4px' }}>
-                    <i className='bx bx-money'></i>
-                  </button>
+
                   {w.status === 'event_scheduled' ? (
                     w.sessionDate > today ? (
                       <button className="action-btn delete" title="Cancel/Reschedule" onClick={() => {
@@ -312,7 +321,7 @@ function Dashboard() {
                       </button>
                     )
                   ) : (
-                    (!w.status || (w.status.toLowerCase() !== 'canceled_by_cs' && w.status.toLowerCase() !== 'canceled_by_hr' && w.status.toLowerCase() !== 'complete' && w.status.toLowerCase() !== 'event_completed')) && (
+                    (!w.status || (w.status.toLowerCase() !== 'canceled_by_cs' && w.status.toLowerCase() !== 'canceled_by_hr' && w.status.toLowerCase() !== 'complete' && w.status.toLowerCase() !== 'completed' && w.status.toLowerCase() !== 'event_completed')) && (
                       <button className="action-btn delete" title="Cancel" onClick={() => {
                         if (window.confirm('Are you sure you want to cancel this event?')) {
                           updateEventStatus(w.id, 'canceled_by_cs');
@@ -321,6 +330,11 @@ function Dashboard() {
                         <i className='bx bx-minus-circle'></i>
                       </button>
                     )
+                  )}
+                  {(w.status === 'complete' || w.status === 'completed' || w.status === 'event_completed') && (
+                    <button className="action-btn" title="Update Session" disabled style={{ color: '#ccc', cursor: 'not-allowed', background: 'transparent' }}>
+                      <i className='bx bx-pencil'></i>
+                    </button>
                   )}
                 </td>
               </tr>

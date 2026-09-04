@@ -87,7 +87,7 @@ function ExpenseTracker() {
 
   const enrichedExpenses = useMemo(() => {
     return expenses.map(exp => {
-      const clientExpenses = globalExpenses.filter(ge => ge.clientName === exp.clientName && ge.status === 'Approved');
+      const clientExpenses = globalExpenses.filter(ge => ge.clientName === exp.clientName && (ge.status === 'Approved' || ge.status === 'Settled' || ge.status === 'Disbursed'));
       const calculatedOtherCost = clientExpenses.reduce((sum, current) => sum + current.amount, 0);
       return { ...exp, otherCost: exp.otherCost + calculatedOtherCost };
     });

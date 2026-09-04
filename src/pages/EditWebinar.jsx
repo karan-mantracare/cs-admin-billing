@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import ApprovalModal from '../components/ApprovalModal';
+import ExpertProfileModal from '../components/ExpertProfileModal';
+import ChangeExpertModal from '../components/ChangeExpertModal';
+import ConfirmModal from '../components/ConfirmModal';
 import { useGlobal } from '../context/GlobalContext';
 
 function EditWebinar() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get('id');
-  const { addExpense, addEvent, addComment, updateEventDetails, events, deleteEvent, requestReschedule, updateEventStatus, showToast } = useGlobal();
-  
-  const currentEvent = eventId 
-    ? events.find(ev => ev.id.toString() === eventId) 
+  const userRole = searchParams.get('role');
+  const { addExpense, addEvent, addComment, updateEventDetails, events, expenses, updateExpenseStatus, updateExpense, deleteEvent, requestReschedule, updateEventStatus: _unusedStatus, showToast } = useGlobal();
+
+  const currentEvent = eventId
+    ? events.find(ev => ev.id.toString() === eventId)
     : events.find(ev => ev.sessionName === "Mindfulness Webinar-1");
-    
+
   const pageTitle = currentEvent ? currentEvent.sessionName : "Mindfulness Webinar-1";
 
   const [status, setStatus] = useState(currentEvent ? currentEvent.status.toLowerCase() : 'tentative');
@@ -25,20 +29,55 @@ function EditWebinar() {
   const [newRescheduleDate, setNewRescheduleDate] = useState('');
 
   // New Other Expense state
+  const [resubmitExpId, setResubmitExpId] = useState(null);
+  const [viewRejectExpense, setViewRejectExpense] = useState(null);
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Approved': return { bg: 'transparent', text: '#059669' };
+      case 'Rejected': return { bg: 'transparent', text: '#dc2626' };
+      case 'Settled': return { bg: 'transparent', text: '#4f46e5' };
+      case 'Disbursed': return { bg: 'transparent', text: '#4f46e5' };
+      default: return { bg: 'transparent', text: '#d97706' }; // Pending Approval
+    }
+  };
+
   const [otherExpData, setOtherExpData] = useState({
-    expenseType: 'Flight',
+    expenseType: 'Standee',
     details: '',
     amount: '',
     deliveredBy: ''
   });
   const [isSessionInfoOpen, setIsSessionInfoOpen] = useState(false);
   const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
-  
+
   // Comments state
   const eventComments = currentEvent && currentEvent.comments ? currentEvent.comments : [];
   const [visibleCommentsCount, setVisibleCommentsCount] = useState(5);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [newComment, setNewComment] = useState({ name: '', text: '' });
+
+  // Expert Details Collapse State
+  const [isExpertDetailsOpen, setIsExpertDetailsOpen] = useState(false);
+  const [isExpenseDetailsOpen, setIsExpenseDetailsOpen] = useState(false);
+
+  // New Modals State
+  const [isExpertProfileOpen, setIsExpertProfileOpen] = useState(false);
+  const [selectedExpertProfile, setSelectedExpertProfile] = useState('');
+  const [isChangeExpertOpen, setIsChangeExpertOpen] = useState(false);
+  const [isConfirmChangeExpertOpen, setIsConfirmChangeExpertOpen] = useState(false);
+  const [changeExpertData, setChangeExpertData] = useState(null);
+  const [editingRequestId, setEditingRequestId] = useState(null);
+
+  // Final Payment Modal State
+  const [isFinalPaymentModalOpen, setIsFinalPaymentModalOpen] = useState(false);
+  const [finalPaymentData, setFinalPaymentData] = useState({
+    sessionProvider: '',
+    sessionDuration: '',
+    sessionDate: '',
+    sessionCost: '',
+    participantCount: ''
+  });
 
   const providerDetails = currentEvent && currentEvent.assignedExpert ? {
     name: currentEvent.assignedExpert,
@@ -54,6 +93,7 @@ function EditWebinar() {
   const [modalData, setModalData] = useState({
     sessionType: '',
     sessionLocation: '',
+    sessionTime: '',
     expertExp: '',
     genderPref: '',
     budget: '',
@@ -63,6 +103,12 @@ function EditWebinar() {
   const [isLocked, setIsLocked] = useState(false);
 
   const [pageDate, setPageDate] = useState(currentEvent ? currentEvent.sessionDate : "2026-08-25");
+
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const sessionDateObj = new Date(pageDate);
+  sessionDateObj.setHours(0, 0, 0, 0);
+  const isAddFinalPaymentDisabled = sessionDateObj > todayDate;
 
   useEffect(() => {
     if (currentEvent) {
@@ -75,15 +121,17 @@ function EditWebinar() {
     }
   }, [currentEvent]);
 
-  const getStatusLabel = () => {
-    if (status === 'tentative' || status === 'pending_confirmation') return 'Tentative';
-    if (status === 'provider_allocation_pending') return 'Event Approved';
-    if (status === 'event_scheduled') return 'Expert Assigned';
-    if (status === 'reschedule_requested') return 'Reschedule Requested';
-    if (status === 'date_change_requested') return 'Date Change Requested';
-    if (status === 'canceled_by_cs') return 'Canceled by CS';
-    if (status === 'canceled_by_hr') return 'Canceled by HR';
-    return status;
+  const getStatusLabel = (s = status) => {
+    if (s === 'tentative' || s === 'pending_confirmation') return 'Tentative';
+    if (s === 'provider_allocation_pending') return 'Event Approved';
+    if (s === 'expert_change_requested') return 'Change Requested';
+    if (s === 'event_scheduled') return 'Expert Assigned';
+    if (s === 'reschedule_requested') return 'Reschedule Requested';
+    if (s === 'date_change_requested') return 'Date Change Requested';
+    if (s === 'completed' || s === 'complete' || s === 'event_completed') return 'Completed';
+    if (s === 'canceled_by_cs') return 'Canceled by CS';
+    if (s === 'canceled_by_hr') return 'Canceled by HR';
+    return s;
   };
 
   return (
@@ -96,43 +144,26 @@ function EditWebinar() {
           </div>
           <div className="edit-actions">
             <div className="date-picker-wrapper">
-              <input 
-                type="date" 
-                value={pageDate} 
-                onChange={(e) => setPageDate(e.target.value)} 
-                className="form-control" 
-                disabled={status === 'complete' || status === 'event_completed' || status === 'canceled_by_cs' || status === 'canceled_by_hr'} 
+              <input
+                type="date"
+                value={pageDate}
+                onChange={(e) => setPageDate(e.target.value)}
+                className="form-control"
+                disabled={status === 'complete' || status === 'completed' || status === 'event_completed' || status === 'canceled_by_cs' || status === 'canceled_by_hr'}
               />
             </div>
             <div className="status-box" style={{ padding: '0.4rem 1rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', fontWeight: '500', color: 'var(--primary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center' }}>
               {getStatusLabel()}
-            </div>
-            
-            {(status !== 'canceled_by_cs' && status !== 'canceled_by_hr' && status !== 'complete' && status !== 'event_completed') && (
-              <button className="btn-outline" style={{ borderColor: 'var(--red)', color: 'var(--red)' }} onClick={() => {
-                if (status === 'event_scheduled') {
-                  setShowReschedulePrompt(true);
-                } else {
-                  if (window.confirm("Are you sure you want to cancel this event?")) {
-                    updateEventStatus(currentEvent.id, 'canceled_by_cs');
-                    setStatus('canceled_by_cs');
-                  }
+              {(() => {
+                if (!currentEvent || !currentEvent.expertRequests || currentEvent.expertRequests.length <= 1) return null;
+                const reqs = currentEvent.expertRequests;
+                const approvedCount = reqs.filter(r => r.status === 'event_scheduled' || r.status === 'complete' || r.status === 'completed' || r.assignedExpert).length;
+                if (approvedCount > 0 && approvedCount < reqs.length) {
+                  return ` (${approvedCount} / ${reqs.length})`;
                 }
-              }} title="Cancel Event">
-                <i className='bx bx-minus-circle'></i>
-              </button>
-            )}
-
-            {(status === 'tentative' || status === 'pending_confirmation' || status === 'special_approval' || status === 'hr_requested' || status === 'approved' || status === 'provider_allocation_pending') && (
-              <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-                {(status === 'approved' || status === 'provider_allocation_pending' || status === 'pending_confirmation') ? 'Update Details' : (isLocked ? 'Update Details' : (status === 'hr_requested' ? 'Request Session' : 'Submit Request'))}
-              </button>
-            )}
-            {(status !== 'canceled_by_cs' && status !== 'canceled_by_hr' && status !== 'complete' && status !== 'event_completed') && (
-              <button className="btn-outline" onClick={() => setIsOtherExpModalOpen(true)} style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}>
-                Add Other Expense
-              </button>
-            )}
+                return null;
+              })()}
+            </div>
           </div>
         </div>
         <p className="edit-description">
@@ -229,29 +260,8 @@ function EditWebinar() {
           <div className="stats-box">
             <div>
               <span className="stats-label">Total Participants</span>
-              <h3 className="stats-value">{modalData.participantCount || '0'}</h3>
+              <h3 className="stats-value">{currentEvent?.participantCount || '0'}</h3>
             </div>
-            <button className="stats-action"><i className='bx bx-log-in-circle'></i></button>
-          </div>
-        </div>
-
-        <div className="small-card" style={{ marginBottom: 0 }}>
-          <div className="stats-box">
-            <div>
-              <span className="stats-label">Session Cost</span>
-              <h3 className="stats-value">{currentEvent && currentEvent.expertCost ? `$${currentEvent.expertCost}` : (isLocked && modalData.budget ? `$${modalData.budget}` : '0')}</h3>
-            </div>
-            <button className="stats-action"><i className='bx bx-log-in-circle'></i></button>
-          </div>
-        </div>
-
-        <div className="small-card" style={{ marginBottom: 0 }}>
-          <div className="stats-box">
-            <div>
-              <span className="stats-label">Other Cost</span>
-              <h3 className="stats-value">{modalData.otherCosts ? modalData.otherCosts : '0'}</h3>
-            </div>
-            <button className="stats-action"><i className='bx bx-log-in-circle'></i></button>
           </div>
         </div>
 
@@ -282,6 +292,320 @@ function EditWebinar() {
         )}
       </div>
 
+      {/* Expert Details Table */}
+      <div className="section-card">
+        <div
+          className="section-title"
+          style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+          onClick={() => setIsExpertDetailsOpen(!isExpertDetailsOpen)}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <i className='bx bx-user'></i>
+            <h2 style={{ margin: 0, border: 'none', padding: 0 }}>Expert Details :</h2>
+            {(() => {
+              if (userRole === 'hr') return null;
+              const reqs = currentEvent?.expertRequests || ((currentEvent?.status && currentEvent.status !== 'tentative') ? [currentEvent] : []);
+              const totalCost = reqs.reduce((sum, req) => sum + (parseFloat(req.expertCost) || 0), 0);
+              return (
+                <span style={{ marginLeft: '1rem', fontSize: '0.95rem', color: 'var(--text-main)', fontWeight: '500', background: 'var(--bg-light)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
+                  Total Expert Cost: USD {totalCost}
+                </span>
+              );
+            })()}
+          </div>
+          <i className={`bx bx-chevron-${isExpertDetailsOpen ? 'up' : 'down'}`} style={{ fontSize: '1.5rem', color: 'var(--primary)' }}></i>
+        </div>
+        {isExpertDetailsOpen && (
+          <div className="section-content">
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Session Type</th>
+                    <th>Location</th>
+                    {userRole !== 'hr' && (
+                      <>
+                        <th>Time</th>
+                        <th>Expert Details</th>
+                        <th>Budget (USD)</th>
+                        <th>Status</th>
+                      </>
+                    )}
+                    <th>Expert Name</th>
+                    {userRole !== 'hr' && (
+                      <>
+                        <th>Price (USD)</th>
+                        <th>Actions</th>
+                      </>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const reqs = currentEvent?.expertRequests ||
+                      ((currentEvent?.status && currentEvent.status !== 'tentative') ? [currentEvent] : []);
+                    if (reqs.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={userRole === 'hr' ? 3 : 9} style={{ textAlign: 'center', padding: '2rem' }}>No request details available.</td>
+                        </tr>
+                      );
+                    }
+                    return reqs.map((req, idx) => (
+                      <tr key={idx}>
+                        <td>
+                          <span style={{
+                            color: (req.sessionType || 'webinar').toLowerCase() === 'onsite' ? 'var(--orange)' : 'var(--primary)',
+                            fontWeight: '500',
+                            textTransform: 'capitalize'
+                          }}>
+                            {req.sessionType || 'Webinar'}
+                          </span>
+                        </td>
+                        <td style={{ maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={req.location || 'Online'}>
+                          {req.location || 'Online'}
+                        </td>
+                        {userRole !== 'hr' && (
+                          <>
+                            <td>{req.sessionTime || 'TBD'}</td>
+                            <td>{req.expertExp ? `${req.expertExp} Years Exp` : '-'}</td>
+                            <td>${req.budget || 0}</td>
+                            <td>{getStatusLabel(req.status || currentEvent.status)}</td>
+                          </>
+                        )}
+                        <td>
+                          {req.assignedExpert ? (
+                            <a href="#" onClick={(e) => { e.preventDefault(); setSelectedExpertProfile(req.assignedExpert); setIsExpertProfileOpen(true); }} style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: '500' }}>
+                              {req.assignedExpert}
+                            </a>
+                          ) : '-'}
+                        </td>
+                        {userRole !== 'hr' && (
+                          <>
+                            <td>${req.expertCost || 0}</td>
+                            <td>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <button className="btn-outline" style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem' }} onClick={() => {
+                              if (req.assignedExpert) {
+                                setChangeExpertData({
+                                  sessionName: currentEvent.sessionName,
+                                  sessionDate: currentEvent.sessionDate,
+                                  sessionTime: req.sessionTime || 'TBD',
+                                  sessionType: req.sessionType || 'Webinar',
+                                  location: req.location || 'Online',
+                                  assignedExpert: req.assignedExpert,
+                                  requestId: req.id
+                                });
+                                setIsConfirmChangeExpertOpen(true);
+                              } else {
+                                setEditingRequestId(req.id || null);
+                                setModalData({
+                                  sessionType: req.sessionType || 'webinar',
+                                  sessionLocation: req.location || 'Online',
+                                  sessionTime: req.sessionTime || '',
+                                  expertExp: req.expertExp || '',
+                                  budget: req.budget || '',
+                                  language: req.language || '',
+                                  participantCount: currentEvent.participantCount || '',
+                                  status: req.status,
+                                  rejectionReason: req.rejectionReason
+                                });
+                                setIsModalOpen(true);
+                              }
+                            }}>
+                              {req.status === 'rejected' ? <><i className='bx bx-show'></i> View</> : 'Edit'}
+                            </button>
+                          </div>
+                        </td>
+                          </>
+                        )}
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+            {userRole !== 'hr' && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+              <button
+                className="btn-outline"
+                style={{ opacity: isAddFinalPaymentDisabled ? 0.5 : 1, cursor: isAddFinalPaymentDisabled ? 'not-allowed' : 'pointer' }}
+                disabled={isAddFinalPaymentDisabled}
+                onClick={() => {
+                  if (isAddFinalPaymentDisabled) return;
+                  // Determine provider and cost based on the first request if available
+                  const firstReq = (currentEvent?.expertRequests && currentEvent.expertRequests.length > 0) ? currentEvent.expertRequests[0] : {};
+                  setFinalPaymentData({
+                    sessionProvider: firstReq.assignedExpert || currentEvent?.assignedExpert || '',
+                    sessionDuration: '',
+                    sessionDate: pageDate,
+                    sessionCost: firstReq.expertCost ? firstReq.expertCost.toString() : '',
+                    participantCount: currentEvent?.participantCount ? currentEvent.participantCount.toString() : ''
+                  });
+                  setIsFinalPaymentModalOpen(true);
+                }}
+              >
+                Mark As Complete
+              </button>
+              <button className="btn-primary" onClick={() => {
+                setIsLocked(false);
+                setEditingRequestId(null);
+                if (currentEvent?.expertRequests && currentEvent.expertRequests.length > 0) {
+                  const lastReq = currentEvent.expertRequests[currentEvent.expertRequests.length - 1];
+                  setModalData({
+                    sessionType: lastReq.sessionType || 'online',
+                    sessionLocation: lastReq.location || 'Online',
+                    sessionTime: lastReq.sessionTime || '',
+                    expertExp: lastReq.expertExp || '',
+                    budget: lastReq.budget || '',
+                    language: lastReq.language || '',
+                    participantCount: currentEvent.participantCount || ''
+                  });
+                } else {
+                  setModalData({
+                    sessionType: 'online',
+                    sessionLocation: 'Online',
+                    sessionTime: '',
+                    expertExp: '',
+                    budget: '',
+                    language: '',
+                    participantCount: currentEvent?.participantCount || ''
+                  });
+                }
+                setIsModalOpen(true);
+              }}>Add Request</button>
+            </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Expense Details Table */}
+      {userRole !== 'hr' && (
+      <div className="section-card">
+        <div
+          className="section-title"
+          style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+          onClick={() => setIsExpenseDetailsOpen(!isExpenseDetailsOpen)}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <i className='bx bx-credit-card'></i>
+            <h2 style={{ margin: 0, border: 'none', padding: 0 }}>Expense Details :</h2>
+            {(() => {
+              const sessionExpenses = expenses.filter(exp => exp.sessionName === pageTitle && exp.sessionDate === pageDate);
+              const approvedExpenses = sessionExpenses.filter(exp => exp.status === 'Approved' || exp.status === 'Settled' || exp.status === 'Disbursed');
+              if (approvedExpenses.length > 0) {
+                const totalCost = approvedExpenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+                return (
+                  <span style={{ marginLeft: '1rem', fontSize: '0.95rem', color: 'var(--text-main)', fontWeight: '500', background: 'var(--bg-light)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
+                    Total Expense: USD {totalCost.toFixed(2)}
+                  </span>
+                );
+              }
+              return null;
+            })()}
+          </div>
+          <i className={`bx bx-chevron-${isExpenseDetailsOpen ? 'up' : 'down'}`} style={{ fontSize: '1.5rem', color: 'var(--primary)' }}></i>
+        </div>
+        {isExpenseDetailsOpen && (
+          <div className="section-content">
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Expense Type</th>
+                    <th>Details</th>
+                    <th>Amount (USD)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const sessionExpenses = expenses.filter(exp => exp.sessionName === pageTitle && exp.sessionDate === pageDate);
+                    if (sessionExpenses.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No expenses available.</td>
+                        </tr>
+                      );
+                    }
+                    return sessionExpenses.map((exp, idx) => (
+                      <tr key={idx}>
+                        <td>{exp.expenseType}</td>
+                        <td>{exp.details}</td>
+                        <td>${parseFloat(exp.amount).toFixed(2)}</td>
+                        <td>
+                          <span
+                            className={`status-badge ${(exp.status === 'Disbursed' ? 'Settled' : (exp.status || 'Pending')).toLowerCase().replace(' ', '-')}`}
+                            style={{
+                              background: 'transparent',
+                              color: getStatusColor(exp.status === 'Pending' || exp.status === 'Pending Approval' ? 'Pending Approval' : exp.status).text,
+                              padding: 0,
+                              fontWeight: 500
+                            }}
+                          >
+                            {(exp.status === 'Pending' || exp.status === 'Pending Approval') ? 'Pending Approval' : (exp.status === 'Disbursed' ? 'Settled' : exp.status)}
+                          </span>
+                        </td>
+                        <td>
+                          {exp.status === 'Approved' && (
+                            <button
+                              className="btn-outline"
+                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                              onClick={() => {
+                                updateExpenseStatus(exp.id, 'Settled');
+                                showToast('Expense marked as settled', 3000);
+                              }}
+                              title="Mark as Settled"
+                            >
+                              <i className='bx bx-check-double'></i> Settle
+                            </button>
+                          )}
+                          {exp.status === 'Rejected' && (
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button
+                                className="btn-outline"
+                                style={{ padding: '0.2rem 0.5rem', fontSize: '1.2rem', color: '#64748b' }}
+                                onClick={() => setViewRejectExpense(exp)}
+                                title="View Rejection Reason"
+                              >
+                                <i className='bx bx-show'></i>
+                              </button>
+                              <button
+                                className="btn-outline"
+                                style={{ padding: '0.2rem 0.5rem', fontSize: '1.2rem', color: '#3b82f6' }}
+                                onClick={() => {
+                                  setResubmitExpId(exp.id);
+                                  setOtherExpData({
+                                    expenseType: exp.expenseType,
+                                    details: exp.details,
+                                    amount: exp.amount,
+                                    deliveredBy: exp.deliveredBy || ''
+                                  });
+                                  setIsOtherExpModalOpen(true);
+                                }}
+                                title="Resubmit Expense"
+                              >
+                                <i className='bx bx-revision'></i>
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <button className="btn-primary" onClick={() => setIsOtherExpModalOpen(true)}>Add Expense</button>
+            </div>
+          </div>
+        )}
+      </div>
+      )}
+
       <div className="section-card comments-card">
         <div className="section-title">
           <i className='bx bx-message-square-detail'></i>
@@ -308,8 +632,8 @@ function EditWebinar() {
           <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
             <button className="btn-primary" onClick={() => setIsCommentModalOpen(true)}>Add Comment</button>
             {visibleCommentsCount < eventComments.length && (
-              <button 
-                className="btn-outline" 
+              <button
+                className="btn-outline"
                 onClick={() => setVisibleCommentsCount(prev => prev + 5)}
               >
                 Show More
@@ -331,12 +655,54 @@ function EditWebinar() {
         status={status}
         onSubmit={(data) => {
           const finalSessionType = (currentEvent && currentEvent.sessionType === 'seminar') ? 'onsite' : data.sessionType;
-          
+
           if (currentEvent && currentEvent.id) {
             const isSubmitForApproval = currentEvent.status === 'hr_requested' || currentEvent.status === 'tentative';
+
+            const existingReqs = currentEvent.expertRequests ||
+              ((currentEvent.status && currentEvent.status !== 'tentative') ? [currentEvent] : []);
+
+            let updatedReqs;
+            if (editingRequestId) {
+              updatedReqs = existingReqs.map(req => {
+                if (req.id === editingRequestId) {
+                  const isRejected = req.status === 'rejected';
+                  return {
+                    ...req,
+                    sessionType: finalSessionType,
+                    location: data.sessionLocation || 'Online',
+                    sessionTime: data.sessionTime || '',
+                    expertExp: parseInt(data.expertExp) || 0,
+                    budget: parseFloat(data.budget) || 0,
+                    language: data.language || 'English',
+                    status: isRejected ? 'provider_allocation_pending' : req.status,
+                    rejectionReason: isRejected ? null : req.rejectionReason
+                  };
+                }
+                return req;
+              });
+              setEditingRequestId(null);
+            } else {
+              const newReq = {
+                id: Date.now(),
+                sessionType: finalSessionType,
+                location: data.sessionLocation || 'Online',
+                sessionTime: data.sessionTime || '',
+                expertExp: parseInt(data.expertExp) || 0,
+                budget: parseFloat(data.budget) || 0,
+                language: data.language || 'English',
+                status: isSubmitForApproval ? 'pending_confirmation' : currentEvent.status,
+                assignedExpert: null,
+                expertCost: 0
+              };
+              updatedReqs = [...existingReqs, newReq];
+            }
+
             updateEventDetails(currentEvent.id, {
+              expertRequests: updatedReqs,
               sessionType: finalSessionType,
               location: data.sessionLocation || 'Online',
+              sessionTime: data.sessionTime || '',
               expertExp: parseInt(data.expertExp) || 0,
               genderPref: data.genderPref,
               budget: parseFloat(data.budget) || 0,
@@ -353,6 +719,7 @@ function EditWebinar() {
               sessionDate: pageDate,
               sessionType: finalSessionType,
               location: data.sessionLocation || 'Online',
+              sessionTime: data.sessionTime || '',
               expertExp: parseInt(data.expertExp) || 0,
               genderPref: data.genderPref,
               budget: parseFloat(data.budget) || 0,
@@ -365,32 +732,43 @@ function EditWebinar() {
 
       {/* Add Other Session Exp Modal */}
       {isOtherExpModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsOtherExpModalOpen(false)}>
+        <div className="modal-overlay" onClick={() => { setIsOtherExpModalOpen(false); setResubmitExpId(null); }}>
           <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h2>Add Other Expense</h2>
-              <button className="close-btn" onClick={() => setIsOtherExpModalOpen(false)}>
+              <h2>{resubmitExpId ? 'Resubmit Expense' : 'Add Other Expense'}</h2>
+              <button className="close-btn" onClick={() => { setIsOtherExpModalOpen(false); setResubmitExpId(null); }}>
                 <i className='bx bx-x'></i>
               </button>
             </div>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                addExpense({
-                  date: new Date().toISOString().split('T')[0],
-                  clientName: 'MantraCare Internal',
-                  sessionName: pageTitle,
-                  sessionDate: pageDate,
-                  addedBy: 'Admin',
-                  expenseType: otherExpData.expenseType,
-                  details: otherExpData.details,
-                  deliveredBy: otherExpData.deliveredBy,
-                  amount: parseFloat(otherExpData.amount)
-                });
-                showToast("Expense Request Sent Successfully!", 5000);
-                setModalData(prev => ({ ...prev, otherCosts: (parseFloat(prev.otherCosts || 0) + parseFloat(otherExpData.amount)).toString() }));
+                if (resubmitExpId) {
+                  updateExpense(resubmitExpId, {
+                    expenseType: otherExpData.expenseType,
+                    details: otherExpData.details,
+                    deliveredBy: otherExpData.deliveredBy,
+                    amount: parseFloat(otherExpData.amount)
+                  });
+                  showToast("Expense Resubmitted Successfully!", 3000);
+                } else {
+                  addExpense({
+                    date: new Date().toISOString().split('T')[0],
+                    clientName: 'MantraCare Internal',
+                    sessionName: pageTitle,
+                    sessionDate: pageDate,
+                    addedBy: 'Admin',
+                    expenseType: otherExpData.expenseType,
+                    details: otherExpData.details,
+                    deliveredBy: otherExpData.deliveredBy,
+                    amount: parseFloat(otherExpData.amount)
+                  });
+                  showToast("Expense Request Sent Successfully!", 3000);
+                  setModalData(prev => ({ ...prev, otherCosts: (parseFloat(prev.otherCosts || 0) + parseFloat(otherExpData.amount)).toString() }));
+                }
                 setIsOtherExpModalOpen(false);
-                setOtherExpData({ expenseType: 'Flight', details: '', amount: '', deliveredBy: '' });
+                setOtherExpData({ expenseType: 'Standee', details: '', amount: '', deliveredBy: '' });
+                setResubmitExpId(null);
               }}
               style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}
             >
@@ -434,10 +812,11 @@ function EditWebinar() {
                       value={otherExpData.expenseType}
                       onChange={(e) => setOtherExpData({ ...otherExpData, expenseType: e.target.value })}
                     >
-                      <option value="Flight">Flight</option>
-                      <option value="Promotional">Promotional</option>
-                      <option value="Goodies">Goodies</option>
-                      <option value="Session Material">Session Material</option>
+                      <option value="Standee">Standee</option>
+                      <option value="Travel">Travel</option>
+                      <option value="Flyers">Flyers</option>
+                      <option value="Rewards">Rewards</option>
+                      <option value="Others">Others</option>
                     </select>
                   </div>
                   <div className="form-group" style={{ marginBottom: '1rem' }}>
@@ -446,6 +825,7 @@ function EditWebinar() {
                       type="date"
                       className="form-control"
                       required
+                      min={new Date().toISOString().split('T')[0]}
                       value={otherExpData.deliveredBy}
                       onChange={(e) => setOtherExpData({ ...otherExpData, deliveredBy: e.target.value })}
                     />
@@ -542,22 +922,22 @@ function EditWebinar() {
               <div className="modal-body">
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label>Name <span className="text-red">*</span></label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
+                  <input
+                    type="text"
+                    className="form-control"
                     required
                     value={newComment.name}
-                    onChange={(e) => setNewComment({...newComment, name: e.target.value})}
+                    onChange={(e) => setNewComment({ ...newComment, name: e.target.value })}
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label>Comment <span className="text-red">*</span></label>
-                  <textarea 
-                    className="form-control" 
+                  <textarea
+                    className="form-control"
                     required
                     rows="4"
                     value={newComment.text}
-                    onChange={(e) => setNewComment({...newComment, text: e.target.value})}
+                    onChange={(e) => setNewComment({ ...newComment, text: e.target.value })}
                   ></textarea>
                 </div>
               </div>
@@ -591,11 +971,11 @@ function EditWebinar() {
               ) : (
                 <>
                   <p style={{ marginBottom: '1rem' }}>Please select a new date:</p>
-                  <input 
-                    type="date" 
-                    className="form-control" 
-                    value={newRescheduleDate} 
-                    onChange={e => setNewRescheduleDate(e.target.value)} 
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={newRescheduleDate}
+                    onChange={e => setNewRescheduleDate(e.target.value)}
                     style={{ marginBottom: '1.5rem', width: '100%' }}
                   />
                   <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
@@ -613,6 +993,139 @@ function EditWebinar() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Final Payment Modal */}
+      {isFinalPaymentModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsFinalPaymentModalOpen(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>Submit Details</h2>
+              <button className="close-btn" onClick={() => setIsFinalPaymentModalOpen(false)}>
+                <i className='bx bx-x'></i>
+              </button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (currentEvent && currentEvent.id) {
+                updateEventDetails(currentEvent.id, {
+                  participantCount: parseInt(finalPaymentData.participantCount, 10),
+                  status: 'completed'
+                });
+                setStatus('completed');
+              }
+              showToast("Final payment details submitted.", 5000);
+              setIsFinalPaymentModalOpen(false);
+            }}>
+              <div className="modal-body">
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>Session Provider</label>
+                  <input type="text" className="form-control" value={finalPaymentData.sessionProvider} readOnly />
+                </div>
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>Session Duration (mins) <span className="text-red">*</span></label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    required
+                    value={finalPaymentData.sessionDuration}
+                    onChange={(e) => setFinalPaymentData({ ...finalPaymentData, sessionDuration: e.target.value })}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>Session Date</label>
+                  <input type="date" className="form-control" value={finalPaymentData.sessionDate} readOnly />
+                </div>
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>Session Cost (USD)</label>
+                  <input type="number" className="form-control" value={finalPaymentData.sessionCost} readOnly />
+                </div>
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>Participant Count <span className="text-red">*</span></label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    required
+                    value={finalPaymentData.participantCount}
+                    onChange={(e) => setFinalPaymentData({ ...finalPaymentData, participantCount: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button type="button" className="btn-outline" onClick={() => setIsFinalPaymentModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Submit Details</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ExpertProfileModal
+        isOpen={isExpertProfileOpen}
+        onClose={() => setIsExpertProfileOpen(false)}
+        expertName={selectedExpertProfile}
+      />
+
+      <ConfirmModal
+        isOpen={isConfirmChangeExpertOpen}
+        onClose={() => setIsConfirmChangeExpertOpen(false)}
+        title="Confirm Expert Change"
+        message="Expert Assigned, do you want to change the Expert?"
+        confirmText="Request Change"
+        onConfirm={() => {
+          setIsChangeExpertOpen(true);
+        }}
+      />
+
+      <ChangeExpertModal
+        isOpen={isChangeExpertOpen}
+        onClose={() => setIsChangeExpertOpen(false)}
+        sessionData={changeExpertData}
+        onSubmitRequest={(reason) => {
+          if (currentEvent && currentEvent.id && changeExpertData) {
+            const existingReqs = currentEvent.expertRequests || [];
+            const updatedReqs = existingReqs.map(req =>
+              req.id === changeExpertData.requestId ? {
+                ...req,
+                status: 'expert_change_requested',
+                changeReason: reason
+              } : req
+            );
+            updateEventDetails(currentEvent.id, {
+              expertRequests: updatedReqs
+            });
+            showToast("Expert change requested successfully.", 5000);
+            setIsChangeExpertOpen(false);
+          }
+        }}
+      />
+      {/* View Rejection Details Modal */}
+      {viewRejectExpense && (
+        <div className="modal-overlay" onClick={() => setViewRejectExpense(null)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Rejection Details</h2>
+              <button className="close-btn" onClick={() => setViewRejectExpense(null)}>
+                <i className='bx bx-x'></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: '1rem' }}>
+                <strong style={{ color: 'var(--text-light)', display: 'block', marginBottom: '0.25rem' }}>Reason for Rejection:</strong>
+                <p style={{ margin: 0, color: 'var(--text-main)', background: 'var(--bg-light)', padding: '0.75rem', borderRadius: '4px' }}>
+                  {viewRejectExpense.rejectReason || 'No reason provided.'}
+                </p>
+              </div>
+              <div>
+                <strong style={{ color: 'var(--text-light)', display: 'block', marginBottom: '0.25rem' }}>Rejected By:</strong>
+                <p style={{ margin: 0, color: 'var(--text-main)' }}>Admin</p>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn-primary" onClick={() => setViewRejectExpense(null)}>Close</button>
             </div>
           </div>
         </div>

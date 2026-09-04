@@ -43,10 +43,39 @@ export function GlobalProvider({ children }) {
     ));
   };
 
-  const assignExpert = (id, expertName, cost) => {
-    setEvents(prev => prev.map(ev => 
-      ev.id === id ? { ...ev, assignedExpert: expertName, expertCost: cost, status: 'event_scheduled' } : ev
-    ));
+  const assignExpert = (id, expertName, cost, requestId = null) => {
+    setEvents(prev => prev.map(ev => {
+      if (ev.id !== id) return ev;
+      if (requestId && ev.expertRequests) {
+        return {
+          ...ev,
+          status: 'event_scheduled',
+          expertRequests: ev.expertRequests.map(req => 
+            req.id === requestId 
+              ? { ...req, assignedExpert: expertName, expertCost: cost, status: 'event_scheduled' } 
+              : req
+          )
+        };
+      }
+      return { ...ev, assignedExpert: expertName, expertCost: cost, status: 'event_scheduled' };
+    }));
+  };
+
+  const rejectExpertRequest = (eventId, requestId, reason) => {
+    setEvents(prev => prev.map(ev => {
+      if (ev.id !== eventId) return ev;
+      if (ev.expertRequests) {
+        return {
+          ...ev,
+          expertRequests: ev.expertRequests.map(req => 
+            req.id === requestId 
+              ? { ...req, status: 'rejected', rejectionReason: reason } 
+              : req
+          )
+        };
+      }
+      return ev;
+    }));
   };
 
   const updateExpenseStatus = (id, status, rejectReason = '') => {
@@ -62,6 +91,12 @@ export function GlobalProvider({ children }) {
       status: 'Pending',
       rejectReason: ''
     }, ...prev]);
+  };
+
+  const updateExpense = (id, updatedData) => {
+    setExpenses(prev => prev.map(exp => 
+      exp.id === id ? { ...exp, ...updatedData, status: 'Pending', rejectReason: '' } : exp
+    ));
   };
 
   const addEvent = (eventData) => {
@@ -136,8 +171,10 @@ export function GlobalProvider({ children }) {
       expenses,
       updateEventStatus,
       assignExpert,
+      rejectExpertRequest,
       updateExpenseStatus,
       addExpense,
+      updateExpense,
       addEvent,
       addComment,
       updateEventDetails,

@@ -212,13 +212,21 @@ function HrDash() {
                     {w.createdBy}<br/>
                   </div>
                 </td>
-                <td style={{ textTransform: 'capitalize' }}>{w.sessionType || 'Webinar'}</td>
+                <td>
+                  <span style={{
+                    color: (w.sessionType || 'webinar').toLowerCase() === 'onsite' ? 'var(--orange)' : 'var(--primary)',
+                    fontWeight: '500',
+                    textTransform: 'capitalize'
+                  }}>
+                    {w.sessionType || 'Webinar'}
+                  </span>
+                </td>
                 <td className="event-name">{w.sessionName}</td>
                 <td>{renderStatus(w.status)}</td>
                 <td className="comment">{w.comments && w.comments.length > 0 ? w.comments[0].text : '-'}</td>
                 <td>{w.participantCount || 0}</td>
                 <td className="actions">
-                  <button className="action-btn edit" title="View" onClick={() => navigate(`/edit?id=${w.id}`)}>
+                  <button className="action-btn edit" title="View" onClick={() => navigate(`/edit?id=${w.id}&role=hr`)}>
                     <i className='bx bx-show'></i>
                   </button>
                   {w.status === 'event_scheduled' ? (
