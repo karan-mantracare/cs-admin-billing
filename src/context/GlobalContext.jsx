@@ -10,6 +10,8 @@ const defaultEvents = [];
 
 const defaultExpenses = [];
 
+const defaultClients = [];
+
 export function GlobalProvider({ children }) {
   const [events, setEvents] = useState(() => {
     const saved = localStorage.getItem('cs-admin-events');
@@ -21,6 +23,11 @@ export function GlobalProvider({ children }) {
     return saved ? JSON.parse(saved) : defaultExpenses;
   });
 
+  const [clients, setClients] = useState(() => {
+    const saved = localStorage.getItem('cs-admin-clients');
+    return saved ? JSON.parse(saved) : defaultClients;
+  });
+
   useEffect(() => {
     localStorage.setItem('cs-admin-events', JSON.stringify(events));
   }, [events]);
@@ -29,11 +36,17 @@ export function GlobalProvider({ children }) {
     localStorage.setItem('cs-admin-expenses', JSON.stringify(expenses));
   }, [expenses]);
 
+  useEffect(() => {
+    localStorage.setItem('cs-admin-clients', JSON.stringify(clients));
+  }, [clients]);
+
   const resetData = () => {
     localStorage.removeItem('cs-admin-events');
     localStorage.removeItem('cs-admin-expenses');
+    localStorage.removeItem('cs-admin-clients');
     setEvents(defaultEvents);
     setExpenses(defaultExpenses);
+    setClients(defaultClients);
   };
 
   // Actions
@@ -91,6 +104,16 @@ export function GlobalProvider({ children }) {
       status: 'Pending',
       rejectReason: ''
     }, ...prev]);
+  };
+
+  const addClient = (clientData) => {
+    setClients(prev => [...prev, { ...clientData, status: 'Active', id: Date.now(), divisions: [] }]);
+  };
+
+  const updateClient = (id, updatedData) => {
+    setClients(prev => prev.map(client => 
+      client.id === id ? { ...client, ...updatedData } : client
+    ));
   };
 
   const updateExpense = (id, updatedData) => {
@@ -169,6 +192,7 @@ export function GlobalProvider({ children }) {
     <GlobalContext.Provider value={{
       events,
       expenses,
+      clients,
       updateEventStatus,
       assignExpert,
       rejectExpertRequest,
@@ -182,6 +206,8 @@ export function GlobalProvider({ children }) {
       requestReschedule,
       acceptReschedule,
       requestAlternativeDate,
+      addClient,
+      updateClient,
       resetData,
       showToast
     }}>

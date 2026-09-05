@@ -3,8 +3,8 @@ import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import EditWebinar from './pages/EditWebinar';
-import Clients from './pages/Clients';
-import Clients1 from './pages/Clients1';
+// import Clients from './pages/Clients';
+// import Clients1 from './pages/Clients1';
 import ClientPayments from './pages/ClientPayments';
 import EventApproval from './pages/EventApproval';
 import ExpenseTracker from './pages/ExpenseTracker';
@@ -12,6 +12,11 @@ import ExpenseApproval from './pages/ExpenseApproval';
 import ExpertAssignment from './pages/ExpertAssignment';
 import Sidebar from './components/Sidebar';
 import HrDash from './pages/HrDash';
+import Corporate from './pages/Corporate';
+import EditCorporate from './pages/EditCorporate';
+import EditDivision from './pages/EditDivision';
+import ClientOnboardingPage from './pages/ClientOnboardingPage';
+import AddOrder from './pages/AddOrder';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -38,8 +43,14 @@ function App() {
         <Route path="/calendar" element={<Dashboard />} />
         <Route path="/edit" element={<EditWebinar />} />
         <Route path="/hr-dash" element={<HrDash />} />
-        <Route path="/clients" element={<Clients />} />
-        <Route path="/clients-1" element={<Clients1 />} />
+        {/* <Route path="/clients" element={<Clients />} /> */}
+        {/* <Route path="/clients" element={<Clients />} /> */}
+        {/* <Route path="/clients-1" element={<Clients1 />} /> */}
+        <Route path="/corporate" element={<Corporate />} />
+        <Route path="/corporate/edit" element={<EditCorporate />} />
+        <Route path="/corporate/division/edit" element={<EditDivision />} />
+        <Route path="/corporate/division/order/add" element={<AddOrder />} />
+        <Route path="/client-onboarding/:id" element={<ClientOnboardingPage />} />
         <Route path="/client-payments" element={<ClientPayments />} />
         <Route path="/event-approval" element={<EventApproval />} />
         <Route path="/expert-assignment" element={<ExpertAssignment />} />
