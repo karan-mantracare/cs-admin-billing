@@ -98,7 +98,8 @@ function EditWebinar() {
     genderPref: '',
     budget: '',
     otherCosts: '',
-    participantCount: ''
+    participantCount: '',
+    duration: ''
   });
   const [isLocked, setIsLocked] = useState(false);
 
@@ -108,7 +109,7 @@ function EditWebinar() {
   todayDate.setHours(0, 0, 0, 0);
   const sessionDateObj = new Date(pageDate);
   sessionDateObj.setHours(0, 0, 0, 0);
-  const isAddFinalPaymentDisabled = sessionDateObj > todayDate;
+  const isAddFinalPaymentDisabled = sessionDateObj > todayDate || status === 'rejected' || status === 'canceled_by_hr' || status === 'canceled_by_cs';
 
   useEffect(() => {
     if (currentEvent) {
@@ -407,13 +408,14 @@ function EditWebinar() {
                                   budget: req.budget || '',
                                   language: req.language || '',
                                   participantCount: currentEvent.participantCount || '',
+                                  duration: req.duration || '',
                                   status: req.status,
                                   rejectionReason: req.rejectionReason
                                 });
                                 setIsModalOpen(true);
                               }
                             }}>
-                              {req.status === 'rejected' ? <><i className='bx bx-show'></i> View</> : 'Edit'}
+                              {req.status?.toLowerCase() === 'rejected' ? 'Edit' : 'Edit'}
                             </button>
                           </div>
                         </td>
@@ -459,7 +461,10 @@ function EditWebinar() {
                     expertExp: lastReq.expertExp || '',
                     budget: lastReq.budget || '',
                     language: lastReq.language || '',
-                    participantCount: currentEvent.participantCount || ''
+                    participantCount: currentEvent.participantCount || '',
+                    duration: lastReq.duration || '',
+                    status: status === 'rejected' ? 'rejected' : '',
+                    rejectionReason: status === 'rejected' ? currentEvent.rejectReason : ''
                   });
                 } else {
                   setModalData({
@@ -469,7 +474,10 @@ function EditWebinar() {
                     expertExp: '',
                     budget: '',
                     language: '',
-                    participantCount: currentEvent?.participantCount || ''
+                    participantCount: currentEvent?.participantCount || '',
+                    duration: '',
+                    status: status === 'rejected' ? 'rejected' : '',
+                    rejectionReason: status === 'rejected' ? currentEvent.rejectReason : ''
                   });
                 }
                 setIsModalOpen(true);
@@ -657,7 +665,7 @@ function EditWebinar() {
           const finalSessionType = (currentEvent && currentEvent.sessionType === 'seminar') ? 'onsite' : data.sessionType;
 
           if (currentEvent && currentEvent.id) {
-            const isSubmitForApproval = currentEvent.status === 'hr_requested' || currentEvent.status === 'tentative';
+            const isSubmitForApproval = currentEvent.status === 'hr_requested' || currentEvent.status === 'tentative' || currentEvent.status?.toLowerCase() === 'rejected';
 
             const existingReqs = currentEvent.expertRequests ||
               ((currentEvent.status && currentEvent.status !== 'tentative') ? [currentEvent] : []);
@@ -666,7 +674,7 @@ function EditWebinar() {
             if (editingRequestId) {
               updatedReqs = existingReqs.map(req => {
                 if (req.id === editingRequestId) {
-                  const isRejected = req.status === 'rejected';
+                  const isRejected = req.status?.toLowerCase() === 'rejected';
                   return {
                     ...req,
                     sessionType: finalSessionType,
@@ -675,6 +683,7 @@ function EditWebinar() {
                     expertExp: parseInt(data.expertExp) || 0,
                     budget: parseFloat(data.budget) || 0,
                     language: data.language || 'English',
+                    duration: data.duration || '',
                     status: isRejected ? 'provider_allocation_pending' : req.status,
                     rejectionReason: isRejected ? null : req.rejectionReason
                   };
@@ -691,6 +700,7 @@ function EditWebinar() {
                 expertExp: parseInt(data.expertExp) || 0,
                 budget: parseFloat(data.budget) || 0,
                 language: data.language || 'English',
+                duration: data.duration || '',
                 status: isSubmitForApproval ? 'pending_confirmation' : currentEvent.status,
                 assignedExpert: null,
                 expertCost: 0
@@ -703,6 +713,7 @@ function EditWebinar() {
               sessionType: finalSessionType,
               location: data.sessionLocation || 'Online',
               sessionTime: data.sessionTime || '',
+              duration: data.duration || '',
               expertExp: parseInt(data.expertExp) || 0,
               genderPref: data.genderPref,
               budget: parseFloat(data.budget) || 0,
@@ -720,6 +731,7 @@ function EditWebinar() {
               sessionType: finalSessionType,
               location: data.sessionLocation || 'Online',
               sessionTime: data.sessionTime || '',
+              duration: data.duration || '',
               expertExp: parseInt(data.expertExp) || 0,
               genderPref: data.genderPref,
               budget: parseFloat(data.budget) || 0,

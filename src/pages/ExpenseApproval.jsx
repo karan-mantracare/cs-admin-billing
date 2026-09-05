@@ -246,6 +246,10 @@ function ExpenseApproval() {
                   <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)' }}>{viewingDetails.sessionDate || 'N/A'}</div>
                 </div>
                 <div className="form-group">
+                  <label>Duration (in Min)</label>
+                  <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)' }}>{viewingDetails.duration || 'N/A'}</div>
+                </div>
+                <div className="form-group">
                   <label>Client Name</label>
                   <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)' }}>{viewingDetails.clientName}</div>
                 </div>

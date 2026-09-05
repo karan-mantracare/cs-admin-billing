@@ -228,6 +228,7 @@ function EventApproval() {
                   <div><strong>Session Name:</strong><br/>{activeDetails.sessionName}</div>
                   <div><strong>Client Name:</strong><br/>{activeDetails.clientName}</div>
                   <div><strong>Date:</strong><br/>{activeDetails.sessionDate}</div>
+                  <div><strong>Duration:</strong><br/>{activeDetails.duration || 'N/A'} Mins</div>
                   <div><strong>Type:</strong><br/><span style={{ textTransform: 'capitalize' }}>{activeDetails.sessionType}</span></div>
                   {activeDetails.sessionType === 'onsite' && (
                     <div className="full-width"><strong>Location:</strong><br/>{activeDetails.location}</div>

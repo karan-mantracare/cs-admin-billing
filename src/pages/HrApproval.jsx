@@ -33,7 +33,8 @@ function HrApproval() {
       genderPref: req.genderPref || '',
       budget: req.budget || '',
       otherCosts: req.otherCosts || '',
-      participantCount: req.participantCount || ''
+      participantCount: req.participantCount || '',
+      duration: req.duration || ''
     });
     setIsModalOpen(true);
   };
@@ -47,6 +48,7 @@ function HrApproval() {
         genderPref: data.genderPref,
         budget: parseFloat(data.budget) || 0,
         otherCosts: parseFloat(data.otherCosts) || 0,
+        duration: data.duration || '',
         status: 'Pending'
       });
       setIsModalOpen(false);

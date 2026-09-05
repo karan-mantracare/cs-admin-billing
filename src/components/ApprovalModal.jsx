@@ -39,7 +39,7 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
           <button className="close-modal" onClick={onClose}><i className='bx bx-x'></i></button>
         </div>
         <div className="modal-body">
-          {modalData.status === 'rejected' && (
+          {modalData.status?.toLowerCase() === 'rejected' && (
             <div style={{ background: 'var(--bg-light)', border: '1px solid var(--red)', borderLeft: '4px solid var(--red)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
               <h4 style={{ color: 'var(--red)', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <i className='bx bx-error-circle'></i> Request Rejected
@@ -63,6 +63,10 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
               <div className="form-group">
                 <label>Session Time *</label>
                 <input type="time" className="form-control" required name="sessionTime" value={modalData.sessionTime || ''} onChange={handleChange} disabled={isLocked} />
+              </div>
+              <div className="form-group">
+                <label>Duration (in Min) *</label>
+                <input type="number" className="form-control" required min="0" name="duration" value={modalData.duration || ''} onChange={handleChange} disabled={isLocked} />
               </div>
               <div className="form-group">
                 <label>Client Name</label>
@@ -183,12 +187,13 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
               </>
             )}
             
-            <div className="modal-footer mt-4" style={{ margin: '-1.5rem', marginTop: '1.5rem' }}>
-              <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={isLocked}>
-                {isLocked ? (isHrRole ? 'Request Sent' : 'Approval Request Sent') : 
-                 (modalData.status === 'rejected' ? 'Resubmit Request' : (isHrRole ? 'Request Session' : 'Submit'))}
-              </button>
-            </div>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+                <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
+                <button type="submit" className="btn-primary" disabled={isLocked}>
+                  {isLocked ? 'Submitting...' : 
+                 (modalData.status?.toLowerCase() === 'rejected' ? 'Resubmit Request' : (isHrRole ? 'Request Session' : 'Submit'))}
+                </button>
+              </div>
           </form>
         </div>
       </div>

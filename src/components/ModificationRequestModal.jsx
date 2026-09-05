@@ -23,6 +23,7 @@ function ModificationRequestModal({
           <div style={{ background: 'var(--bg-light)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <p style={{ margin: '0' }}><strong>Session:</strong> {modificationData.sessionName}</p>
             <p style={{ margin: '0' }}><strong>Date/Time:</strong> {modificationData.sessionDate} at {modificationData.sessionTime}</p>
+            <p style={{ margin: '0' }}><strong>Duration:</strong> {modificationData.duration || 'N/A'} Mins</p>
             <p style={{ margin: '0' }}><strong>Mode & Location:</strong> {modificationData.sessionType} - {modificationData.location}</p>
             {!isReschedule && <p style={{ margin: '0' }}><strong>Language:</strong> {modificationData.language}</p>}
             <p style={{ margin: '0', color: 'var(--orange)' }}><strong>Current Expert:</strong> {modificationData.assignedExpert}</p>

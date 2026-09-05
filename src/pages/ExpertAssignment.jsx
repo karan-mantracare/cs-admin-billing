@@ -3,7 +3,7 @@ import { useGlobal } from '../context/GlobalContext';
 import ModificationRequestModal from '../components/ModificationRequestModal';
 
 function ExpertAssignment() {
-  const { events: allEvents, assignExpert, rejectExpertRequest, acceptReschedule, requestAlternativeDate } = useGlobal();
+  const { events: allEvents, assignExpert, rejectExpertRequest, acceptReschedule, requestAlternativeDate, showToast } = useGlobal();
   const events = allEvents;
   const assignments = allEvents.flatMap(ev => {
     if (ev.status !== 'provider_allocation_pending' && ev.status !== 'event_scheduled') return [];
@@ -40,6 +40,24 @@ function ExpertAssignment() {
   const [expertSearchResults, setExpertSearchResults] = useState([]);
   const [isAssignConfirmOpen, setIsAssignConfirmOpen] = useState(false);
   const [selectedExpertData, setSelectedExpertData] = useState(null);
+  const [isEmailPreviewOpen, setIsEmailPreviewOpen] = useState(false);
+  const [emailPreviewProviders, setEmailPreviewProviders] = useState([]);
+  const [selectedExperts, setSelectedExperts] = useState([]);
+
+  const handleInvite = (providerIds) => {
+    const providers = expertDatabase.filter(exp => providerIds.includes(exp.providerId));
+    setEmailPreviewProviders(providers);
+    setIsEmailPreviewOpen(true);
+  };
+
+  const handleSimulateAccept = (provider) => {
+    const active = activeAssignment;
+    assignExpert(active.eventId, provider.name, parseFloat(provider.price), active.requestId);
+    setAssigningId(null);
+    setIsEmailPreviewOpen(false);
+    setSelectedExperts([]);
+    showToast(`${provider.name} accepted the request!`, 5000);
+  };
 
   // Modification Requests State
   const [isModificationsCollapsed, setIsModificationsCollapsed] = useState(false);
@@ -158,10 +176,7 @@ function ExpertAssignment() {
   };
 
   const handleExpertSelect = (expert) => {
-    setSelectedExpertData(expert);
-    setSelectedExpert(expert.name);
-    setExpertCost(expert.price.toString());
-    setIsAssignConfirmOpen(true);
+    handleInvite([expert.providerId]);
   };
 
   const confirmAssignment = () => {
@@ -356,7 +371,7 @@ function ExpertAssignment() {
       {/* Assign Expert Modal */}
       {assigningId !== null && activeAssignment && (
         <div className="modal-overlay" onClick={() => setAssigningId(null)}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: isSearchingExperts ? '1000px' : '700px' }}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: isSearchingExperts ? '1200px' : '700px' }}>
             <div className="modal-header">
               <h2>Assign Expert</h2>
               <button className="close-btn" onClick={() => setAssigningId(null)}>
@@ -380,6 +395,7 @@ function ExpertAssignment() {
                   <p style={{ margin: '0 0 0.5rem 0' }}><strong>Date:</strong> {activeAssignment.sessionDate}</p>
                   <p style={{ margin: '0 0 0.5rem 0' }}><strong>Time:</strong> {activeAssignment.sessionTime || 'TBD'}</p>
                   <p style={{ margin: '0 0 0.5rem 0' }}><strong>Location:</strong> {activeAssignment.location || 'Online'}</p>
+                  <p style={{ margin: '0 0 0.5rem 0' }}><strong>Duration:</strong> {activeAssignment.duration ? `${activeAssignment.duration} Mins` : 'N/A'}</p>
                 </div>
               </div>
 
@@ -419,6 +435,19 @@ function ExpertAssignment() {
                     <table className="data-table">
                       <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-main)', zIndex: 1 }}>
                         <tr>
+                          <th>
+                            <input 
+                              type="checkbox" 
+                              checked={expertSearchResults.length > 0 && selectedExperts.length === expertSearchResults.length}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedExperts(expertSearchResults.map(exp => exp.providerId));
+                                } else {
+                                  setSelectedExperts([]);
+                                }
+                              }}
+                            />
+                          </th>
                           <th>ID</th>
                           <th>Name</th>
                           <th>Location</th>
@@ -431,6 +460,19 @@ function ExpertAssignment() {
                       <tbody>
                         {expertSearchResults.map(exp => (
                           <tr key={exp.providerId}>
+                            <td>
+                              <input 
+                                type="checkbox" 
+                                checked={selectedExperts.includes(exp.providerId)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedExperts([...selectedExperts, exp.providerId]);
+                                  } else {
+                                    setSelectedExperts(selectedExperts.filter(id => id !== exp.providerId));
+                                  }
+                                }}
+                              />
+                            </td>
                             <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{exp.providerId}</td>
                             <td style={{ fontWeight: '500' }}>{exp.name}</td>
                             <td style={{ fontSize: '0.85rem' }}>{exp.location}</td>
@@ -445,7 +487,7 @@ function ExpertAssignment() {
                                 style={{ padding: '0.2rem 0.5rem', fontSize: '0.85rem' }}
                                 onClick={() => handleExpertSelect(exp)}
                               >
-                                Select
+                                Invite
                               </button>
                             </td>
                           </tr>
@@ -453,6 +495,13 @@ function ExpertAssignment() {
                       </tbody>
                     </table>
                   </div>
+                  {selectedExperts.length > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem', padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                      <button className="btn-primary" onClick={() => handleInvite(selectedExperts)}>
+                        Invite ({selectedExperts.length}) Providers
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -545,6 +594,73 @@ function ExpertAssignment() {
                   <button type="submit" className="btn-primary" style={{ backgroundColor: 'var(--red)', borderColor: 'var(--red)' }}>Submit Rejection</button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Preview Modal */}
+      {isEmailPreviewOpen && emailPreviewProviders.length > 0 && activeAssignment && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }} onClick={() => setIsEmailPreviewOpen(false)}>
+          <div className="modal-container" style={{ maxWidth: '800px' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Invite Preview</h2>
+              <button className="close-modal" onClick={() => setIsEmailPreviewOpen(false)}><i className='bx bx-x'></i></button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '75vh', overflowY: 'auto', backgroundColor: '#f3f4f6', padding: '2rem' }}>
+              
+              <div style={{ background: '#ffffff', padding: '2.5rem', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', fontFamily: "'Inter', system-ui, sans-serif", color: '#374151', lineHeight: '1.6' }}>
+                <p style={{ fontSize: '1.1rem', marginBottom: '1.5rem', color: '#111827' }}>Hello <strong>{emailPreviewProviders.length > 1 ? '[Provider Name]' : emailPreviewProviders[0].name}</strong>,</p>
+                
+                <p style={{ marginBottom: '1rem' }}>A Corporate Client needs a <strong><span style={{ textTransform: 'capitalize' }}>{activeAssignment.sessionType}</span></strong> Session with the following details:</p>
+                
+                <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div>
+                      <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#64748b', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Topic</p>
+                      <p style={{ margin: '0', fontWeight: '500', color: '#0f172a' }}>{activeAssignment.sessionName}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#64748b', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Budget</p>
+                      <p style={{ margin: '0', fontWeight: '600', color: 'var(--green)' }}>{formatCurrency(activeAssignment.budget)}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#64748b', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date & Time</p>
+                      <p style={{ margin: '0', fontWeight: '500', color: '#0f172a' }}>{activeAssignment.sessionDate} at {activeAssignment.sessionTime || 'TBD'}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#64748b', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Duration</p>
+                      <p style={{ margin: '0', fontWeight: '500', color: '#0f172a' }}>{activeAssignment.duration ? `${activeAssignment.duration} Mins` : 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#64748b', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Location</p>
+                      <p style={{ margin: '0', fontWeight: '500', color: '#0f172a' }}>{activeAssignment.location || 'Online'}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#64748b', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Language</p>
+                      <p style={{ margin: '0', fontWeight: '500', color: '#0f172a' }}>{activeAssignment.language || 'English'}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <p style={{ marginBottom: '1.5rem' }}>If you are available and wish to conduct this session, please click the button below to accept the request.</p>
+                
+                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                  <button 
+                    className="btn-primary" 
+                    style={{ padding: '0.8rem 2.5rem', fontSize: '1.05rem', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', border: 'none', background: 'var(--primary)', color: 'white', boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.3)' }}
+                    onClick={() => handleSimulateAccept(emailPreviewProviders[0])}
+                  >
+                    Accept Request
+                  </button>
+                </div>
+                
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem', fontSize: '0.9rem', color: '#6b7280' }}>
+                  <p style={{ margin: '0 0 1rem 0' }}><strong>Please Note:</strong> Act quickly as this request has been sent to other providers as well. The first to accept will be assigned.</p>
+                  <p style={{ margin: '0 0 1rem 0' }}>For any queries, reach out to <a href="mailto:providers@mantra.care" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: '500' }}>providers@mantra.care</a></p>
+                  <p style={{ margin: '0' }}>Regards,<br/><strong style={{ color: '#374151', fontSize: '1rem' }}>Team MantraCare</strong></p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
