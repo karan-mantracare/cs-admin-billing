@@ -126,7 +126,8 @@ function ClientPayments() {
     amount: '',
     isChangeCurrency: false,
     changedCurrency: 'USD',
-    exchangedAmount: ''
+    exchangedAmount: '',
+    receivedBank: ''
   });
   const [showPastPayments, setShowPastPayments] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState(null);
@@ -383,6 +384,7 @@ function ClientPayments() {
             <tr>
               <th>ENTRY DATE</th>
               <th>PAYMENT DATE</th>
+              <th>RECEIVED BANK</th>
               <th>INVOICE NUMBER</th>
               <th>ORDER ID</th>
               <th>BILLING & PAYMENT ID</th>
@@ -396,6 +398,7 @@ function ClientPayments() {
               <tr key={i}>
                 <td>{r.entryDate}</td>
                 <td>{r.paymentDate}</td>
+                <td>{r.receivedBank || '-'}</td>
                 <td><span style={{ color: '#0ea5e9', fontWeight: '500' }}>{r.invoiceNumber}</span></td>
                 <td><strong>{r.orderId}</strong></td>
                 <td><span style={{ background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>{r.paymentId}</span></td>
@@ -550,7 +553,7 @@ function ClientPayments() {
             }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>{editingRecordId ? 'Edit Payment' : 'Add Payment'}</h2>
-              <button onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '' }); setEditingRecordId(null); }} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
+              <button onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' }); setEditingRecordId(null); }} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
                 &times;
               </button>
             </div>
@@ -563,6 +566,16 @@ function ClientPayments() {
                     style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
                     value={paymentForm.paymentDate}
                     onChange={(e) => setPaymentForm(prev => ({ ...prev, paymentDate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Received Bank</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Chase Bank"
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
+                    value={paymentForm.receivedBank}
+                    onChange={(e) => setPaymentForm(prev => ({ ...prev, receivedBank: e.target.value }))}
                   />
                 </div>
                 
@@ -719,6 +732,7 @@ function ClientPayments() {
                     paymentId: targetRow.id,
                     amount: amountVal,
                     currency: paymentForm.isChangeCurrency ? paymentForm.changedCurrency : targetRow.currency,
+                    receivedBank: paymentForm.receivedBank || '-',
                     baseDeductAmount: baseDeductAmount,
                     amountInUSD: Number(amountInUSD.toFixed(2))
                   };
@@ -761,7 +775,7 @@ function ClientPayments() {
                   
                   alert(isEditing ? 'Payment successfully updated!' : 'Payment successfully recorded!');
                   setActivePaymentId(null);
-                  setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '' });
+                  setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' });
                   setShowPastPayments(false);
                   setEditingRecordId(null);
                 }}>{editingRecordId ? 'Update' : 'Save'}</button>
