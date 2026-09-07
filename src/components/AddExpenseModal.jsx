@@ -43,17 +43,18 @@ function AddExpenseModal({ isOpen, onClose, orderId, clientName }) {
     addExpense({
       orderId,
       clientName: clientName || 'Unknown Client',
-      deliveryDay: formData.deliveryDay,
+      date: formData.deliveryDay, // mapped to 'date' for ExpenseApproval table
       expenseType: expenseCategory,
-      description: formData.description,
+      details: formData.description, // mapped to 'details' for ExpenseApproval table
+      deliveredBy: 'N/A', // fallback since it's not requested in the form
       amount: Number(formData.amount),
       addedBy: 'Admin'
     });
 
     if (showToast) {
-      showToast('Expense added successfully');
+      showToast('Expense sent for Approval');
     } else {
-      alert('Expense added successfully');
+      alert('Expense sent for Approval');
     }
 
     setFormData({
