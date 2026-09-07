@@ -122,41 +122,57 @@ function ExpenseTracker() {
           font-size: 10px !important;
           padding: 4px 6px !important;
         }
-        .expense-tracker-page .summary-item span,
-        .expense-tracker-page .summary-item strong {
-          font-size: 10px !important;
-        }
         .expense-tracker-page .badge {
           font-size: 10px !important;
           padding: 2px 6px !important;
         }
+        .et-stat-card {
+          flex: 1;
+          background: white;
+          border-radius: 10px;
+          padding: 1rem 1.25rem;
+          border: 1px solid var(--border-color);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+          display: flex;
+          align-items: center;
+          gap: 0.85rem;
+          border-left: 4px solid;
+        }
+        .et-stat-icon {
+          width: 40px; height: 40px;
+          border-radius: 8px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 1.2rem;
+          flex-shrink: 0;
+        }
+        .et-stat-label { font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+        .et-stat-value { font-size: 1.15rem; font-weight: 800; margin-top: 0.1rem; }
       `}</style>
+
+      {/* Page Header */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', fontWeight: '700' }}>Client P&amp;L</h1>
+        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>Revenue vs. cost breakdown per client order</p>
+      </div>
+
       {/* Summary Dashboard */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-        <div className="summary-box" style={{ flex: 1 }}>
-          <div className="summary-item">
-            <span>Total Order Amount</span>
-            <strong>{formatCurrency(sumOrderAmount)}</strong>
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
+        {[
+          { label: 'Total Order Value', value: formatCurrency(sumOrderAmount), color: '#1e40af', bg: '#eff6ff', icon: 'bx-file-blank', border: '#3b82f6' },
+          { label: 'Total Received', value: formatCurrency(sumReceived), color: '#15803d', bg: '#f0fdf4', icon: 'bx-check-circle', border: '#22c55e' },
+          { label: 'Total Due', value: formatCurrency(sumDue), color: '#b45309', bg: '#fffbeb', icon: 'bx-time-five', border: '#f59e0b' },
+          { label: 'Net Revenue', value: formatCurrency(totalProfit), color: totalProfit >= 0 ? '#0369a1' : '#b91c1c', bg: totalProfit >= 0 ? '#f0f9ff' : '#fff5f5', icon: totalProfit >= 0 ? 'bx-trending-up' : 'bx-trending-down', border: totalProfit >= 0 ? '#0ea5e9' : '#ef4444' },
+        ].map(s => (
+          <div key={s.label} className="et-stat-card" style={{ borderLeftColor: s.border }}>
+            <div className="et-stat-icon" style={{ background: s.bg, color: s.color }}>
+              <i className={`bx ${s.icon}`}></i>
+            </div>
+            <div>
+              <div className="et-stat-label">{s.label}</div>
+              <div className="et-stat-value" style={{ color: s.color }}>{s.value}</div>
+            </div>
           </div>
-        </div>
-        <div className="summary-box" style={{ flex: 1 }}>
-          <div className="summary-item">
-            <span style={{ color: 'var(--success)' }}>Total Received</span>
-            <strong style={{ color: 'var(--success)' }}>{formatCurrency(sumReceived)}</strong>
-          </div>
-        </div>
-        <div className="summary-box" style={{ flex: 1 }}>
-          <div className="summary-item">
-            <span style={{ color: 'var(--warning)' }}>Total Due</span>
-            <strong style={{ color: 'var(--warning)' }}>{formatCurrency(sumDue)}</strong>
-          </div>
-        </div>
-        <div className="summary-box" style={{ flex: 1 }}>
-          <div className="summary-item">
-            <span style={{ color: 'var(--blue)' }}>Net Revenue</span>
-            <strong style={{ color: 'var(--blue)' }}>{formatCurrency(totalProfit)}</strong>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Toolbar */}

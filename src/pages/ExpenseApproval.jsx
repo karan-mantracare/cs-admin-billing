@@ -64,35 +64,28 @@ function ExpenseApproval() {
   return (
     <main className="main-content">
       <div className="page-header" style={{ marginBottom: '1.5rem' }}>
-        <h1>Expense Approval</h1>
+        <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', fontWeight: '700' }}>Expense Approval</h1>
+        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>Review and approve employee expense requests</p>
       </div>
 
       {/* Summary Dashboard */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-        <div className="summary-box" style={{ flex: 1 }}>
-          <div className="summary-item">
-            <span>Total Requests</span>
-            <strong>{totalRequests}</strong>
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
+        {[
+          { label: 'Total Requests', value: totalRequests, color: '#0f172a', bg: '#f8fafc', icon: 'bx-list-ul', border: '#94a3b8' },
+          { label: 'Pending', value: pendingRequests, color: '#b45309', bg: '#fffbeb', icon: 'bx-time-five', border: '#f59e0b' },
+          { label: 'Approved', value: approvedRequests, color: '#15803d', bg: '#f0fdf4', icon: 'bx-check-circle', border: '#22c55e' },
+          { label: 'Rejected', value: rejectedRequests, color: '#b91c1c', bg: '#fff5f5', icon: 'bx-x-circle', border: '#ef4444' },
+        ].map(s => (
+          <div key={s.label} style={{ flex: 1, background: 'white', borderRadius: '10px', padding: '1rem 1.25rem', border: `1px solid var(--border-color)`, borderLeft: `4px solid ${s.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: s.bg, color: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
+              <i className={`bx ${s.icon}`}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>{s.label}</div>
+              <div style={{ fontSize: '1.3rem', fontWeight: '800', color: s.color, marginTop: '0.1rem' }}>{s.value}</div>
+            </div>
           </div>
-        </div>
-        <div className="summary-box" style={{ flex: 1 }}>
-          <div className="summary-item">
-            <span style={{ color: 'var(--warning)' }}>Pending</span>
-            <strong style={{ color: 'var(--warning)' }}>{pendingRequests}</strong>
-          </div>
-        </div>
-        <div className="summary-box" style={{ flex: 1 }}>
-          <div className="summary-item">
-            <span style={{ color: 'var(--success)' }}>Approved</span>
-            <strong style={{ color: 'var(--success)' }}>{approvedRequests}</strong>
-          </div>
-        </div>
-        <div className="summary-box" style={{ flex: 1 }}>
-          <div className="summary-item">
-            <span className="text-red">Rejected</span>
-            <strong className="text-red">{rejectedRequests}</strong>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Toolbar */}
