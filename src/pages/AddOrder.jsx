@@ -1,22 +1,30 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import BillingDetailsModal from '../components/BillingDetailsModal';
+import DocumentUploadModal from '../components/DocumentUploadModal';
+import PaymentSummaryModal from '../components/PaymentSummaryModal';
+import PaymentScheduleModal from '../components/PaymentScheduleModal';
 
 function AddOrder() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isEditMode = location.state?.edit === true;
   
   const [formData, setFormData] = useState({
     contractDetails: {
       product: '',
       sessionLimits: '',
-      contractFile: null,
+      isSessionUnlimited: false,
+      documents: [],
       remarks: ''
     },
     plan: 'Select Plan',
     programCode: '',
-    employees: '0',
+    employees: '',
     planStart: '',
     planEnd: '',
-    amount: '0',
+    amount: '',
+    billingDetails: null,
     countryCode: 'India',
     providerCostLevel: 'Standard',
     
@@ -44,8 +52,50 @@ function AddOrder() {
     }
   });
 
+  useEffect(() => {
+    // Force scroll to top on mount
+    window.scrollTo(0, 0);
+
+    if (isEditMode && location.state?.orderId) {
+      const saved = localStorage.getItem('division_orders');
+      if (saved) {
+        const orders = JSON.parse(saved);
+        const order = orders.find(o => o.id === location.state.orderId);
+        if (order && order.contractDetails) {
+          setFormData(order);
+        }
+      }
+    }
+  }, [isEditMode, location.state]);
+
+  const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [isPaymentSummaryOpen, setIsPaymentSummaryOpen] = useState(false);
+  const [isPaymentScheduleOpen, setIsPaymentScheduleOpen] = useState(false);
+  
+  const addDocument = (newDoc) => {
+    setFormData(prev => ({
+      ...prev,
+      contractDetails: {
+        ...prev.contractDetails,
+        documents: [...(prev.contractDetails.documents || []), newDoc]
+      }
+    }));
+    setIsDocModalOpen(false);
+  };
+  
+  const removeDocument = (id) => {
+    setFormData(prev => ({
+      ...prev,
+      contractDetails: {
+        ...prev.contractDetails,
+        documents: prev.contractDetails.documents.filter(doc => doc.id !== id)
+      }
+    }));
+  };
+
   const [expandedSections, setExpandedSections] = useState({
-    contractDetails: true,
+    contractDetails: false,
     planSchedule: true,
     details: true,
     addOns: true,
@@ -168,7 +218,7 @@ function AddOrder() {
         >
           <i className='bx bx-arrow-back'></i>
         </button>
-        <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a' }}>Add Order</h1>
+        <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a' }}>{isEditMode ? 'Edit Order' : 'Add Order'}</h1>
       </div>
 
       {/* Contract Details (CSM) */}
@@ -178,16 +228,43 @@ function AddOrder() {
             <div style={{...iconBoxStyle, background: '#fef2f2', color: '#ef4444'}}><i className='bx bx-edit'></i></div>
             <div>
               <span style={{ display: 'block' }}>Contract Details</span>
-              <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '600' }}>To be Filled by CSM</span>
             </div>
           </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginLeft: 'auto', marginRight: '1rem' }}>
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsPaymentSummaryOpen(true);
+              }}
+              style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.25rem 0.75rem', background: '#f8fafc', cursor: 'pointer', transition: 'background 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+            >
+              <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Payment Due</span>
+              <span style={{ fontSize: '0.9rem', color: '#ef4444', fontWeight: '700' }}>$ 000000</span>
+            </div>
+            
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsPaymentScheduleOpen(true);
+              }}
+              style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '0.4rem 0.75rem', color: '#0f172a', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', transition: 'background 0.2s' }}
+              onMouseEnter={(e) => e.target.style.background = '#f1f5f9'}
+              onMouseLeave={(e) => e.target.style.background = 'white'}
+            >
+              <i className='bx bx-calendar'></i> View Payment Schedule
+            </button>
+          </div>
+
           <i className={`bx bx-chevron-${expandedSections.contractDetails ? 'up' : 'down'}`} style={{ fontSize: '1.5rem', color: '#94a3b8' }}></i>
         </div>
         
         {expandedSections.contractDetails && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           <div>
-            <label style={labelStyle}>Product</label>
+            <label style={labelStyle}>Product <span style={{color: '#ef4444'}}>*</span></label>
             <input 
               type="text" 
               placeholder="e.g. EAP;Listener" 
@@ -207,22 +284,90 @@ function AddOrder() {
             )}
           </div>
           <div>
-            <label style={labelStyle}>Overall session limits</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <label style={{...labelStyle, marginBottom: 0}}>Overall session limits <span style={{color: '#ef4444'}}>*</span></label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#0f172a', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={formData.contractDetails.isSessionUnlimited} 
+                  onChange={e => setFormData({...formData, contractDetails: {...formData.contractDetails, isSessionUnlimited: e.target.checked}})} 
+                />
+                Unlimited
+              </label>
+            </div>
             <input 
               type="number" 
-              placeholder="Leave blank if unlimited" 
-              style={inputStyle} 
-              value={formData.contractDetails.sessionLimits} 
+              placeholder="Check the box if Unlimited" 
+              style={{...inputStyle, backgroundColor: formData.contractDetails.isSessionUnlimited ? '#f1f5f9' : 'white'}} 
+              disabled={formData.contractDetails.isSessionUnlimited}
+              value={formData.contractDetails.isSessionUnlimited ? ((formData.contractDetails.product.split(';').filter(p => p.trim()).length) * 48 * (parseInt(formData.employees) || 0)) : formData.contractDetails.sessionLimits} 
               onChange={e => setFormData({...formData, contractDetails: {...formData.contractDetails, sessionLimits: e.target.value}})} 
             />
           </div>
+          <div>
+            <label style={labelStyle}>No of Employees <span style={{color: '#ef4444'}}>*</span></label>
+            <input type="number" style={inputStyle} value={formData.employees} onChange={e => {
+              let val = e.target.value;
+              if (val.length > 1 && val.startsWith('0')) {
+                val = val.replace(/^0+/, '');
+              }
+              setFormData({...formData, employees: val});
+            }} placeholder="e.g. 100" />
+          </div>
+          <div>
+            <label style={labelStyle}>Billing Details <span style={{color: '#ef4444'}}>*</span></label>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button 
+                onClick={() => setIsBillingModalOpen(true)}
+                style={{ 
+                  flex: 1, padding: '0.6rem', background: '#0ea5e9', color: 'white', 
+                  border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' 
+                }}
+              >
+                {formData.billingDetails ? 'Edit Billing Details' : 'Add Billing Details'}
+              </button>
+              {formData.billingDetails && (
+                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#0f172a' }}>
+                  ${formData.amount}
+                </div>
+              )}
+            </div>
+          </div>
           
           <div style={{ gridColumn: '1 / -1' }}>
-            <label style={labelStyle}>Attach Contract</label>
-            <div style={{ width: '100%', padding: '1.5rem', border: '1px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', cursor: 'pointer', color: '#64748b', fontSize: '0.9rem' }}>
-              <i className='bx bx-upload' style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'block' }}></i>
-              <span>Click to upload contract or drag and drop file here</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label style={{...labelStyle, marginBottom: 0}}>Documents <span style={{color: '#ef4444'}}>*</span></label>
+              <button 
+                onClick={() => setIsDocModalOpen(true)}
+                style={{ padding: '0.4rem 0.8rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '500' }}
+              >
+                <i className='bx bx-plus' style={{ marginRight: '0.25rem' }}></i>Upload Document
+              </button>
             </div>
+            
+            {(!formData.contractDetails.documents || formData.contractDetails.documents.length === 0) && (
+              <div style={{ width: '100%', padding: '1.5rem', border: '1px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', color: '#94a3b8', fontSize: '0.85rem' }}>
+                No documents uploaded yet.
+              </div>
+            )}
+            
+            {(formData.contractDetails.documents || []).map((doc) => (
+              <div key={doc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '0.5rem', background: 'white' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                  <i className='bx bxs-file-pdf' style={{ color: '#ef4444', fontSize: '1.25rem' }}></i>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
+                    <span style={{ color: '#0ea5e9', fontWeight: '600' }}>{doc.type === 'Others' ? doc.otherType : doc.type}</span>
+                    <span style={{ color: '#cbd5e1' }}>|</span>
+                    <span style={{ fontWeight: '500', color: '#0f172a' }}>{doc.name}</span>
+                    <span style={{ color: '#cbd5e1' }}>|</span>
+                    <span style={{ color: '#64748b' }}>{doc.date}</span>
+                  </div>
+                </div>
+                <button onClick={() => removeDocument(doc.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <i className='bx bx-trash' style={{ fontSize: '1.1rem' }}></i>
+                </button>
+              </div>
+            ))}
           </div>
 
           <div style={{ gridColumn: '1 / -1' }}>
@@ -263,10 +408,6 @@ function AddOrder() {
             <label style={labelStyle}>Program Code</label>
             <input type="text" style={inputStyle} value={formData.programCode} onChange={e => setFormData({...formData, programCode: e.target.value})} />
           </div>
-          <div>
-            <label style={labelStyle}>No of Employees</label>
-            <input type="number" style={inputStyle} value={formData.employees} onChange={e => setFormData({...formData, employees: e.target.value})} />
-          </div>
           
           <div>
             <label style={labelStyle}>Plan Start</label>
@@ -275,10 +416,6 @@ function AddOrder() {
           <div>
             <label style={labelStyle}>Plan End</label>
             <input type="date" style={inputStyle} value={formData.planEnd} onChange={e => setFormData({...formData, planEnd: e.target.value})} />
-          </div>
-          <div>
-            <label style={labelStyle}>Amount (USD)</label>
-            <input type="number" style={inputStyle} value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
           </div>
           
           <div>
@@ -496,16 +633,55 @@ function AddOrder() {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', marginBottom: '2rem' }}>
         <button 
           onClick={() => {
-            alert('Order Created!');
+            const saved = localStorage.getItem('division_orders');
+            let orders = saved ? JSON.parse(saved) : [];
+
+            if (isEditMode) {
+              orders = orders.map(o => o.id === location.state.orderId ? { ...formData, id: location.state.orderId, status: o.status || 'Active' } : o);
+              alert('Order Updated!');
+            } else {
+              const newOrder = { ...formData, id: Date.now(), status: 'Active' };
+              orders.push(newOrder);
+              alert('Order Created!');
+            }
+            
+            localStorage.setItem('division_orders', JSON.stringify(orders));
             navigate(-1);
           }}
           className="btn-primary" 
           style={{ padding: '0.6rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer' }}
         >
-          Create Order
+          {isEditMode ? 'Save Changes' : 'Create Order'}
         </button>
       </div>
 
+      {/* Modals */}
+      <BillingDetailsModal 
+        isOpen={isBillingModalOpen} 
+        onClose={() => setIsBillingModalOpen(false)} 
+        initialData={formData.billingDetails || {}}
+        onSave={(data) => {
+          setFormData(prev => ({
+            ...prev, 
+            billingDetails: data,
+            amount: data.amountInUSD // sync amount
+          }));
+        }} 
+      />
+      <DocumentUploadModal 
+        isOpen={isDocModalOpen} 
+        onClose={() => setIsDocModalOpen(false)} 
+        onSave={addDocument} 
+      />
+      <PaymentSummaryModal
+        isOpen={isPaymentSummaryOpen}
+        onClose={() => setIsPaymentSummaryOpen(false)}
+        contractValue={formData.billingDetails?.contractValue || formData.amount}
+      />
+      <PaymentScheduleModal
+        isOpen={isPaymentScheduleOpen}
+        onClose={() => setIsPaymentScheduleOpen(false)}
+      />
     </main>
   );
 }

@@ -31,6 +31,33 @@ function EditDivision() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isFiled, setIsFiled] = useState(false);
   const [filedData, setFiledData] = useState(null);
+  
+  const [orders, setOrders] = useState([]);
+
+  useEffect(() => {
+    const fetchOrders = () => {
+      const saved = localStorage.getItem('division_orders');
+      if (saved) {
+        setOrders(JSON.parse(saved));
+      } else {
+        setOrders([]);
+      }
+    };
+    
+    fetchOrders();
+    
+    // Support cross-tab or fast navigation refreshes
+    window.addEventListener('storage', fetchOrders);
+    return () => window.removeEventListener('storage', fetchOrders);
+  }, []);
+
+  const deleteOrder = (id) => {
+    if (window.confirm('Are you sure you want to delete this order?')) {
+      const updatedOrders = orders.filter(o => o.id !== id);
+      setOrders(updatedOrders);
+      localStorage.setItem('division_orders', JSON.stringify(updatedOrders));
+    }
+  };
 
   useEffect(() => {
     const checkFiledStatus = () => {
@@ -168,7 +195,7 @@ function EditDivision() {
                       
                       {isFiled && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#f0fdf4', padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
-                          <span style={{ fontSize: '0.85rem', color: '#16a34a', fontWeight: '500' }}>Filed on: 05 Sep 2026</span>
+                          <span style={{ fontSize: '0.85rem', color: '#16a34a', fontWeight: '500' }}>Filed on: {filedData?.submittedAt ? new Date(filedData.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                           <button 
                             onClick={() => setIsViewModalOpen(true)}
                             style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'white', border: '1px solid #86efac', padding: '0.25rem 0.75rem', borderRadius: '4px', fontSize: '0.8rem', color: '#15803d', cursor: 'pointer', fontWeight: '600' }}
@@ -361,22 +388,32 @@ function EditDivision() {
               </tr>
             </thead>
             <tbody>
-              <tr style={{ background: 'white' }}>
-                <td style={{ padding: '1rem', color: '#475569' }}>25</td>
-                <td style={{ padding: '1rem', color: '#475569' }}>Basic EAP (Chat Support)</td>
-                <td style={{ padding: '1rem', color: '#475569' }}>mcsub</td>
-                <td style={{ padding: '1rem', color: '#475569' }}>01/01/2024</td>
-                <td style={{ padding: '1rem', color: '#475569' }}>31/12/2025</td>
-                <td style={{ padding: '1rem', color: '#475569' }}>100</td>
-                <td style={{ padding: '1rem' }}>
-                  <span style={{ padding: '0.25rem 0.75rem', background: '#fee2e2', color: '#ef4444', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '600' }}>Inactive</span>
-                </td>
-                <td style={{ padding: '1rem', textAlign: 'center' }}>
-                  <button style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <i className='bx bx-pencil' style={{ fontSize: '1rem' }}></i>
-                  </button>
-                </td>
-              </tr>
+              {orders.map(order => (
+                <tr key={order.id} style={{ background: 'white', borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '1rem', color: '#475569' }}>{order.id}</td>
+                  <td style={{ padding: '1rem', color: '#475569' }}>{order.plan}</td>
+                  <td style={{ padding: '1rem', color: '#475569' }}>{order.programCode}</td>
+                  <td style={{ padding: '1rem', color: '#475569' }}>{order.planStart}</td>
+                  <td style={{ padding: '1rem', color: '#475569' }}>{order.planEnd}</td>
+                  <td style={{ padding: '1rem', color: '#475569' }}>{order.employees}</td>
+                  <td style={{ padding: '1rem' }}>
+                    <span style={{ padding: '0.25rem 0.75rem', background: order.status === 'Active' ? '#dcfce7' : '#fee2e2', color: order.status === 'Active' ? '#16a34a' : '#ef4444', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '600' }}>{order.status}</span>
+                  </td>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <button onClick={() => navigate('/corporate/division/order/add', { state: { edit: true, orderId: order.id } })} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.5rem' }}>
+                      <i className='bx bx-pencil' style={{ fontSize: '1rem' }}></i>
+                    </button>
+                    <button onClick={() => deleteOrder(order.id)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className='bx bx-trash' style={{ fontSize: '1rem' }}></i>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {orders.length === 0 && (
+                <tr>
+                  <td colSpan="8" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No orders found. Add an order to get started.</td>
+                </tr>
+              )}
             </tbody>
           </table>
           

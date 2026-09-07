@@ -32,13 +32,19 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
   const handleSubmit = () => {
     // Submit logic goes here
     setIsSubmitted(true);
+    
+    const dataToSave = {
+      ...formData,
+      submittedAt: new Date().toISOString()
+    };
+    
     if (initialData.id) {
-      localStorage.setItem('onboardingFiled_' + initialData.id, JSON.stringify(formData));
+      localStorage.setItem('onboardingFiled_' + initialData.id, JSON.stringify(dataToSave));
     } else {
-      localStorage.setItem('onboardingFiled_1', JSON.stringify(formData));
+      localStorage.setItem('onboardingFiled_1', JSON.stringify(dataToSave));
     }
     if (onSuccess) {
-      onSuccess(formData);
+      onSuccess(dataToSave);
     }
   };
 

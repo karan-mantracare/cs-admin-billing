@@ -40,7 +40,7 @@ function Sidebar({ isOpen, onClose }) {
       title: 'Client Billing',
       links: [
         { path: '/corporate', label: 'Corporate', icon: 'bx-buildings' },
-        { path: '/client-payments', label: 'Client Payment', icon: 'bx-credit-card' },
+        { path: '/client-payments', label: 'Billing and Payment', icon: 'bx-credit-card' },
       ]
     },
     {

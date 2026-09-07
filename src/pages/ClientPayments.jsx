@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import AddScheduleModal from '../components/AddScheduleModal';
 
 // Custom Multi-Select Dropdown Component
 function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
@@ -61,107 +62,74 @@ function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
     </div>
   );
 }
+
 function ClientPayments() {
   const [searchParams] = useSearchParams();
   const initialClient = searchParams.get('client');
-  const generate = searchParams.get('generate');
 
+  const [isAddScheduleOpen, setIsAddScheduleOpen] = useState(false);
+  const [addModalMode, setAddModalMode] = useState('schedule');
+  
+  // Generating mock data matching the new 14-column layout
   const [payments, setPayments] = useState(() => {
-    let initialData = [
-      { id: 1, idealDate: '2026-01-01', client: 'Comprehensive Wellness', invoiceDate: '2026-01-01', invoiceNumber: 'INV-001', dueDate: '2026-01-15', amount: 100, status: 'Received', createdOn: '2026-01-01', updatedOn: '2026-01-16' },
-      { id: 2, idealDate: '2026-02-01', client: 'Comprehensive Wellness', invoiceDate: '2026-02-01', invoiceNumber: 'INV-002', dueDate: '2026-02-15', amount: 100, status: 'Received', createdOn: '2026-02-01', updatedOn: '2026-02-16' },
-      { id: 3, idealDate: '2026-03-01', client: 'Comprehensive Wellness', invoiceDate: '2026-03-01', invoiceNumber: 'INV-003', dueDate: '2026-03-15', amount: 100, status: 'Received', createdOn: '2026-03-01', updatedOn: '2026-03-16' },
-      { id: 4, idealDate: '2026-04-01', client: 'Comprehensive Wellness', invoiceDate: '2026-04-01', invoiceNumber: 'INV-004', dueDate: '2026-04-15', amount: 100, status: 'Received', createdOn: '2026-04-01', updatedOn: '2026-04-16' },
-      { id: 5, idealDate: '2026-05-01', client: 'Comprehensive Wellness', invoiceDate: '2026-05-01', invoiceNumber: 'INV-005', dueDate: '2026-05-15', amount: 100, status: 'Overdue', createdOn: '2026-05-01', updatedOn: '2026-05-01' },
-      { id: 6, idealDate: '2026-06-01', client: 'Comprehensive Wellness', invoiceDate: '2026-06-01', invoiceNumber: 'INV-006', dueDate: '2026-06-15', amount: 100, status: 'Due', createdOn: '2026-06-01', updatedOn: '2026-06-01' },
-      { id: 7, idealDate: '2026-07-01', client: 'Comprehensive Wellness', invoiceDate: '-', invoiceNumber: '-', dueDate: '-', amount: 100, status: 'To be Raised', createdOn: '-', updatedOn: '-' },
-      { id: 8, idealDate: '2026-08-01', client: 'Comprehensive Wellness', invoiceDate: '-', invoiceNumber: '-', dueDate: '-', amount: 100, status: 'To be Raised', createdOn: '-', updatedOn: '-' },
-      { id: 9, idealDate: '2026-09-01', client: 'Comprehensive Wellness', invoiceDate: '-', invoiceNumber: '-', dueDate: '-', amount: 100, status: 'To be Raised', createdOn: '-', updatedOn: '-' },
-      { id: 10, idealDate: '2026-10-01', client: 'Comprehensive Wellness', invoiceDate: '-', invoiceNumber: '-', dueDate: '-', amount: 100, status: 'To be Raised', createdOn: '-', updatedOn: '-' },
-
-      { id: 11, idealDate: '2026-01-01', client: 'Text Client', invoiceDate: '2026-01-01', invoiceNumber: 'INV-T01', dueDate: '2026-01-15', amount: 500, status: 'Received', createdOn: '2026-01-01', updatedOn: '2026-01-16' },
-      { id: 12, idealDate: '2026-02-01', client: 'Text Client', invoiceDate: '2026-02-01', invoiceNumber: 'INV-T02', dueDate: '2026-02-15', amount: 500, status: 'Received', createdOn: '2026-02-01', updatedOn: '2026-02-16' },
-      { id: 13, idealDate: '2026-03-01', client: 'Text Client', invoiceDate: '2026-03-01', invoiceNumber: 'INV-T03', dueDate: '2026-03-15', amount: 500, status: 'Received', createdOn: '2026-03-01', updatedOn: '2026-03-16' },
-      { id: 14, idealDate: '2026-04-01', client: 'Text Client', invoiceDate: '2026-04-01', invoiceNumber: 'INV-T04', dueDate: '2026-04-15', amount: 500, status: 'Due', createdOn: '2026-04-01', updatedOn: '2026-04-01' },
-      { id: 15, idealDate: '2026-05-01', client: 'Text Client', invoiceDate: '-', invoiceNumber: '-', dueDate: '-', amount: 500, status: 'To be Raised', createdOn: '-', updatedOn: '-' },
-      { id: 16, idealDate: '2026-06-01', client: 'Text Client', invoiceDate: '-', invoiceNumber: '-', dueDate: '-', amount: 500, status: 'To be Raised', createdOn: '-', updatedOn: '-' },
-      { id: 17, idealDate: '2026-07-01', client: 'Text Client', invoiceDate: '-', invoiceNumber: '-', dueDate: '-', amount: 500, status: 'To be Raised', createdOn: '-', updatedOn: '-' },
-      { id: 18, idealDate: '2026-08-01', client: 'Text Client', invoiceDate: '-', invoiceNumber: '-', dueDate: '-', amount: 500, status: 'To be Raised', createdOn: '-', updatedOn: '-' },
-      { id: 19, idealDate: '2026-09-01', client: 'Text Client', invoiceDate: '-', invoiceNumber: '-', dueDate: '-', amount: 500, status: 'To be Raised', createdOn: '-', updatedOn: '-' },
-      { id: 20, idealDate: '2026-10-01', client: 'Text Client', invoiceDate: '-', invoiceNumber: '-', dueDate: '-', amount: 500, status: 'To be Raised', createdOn: '-', updatedOn: '-' },
-
-      { id: 21, idealDate: '2026-01-01', client: 'Yearly Client', invoiceDate: '2026-01-01', invoiceNumber: 'INV-Y01', dueDate: '2026-01-15', amount: 12000, status: 'Received', createdOn: '2026-01-01', updatedOn: '2026-01-16' },
-      { id: 22, idealDate: '2026-01-01', client: 'Quarterly Client', invoiceDate: '2026-01-01', invoiceNumber: 'INV-Q01', dueDate: '2026-01-15', amount: 3000, status: 'Received', createdOn: '2026-01-01', updatedOn: '2026-01-16' },
-      { id: 23, idealDate: '2026-01-01', client: 'Halfyearly Client', invoiceDate: '2026-01-01', invoiceNumber: 'INV-H01', dueDate: '2026-01-15', amount: 6000, status: 'Received', createdOn: '2026-01-01', updatedOn: '2026-01-16' },
-    ];
-
-    if (generate === 'true') {
-      const start = searchParams.get('start');
-      const freqStr = searchParams.get('freq');
-      const termStr = searchParams.get('term');
-      const payTerm = searchParams.get('payTerm');
-      const totalAmount = parseFloat(searchParams.get('amount')) || 1000;
-      
-      let freqMonths = 1;
-      if (freqStr === 'Quarterly') freqMonths = 3;
-      if (freqStr === 'Half Yearly') freqMonths = 6;
-      if (freqStr === 'Yearly') freqMonths = 12;
-
-      const term = parseInt(termStr, 10) || 12;
-      const numInvoices = Math.floor(term / freqMonths);
-      const amountPerInvoice = numInvoices > 0 ? totalAmount / numInvoices : totalAmount;
-
-      const generated = [];
-      const startDate = new Date(start);
-      
-      if (!isNaN(startDate.getTime())) {
-        for (let i = 0; i < numInvoices; i++) {
-          const d = new Date(startDate);
-          d.setMonth(d.getMonth() + (i * freqMonths));
-          
-          const idealDate = d.toISOString().split('T')[0];
-          
-          generated.push({
-            id: 1000 + i,
-            idealDate: idealDate,
-            client: initialClient || 'Test Billing',
-            invoiceDate: '-',
-            invoiceNumber: '-',
-            dueDate: '-',
-            amount: amountPerInvoice,
-            status: 'To be Raised',
-            createdOn: '-',
-            updatedOn: '-'
-          });
-        }
-        initialData = [...generated, ...initialData];
-      }
+    try {
+      const saved = localStorage.getItem('client_payments');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to parse client_payments from localStorage", e);
+      return [];
     }
-    return initialData;
   });
+
+  const [paymentRecords, setPaymentRecords] = useState(() => {
+    try {
+      const saved = localStorage.getItem('client_payment_records');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Sync to local storage
+  useEffect(() => {
+    localStorage.setItem('client_payments', JSON.stringify(payments));
+  }, [payments]);
+
+  useEffect(() => {
+    localStorage.setItem('client_payment_records', JSON.stringify(paymentRecords));
+  }, [paymentRecords]);
+
+  // Tabs
+  const [activeTab, setActiveTab] = useState('billing');
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  
-  // Filter Fields State
   const [selectedClients, setSelectedClients] = useState(initialClient ? [initialClient] : []);
-  const [invoiceDateRange, setInvoiceDateRange] = useState('All');
-  const [customInvoiceStart, setCustomInvoiceStart] = useState('');
-  const [customInvoiceEnd, setCustomInvoiceEnd] = useState('');
   
-  const [dueDateRange, setDueDateRange] = useState('All');
-  const [customDueStart, setCustomDueStart] = useState('');
-  const [customDueEnd, setCustomDueEnd] = useState('');
-  
-  const [invoiceStatus, setInvoiceStatus] = useState('All');
-
   // Unique clients for the dropdown
-  const uniqueClients = [...new Set(payments.map(p => p.client))];
+  const uniqueClients = [...new Set(payments.map(p => p.clientName))];
 
   // Popup State
   const [activeUploadId, setActiveUploadId] = useState(null);
   const [activePaymentId, setActivePaymentId] = useState(null);
+  
+  const [invoiceForm, setInvoiceForm] = useState({
+    invoiceNumber: '',
+    invoiceDate: '',
+    invoiceFile: null
+  });
+
+  // Add Payment Form State
+  const [paymentForm, setPaymentForm] = useState({
+    paymentDate: '',
+    amount: '',
+    isChangeCurrency: false,
+    changedCurrency: 'USD',
+    exchangedAmount: ''
+  });
+  const [showPastPayments, setShowPastPayments] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -169,125 +137,30 @@ function ClientPayments() {
 
   // Filtering Logic
   const filteredPayments = payments.filter(p => {
-    // 1. Search Query (Client Name, Invoice Number, Invoice Date)
     const query = searchQuery.toLowerCase();
     const matchesSearch = !query || 
-      p.client.toLowerCase().includes(query) || 
-      p.invoiceNumber.toLowerCase().includes(query) || 
-      p.invoiceDate.toLowerCase().includes(query);
+      p.clientName.toLowerCase().includes(query) || 
+      p.orderId.toLowerCase().includes(query) ||
+      p.billingCompany.toLowerCase().includes(query);
     
-    // 2. Client Filter
-    const matchesClient = selectedClients.length === 0 || selectedClients.includes(p.client);
+    const matchesClient = selectedClients.length === 0 || selectedClients.includes(p.clientName);
     
-    // 3. Status Filter
-    const matchesStatus = invoiceStatus === 'All' || p.status === invoiceStatus;
-
-    // Date Setup
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(today.getDate() - 7);
-
-    // 4. Invoice Date Filter
-    let matchesInvoiceDate = true;
-    if (invoiceDateRange !== 'All') {
-      if (p.invoiceDate === '-') {
-        matchesInvoiceDate = false;
-      } else {
-        const invDate = new Date(p.invoiceDate);
-        invDate.setHours(0, 0, 0, 0);
-        if (invoiceDateRange === 'Today') {
-          matchesInvoiceDate = invDate.getTime() === today.getTime();
-        } else if (invoiceDateRange === '7days') {
-          matchesInvoiceDate = invDate >= sevenDaysAgo && invDate <= today;
-        } else if (invoiceDateRange === 'Custom') {
-          const start = customInvoiceStart ? new Date(customInvoiceStart) : new Date('1900-01-01');
-          const end = customInvoiceEnd ? new Date(customInvoiceEnd) : new Date('2100-01-01');
-          start.setHours(0, 0, 0, 0);
-          end.setHours(23, 59, 59, 999);
-          matchesInvoiceDate = invDate >= start && invDate <= end;
-        }
-      }
-    }
-
-    // 5. Due Date Filter
-    let matchesDueDate = true;
-    if (dueDateRange !== 'All') {
-      if (p.dueDate === '-') {
-        matchesDueDate = false;
-      } else {
-        const dDate = new Date(p.dueDate);
-        dDate.setHours(0, 0, 0, 0);
-        if (dueDateRange === 'Today') {
-          matchesDueDate = dDate.getTime() === today.getTime();
-        } else if (dueDateRange === '7days') {
-          matchesDueDate = dDate >= sevenDaysAgo && dDate <= today;
-        } else if (dueDateRange === 'Custom') {
-          const start = customDueStart ? new Date(customDueStart) : new Date('1900-01-01');
-          const end = customDueEnd ? new Date(customDueEnd) : new Date('2100-01-01');
-          start.setHours(0, 0, 0, 0);
-          end.setHours(23, 59, 59, 999);
-          matchesDueDate = dDate >= start && dDate <= end;
-        }
-      }
-    }
-
-    return matchesSearch && matchesClient && matchesStatus && matchesInvoiceDate && matchesDueDate;
+    return matchesSearch && matchesClient;
   });
 
-  // Sorting Logic
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-
-  const handleSort = (key) => {
-    if (sortConfig.key === key) {
-      if (sortConfig.direction === 'asc') {
-        setSortConfig({ key, direction: 'desc' });
-      } else if (sortConfig.direction === 'desc') {
-        setSortConfig({ key: null, direction: 'asc' });
-      }
-    } else {
-      setSortConfig({ key, direction: 'asc' });
-    }
-  };
-
-  let sortedPayments = [...filteredPayments];
-  if (sortConfig.key) {
-    sortedPayments.sort((a, b) => {
-      let valA = a[sortConfig.key];
-      let valB = b[sortConfig.key];
-      
-      if (valA === '-') valA = '';
-      if (valB === '-') valB = '';
-
-      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }
-
   // Pagination Logic
-  const totalItems = sortedPayments.length;
+  const totalItems = filteredPayments.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
-  const paginatedPayments = sortedPayments.slice(startIndex, startIndex + rowsPerPage);
+  const paginatedPayments = filteredPayments.slice(startIndex, startIndex + rowsPerPage);
 
-  const totalBilled = filteredPayments.filter(p => p.status !== 'To be Raised').reduce((sum, p) => sum + p.amount, 0);
-  const totalReceived = filteredPayments.filter(p => p.status === 'Received').reduce((sum, p) => sum + p.amount, 0);
-  const totalOverdue = filteredPayments.filter(p => p.status === 'Overdue').reduce((sum, p) => sum + p.amount, 0);
-  const toBeBilled = filteredPayments.filter(p => p.status === 'To be Raised').reduce((sum, p) => sum + p.amount, 0);
-
-  const renderStatus = (status) => {
-    switch (status) {
-      case 'Received': return <span className="status-pill status-approved"><i className='bx bx-check-circle'></i> Received</span>;
-      case 'Overdue': return <span className="status-pill status-tentative" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--red)' }}><i className='bx bx-error-circle'></i> Overdue</span>;
-      case 'Due': return <span className="status-pill status-tentative"><i className='bx bx-time'></i> Due</span>;
-      case 'To be Raised': return <span className="status-pill" style={{ background: 'rgba(148, 163, 184, 0.1)', color: 'var(--gray)' }}><i className='bx bx-file'></i> To be Raised</span>;
-      default: return null;
-    }
-  };
+  const totalBilled = filteredPayments.filter(p => p.status !== 'To be Raised').reduce((sum, p) => sum + p.amountDueUsd, 0);
+  const totalReceived = filteredPayments.reduce((sum, p) => sum + p.totalPaid, 0);
+  const totalOverdue = filteredPayments.filter(p => p.overdueDays > 0).reduce((sum, p) => sum + p.dueAmount, 0);
+  const toBeBilled = filteredPayments.filter(p => p.status === 'To be Raised').reduce((sum, p) => sum + p.amountDueUsd, 0);
 
   return (
-    <main className="main-content" style={{ paddingTop: '1rem' }}>
+    <main className="main-content" style={{ paddingTop: '1rem', overflowX: 'hidden' }}>
       <div className="page-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, maxWidth: '500px' }}>
           <h1 style={{ margin: 0, fontSize: '1.4rem' }}>Accounts Receivable</h1>
@@ -298,7 +171,7 @@ function ClientPayments() {
               <input 
                 type="text" 
                 className="search-input" 
-                placeholder="Search Party name, Invoice..." 
+                placeholder="Search Client, Order ID..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -329,78 +202,135 @@ function ClientPayments() {
         </div>
       </div>
 
-      <div className="table-container">
-        <table className="data-table">
+      {/* Tabs */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #cbd5e1', marginBottom: '1.5rem' }}>
+        <button 
+          style={{ 
+            padding: '0.75rem 1.5rem', 
+            background: 'none', 
+            border: 'none', 
+            borderBottom: activeTab === 'billing' ? '2px solid #0ea5e9' : '2px solid transparent',
+            color: activeTab === 'billing' ? '#0ea5e9' : '#64748b',
+            fontWeight: activeTab === 'billing' ? '600' : '500',
+            fontSize: '1rem',
+            cursor: 'pointer'
+          }}
+          onClick={() => setActiveTab('billing')}
+        >
+          Billing and Payment
+        </button>
+        <button 
+          style={{ 
+            padding: '0.75rem 1.5rem', 
+            background: 'none', 
+            border: 'none', 
+            borderBottom: activeTab === 'records' ? '2px solid #0ea5e9' : '2px solid transparent',
+            color: activeTab === 'records' ? '#0ea5e9' : '#64748b',
+            fontWeight: activeTab === 'records' ? '600' : '500',
+            fontSize: '1rem',
+            cursor: 'pointer'
+          }}
+          onClick={() => setActiveTab('records')}
+        >
+          Payment Records
+        </button>
+      </div>
+
+      {activeTab === 'billing' ? (
+      <div className="table-container" style={{ overflowX: 'auto' }}>
+        <table className="data-table" style={{ minWidth: '1600px' }}>
           <thead>
             <tr>
-              <th onClick={() => handleSort('idealDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                IDEAL DATE {sortConfig.key === 'idealDate' && <i className={`bx bx-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>}
-                {sortConfig.key !== 'idealDate' && <i className="bx bx-sort text-muted" style={{ opacity: 0.3 }}></i>}
-              </th>
               <th>CLIENT NAME</th>
-              <th onClick={() => handleSort('invoiceDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                INVOICE DATE {sortConfig.key === 'invoiceDate' && <i className={`bx bx-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>}
-                {sortConfig.key !== 'invoiceDate' && <i className="bx bx-sort text-muted" style={{ opacity: 0.3 }}></i>}
-              </th>
-              <th>INVOICE NUMBER</th>
-              <th onClick={() => handleSort('dueDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                DUE DATE {sortConfig.key === 'dueDate' && <i className={`bx bx-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>}
-                {sortConfig.key !== 'dueDate' && <i className="bx bx-sort text-muted" style={{ opacity: 0.3 }}></i>}
-              </th>
-              <th>AMOUNT</th>
-              <th>PAYMENT RECEIVED</th>
-              <th>PAYMENT DATE</th>
-              <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                PAYMENT STATUS {sortConfig.key === 'status' && <i className={`bx bx-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>}
-                {sortConfig.key !== 'status' && <i className="bx bx-sort text-muted" style={{ opacity: 0.3 }}></i>}
-              </th>
-              <th>CREATED ON</th>
-              <th>UPDATED ON</th>
-              <th>ACTIONS</th>
+              <th>ORDER ID</th>
+              <th>BILLING COMPANY</th>
+              <th>AMOUNT DUE $</th>
+              <th>AMOUNT DUE</th>
+              <th>CURRENCY</th>
+              <th>INVOICE BY DATE</th>
+              <th>DUE BY DATE</th>
+              <th>INVOICE DATE</th>
+              <th>INVOICE LINK</th>
+              <th>TOTAL PAID $</th>
+              <th>DUE (AMOUNT)</th>
+              <th>OVERDUE DAYS</th>
+              <th style={{ minWidth: '140px' }}>ACTIONS</th>
             </tr>
           </thead>
           <tbody>
             {paginatedPayments.map((p) => (
               <tr key={p.id}>
-                <td>{p.idealDate}</td>
-                <td className="event-name">{p.client}</td>
+                <td className="event-name">{p.clientName}</td>
+                <td><strong>{p.orderId}</strong></td>
+                <td><span style={{ background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500' }}>{p.billingCompany}</span></td>
+                <td><strong className="text-blue">${p.amountDueUsd.toLocaleString()}</strong></td>
+                <td>{p.amountDue.toLocaleString()}</td>
+                <td>{p.currency}</td>
+                <td>{p.invoiceByDate}</td>
+                <td>{p.dueByDate}</td>
                 <td>{p.invoiceDate}</td>
                 <td>
-                  <strong>
-                    {p.invoiceNumber !== '-' ? (
-                      <a href="#" style={{ color: 'var(--primary)', textDecoration: 'none' }} title="View Invoice">{p.invoiceNumber}</a>
-                    ) : (
-                      <span className="text-muted">-</span>
-                    )}
-                  </strong>
+                  {p.invoiceLink ? (
+                    <a href="#" style={{ color: 'var(--primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                      <i className='bx bxs-file-pdf'></i> {p.invoiceLink}
+                    </a>
+                  ) : (
+                    <span className="text-muted">-</span>
+                  )}
                 </td>
-                <td>{p.dueDate}</td>
-                <td>${p.amount.toFixed(2)}</td>
-                <td><strong className="text-green">${p.status === 'Received' ? p.amount.toFixed(2) : '0.00'}</strong></td>
-                <td>{p.status === 'Received' ? p.updatedOn : '-'}</td>
-                <td>{renderStatus(p.status)}</td>
-                <td>{p.createdOn}</td>
-                <td>{p.updatedOn}</td>
-                <td className="actions">
+                <td><strong className="text-green">${p.totalPaid.toLocaleString()}</strong></td>
+                <td>
+                  <span style={{ color: p.dueAmount > 0 ? 'var(--red)' : 'var(--text-main)', fontWeight: p.dueAmount > 0 ? '600' : '400' }}>
+                    ${p.dueAmount.toLocaleString()}
+                  </span>
+                </td>
+                <td>
+                  {p.overdueDays > 0 ? (
+                    <span style={{ background: '#fee2e2', color: '#ef4444', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600' }}>
+                      {p.overdueDays} Days
+                    </span>
+                  ) : (
+                    <span className="text-muted">-</span>
+                  )}
+                </td>
+                <td className="actions" style={{ gap: '0.25rem' }}>
                   <button className="action-btn edit" title="Edit">
                     <i className='bx bx-pencil'></i>
                   </button>
-                  <button className="action-btn text-blue" title="Upload Invoice" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0.25rem 0.5rem', background: '#fff', cursor: 'pointer' }} onClick={() => setActiveUploadId(p.id)}>
-                    <i className='bx bxs-file-pdf'></i>
-                  </button>
-                  <button className="action-btn text-green" title="Update Payment" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0.25rem 0.5rem', background: '#fff', cursor: 'pointer' }} onClick={() => setActivePaymentId(p.id)}>
+                  <button className="action-btn text-green" title="+ Payment" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0.25rem 0.5rem', background: '#fff', cursor: 'pointer' }} onClick={() => setActivePaymentId(p.id)}>
                     <i className='bx bx-money'></i>
+                  </button>
+                  <button className="action-btn text-blue" title="+ Invoice" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0.25rem 0.5rem', background: '#fff', cursor: 'pointer' }} onClick={() => setActiveUploadId(p.id)}>
+                    <i className='bx bx-file-blank'></i>
                   </button>
                 </td>
               </tr>
             ))}
             {filteredPayments.length === 0 && (
               <tr>
-                <td colSpan="12" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No records found matching your criteria.</td>
+                <td colSpan="14" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No records found matching your criteria.</td>
               </tr>
             )}
           </tbody>
         </table>
+        
+        {/* ADD ROW & ADD SCHEDULE BUTTONS */}
+        <div style={{ display: 'flex', gap: '1rem', padding: '1rem', background: '#fff', borderTop: '1px solid var(--border-color)' }}>
+          <button 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', color: '#0ea5e9', border: '1px dashed #0ea5e9', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
+            onClick={() => { setAddModalMode('row'); setIsAddScheduleOpen(true); }}
+          >
+            <i className='bx bx-plus'></i> Add Row
+          </button>
+          
+          <button 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#0ea5e9', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
+            onClick={() => { setAddModalMode('schedule'); setIsAddScheduleOpen(true); }}
+          >
+            <i className='bx bx-calendar-plus'></i> Add Schedule
+          </button>
+        </div>
+
         {totalItems > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--border-color)', background: '#fff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -437,8 +367,8 @@ function ClientPayments() {
               <button 
                 className="btn-outline" 
                 style={{ padding: '0.25rem 0.75rem', fontSize: '0.9rem' }}
-                disabled={currentPage === totalPages} 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages || totalPages === 0} 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               >
                 Next
               </button>
@@ -446,6 +376,54 @@ function ClientPayments() {
           </div>
         )}
       </div>
+      ) : (
+      <div className="table-container" style={{ overflowX: 'auto' }}>
+        <table className="data-table" style={{ minWidth: '1200px' }}>
+          <thead>
+            <tr>
+              <th>ENTRY DATE</th>
+              <th>PAYMENT DATE</th>
+              <th>INVOICE NUMBER</th>
+              <th>ORDER ID</th>
+              <th>BILLING & PAYMENT ID</th>
+              <th>AMOUNT</th>
+              <th>CURRENCY</th>
+              <th>AMOUNT IN USD</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paymentRecords.map((r, i) => (
+              <tr key={i}>
+                <td>{r.entryDate}</td>
+                <td>{r.paymentDate}</td>
+                <td><span style={{ color: '#0ea5e9', fontWeight: '500' }}>{r.invoiceNumber}</span></td>
+                <td><strong>{r.orderId}</strong></td>
+                <td><span style={{ background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>{r.paymentId}</span></td>
+                <td><strong>{r.amount.toLocaleString()}</strong></td>
+                <td>{r.currency}</td>
+                <td><strong className="text-green">${r.amountInUSD.toLocaleString()}</strong></td>
+              </tr>
+            ))}
+            {paymentRecords.length === 0 && (
+              <tr>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No payment records found.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      )}
+
+      {/* Filter Right Sidebar */}
+
+      <AddScheduleModal 
+        isOpen={isAddScheduleOpen}
+        onClose={() => setIsAddScheduleOpen(false)}
+        onSave={(data) => {
+          console.log("Adding schedule for:", data);
+          alert(`Schedule added for ${data.clientName}, Order: ${data.orderName}`);
+        }}
+      />
 
       {/* Filter Modal */}
       {isFilterOpen && (
@@ -467,58 +445,12 @@ function ClientPayments() {
                   placeholder="Select clients..." 
                 />
               </div>
-
-              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                <label>Invoice Date Range</label>
-                <select className="form-control" value={invoiceDateRange} onChange={(e) => setInvoiceDateRange(e.target.value)}>
-                  <option value="All">All Time</option>
-                  <option value="Today">Today</option>
-                  <option value="7days">Last 7 days</option>
-                  <option value="Custom">Custom Range</option>
-                </select>
-                {invoiceDateRange === 'Custom' && (
-                  <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                    <input type="date" className="form-control" value={customInvoiceStart} onChange={e => setCustomInvoiceStart(e.target.value)} />
-                    <input type="date" className="form-control" value={customInvoiceEnd} onChange={e => setCustomInvoiceEnd(e.target.value)} />
-                  </div>
-                )}
-              </div>
-
-              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                <label>Due Date Range</label>
-                <select className="form-control" value={dueDateRange} onChange={(e) => setDueDateRange(e.target.value)}>
-                  <option value="All">All Time</option>
-                  <option value="Today">Today</option>
-                  <option value="7days">Last 7 days</option>
-                  <option value="Custom">Custom Range</option>
-                </select>
-                {dueDateRange === 'Custom' && (
-                  <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                    <input type="date" className="form-control" value={customDueStart} onChange={e => setCustomDueStart(e.target.value)} />
-                    <input type="date" className="form-control" value={customDueEnd} onChange={e => setCustomDueEnd(e.target.value)} />
-                  </div>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label>Invoice Status</label>
-                <select className="form-control" value={invoiceStatus} onChange={(e) => setInvoiceStatus(e.target.value)}>
-                  <option value="All">All Statuses</option>
-                  <option value="Received">Received</option>
-                  <option value="Overdue">Overdue</option>
-                  <option value="Due">Due</option>
-                  <option value="To be Raised">To be Raised</option>
-                </select>
-              </div>
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
               <button 
                 className="btn-outline" 
                 onClick={() => {
                   setSelectedClients([]);
-                  setInvoiceDateRange('All');
-                  setDueDateRange('All');
-                  setInvoiceStatus('All');
                   setSearchQuery('');
                 }}
               >
@@ -534,74 +466,377 @@ function ClientPayments() {
 
       {/* Upload Invoice Modal */}
       {activeUploadId !== null && (
-        <div className="modal-overlay" onClick={() => setActiveUploadId(null)}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-            <div className="modal-header">
-              <h2>Upload Invoice</h2>
-              <button className="close-btn" onClick={() => setActiveUploadId(null)}>
-                <i className='bx bx-x'></i>
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', justifyContent: 'center', alignItems: 'center'
+        }} onClick={() => setActiveUploadId(null)}>
+          <div style={{
+            background: 'white', borderRadius: '8px', width: '90%', maxWidth: '400px',
+            padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Upload Invoice</h2>
+              <button onClick={() => { setActiveUploadId(null); setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null }); }} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
+                &times;
               </button>
             </div>
-            <div className="modal-body">
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label>Invoice Number</label>
-                <input type="text" className="form-control" placeholder="e.g. INV-1234" />
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Invoice Number</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. INV-2024-001" 
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
+                  value={invoiceForm.invoiceNumber}
+                  onChange={(e) => setInvoiceForm(prev => ({ ...prev, invoiceNumber: e.target.value }))}
+                />
               </div>
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label>Invoice Date</label>
-                <input type="date" className="form-control" />
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Invoice Date</label>
+                <input 
+                  type="date" 
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
+                  value={invoiceForm.invoiceDate}
+                  onChange={(e) => setInvoiceForm(prev => ({ ...prev, invoiceDate: e.target.value }))}
+                />
               </div>
-              <div className="form-group">
-                <label>Invoice Document (PDF)</label>
-                <input type="file" className="form-control" accept=".pdf" style={{ padding: '0.5rem' }} />
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Invoice Document (PDF)</label>
+                <input 
+                  type="file" 
+                  accept=".pdf" 
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px dashed #cbd5e1', background: '#f8fafc', fontSize: '0.9rem', color: '#475569', boxSizing: 'border-box' }} 
+                  onChange={(e) => setInvoiceForm(prev => ({ ...prev, invoiceFile: e.target.files[0] }))}
+                />
               </div>
             </div>
-            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button className="btn-outline" onClick={() => setActiveUploadId(null)}>Cancel</button>
-              <button className="btn-primary" onClick={() => setActiveUploadId(null)}>Upload</button>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => { setActiveUploadId(null); setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null }); }}>Cancel</button>
+              <button style={{ padding: '0.5rem 1rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => {
+                if (!invoiceForm.invoiceNumber || !invoiceForm.invoiceDate) {
+                  alert("Please provide an invoice number and date.");
+                  return;
+                }
+                setPayments(prev => prev.map(p => {
+                  if (p.id === activeUploadId) {
+                    return { ...p, invoiceDate: invoiceForm.invoiceDate, invoiceLink: invoiceForm.invoiceNumber, status: p.status === 'To be Raised' ? 'Pending' : p.status };
+                  }
+                  return p;
+                }));
+                setActiveUploadId(null);
+                setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null });
+              }}>Upload</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Update Payment Modal */}
-      {activePaymentId !== null && (
-        <div className="modal-overlay" onClick={() => setActivePaymentId(null)}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-            <div className="modal-header">
-              <h2>Update Payment</h2>
-              <button className="close-btn" onClick={() => setActivePaymentId(null)}>
-                <i className='bx bx-x'></i>
+      {/* Add Payment Modal */}
+      {activePaymentId !== null && (() => {
+        const targetRow = payments.find(p => p.id === activePaymentId);
+        if (!targetRow) return null;
+        return (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+            display: 'flex', justifyContent: 'center', alignItems: 'center'
+          }} onClick={() => setActivePaymentId(null)}>
+            <div style={{
+              background: 'white', borderRadius: '8px', width: '90%', maxWidth: '400px',
+              padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>{editingRecordId ? 'Edit Payment' : 'Add Payment'}</h2>
+              <button onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '' }); setEditingRecordId(null); }} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
+                &times;
               </button>
             </div>
-            <div className="modal-body">
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label>Amount Received</label>
-                <div style={{ position: 'relative' }}>
-                  <i className='bx bx-dollar' style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}></i>
-                  <input type="number" className="form-control" style={{ paddingLeft: '2.5rem' }} placeholder="0.00" />
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Payment Date</label>
+                  <input 
+                    type="date" 
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
+                    value={paymentForm.paymentDate}
+                    onChange={(e) => setPaymentForm(prev => ({ ...prev, paymentDate: e.target.value }))}
+                  />
                 </div>
+                
+                {!paymentForm.isChangeCurrency ? (
+                  <>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Amount ({targetRow.currency})</label>
+                      <input 
+                        type="number" 
+                        placeholder="e.g. 1500" 
+                        style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
+                        value={paymentForm.amount}
+                        onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
+                      />
+                    </div>
+                    {paymentForm.amount && !isNaN(Number(paymentForm.amount)) && (
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Amount (USD)</label>
+                        <div style={{ padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', fontWeight: '500' }}>
+                          ${(Number(paymentForm.amount) * (targetRow.amountDueUsd / targetRow.amountDue) || Number(paymentForm.amount)).toFixed(2)}
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ textAlign: 'left' }}>
+                      <button style={{ background: 'none', border: 'none', color: '#0ea5e9', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', padding: 0 }} onClick={() => setPaymentForm(prev => ({ ...prev, isChangeCurrency: true }))}>Change Currency</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Amount</label>
+                      <input 
+                        type="number" 
+                        placeholder="e.g. 1500" 
+                        style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
+                        value={paymentForm.amount}
+                        onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Currency</label>
+                      <select 
+                        style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
+                        value={paymentForm.changedCurrency}
+                        onChange={(e) => setPaymentForm(prev => ({ ...prev, changedCurrency: e.target.value }))}
+                      >
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="INR">INR</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Exchanged (to {targetRow.currency})</label>
+                      <input 
+                        type="number" 
+                        placeholder="e.g. 1350" 
+                        style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
+                        value={paymentForm.exchangedAmount}
+                        onChange={(e) => setPaymentForm(prev => ({ ...prev, exchangedAmount: e.target.value }))}
+                      />
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <button style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', padding: 0 }} onClick={() => setPaymentForm(prev => ({ ...prev, isChangeCurrency: false }))}>Cancel Change</button>
+                    </div>
+                  </>
+                )}
               </div>
-              <div className="form-group">
-                <label>Payment Date</label>
-                <input type="date" className="form-control" />
-              </div>
-            </div>
-            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button className="btn-outline" onClick={() => setActivePaymentId(null)}>Cancel</button>
-              <button className="btn-primary" onClick={() => {
-                setPayments(payments.map(p => {
-                  if (p.id === activePaymentId) {
-                    return { ...p, status: 'Received' };
+
+              {(() => {
+                const pastPayments = paymentRecords.filter(r => r.paymentId === activePaymentId);
+                if (pastPayments.length === 0) return null;
+                return (
+                  <div style={{ marginBottom: '1.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                    <div 
+                      style={{ fontSize: '0.9rem', color: '#0ea5e9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: '500' }}
+                      onClick={() => setShowPastPayments(!showPastPayments)}
+                    >
+                      <i className={`bx bx-chevron-${showPastPayments ? 'up' : 'down'}`}></i> View other payment
+                    </div>
+                    {showPastPayments && (
+                      <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', padding: '0.5rem', background: '#e2e8f0', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', color: '#475569' }}>
+                          <span>DATE</span>
+                          <span>AMOUNT</span>
+                          <span>CURRENCY</span>
+                          <span style={{ textAlign: 'right' }}>ACTION</span>
+                        </div>
+                        {pastPayments.map((pp, idx) => (
+                          <div key={pp.id || idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', padding: '0.5rem', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '0.85rem', alignItems: 'center' }}>
+                            <span style={{ color: '#475569' }}>{pp.paymentDate}</span>
+                            <strong style={{ color: '#0f172a' }}>{pp.amount.toLocaleString()}</strong>
+                            <span style={{ color: '#475569' }}>{pp.currency}</span>
+                            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginLeft: '1rem' }}>
+                              <i className='bx bx-edit' style={{ cursor: 'pointer', color: '#0ea5e9', fontSize: '1.1rem' }} onClick={() => {
+                                setEditingRecordId(pp.id);
+                                setPaymentForm({
+                                  paymentDate: pp.paymentDate,
+                                  amount: pp.amount,
+                                  isChangeCurrency: pp.currency !== targetRow.currency,
+                                  changedCurrency: pp.currency,
+                                  exchangedAmount: pp.baseDeductAmount || pp.amount
+                                });
+                              }}></i>
+                              <i className='bx bx-trash' style={{ cursor: 'pointer', color: '#ef4444', fontSize: '1.1rem' }} onClick={() => {
+                                if (window.confirm("Are you sure you want to delete this payment record?")) {
+                                  const deductAmtUsd = pp.amountInUSD || 0;
+                                  setPaymentRecords(prev => prev.filter(r => r.id !== pp.id));
+                                  setPayments(prev => prev.map(p => {
+                                    if (p.id === activePaymentId) {
+                                      const newTotalPaid = Math.max(0, p.totalPaid - deductAmtUsd);
+                                      const newDue = p.amountDueUsd - newTotalPaid;
+                                      return { ...p, totalPaid: newTotalPaid, dueAmount: newDue, status: newDue <= 0 ? 'Received' : 'Partial' };
+                                    }
+                                    return p;
+                                  }));
+                                }
+                              }}></i>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '' }); setShowPastPayments(false); setEditingRecordId(null); }}>Cancel</button>
+                <button style={{ padding: '0.5rem 1rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => {
+                  const amountVal = Number(paymentForm.amount);
+                  const baseDeductAmount = paymentForm.isChangeCurrency ? Number(paymentForm.exchangedAmount) : amountVal;
+
+                  if (!paymentForm.paymentDate || !amountVal || (paymentForm.isChangeCurrency && !baseDeductAmount)) {
+                    alert("Please provide valid date and amount inputs.");
+                    return;
                   }
-                  return p;
-                }));
-                setActivePaymentId(null);
-              }}>Save Payment</button>
+                  
+                  // Simple exchange logic based on row data to derive USD amount
+                  const exchangeRate = targetRow.amountDueUsd / targetRow.amountDue;
+                  const amountInUSD = isNaN(exchangeRate) ? baseDeductAmount : (baseDeductAmount * exchangeRate);
+                  
+                  const isEditing = editingRecordId != null;
+                  const oldRecord = isEditing ? paymentRecords.find(r => r.id === editingRecordId) : null;
+                  const oldDeductAmountUsd = oldRecord ? (oldRecord.amountInUSD || 0) : 0;
+
+                  // Add record
+                  const newRecord = {
+                    id: isEditing ? editingRecordId : Math.random().toString(36).substring(2, 9),
+                    entryDate: isEditing ? oldRecord.entryDate : new Date().toISOString().split('T')[0],
+                    paymentDate: paymentForm.paymentDate,
+                    invoiceNumber: targetRow.invoiceLink || 'N/A',
+                    orderId: targetRow.orderId,
+                    paymentId: targetRow.id,
+                    amount: amountVal,
+                    currency: paymentForm.isChangeCurrency ? paymentForm.changedCurrency : targetRow.currency,
+                    baseDeductAmount: baseDeductAmount,
+                    amountInUSD: Number(amountInUSD.toFixed(2))
+                  };
+                  
+                  if (isEditing) {
+                    setPaymentRecords(prev => prev.map(r => r.id === editingRecordId ? newRecord : r));
+                  } else {
+                    setPaymentRecords(prev => [...prev, newRecord]);
+                  }
+
+                  // Update Row
+                  setPayments(prev => prev.map(p => {
+                    if (p.id === activePaymentId) {
+                      const newTotalPaid = p.totalPaid - oldDeductAmountUsd + Number(amountInUSD.toFixed(2));
+                      const newDue = Math.max(0, p.amountDueUsd - newTotalPaid);
+                      
+                      let newOverdueDays = p.overdueDays;
+                      if (paymentForm.paymentDate && p.dueByDate) {
+                        const payDate = new Date(paymentForm.paymentDate);
+                        const dueDate = new Date(p.dueByDate);
+                        if (!isNaN(payDate) && !isNaN(dueDate) && payDate > dueDate) {
+                          const diffTime = payDate - dueDate;
+                          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                          if (diffDays > newOverdueDays) {
+                            newOverdueDays = diffDays;
+                          }
+                        }
+                      }
+
+                      return { 
+                        ...p, 
+                        totalPaid: newTotalPaid,
+                        dueAmount: newDue,
+                        overdueDays: newOverdueDays,
+                        status: newDue <= 0 ? 'Received' : 'Partial'
+                      };
+                    }
+                    return p;
+                  }));
+                  
+                  alert(isEditing ? 'Payment successfully updated!' : 'Payment successfully recorded!');
+                  setActivePaymentId(null);
+                  setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '' });
+                  setShowPastPayments(false);
+                  setEditingRecordId(null);
+                }}>{editingRecordId ? 'Update' : 'Save'}</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* Add Schedule Modal */}
+      <AddScheduleModal 
+        isOpen={isAddScheduleOpen} 
+        onClose={() => setIsAddScheduleOpen(false)} 
+        mode={addModalMode}
+        onSave={({ formData, selectedOrder, mode }) => {
+          if (!selectedOrder) return;
+          const isRowMode = mode === 'row';
+          const terms = isRowMode ? 1 : (Number(formData.paymentTerms) || 1);
+          const contractValue = Number(selectedOrder.billingDetails?.contractValue) || 0;
+          const contractValueUsd = Number(selectedOrder.billingDetails?.amountInUSD) || 0;
+          
+          let duePerTerm = 0;
+          let duePerTermUsd = 0;
+
+          if (isRowMode) {
+            duePerTerm = Number(formData.amount) || 0;
+            const exchangeRate = contractValue > 0 ? (contractValueUsd / contractValue) : 1;
+            duePerTermUsd = duePerTerm * exchangeRate;
+          } else {
+            duePerTerm = contractValue / terms;
+            duePerTermUsd = contractValueUsd / terms;
+          }
+          const currency = selectedOrder.billingDetails?.clientCurrency || 'USD';
+          const billingCompany = selectedOrder.billingDetails?.billFrom || 'N/A';
+          const paymentDueDays = Number(selectedOrder.billingDetails?.paymentDueDays) || 30;
+
+          // Generate rows
+          const newRows = [];
+          for (let i = 0; i < terms; i++) {
+            // For invoice by date, assume starting next month 1st? The user said "1st of each month"
+            // We'll calculate it from planStart if available, or just from current date + i months
+            const baseDate = selectedOrder.planStart ? new Date(selectedOrder.planStart) : new Date();
+            baseDate.setMonth(baseDate.getMonth() + i);
+            baseDate.setDate(1);
+            
+            const invoiceByDateStr = baseDate.toISOString().split('T')[0];
+            
+            // Due by date = Invoice Date + paymentDueDays
+            const dueDate = new Date(baseDate);
+            dueDate.setDate(dueDate.getDate() + paymentDueDays);
+            const dueByDateStr = dueDate.toISOString().split('T')[0];
+
+            newRows.push({
+              id: Date.now() + i, // Unique ID
+              clientName: formData.corporate,
+              orderId: selectedOrder.id.toString(),
+              billingCompany: billingCompany,
+              amountDueUsd: duePerTermUsd,
+              amountDue: duePerTerm,
+              currency: currency,
+              invoiceByDate: invoiceByDateStr,
+              dueByDate: dueByDateStr,
+              invoiceDate: '-',
+              invoiceLink: '',
+              totalPaid: 0,
+              dueAmount: duePerTermUsd,
+              overdueDays: 0,
+              status: 'To be Raised'
+            });
+          }
+
+          setPayments(prev => [...prev, ...newRows]);
+        }} 
+      />
+
     </main>
   );
 }
