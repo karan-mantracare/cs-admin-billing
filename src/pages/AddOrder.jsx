@@ -4,6 +4,7 @@ import BillingDetailsModal from '../components/BillingDetailsModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
 import PaymentSummaryModal from '../components/PaymentSummaryModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
+import AddExpenseModal from '../components/AddExpenseModal';
 
 function AddOrder() {
   const navigate = useNavigate();
@@ -72,6 +73,7 @@ function AddOrder() {
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [isPaymentSummaryOpen, setIsPaymentSummaryOpen] = useState(false);
   const [isPaymentScheduleOpen, setIsPaymentScheduleOpen] = useState(false);
+  const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
   const [paymentDueBadge, setPaymentDueBadge] = useState(null);
 
   // Calculate Payment Due from stored payments filtered by this orderId
@@ -655,7 +657,15 @@ function AddOrder() {
       </div>
 
       {/* Action Footer */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', marginBottom: '2rem', gap: '1rem' }}>
+        <button 
+          onClick={() => setIsAddExpenseModalOpen(true)}
+          className="btn-outline" 
+          style={{ padding: '0.6rem 1.5rem', background: 'white', color: '#10b981', border: '1px solid #10b981', borderRadius: '6px', fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <i className='bx bx-plus'></i> Add Expenses
+        </button>
+
         <button 
           onClick={() => {
             const saved = localStorage.getItem('division_orders');
@@ -708,6 +718,12 @@ function AddOrder() {
         isOpen={isPaymentScheduleOpen}
         onClose={() => setIsPaymentScheduleOpen(false)}
         orderId={location.state?.orderId}
+      />
+      <AddExpenseModal
+        isOpen={isAddExpenseModalOpen}
+        onClose={() => setIsAddExpenseModalOpen(false)}
+        orderId={location.state?.orderId || 'new'}
+        clientName={formData.billingDetails?.billFrom || formData.appConfig?.domain || 'Current Order'}
       />
     </main>
   );
