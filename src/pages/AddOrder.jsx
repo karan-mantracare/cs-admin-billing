@@ -72,6 +72,27 @@ function AddOrder() {
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [isPaymentSummaryOpen, setIsPaymentSummaryOpen] = useState(false);
   const [isPaymentScheduleOpen, setIsPaymentScheduleOpen] = useState(false);
+  const [paymentDueBadge, setPaymentDueBadge] = useState(null);
+
+  // Calculate Payment Due from stored payments filtered by this orderId
+  useEffect(() => {
+    const orderId = location.state?.orderId;
+    if (!orderId) return;
+    try {
+      const contractVal = Number(formData.billingDetails?.amountInUSD || formData.amount) || 0;
+      const savedPayments = localStorage.getItem('client_payments');
+      if (savedPayments) {
+        const allPayments = JSON.parse(savedPayments);
+        const orderPayments = allPayments.filter(p => String(p.orderId) === String(orderId));
+        const totalPaid = orderPayments.reduce((acc, curr) => acc + (Number(curr.totalPaid) || 0), 0);
+        setPaymentDueBadge(Math.max(0, contractVal - totalPaid));
+      } else {
+        setPaymentDueBadge(contractVal);
+      }
+    } catch (e) {
+      console.error('Failed to calculate payment due', e);
+    }
+  }, [location.state?.orderId, formData.billingDetails, formData.amount]);
   
   const addDocument = (newDoc) => {
     setFormData(prev => ({
@@ -242,7 +263,9 @@ function AddOrder() {
               onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
             >
               <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Payment Due</span>
-              <span style={{ fontSize: '0.9rem', color: '#ef4444', fontWeight: '700' }}>$ 000000</span>
+              <span style={{ fontSize: '0.9rem', color: '#ef4444', fontWeight: '700' }}>
+                {paymentDueBadge !== null ? `$ ${paymentDueBadge.toFixed(2)}` : '$ —'}
+              </span>
             </div>
             
             <button 
@@ -676,11 +699,13 @@ function AddOrder() {
       <PaymentSummaryModal
         isOpen={isPaymentSummaryOpen}
         onClose={() => setIsPaymentSummaryOpen(false)}
-        contractValue={formData.billingDetails?.contractValue || formData.amount}
+        contractValue={formData.billingDetails?.amountInUSD || formData.amount}
+        orderId={location.state?.orderId}
       />
       <PaymentScheduleModal
         isOpen={isPaymentScheduleOpen}
         onClose={() => setIsPaymentScheduleOpen(false)}
+        orderId={location.state?.orderId}
       />
     </main>
   );

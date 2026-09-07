@@ -1,7 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
-function PaymentSummaryModal({ isOpen, onClose, contractValue }) {
+function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId }) {
+  const [totalReceived, setTotalReceived] = useState(0);
+  const [totalBillsRaised, setTotalBillsRaised] = useState(0);
+  const [billsCount, setBillsCount] = useState(0);
+
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        const savedPayments = localStorage.getItem('client_payments');
+        if (savedPayments) {
+          const payments = JSON.parse(savedPayments);
+          const orderPayments = payments.filter(p => 
+            String(p.orderId) === String(orderId)
+          );
+          const sum = orderPayments.reduce((acc, curr) => acc + (Number(curr.totalPaid) || 0), 0);
+          setTotalReceived(sum);
+
+          const raisedBills = orderPayments.filter(p => p.status !== 'To be Raised');
+          setBillsCount(raisedBills.length);
+          const billsSum = raisedBills.reduce((acc, curr) => acc + (Number(curr.amountDueUsd) || 0), 0);
+          setTotalBillsRaised(billsSum);
+        }
+      } catch (e) {
+        console.error("Failed to parse client payments", e);
+      }
+    }
+  }, [isOpen, orderId]);
+
   if (!isOpen) return null;
+  
+  const contractValNum = Number(contractValue) || 0;
+  const paymentDue = Math.max(0, contractValNum - totalReceived);
 
   return (
     <div style={{
@@ -23,15 +53,19 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem', borderBottom: '1px solid #e2e8f0' }}>
             <span style={{ color: '#64748b', fontWeight: '500' }}>Total Contract Value</span>
-            <span style={{ color: '#0f172a', fontWeight: '600' }}>${contractValue || '0.00'}</span>
+            <span style={{ color: '#0f172a', fontWeight: '600' }}>${contractValNum.toFixed(2)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem', borderBottom: '1px solid #e2e8f0' }}>
-            <span style={{ color: '#64748b', fontWeight: '500' }}>Total Bills Raised (0)</span>
-            <span style={{ color: '#0f172a', fontWeight: '600' }}>$0.00</span>
+            <span style={{ color: '#64748b', fontWeight: '500' }}>Total Bills Raised ({billsCount})</span>
+            <span style={{ color: '#0f172a', fontWeight: '600' }}>${totalBillsRaised.toFixed(2)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem', borderBottom: '1px solid #e2e8f0' }}>
             <span style={{ color: '#64748b', fontWeight: '500' }}>Total Payment Received</span>
-            <span style={{ color: '#16a34a', fontWeight: '600' }}>$0.00</span>
+            <span style={{ color: '#16a34a', fontWeight: '600' }}>${totalReceived.toFixed(2)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem', borderBottom: '1px solid #e2e8f0' }}>
+            <span style={{ color: '#64748b', fontWeight: '500' }}>Payment Due</span>
+            <span style={{ color: paymentDue > 0 ? '#ef4444' : '#16a34a', fontWeight: '600' }}>${paymentDue.toFixed(2)}</span>
           </div>
         </div>
 

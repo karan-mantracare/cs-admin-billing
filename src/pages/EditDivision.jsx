@@ -400,7 +400,7 @@ function EditDivision() {
                     <span style={{ padding: '0.25rem 0.75rem', background: order.status === 'Active' ? '#dcfce7' : '#fee2e2', color: order.status === 'Active' ? '#16a34a' : '#ef4444', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '600' }}>{order.status}</span>
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <button onClick={() => navigate('/corporate/division/order/add', { state: { edit: true, orderId: order.id } })} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.5rem' }}>
+                    <button onClick={() => navigate('/corporate/division/order/add', { state: { edit: true, orderId: order.id, clientName: formData.clientName } })} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.5rem' }}>
                       <i className='bx bx-pencil' style={{ fontSize: '1rem' }}></i>
                     </button>
                     <button onClick={() => deleteOrder(order.id)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -433,7 +433,7 @@ function EditDivision() {
               <button style={{ padding: '0.4rem 0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '4px', color: '#0f172a', cursor: 'pointer', fontSize: '0.85rem' }}><i className='bx bx-chevrons-right'></i></button>
             </div>
             
-            <button onClick={() => navigate('/corporate/division/order/add')} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #cbd5e1', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}>
+            <button onClick={() => navigate('/corporate/division/order/add', { state: { clientName: formData.clientName } })} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #cbd5e1', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}>
               <i className='bx bx-plus'></i> Add Order
             </button>
           </div>

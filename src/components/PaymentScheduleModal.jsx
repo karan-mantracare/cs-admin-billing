@@ -1,10 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
-function PaymentScheduleModal({ isOpen, onClose }) {
+function PaymentScheduleModal({ isOpen, onClose, orderId }) {
+  const [schedule, setSchedule] = useState([]);
+
+  useEffect(() => {
+    if (isOpen && orderId) {
+      try {
+        const savedRecords = localStorage.getItem('client_payment_records');
+        if (savedRecords) {
+          const records = JSON.parse(savedRecords);
+          // Filter by the specific Order ID
+          const filtered = records.filter(r => String(r.orderId) === String(orderId));
+          setSchedule(filtered);
+        }
+      } catch (e) {
+        console.error("Failed to load payment records", e);
+      }
+    }
+  }, [isOpen, orderId]);
+
   if (!isOpen) return null;
-
-  // Real schedule data would be fetched or passed in via props
-  const schedule = [];
 
   return (
     <div style={{
@@ -33,9 +48,9 @@ function PaymentScheduleModal({ isOpen, onClose }) {
             </thead>
             <tbody>
               {schedule.length > 0 ? schedule.map((item, index) => (
-                <tr key={item.id} style={{ background: 'white', borderBottom: index < schedule.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
-                  <td style={{ padding: '0.75rem 1rem', color: '#0f172a', fontWeight: '500' }}>${item.amount}</td>
-                  <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>{item.date}</td>
+                <tr key={item.id || index} style={{ background: 'white', borderBottom: index < schedule.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                  <td style={{ padding: '0.75rem 1rem', color: '#0f172a', fontWeight: '500' }}>${item.amountInUSD || item.amount}</td>
+                  <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>{item.paymentDate}</td>
                 </tr>
               )) : (
                 <tr>
