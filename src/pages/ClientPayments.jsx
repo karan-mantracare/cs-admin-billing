@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AddScheduleModal from '../components/AddScheduleModal';
+import BillingMessageModal from '../components/BillingMessageModal';
 
 // Custom Multi-Select Dropdown Component
 function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
@@ -113,6 +114,7 @@ function ClientPayments() {
   // Popup State
   const [activeUploadId, setActiveUploadId] = useState(null);
   const [activePaymentId, setActivePaymentId] = useState(null);
+  const [activeBillingMessage, setActiveBillingMessage] = useState(null);
   
   const [invoiceForm, setInvoiceForm] = useState({
     invoiceNumber: '',
@@ -304,6 +306,13 @@ function ClientPayments() {
                   <button className="action-btn text-blue" title="+ Invoice" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0.25rem 0.5rem', background: '#fff', cursor: 'pointer' }} onClick={() => setActiveUploadId(p.id)}>
                     <i className='bx bx-file-blank'></i>
                   </button>
+                  <button
+                    title="Share Billing Message"
+                    style={{ border: '1px solid #c4b5fd', borderRadius: '4px', padding: '0.25rem 0.5rem', background: '#faf5ff', color: '#7c3aed', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+                    onClick={() => setActiveBillingMessage(p)}
+                  >
+                    <i className='bx bx-share-alt'></i>
+                  </button>
                 </td>
               </tr>
             ))}
@@ -426,6 +435,12 @@ function ClientPayments() {
           console.log("Adding schedule for:", data);
           alert(`Schedule added for ${data.clientName}, Order: ${data.orderName}`);
         }}
+      />
+
+      <BillingMessageModal
+        isOpen={!!activeBillingMessage}
+        onClose={() => setActiveBillingMessage(null)}
+        payment={activeBillingMessage}
       />
 
       {/* Filter Modal */}
