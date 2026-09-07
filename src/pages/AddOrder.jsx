@@ -723,7 +723,7 @@ function AddOrder() {
         isOpen={isAddExpenseModalOpen}
         onClose={() => setIsAddExpenseModalOpen(false)}
         orderId={location.state?.orderId || 'new'}
-        clientName={formData.billingDetails?.billFrom || formData.appConfig?.domain || 'Current Order'}
+        clientName={location.state?.clientName || formData.billingDetails?.billFrom || formData.appConfig?.domain || 'Current Order'}
       />
     </main>
   );

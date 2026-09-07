@@ -120,7 +120,7 @@ function ExpenseApproval() {
               <th>ADDED BY</th>
               <th>EXPENSE TYPE</th>
               <th>DETAILS</th>
-              <th>DELIVERED BY</th>
+              <th>DELIVERY DATE</th>
               <th>AMOUNT</th>
               <th>STATUS</th>
               <th>ACTIONS</th>

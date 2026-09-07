@@ -43,10 +43,10 @@ function AddExpenseModal({ isOpen, onClose, orderId, clientName }) {
     addExpense({
       orderId,
       clientName: clientName || 'Unknown Client',
-      date: formData.deliveryDay, // mapped to 'date' for ExpenseApproval table
+      date: new Date().toISOString().split('T')[0], // Submitted date
       expenseType: expenseCategory,
       details: formData.description, // mapped to 'details' for ExpenseApproval table
-      deliveredBy: 'N/A', // fallback since it's not requested in the form
+      deliveredBy: formData.deliveryDay, // mapped to 'deliveredBy' which is now Delivery Date in the table
       amount: Number(formData.amount),
       addedBy: 'Admin'
     });
