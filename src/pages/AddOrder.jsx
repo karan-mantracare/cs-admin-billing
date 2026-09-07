@@ -5,6 +5,7 @@ import DocumentUploadModal from '../components/DocumentUploadModal';
 import PaymentSummaryModal from '../components/PaymentSummaryModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
 import AddExpenseModal from '../components/AddExpenseModal';
+import ViewExpensesModal from '../components/ViewExpensesModal';
 
 function AddOrder() {
   const navigate = useNavigate();
@@ -74,6 +75,8 @@ function AddOrder() {
   const [isPaymentSummaryOpen, setIsPaymentSummaryOpen] = useState(false);
   const [isPaymentScheduleOpen, setIsPaymentScheduleOpen] = useState(false);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
+  const [isViewExpensesModalOpen, setIsViewExpensesModalOpen] = useState(false);
+  const [editExpenseData, setEditExpenseData] = useState(null);
   const [paymentDueBadge, setPaymentDueBadge] = useState(null);
 
   // Calculate Payment Due from stored payments filtered by this orderId
@@ -659,7 +662,18 @@ function AddOrder() {
       {/* Action Footer */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', marginBottom: '2rem', gap: '1rem' }}>
         <button 
-          onClick={() => setIsAddExpenseModalOpen(true)}
+          onClick={() => setIsViewExpensesModalOpen(true)}
+          className="btn-outline" 
+          style={{ padding: '0.6rem 1.5rem', background: 'white', color: '#3b82f6', border: '1px solid #3b82f6', borderRadius: '6px', fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <i className='bx bx-list-ul'></i> View Expenses
+        </button>
+        
+        <button 
+          onClick={() => {
+            setEditExpenseData(null);
+            setIsAddExpenseModalOpen(true);
+          }}
           className="btn-outline" 
           style={{ padding: '0.6rem 1.5rem', background: 'white', color: '#10b981', border: '1px solid #10b981', borderRadius: '6px', fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
@@ -724,6 +738,17 @@ function AddOrder() {
         onClose={() => setIsAddExpenseModalOpen(false)}
         orderId={location.state?.orderId || 'new'}
         clientName={location.state?.clientName || formData.billingDetails?.billFrom || formData.appConfig?.domain || 'Current Order'}
+        editExpenseData={editExpenseData}
+      />
+      <ViewExpensesModal
+        isOpen={isViewExpensesModalOpen}
+        onClose={() => setIsViewExpensesModalOpen(false)}
+        orderId={location.state?.orderId || 'new'}
+        onEditExpense={(expense) => {
+          setIsViewExpensesModalOpen(false);
+          setEditExpenseData(expense);
+          setIsAddExpenseModalOpen(true);
+        }}
       />
     </main>
   );

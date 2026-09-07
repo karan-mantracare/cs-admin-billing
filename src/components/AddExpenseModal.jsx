@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGlobal } from '../context/GlobalContext';
 
-function AddExpenseModal({ isOpen, onClose, orderId, clientName }) {
-  const { addExpense, showToast } = useGlobal();
+function AddExpenseModal({ isOpen, onClose, orderId, clientName, editExpenseData }) {
+  const { addExpense, updateExpense, showToast } = useGlobal();
 
   const [formData, setFormData] = useState({
     deliveryDay: '',
@@ -13,6 +13,29 @@ function AddExpenseModal({ isOpen, onClose, orderId, clientName }) {
   });
   
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (isOpen && editExpenseData) {
+      const predefinedCategories = ['Standee', 'Flyers', 'Flight', 'Books', 'Launch Expenses'];
+      const isOther = !predefinedCategories.includes(editExpenseData.expenseType);
+      
+      setFormData({
+        deliveryDay: editExpenseData.deliveredBy || '',
+        category: isOther ? 'Other (please Specify)' : editExpenseData.expenseType,
+        otherCategory: isOther ? editExpenseData.expenseType : '',
+        description: editExpenseData.details || '',
+        amount: editExpenseData.amount || ''
+      });
+    } else if (isOpen && !editExpenseData) {
+      setFormData({
+        deliveryDay: '',
+        category: '',
+        otherCategory: '',
+        description: '',
+        amount: ''
+      });
+    }
+  }, [isOpen, editExpenseData]);
 
   if (!isOpen) return null;
 
@@ -39,22 +62,32 @@ function AddExpenseModal({ isOpen, onClose, orderId, clientName }) {
     }
 
     const expenseCategory = formData.category === 'Other (please Specify)' ? formData.otherCategory : formData.category;
-
-    addExpense({
+    
+    const newExpenseData = {
       orderId,
       clientName: clientName || 'Unknown Client',
-      date: new Date().toISOString().split('T')[0], // Submitted date
+      date: new Date().toISOString().split('T')[0], // Submitted/Resubmitted date
       expenseType: expenseCategory,
       details: formData.description, // mapped to 'details' for ExpenseApproval table
       deliveredBy: formData.deliveryDay, // mapped to 'deliveredBy' which is now Delivery Date in the table
       amount: Number(formData.amount),
       addedBy: 'Admin'
-    });
+    };
 
-    if (showToast) {
-      showToast('Expense sent for Approval');
+    if (editExpenseData) {
+      updateExpense(editExpenseData.id, newExpenseData);
+      if (showToast) {
+        showToast('Expense updated and resubmitted for Approval');
+      } else {
+        alert('Expense updated and resubmitted for Approval');
+      }
     } else {
-      alert('Expense sent for Approval');
+      addExpense(newExpenseData);
+      if (showToast) {
+        showToast('Expense sent for Approval');
+      } else {
+        alert('Expense sent for Approval');
+      }
     }
 
     setFormData({
@@ -100,7 +133,7 @@ function AddExpenseModal({ isOpen, onClose, orderId, clientName }) {
         <div style={{ background: 'linear-gradient(135deg, #10b981, #059669)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.05rem', color: 'white', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <i className='bx bx-receipt'></i> Add Expenses
+              <i className='bx bx-receipt'></i> {editExpenseData ? 'Edit Expense' : 'Add Expenses'}
             </h2>
           </div>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '30px', height: '30px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
@@ -193,7 +226,7 @@ function AddExpenseModal({ isOpen, onClose, orderId, clientName }) {
             onClick={handleSave}
             style={{ padding: '0.5rem 1.5rem', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '6px', cursor: 'pointer', color: 'white', fontWeight: '600', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
-            <i className='bx bx-check'></i> Add Expense
+            <i className='bx bx-check'></i> {editExpenseData ? 'Resubmit Expense' : 'Add Expense'}
           </button>
         </div>
       </div>
