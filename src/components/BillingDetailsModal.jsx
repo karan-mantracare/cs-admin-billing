@@ -127,28 +127,34 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
       display: 'flex', justifyContent: 'center', alignItems: 'center'
     }}>
       <div style={{
-        background: 'white', borderRadius: '8px', width: '90%', maxWidth: '500px',
-        padding: '1.25rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+        background: 'white', borderRadius: '12px', width: '90%', maxWidth: '500px',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Billing Details</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
-            &times;
-          </button>
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg, #0369a1, #0ea5e9)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.05rem', color: 'white', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <i className='bx bx-spreadsheet'></i> Billing Details
+            </h2>
+            <p style={{ margin: '0.15rem 0 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.75rem' }}>Configure contract and payment method</p>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '30px', height: '30px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
+        <div style={{ padding: '1.25rem' }}>
+
+        <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid #e2e8f0', marginBottom: '1.25rem' }}>
           <button 
-            style={{ background: 'none', border: 'none', padding: '0.5rem 0', fontWeight: '600', color: activeTab === 'billing' ? '#0ea5e9' : '#64748b', borderBottom: activeTab === 'billing' ? '2px solid #0ea5e9' : '2px solid transparent', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', padding: '0.5rem 0.75rem', fontWeight: '600', fontSize: '0.85rem', color: activeTab === 'billing' ? '#0ea5e9' : '#64748b', borderBottom: activeTab === 'billing' ? '2px solid #0ea5e9' : '2px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             onClick={() => setActiveTab('billing')}
           >
-            Billing Details
+            <i className='bx bx-file-blank'></i> Billing Details
           </button>
           <button 
-            style={{ background: 'none', border: 'none', padding: '0.5rem 0', fontWeight: '600', color: activeTab === 'paymentMethod' ? '#0ea5e9' : '#64748b', borderBottom: activeTab === 'paymentMethod' ? '2px solid #0ea5e9' : '2px solid transparent', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', padding: '0.5rem 0.75rem', fontWeight: '600', fontSize: '0.85rem', color: activeTab === 'paymentMethod' ? '#0ea5e9' : '#64748b', borderBottom: activeTab === 'paymentMethod' ? '2px solid #0ea5e9' : '2px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             onClick={() => setActiveTab('paymentMethod')}
           >
-            Payment Method
+            <i className='bx bx-bank'></i> Payment Method
           </button>
         </div>
 
@@ -248,11 +254,14 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
             </div>
           </div>
 
-          <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-            <label style={{...labelStyle, marginBottom: 0}}>Amount in USD</label>
-            <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#0ea5e9' }}>
-              ${amountInUSD}
+          <div style={{ padding: '0.85rem 1rem', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <label style={{...labelStyle, marginBottom: 0, color: '#0369a1'}}>Amount in USD</label>
+              <div style={{ fontSize: '1.3rem', fontWeight: '700', color: '#0284c7', marginTop: '0.1rem' }}>
+                ${amountInUSD}
+              </div>
             </div>
+            <i className='bx bx-dollar-circle' style={{ fontSize: '2rem', color: '#bae6fd' }}></i>
           </div>
         </div>
         )}
@@ -276,19 +285,20 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9', marginTop: '0.5rem' }}>
           <button 
             onClick={onClose}
-            style={{ padding: '0.5rem 1rem', background: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', color: '#475569' }}
+            style={{ padding: '0.5rem 1rem', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer', color: '#475569', fontWeight: '500', fontSize: '0.85rem' }}
           >
             Cancel
           </button>
           <button 
             onClick={handleSave}
-            style={{ padding: '0.5rem 1rem', background: '#0ea5e9', border: 'none', borderRadius: '6px', cursor: 'pointer', color: 'white', fontWeight: '500' }}
+            style={{ padding: '0.5rem 1.25rem', background: 'linear-gradient(135deg, #0369a1, #0ea5e9)', border: 'none', borderRadius: '6px', cursor: 'pointer', color: 'white', fontWeight: '600', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
-            Save
+            <i className='bx bx-save'></i> Save Details
           </button>
+        </div>
         </div>
       </div>
     </div>

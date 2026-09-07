@@ -258,12 +258,14 @@ function AddOrder() {
                 e.stopPropagation();
                 setIsPaymentSummaryOpen(true);
               }}
-              style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.25rem 0.75rem', background: '#f8fafc', cursor: 'pointer', transition: 'background 0.2s' }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+              style={{ display: 'flex', flexDirection: 'column', border: '1px solid #fecaca', borderRadius: '8px', padding: '0.35rem 0.85rem', background: '#fff5f5', cursor: 'pointer', transition: 'background 0.2s', minWidth: '110px' }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#fff5f5'}
             >
-              <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Payment Due</span>
-              <span style={{ fontSize: '0.9rem', color: '#ef4444', fontWeight: '700' }}>
+              <span style={{ fontSize: '0.6rem', color: '#ef4444', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                <i className='bx bx-error-circle' style={{ fontSize: '0.75rem' }}></i>Payment Due
+              </span>
+              <span style={{ fontSize: '0.95rem', color: '#ef4444', fontWeight: '800', marginTop: '0.1rem' }}>
                 {paymentDueBadge !== null ? `$ ${paymentDueBadge.toFixed(2)}` : '$ —'}
               </span>
             </div>
