@@ -287,6 +287,42 @@ function ExpenseApproval() {
                   </div>
                 )}
               </div>
+
+              {/* Activity Logs Section */}
+              <h3 className="modal-section-title" style={{ marginTop: '2rem' }}>Activity Logs</h3>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                  <thead style={{ background: '#f8fafc' }}>
+                    <tr>
+                      <th style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>DATE</th>
+                      <th style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>DESCRIPTION</th>
+                      <th style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>USER</th>
+                      <th style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(viewingDetails.logs || []).length > 0 ? (
+                      viewingDetails.logs.map((log, index) => (
+                        <tr key={index} style={{ borderBottom: index === viewingDetails.logs.length - 1 ? 'none' : '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '0.5rem 1rem' }}>{log.date}</td>
+                          <td style={{ padding: '0.5rem 1rem', maxWidth: '300px', wordWrap: 'break-word' }}>{log.description}</td>
+                          <td style={{ padding: '0.5rem 1rem' }}>{log.user}</td>
+                          <td style={{ padding: '0.5rem 1rem' }}>
+                            <span className={`badge badge-${log.status === 'Approved' ? 'success' : log.status === 'Rejected' ? 'danger' : log.status === 'Submitted' || log.status === 'Re-Submitted' ? 'primary' : 'warning'}`}>
+                              {log.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="4" style={{ padding: '1rem', textAlign: 'center', color: '#64748b' }}>No logs available</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
               {viewingDetails.status === 'Pending' && (

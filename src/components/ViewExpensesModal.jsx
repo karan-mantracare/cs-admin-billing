@@ -92,9 +92,43 @@ function ViewExpensesModal({ isOpen, onClose, orderId, onEditExpense }) {
                         </td>
                       </tr>
                       {exp.status === 'Rejected' && exp.rejectReason && (
-                        <tr style={{ background: '#fff5f5', borderBottom: index === orderExpenses.length - 1 ? 'none' : '1px solid #e2e8f0' }}>
+                        <tr style={{ background: '#fff5f5', borderBottom: (!exp.logs || exp.logs.length === 0) && index === orderExpenses.length - 1 ? 'none' : '1px solid #e2e8f0' }}>
                           <td colSpan="5" style={{ padding: '0.5rem 1rem 0.75rem 1rem', fontSize: '0.85rem', color: '#991b1b' }}>
                             <strong>Rejection Reason:</strong> {exp.rejectReason}
+                          </td>
+                        </tr>
+                      )}
+                      
+                      {exp.logs && exp.logs.length > 0 && (
+                        <tr style={{ background: '#f8fafc', borderBottom: index === orderExpenses.length - 1 ? 'none' : '1px solid #e2e8f0' }}>
+                          <td colSpan="5" style={{ padding: '0.75rem 1rem' }}>
+                            <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: '600', marginBottom: '0.5rem' }}>Activity Logs</div>
+                            <div style={{ border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', background: 'white' }}>
+                                <thead>
+                                  <tr style={{ background: '#f1f5f9' }}>
+                                    <th style={{ padding: '0.4rem 0.75rem', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: '600', color: '#64748b' }}>Date</th>
+                                    <th style={{ padding: '0.4rem 0.75rem', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: '600', color: '#64748b' }}>Description</th>
+                                    <th style={{ padding: '0.4rem 0.75rem', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: '600', color: '#64748b' }}>User</th>
+                                    <th style={{ padding: '0.4rem 0.75rem', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontWeight: '600', color: '#64748b' }}>Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {exp.logs.map((log, i) => (
+                                    <tr key={i} style={{ borderBottom: i === exp.logs.length - 1 ? 'none' : '1px solid #e2e8f0' }}>
+                                      <td style={{ padding: '0.4rem 0.75rem' }}>{log.date}</td>
+                                      <td style={{ padding: '0.4rem 0.75rem', maxWidth: '200px', wordWrap: 'break-word' }}>{log.description}</td>
+                                      <td style={{ padding: '0.4rem 0.75rem' }}>{log.user}</td>
+                                      <td style={{ padding: '0.4rem 0.75rem' }}>
+                                        <span style={{ fontWeight: '500', color: log.status === 'Approved' ? '#166534' : log.status === 'Rejected' ? '#991b1b' : '#0f172a' }}>
+                                          {log.status}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           </td>
                         </tr>
                       )}

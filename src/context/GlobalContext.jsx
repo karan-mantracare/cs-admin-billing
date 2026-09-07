@@ -92,17 +92,41 @@ export function GlobalProvider({ children }) {
   };
 
   const updateExpenseStatus = (id, status, rejectReason = '') => {
-    setExpenses(prev => prev.map(exp => 
-      exp.id === id ? { ...exp, status, rejectReason } : exp
-    ));
+    const today = new Date().toISOString().split('T')[0];
+    setExpenses(prev => prev.map(exp => {
+      if (exp.id === id) {
+        const newLog = {
+          date: today,
+          description: status === 'Rejected' ? rejectReason : 'Expense Approved',
+          user: 'Admin',
+          status: status
+        };
+        return { 
+          ...exp, 
+          status, 
+          rejectReason,
+          logs: [...(exp.logs || []), newLog] 
+        };
+      }
+      return exp;
+    }));
   };
 
   const addExpense = (expenseData) => {
+    const today = new Date().toISOString().split('T')[0];
+    const newLog = {
+      date: today,
+      description: `${expenseData.expenseType} - ${expenseData.details}`,
+      user: expenseData.addedBy || 'Unknown',
+      status: 'Submitted'
+    };
+
     setExpenses(prev => [{
       ...expenseData,
       id: Date.now(),
       status: 'Pending',
-      rejectReason: ''
+      rejectReason: '',
+      logs: [newLog]
     }, ...prev]);
   };
 
@@ -117,9 +141,25 @@ export function GlobalProvider({ children }) {
   };
 
   const updateExpense = (id, updatedData) => {
-    setExpenses(prev => prev.map(exp => 
-      exp.id === id ? { ...exp, ...updatedData, status: 'Pending', rejectReason: '' } : exp
-    ));
+    const today = new Date().toISOString().split('T')[0];
+    setExpenses(prev => prev.map(exp => {
+      if (exp.id === id) {
+        const newLog = {
+          date: today,
+          description: `${updatedData.expenseType} - ${updatedData.details}`,
+          user: updatedData.addedBy || exp.addedBy || 'Unknown',
+          status: 'Re-Submitted'
+        };
+        return { 
+          ...exp, 
+          ...updatedData, 
+          status: 'Pending', 
+          rejectReason: '',
+          logs: [...(exp.logs || []), newLog]
+        };
+      }
+      return exp;
+    }));
   };
 
   const addEvent = (eventData) => {
