@@ -121,6 +121,7 @@ function ClientPayments() {
     invoiceDate: '',
     invoiceFile: null
   });
+  const [invoiceErrors, setInvoiceErrors] = useState({});
 
   // Add Payment Form State
   const [paymentForm, setPaymentForm] = useState({
@@ -185,57 +186,61 @@ function ClientPayments() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '2rem', background: '#fff', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Billed</span>
-            <strong style={{ fontSize: '1.1rem', color: 'var(--blue)' }}>${totalBilled.toLocaleString()}</strong>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Received</span>
-            <strong style={{ fontSize: '1.1rem', color: 'var(--green)' }}>${totalReceived.toLocaleString()}</strong>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Overdue</span>
-            <strong style={{ fontSize: '1.1rem', color: 'var(--red)' }}>${totalOverdue.toLocaleString()}</strong>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>To be Billed</span>
-            <strong style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>${toBeBilled.toLocaleString()}</strong>
-          </div>
+        <div style={{ display: 'flex', gap: '0', background: '#fff', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+          {[
+            { label: 'Total Billed', value: totalBilled, color: 'var(--blue)', icon: 'bx-receipt' },
+            { label: 'Total Received', value: totalReceived, color: 'var(--green)', icon: 'bx-check-circle' },
+            { label: 'Total Overdue', value: totalOverdue, color: 'var(--red)', icon: 'bx-error-circle' },
+            { label: 'To Be Billed', value: toBeBilled, color: '#f59e0b', icon: 'bx-time' },
+          ].map((stat, i, arr) => (
+            <div key={stat.label} style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1.25rem', borderRight: i < arr.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>
+                <i className={`bx ${stat.icon}`} style={{ fontSize: '0.9rem', color: stat.color }}></i>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{stat.label}</span>
+              </div>
+              <strong style={{ fontSize: '1.05rem', color: stat.color }}>${stat.value.toLocaleString()}</strong>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #cbd5e1', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #cbd5e1', marginBottom: '1.5rem', gap: '0.25rem' }}>
         <button 
           style={{ 
-            padding: '0.75rem 1.5rem', 
+            padding: '0.65rem 1.25rem', 
             background: 'none', 
             border: 'none', 
             borderBottom: activeTab === 'billing' ? '2px solid #0ea5e9' : '2px solid transparent',
             color: activeTab === 'billing' ? '#0ea5e9' : '#64748b',
             fontWeight: activeTab === 'billing' ? '600' : '500',
-            fontSize: '1rem',
-            cursor: 'pointer'
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '0.5rem'
           }}
           onClick={() => setActiveTab('billing')}
         >
+          <i className='bx bx-table'></i>
           Billing and Payment
+          <span style={{ background: activeTab === 'billing' ? '#0ea5e9' : '#e2e8f0', color: activeTab === 'billing' ? 'white' : '#64748b', borderRadius: '10px', padding: '0.1rem 0.5rem', fontSize: '0.72rem', fontWeight: '700' }}>{payments.length}</span>
         </button>
         <button 
           style={{ 
-            padding: '0.75rem 1.5rem', 
+            padding: '0.65rem 1.25rem', 
             background: 'none', 
             border: 'none', 
             borderBottom: activeTab === 'records' ? '2px solid #0ea5e9' : '2px solid transparent',
             color: activeTab === 'records' ? '#0ea5e9' : '#64748b',
             fontWeight: activeTab === 'records' ? '600' : '500',
-            fontSize: '1rem',
-            cursor: 'pointer'
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '0.5rem'
           }}
           onClick={() => setActiveTab('records')}
         >
+          <i className='bx bx-money-withdraw'></i>
           Payment Records
+          <span style={{ background: activeTab === 'records' ? '#0ea5e9' : '#e2e8f0', color: activeTab === 'records' ? 'white' : '#64748b', borderRadius: '10px', padding: '0.1rem 0.5rem', fontSize: '0.72rem', fontWeight: '700' }}>{paymentRecords.length}</span>
         </button>
       </div>
 
@@ -288,27 +293,35 @@ function ClientPayments() {
                   </span>
                 </td>
                 <td>
-                  {p.overdueDays > 0 ? (
-                    <span style={{ background: '#fee2e2', color: '#ef4444', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600' }}>
-                      {p.overdueDays} Days
-                    </span>
-                  ) : (
-                    <span className="text-muted">-</span>
-                  )}
+                  {(() => {
+                    const s = p.status;
+                    const cfg = {
+                      'To be Raised': { bg: '#fef9c3', color: '#a16207', icon: 'bx-time' },
+                      'Pending':      { bg: '#e0f2fe', color: '#0369a1', icon: 'bx-loader-circle' },
+                      'Partial':      { bg: '#fff7ed', color: '#c2410c', icon: 'bx-minus-circle' },
+                      'Received':     { bg: '#dcfce7', color: '#15803d', icon: 'bx-check-circle' },
+                      'Overdue':      { bg: '#fee2e2', color: '#b91c1c', icon: 'bx-error' },
+                    }[s] || { bg: '#f1f5f9', color: '#475569', icon: 'bx-circle' };
+                    return (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: cfg.bg, color: cfg.color, padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                        <i className={`bx ${cfg.icon}`}></i>{s}
+                      </span>
+                    );
+                  })()}
                 </td>
-                <td className="actions" style={{ gap: '0.25rem' }}>
-                  <button className="action-btn edit" title="Edit">
+                <td className="actions" style={{ gap: '0.35rem' }}>
+                  <button className="action-btn edit" title="Edit" style={{ border: '1px solid #e2e8f0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#fff', cursor: 'pointer', color: '#64748b' }}>
                     <i className='bx bx-pencil'></i>
                   </button>
-                  <button className="action-btn text-green" title="+ Payment" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0.25rem 0.5rem', background: '#fff', cursor: 'pointer' }} onClick={() => setActivePaymentId(p.id)}>
+                  <button title="Add Payment" style={{ border: '1px solid #bbf7d0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#f0fdf4', cursor: 'pointer', color: '#16a34a', display: 'inline-flex', alignItems: 'center' }} onClick={() => setActivePaymentId(p.id)}>
                     <i className='bx bx-money'></i>
                   </button>
-                  <button className="action-btn text-blue" title="+ Invoice" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0.25rem 0.5rem', background: '#fff', cursor: 'pointer' }} onClick={() => setActiveUploadId(p.id)}>
+                  <button title="Upload Invoice" style={{ border: '1px solid #bfdbfe', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#eff6ff', cursor: 'pointer', color: '#2563eb', display: 'inline-flex', alignItems: 'center' }} onClick={() => setActiveUploadId(p.id)}>
                     <i className='bx bx-file-blank'></i>
                   </button>
                   <button
                     title="Share Billing Message"
-                    style={{ border: '1px solid #c4b5fd', borderRadius: '4px', padding: '0.25rem 0.5rem', background: '#faf5ff', color: '#7c3aed', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+                    style={{ border: '1px solid #e9d5ff', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#faf5ff', color: '#7c3aed', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
                     onClick={() => setActiveBillingMessage(p)}
                   >
                     <i className='bx bx-share-alt'></i>
@@ -490,35 +503,34 @@ function ClientPayments() {
           display: 'flex', justifyContent: 'center', alignItems: 'center'
         }} onClick={() => setActiveUploadId(null)}>
           <div style={{
-            background: 'white', borderRadius: '8px', width: '90%', maxWidth: '400px',
-            padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            background: 'white', borderRadius: '10px', width: '90%', maxWidth: '400px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.15)', overflow: 'hidden'
           }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Upload Invoice</h2>
-              <button onClick={() => { setActiveUploadId(null); setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null }); }} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
-                &times;
-              </button>
+            <div style={{ background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '1rem', color: 'white', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><i className='bx bx-file-blank'></i> Upload Invoice</h2>
+              <button onClick={() => { setActiveUploadId(null); setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null }); setInvoiceErrors({}); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '0.5rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Invoice Number</label>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Invoice Number <span style={{color:'#ef4444'}}>*</span></label>
                 <input 
                   type="text" 
                   placeholder="e.g. INV-2024-001" 
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: `1px solid ${invoiceErrors.invoiceNumber ? '#ef4444' : '#cbd5e1'}`, fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
                   value={invoiceForm.invoiceNumber}
-                  onChange={(e) => setInvoiceForm(prev => ({ ...prev, invoiceNumber: e.target.value }))}
+                  onChange={(e) => { setInvoiceForm(prev => ({ ...prev, invoiceNumber: e.target.value })); setInvoiceErrors(prev => ({...prev, invoiceNumber: null})); }}
                 />
+                {invoiceErrors.invoiceNumber && <p style={{margin:'0.25rem 0 0',fontSize:'0.75rem',color:'#ef4444'}}>{invoiceErrors.invoiceNumber}</p>}
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Invoice Date</label>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Invoice Date <span style={{color:'#ef4444'}}>*</span></label>
                 <input 
                   type="date" 
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: `1px solid ${invoiceErrors.invoiceDate ? '#ef4444' : '#cbd5e1'}`, fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
                   value={invoiceForm.invoiceDate}
-                  onChange={(e) => setInvoiceForm(prev => ({ ...prev, invoiceDate: e.target.value }))}
+                  onChange={(e) => { setInvoiceForm(prev => ({ ...prev, invoiceDate: e.target.value })); setInvoiceErrors(prev => ({...prev, invoiceDate: null})); }}
                 />
+                {invoiceErrors.invoiceDate && <p style={{margin:'0.25rem 0 0',fontSize:'0.75rem',color:'#ef4444'}}>{invoiceErrors.invoiceDate}</p>}
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Invoice Document (PDF)</label>
@@ -531,13 +543,13 @@ function ClientPayments() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => { setActiveUploadId(null); setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null }); }}>Cancel</button>
-              <button style={{ padding: '0.5rem 1rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => {
-                if (!invoiceForm.invoiceNumber || !invoiceForm.invoiceDate) {
-                  alert("Please provide an invoice number and date.");
-                  return;
-                }
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '0 1.25rem 1.25rem' }}>
+              <button style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => { setActiveUploadId(null); setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null }); setInvoiceErrors({}); }}>Cancel</button>
+              <button style={{ padding: '0.5rem 1.25rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => {
+                const errs = {};
+                if (!invoiceForm.invoiceNumber) errs.invoiceNumber = 'Invoice number is required';
+                if (!invoiceForm.invoiceDate) errs.invoiceDate = 'Invoice date is required';
+                if (Object.keys(errs).length) { setInvoiceErrors(errs); return; }
                 setPayments(prev => prev.map(p => {
                   if (p.id === activeUploadId) {
                     return { ...p, invoiceDate: invoiceForm.invoiceDate, invoiceLink: invoiceForm.invoiceNumber, status: p.status === 'To be Raised' ? 'Pending' : p.status };
@@ -546,7 +558,8 @@ function ClientPayments() {
                 }));
                 setActiveUploadId(null);
                 setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null });
-              }}>Upload</button>
+                setInvoiceErrors({});
+              }}><i className='bx bx-upload'></i> Upload</button>
             </div>
           </div>
         </div>
@@ -562,16 +575,15 @@ function ClientPayments() {
             backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
             display: 'flex', justifyContent: 'center', alignItems: 'center'
           }} onClick={() => setActivePaymentId(null)}>
-            <div style={{
-              background: 'white', borderRadius: '8px', width: '90%', maxWidth: '400px',
-              padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          <div style={{
+              background: 'white', borderRadius: '10px', width: '90%', maxWidth: '420px',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.15)', overflow: 'hidden'
             }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>{editingRecordId ? 'Edit Payment' : 'Add Payment'}</h2>
-              <button onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' }); setEditingRecordId(null); }} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
-                &times;
-              </button>
-            </div>
+              <div style={{ background: 'linear-gradient(135deg, #059669, #10b981)', padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ margin: 0, fontSize: '1rem', color: 'white', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><i className='bx bx-money'></i> {editingRecordId ? 'Edit Payment' : 'Add Payment'}</h2>
+                <button onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' }); setEditingRecordId(null); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              </div>
+              <div style={{ padding: '1.25rem' }}>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div>
@@ -788,12 +800,14 @@ function ClientPayments() {
                     return p;
                   }));
                   
-                  alert(isEditing ? 'Payment successfully updated!' : 'Payment successfully recorded!');
-                  setActivePaymentId(null);
-                  setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' });
-                  setShowPastPayments(false);
-                  setEditingRecordId(null);
-                }}>{editingRecordId ? 'Update' : 'Save'}</button>
+                    setActivePaymentId(null);
+                    setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' });
+                    setShowPastPayments(false);
+                    setEditingRecordId(null);
+                  }}
+                  style={{ padding: '0.5rem 1.25rem', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                ><i className={`bx ${editingRecordId ? 'bx-save' : 'bx-check'}`}></i>{editingRecordId ? 'Update' : 'Save'}</button>
+              </div>
               </div>
             </div>
           </div>
