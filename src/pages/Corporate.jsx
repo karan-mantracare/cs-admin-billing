@@ -10,7 +10,7 @@ function Corporate() {
   const [statusSearch, setStatusSearch] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [isAdding, setIsAdding] = useState(false);
-  const { clients, addClient } = useGlobal();
+  const { clients, addClient, resetClients } = useGlobal();
   const [formData, setFormData] = useState({
     name: '',
     domain: '',
@@ -57,8 +57,16 @@ function Corporate() {
 
   return (
     <main className="main-content">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '1rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', width: '100%' }}>
         <h1 style={{ color: 'var(--primary)', margin: 0, fontSize: '1.75rem' }}>{isAdding ? 'Add Corporate' : 'Clients'}</h1>
+        <button className="btn-outline" style={{ borderColor: 'var(--red)', color: 'var(--red)', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => {
+          if (window.confirm('Are you sure you want to delete all clients and divisions on this page?')) {
+            resetClients();
+            window.location.reload();
+          }
+        }}>
+          <i className='bx bx-reset'></i> Reset Clients
+        </button>
       </div>
 
       {isAdding ? (

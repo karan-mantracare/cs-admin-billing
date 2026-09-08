@@ -6,7 +6,6 @@ import EditWebinar from './pages/EditWebinar';
 // import Clients from './pages/Clients';
 // import Clients1 from './pages/Clients1';
 import ClientPayments from './pages/ClientPayments';
-import EventApproval from './pages/EventApproval';
 import ExpenseTracker from './pages/ExpenseTracker';
 import ExpenseApproval from './pages/ExpenseApproval';
 import ExpertAssignment from './pages/ExpertAssignment';
@@ -52,7 +51,6 @@ function App() {
         <Route path="/corporate/division/order/add" element={<AddOrder />} />
         <Route path="/client-onboarding/:id" element={<ClientOnboardingPage />} />
         <Route path="/client-payments" element={<ClientPayments />} />
-        <Route path="/event-approval" element={<EventApproval />} />
         <Route path="/expert-assignment" element={<ExpertAssignment />} />
         <Route path="/expense-tracker" element={<ExpenseTracker />} />
         <Route path="/expense-approval" element={<ExpenseApproval />} />

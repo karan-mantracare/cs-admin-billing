@@ -3,7 +3,7 @@ import { useGlobal } from '../context/GlobalContext';
 import ModificationRequestModal from '../components/ModificationRequestModal';
 
 function ExpertAssignment() {
-  const { events: allEvents, assignExpert, rejectExpertRequest, acceptReschedule, requestAlternativeDate, showToast } = useGlobal();
+  const { events: allEvents, assignExpert, rejectExpertRequest, acceptReschedule, requestAlternativeDate, showToast, resetEvents } = useGlobal();
   const events = allEvents;
   const assignments = allEvents.flatMap(ev => {
     if (ev.status !== 'provider_allocation_pending' && ev.status !== 'event_scheduled') return [];
@@ -213,9 +213,19 @@ function ExpertAssignment() {
 
   return (
     <main className="main-content">
-      <div className="page-header">
-        <h1>Expert Assignment</h1>
-        <p className="text-muted">Assign experts to approved events and manage session costs.</p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <div>
+          <h1>Expert Assignment</h1>
+          <p className="text-muted">Assign experts to approved events and manage session costs.</p>
+        </div>
+        <button className="btn-outline" style={{ borderColor: 'var(--red)', color: 'var(--red)', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => {
+          if (window.confirm('Are you sure you want to delete all events on this page?')) {
+            resetEvents();
+            window.location.reload();
+          }
+        }}>
+          <i className='bx bx-reset'></i> Reset Events
+        </button>
       </div>
 
       {modificationRequests.length > 0 && (

@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AddScheduleModal from '../components/AddScheduleModal';
-import BillingMessageModal from '../components/BillingMessageModal';
+import EditPaymentModal from '../components/EditPaymentModal';
+import BillingMessageModal, { BillingMessageContent } from '../components/BillingMessageModal';
 
 // Custom Multi-Select Dropdown Component
 function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
@@ -75,7 +77,11 @@ function ClientPayments() {
   const [payments, setPayments] = useState(() => {
     try {
       const saved = localStorage.getItem('client_payments');
-      return saved ? JSON.parse(saved) : [];
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed.filter(p => p != null) : [];
+      }
+      return [];
     } catch (e) {
       console.error("Failed to parse client_payments from localStorage", e);
       return [];
@@ -85,7 +91,11 @@ function ClientPayments() {
   const [paymentRecords, setPaymentRecords] = useState(() => {
     try {
       const saved = localStorage.getItem('client_payment_records');
-      return saved ? JSON.parse(saved) : [];
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed.filter(p => p != null) : [];
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -109,11 +119,14 @@ function ClientPayments() {
   const [selectedClients, setSelectedClients] = useState(initialClient ? [initialClient] : []);
   
   // Unique clients for the dropdown
-  const uniqueClients = [...new Set(payments.map(p => p.clientName))];
+  const uniqueClients = [...new Set(payments.map(p => p?.clientName).filter(Boolean))];
 
   // Popup State
   const [activeUploadId, setActiveUploadId] = useState(null);
+  const [activeUploadTab, setActiveUploadTab] = useState('upload'); // 'upload' or 'message'
+  const [copied, setCopied] = useState(false);
   const [activePaymentId, setActivePaymentId] = useState(null);
+  const [editingPaymentId, setEditingPaymentId] = useState(null);
   const [activeBillingMessage, setActiveBillingMessage] = useState(null);
   
   const [invoiceForm, setInvoiceForm] = useState({
@@ -143,9 +156,9 @@ function ClientPayments() {
   const filteredPayments = payments.filter(p => {
     const query = searchQuery.toLowerCase();
     const matchesSearch = !query || 
-      p.clientName.toLowerCase().includes(query) || 
-      p.orderId.toLowerCase().includes(query) ||
-      p.billingCompany.toLowerCase().includes(query);
+      String(p.clientName || '').toLowerCase().includes(query) || 
+      String(p.orderId || '').toLowerCase().includes(query) ||
+      String(p.billingCompany || '').toLowerCase().includes(query);
     
     const matchesClient = selectedClients.length === 0 || selectedClients.includes(p.clientName);
     
@@ -162,6 +175,16 @@ function ClientPayments() {
   const totalReceived = filteredPayments.reduce((sum, p) => sum + p.totalPaid, 0);
   const totalOverdue = filteredPayments.filter(p => p.overdueDays > 0).reduce((sum, p) => sum + p.dueAmount, 0);
   const toBeBilled = filteredPayments.filter(p => p.status === 'To be Raised').reduce((sum, p) => sum + p.amountDueUsd, 0);
+
+  const handleSaveEdit = (updatedPayment) => {
+    setPayments(prev => prev.map(p => p.id === updatedPayment.id ? updatedPayment : p));
+    setEditingPaymentId(null);
+  };
+
+  const handleDeletePayment = (paymentId) => {
+    setPayments(prev => prev.filter(p => p.id !== paymentId));
+    setEditingPaymentId(null);
+  };
 
   return (
     <main className="main-content" style={{ paddingTop: '1rem', overflowX: 'hidden' }}>
@@ -198,7 +221,7 @@ function ClientPayments() {
                 <i className={`bx ${stat.icon}`} style={{ fontSize: '0.9rem', color: stat.color }}></i>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{stat.label}</span>
               </div>
-              <strong style={{ fontSize: '1.05rem', color: stat.color }}>${stat.value.toLocaleString()}</strong>
+              <strong style={{ fontSize: '1.05rem', color: stat.color }}>${Number(stat.value || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong>
             </div>
           ))}
         </div>
@@ -271,8 +294,8 @@ function ClientPayments() {
                 <td className="event-name">{p.clientName}</td>
                 <td><strong>{p.orderId}</strong></td>
                 <td><span style={{ background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500' }}>{p.billingCompany}</span></td>
-                <td><strong className="text-blue">${p.amountDueUsd.toLocaleString()}</strong></td>
-                <td>{p.amountDue.toLocaleString()}</td>
+                <td><strong className="text-blue">${Number(p.amountDueUsd || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
+                <td>{Number(p.amountDue || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
                 <td>{p.currency}</td>
                 <td>{p.invoiceByDate}</td>
                 <td>{p.dueByDate}</td>
@@ -286,31 +309,63 @@ function ClientPayments() {
                     <span className="text-muted">-</span>
                   )}
                 </td>
-                <td><strong className="text-green">${p.totalPaid.toLocaleString()}</strong></td>
+                <td><strong className="text-green">${Number(p.totalPaid || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
                 <td>
                   <span style={{ color: p.dueAmount > 0 ? 'var(--red)' : 'var(--text-main)', fontWeight: p.dueAmount > 0 ? '600' : '400' }}>
-                    ${p.dueAmount.toLocaleString()}
+                    ${Number(p.dueAmount || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}
                   </span>
                 </td>
                 <td>
                   {(() => {
-                    const s = p.status;
+                    let s = p.status;
+                    let text = s;
+                    
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+
+                    if (s === 'To be Raised' && p.dueByDate && p.invoiceByDate) {
+                      const due = new Date(p.dueByDate);
+                      due.setHours(0,0,0,0);
+                      
+                      if (today > due) {
+                        const invoiceBy = new Date(p.invoiceByDate);
+                        invoiceBy.setHours(0,0,0,0);
+                        const diffTime = today.getTime() - invoiceBy.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        s = 'Invoice Pending';
+                        text = `Invoice Pending ${diffDays > 0 ? diffDays : 0} Days`;
+                      }
+                    } else if (s !== 'Received' && s !== 'To be Raised' && p.dueByDate) {
+                      const due = new Date(p.dueByDate);
+                      due.setHours(0,0,0,0);
+                      
+                      const diffTime = today.getTime() - due.getTime();
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      
+                      if (diffDays > 0) {
+                        s = 'Overdue';
+                        text = `${diffDays} Days`;
+                      }
+                    }
+
                     const cfg = {
                       'To be Raised': { bg: '#fef9c3', color: '#a16207', icon: 'bx-time' },
                       'Pending':      { bg: '#e0f2fe', color: '#0369a1', icon: 'bx-loader-circle' },
                       'Partial':      { bg: '#fff7ed', color: '#c2410c', icon: 'bx-minus-circle' },
                       'Received':     { bg: '#dcfce7', color: '#15803d', icon: 'bx-check-circle' },
                       'Overdue':      { bg: '#fee2e2', color: '#b91c1c', icon: 'bx-error' },
+                      'Invoice Pending': { bg: '#ffedd5', color: '#c2410c', icon: 'bx-file-blank' },
                     }[s] || { bg: '#f1f5f9', color: '#475569', icon: 'bx-circle' };
                     return (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: cfg.bg, color: cfg.color, padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                        <i className={`bx ${cfg.icon}`}></i>{s}
+                        <i className={`bx ${cfg.icon}`}></i>{text}
                       </span>
                     );
                   })()}
                 </td>
                 <td className="actions" style={{ gap: '0.35rem' }}>
-                  <button className="action-btn edit" title="Edit" style={{ border: '1px solid #e2e8f0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#fff', cursor: 'pointer', color: '#64748b' }}>
+                  <button className="action-btn edit" title="Edit" style={{ border: '1px solid #e2e8f0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#fff', cursor: p.status !== 'To be Raised' ? 'not-allowed' : 'pointer', color: '#64748b', opacity: p.status !== 'To be Raised' ? 0.4 : 1 }} disabled={p.status !== 'To be Raised'} onClick={() => setEditingPaymentId(p.id)}>
                     <i className='bx bx-pencil'></i>
                   </button>
                   <button title="Add Payment" style={{ border: '1px solid #bbf7d0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#f0fdf4', cursor: 'pointer', color: '#16a34a', display: 'inline-flex', alignItems: 'center' }} onClick={() => setActivePaymentId(p.id)}>
@@ -318,13 +373,6 @@ function ClientPayments() {
                   </button>
                   <button title="Upload Invoice" style={{ border: '1px solid #bfdbfe', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#eff6ff', cursor: 'pointer', color: '#2563eb', display: 'inline-flex', alignItems: 'center' }} onClick={() => setActiveUploadId(p.id)}>
                     <i className='bx bx-file-blank'></i>
-                  </button>
-                  <button
-                    title="Share Billing Message"
-                    style={{ border: '1px solid #e9d5ff', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#faf5ff', color: '#7c3aed', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
-                    onClick={() => setActiveBillingMessage(p)}
-                  >
-                    <i className='bx bx-share-alt'></i>
                   </button>
                 </td>
               </tr>
@@ -424,14 +472,14 @@ function ClientPayments() {
                 <td><span style={{ color: '#0ea5e9', fontWeight: '500' }}>{r.invoiceNumber}</span></td>
                 <td><strong>{r.orderId}</strong></td>
                 <td><span style={{ background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>{r.paymentId}</span></td>
-                <td><strong>{r.amount.toLocaleString()}</strong></td>
+                <td><strong>{Number(r.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
                 <td>{r.currency}</td>
-                <td><strong className="text-green">${r.amountInUSD.toLocaleString()}</strong></td>
+                <td><strong className="text-green">${Number(r.amountInUSD || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
               </tr>
             ))}
             {paymentRecords.length === 0 && (
               <tr>
-                <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No payment records found.</td>
+                <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No payment records found.</td>
               </tr>
             )}
           </tbody>
@@ -445,15 +493,19 @@ function ClientPayments() {
         isOpen={isAddScheduleOpen}
         onClose={() => setIsAddScheduleOpen(false)}
         onSave={(data) => {
-          console.log("Adding schedule for:", data);
-          alert(`Schedule added for ${data.clientName}, Order: ${data.orderName}`);
+          if (data.invoices && data.invoices.length > 0) {
+            setPayments(prev => [...data.invoices, ...prev]);
+            alert(`Schedule added for ${data.formData.corporate}, Order: ${data.formData.orderName}`);
+          }
         }}
       />
 
-      <BillingMessageModal
-        isOpen={!!activeBillingMessage}
-        onClose={() => setActiveBillingMessage(null)}
-        payment={activeBillingMessage}
+      <EditPaymentModal 
+        isOpen={!!editingPaymentId}
+        onClose={() => setEditingPaymentId(null)}
+        payment={payments.find(p => p.id === editingPaymentId)}
+        onSave={handleSaveEdit}
+        onDelete={handleDeletePayment}
       />
 
       {/* Filter Modal */}
@@ -495,75 +547,188 @@ function ClientPayments() {
         </div>
       )}
 
-      {/* Upload Invoice Modal */}
-      {activeUploadId !== null && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
-          display: 'flex', justifyContent: 'center', alignItems: 'center'
-        }} onClick={() => setActiveUploadId(null)}>
-          <div style={{
-            background: 'white', borderRadius: '10px', width: '90%', maxWidth: '400px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.15)', overflow: 'hidden'
-          }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0, fontSize: '1rem', color: 'white', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><i className='bx bx-file-blank'></i> Upload Invoice</h2>
-              <button onClick={() => { setActiveUploadId(null); setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null }); setInvoiceErrors({}); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
-            </div>
-            <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '0.5rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Invoice Number <span style={{color:'#ef4444'}}>*</span></label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. INV-2024-001" 
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: `1px solid ${invoiceErrors.invoiceNumber ? '#ef4444' : '#cbd5e1'}`, fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
-                  value={invoiceForm.invoiceNumber}
-                  onChange={(e) => { setInvoiceForm(prev => ({ ...prev, invoiceNumber: e.target.value })); setInvoiceErrors(prev => ({...prev, invoiceNumber: null})); }}
-                />
-                {invoiceErrors.invoiceNumber && <p style={{margin:'0.25rem 0 0',fontSize:'0.75rem',color:'#ef4444'}}>{invoiceErrors.invoiceNumber}</p>}
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Invoice Date <span style={{color:'#ef4444'}}>*</span></label>
-                <input 
-                  type="date" 
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: `1px solid ${invoiceErrors.invoiceDate ? '#ef4444' : '#cbd5e1'}`, fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
-                  value={invoiceForm.invoiceDate}
-                  onChange={(e) => { setInvoiceForm(prev => ({ ...prev, invoiceDate: e.target.value })); setInvoiceErrors(prev => ({...prev, invoiceDate: null})); }}
-                />
-                {invoiceErrors.invoiceDate && <p style={{margin:'0.25rem 0 0',fontSize:'0.75rem',color:'#ef4444'}}>{invoiceErrors.invoiceDate}</p>}
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Invoice Document (PDF)</label>
-                <input 
-                  type="file" 
-                  accept=".pdf" 
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px dashed #cbd5e1', background: '#f8fafc', fontSize: '0.9rem', color: '#475569', boxSizing: 'border-box' }} 
-                  onChange={(e) => setInvoiceForm(prev => ({ ...prev, invoiceFile: e.target.files[0] }))}
-                />
-              </div>
-            </div>
+      {/* Manage Invoice Modal (Upload + Billing Message) */}
+      {activeUploadId !== null && (() => {
+        const payment = payments.find(p => p.id === activeUploadId);
+        if (!payment) return null;
+        
+        let orderDetails = null;
+        if (payment.orderId) {
+          try {
+            const saved = localStorage.getItem('division_orders');
+            if (saved) {
+              const orders = JSON.parse(saved);
+              orderDetails = Array.isArray(orders) ? orders.find(o => String(o.id) === String(payment.orderId)) : null;
+            }
+          } catch (e) {}
+        }
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '0 1.25rem 1.25rem' }}>
-              <button style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => { setActiveUploadId(null); setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null }); setInvoiceErrors({}); }}>Cancel</button>
-              <button style={{ padding: '0.5rem 1.25rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => {
-                const errs = {};
-                if (!invoiceForm.invoiceNumber) errs.invoiceNumber = 'Invoice number is required';
-                if (!invoiceForm.invoiceDate) errs.invoiceDate = 'Invoice date is required';
-                if (Object.keys(errs).length) { setInvoiceErrors(errs); return; }
-                setPayments(prev => prev.map(p => {
-                  if (p.id === activeUploadId) {
-                    return { ...p, invoiceDate: invoiceForm.invoiceDate, invoiceLink: invoiceForm.invoiceNumber, status: p.status === 'To be Raised' ? 'Pending' : p.status };
-                  }
-                  return p;
-                }));
-                setActiveUploadId(null);
-                setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null });
-                setInvoiceErrors({});
-              }}><i className='bx bx-upload'></i> Upload</button>
+        const handleCopy = () => {
+          const billing = orderDetails?.billingDetails || {};
+          const clientBillingEntity = billing.billingEntity || payment.billingCompany || '—';
+          const clientTaxDetails    = billing.taxDetails || '—';
+          const contractCurrency    = billing.clientCurrency || payment.currency || '—';
+          const contractValue       = billing.contractValue ? `${contractCurrency} ${Number(billing.contractValue).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
+          const invoiceValue        = payment.amountDue ? `${payment.currency || contractCurrency} ${Number(payment.amountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
+          const invoiceDate         = payment.invoiceByDate || '—';
+          const dueByDate           = payment.dueByDate || '—';
+          const noOfEmployees       = billing.noOfEmployees || orderDetails?.employees || '—';
+          const servicePeriod       = billing.paymentDueDays ? `${billing.paymentDueDays} days` : '—';
+          const bankDetailsLink     = billing.bankDetailsLink || null;
+          const serviceDescription  = `EAP Service offered for ${noOfEmployees} employees`;
+
+          const messageText = [
+            'Billing Message',
+            '─────────────────────────────',
+            `Client Billing Entity Name : ${clientBillingEntity}`,
+            `Client Tax Details         : ${clientTaxDetails}`,
+            `Contract Billing Currency  : ${contractCurrency}`,
+            `Contract Value             : ${contractValue}`,
+            '',
+            'Current Invoice',
+            '─────────────────────────────',
+            `Invoice Value              : ${invoiceValue}`,
+            `Invoice Date               : ${invoiceDate}`,
+            `Due By Date                : ${dueByDate}`,
+            `Service Description        : ${serviceDescription}`,
+            `Service Period             : ${servicePeriod}`,
+            bankDetailsLink ? `Bank Details Link          : ${bankDetailsLink}` : null,
+          ].filter(l => l !== null).join('\n');
+
+          navigator.clipboard.writeText(messageText).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          });
+        };
+
+        const resetModal = () => {
+          setActiveUploadId(null);
+          setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null });
+          setInvoiceErrors({});
+          setActiveUploadTab('upload');
+        };
+
+        return (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+            display: 'flex', justifyContent: 'center', alignItems: 'center'
+          }} onClick={resetModal}>
+            <div style={{
+              background: 'white', borderRadius: '12px', width: '90%', maxWidth: '520px',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
+            }} onClick={(e) => e.stopPropagation()}>
+              
+              {/* Header */}
+              <div style={{ background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ margin: 0, fontSize: '1.1rem', color: 'white', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <i className='bx bx-file-blank'></i> Manage Invoice
+                </h2>
+                <button onClick={resetModal} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}>×</button>
+              </div>
+              
+              {/* Tabs */}
+              <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                <button 
+                  onClick={() => setActiveUploadTab('upload')} 
+                  style={{ 
+                    flex: 1, padding: '0.85rem', background: 'transparent', border: 'none', 
+                    color: activeUploadTab === 'upload' ? '#2563eb' : '#64748b', 
+                    borderBottom: activeUploadTab === 'upload' ? '2px solid #2563eb' : '2px solid transparent', 
+                    fontWeight: activeUploadTab === 'upload' ? '600' : '500', 
+                    cursor: 'pointer', transition: 'all 0.2s ease', fontSize: '0.9rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem'
+                  }}
+                >
+                  Upload Invoice
+                </button>
+                <button 
+                  onClick={() => setActiveUploadTab('message')} 
+                  style={{ 
+                    flex: 1, padding: '0.85rem', background: 'transparent', border: 'none', 
+                    color: activeUploadTab === 'message' ? '#2563eb' : '#64748b', 
+                    borderBottom: activeUploadTab === 'message' ? '2px solid #2563eb' : '2px solid transparent', 
+                    fontWeight: activeUploadTab === 'message' ? '600' : '500', 
+                    cursor: 'pointer', transition: 'all 0.2s ease', fontSize: '0.9rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem'
+                  }}
+                >
+                  Billing Details
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              {activeUploadTab === 'upload' ? (
+                <>
+                  <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                        Invoice Number <span style={{color:'#ef4444'}}>*</span>
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. INV-2024-001" 
+                        style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '8px', border: `1px solid ${invoiceErrors.invoiceNumber ? '#ef4444' : '#cbd5e1'}`, fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
+                        value={invoiceForm.invoiceNumber}
+                        onChange={(e) => { setInvoiceForm(prev => ({ ...prev, invoiceNumber: e.target.value })); setInvoiceErrors(prev => ({...prev, invoiceNumber: null})); }}
+                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                        onBlur={(e) => e.target.style.borderColor = invoiceErrors.invoiceNumber ? '#ef4444' : '#cbd5e1'}
+                      />
+                      {invoiceErrors.invoiceNumber && <p style={{margin:'0.3rem 0 0',fontSize:'0.75rem',color:'#ef4444'}}>{invoiceErrors.invoiceNumber}</p>}
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                        Invoice Date <span style={{color:'#ef4444'}}>*</span>
+                      </label>
+                      <input 
+                        type="date" 
+                        style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '8px', border: `1px solid ${invoiceErrors.invoiceDate ? '#ef4444' : '#cbd5e1'}`, fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
+                        value={invoiceForm.invoiceDate}
+                        onChange={(e) => { setInvoiceForm(prev => ({ ...prev, invoiceDate: e.target.value })); setInvoiceErrors(prev => ({...prev, invoiceDate: null})); }}
+                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                        onBlur={(e) => e.target.style.borderColor = invoiceErrors.invoiceDate ? '#ef4444' : '#cbd5e1'}
+                      />
+                      {invoiceErrors.invoiceDate && <p style={{margin:'0.3rem 0 0',fontSize:'0.75rem',color:'#ef4444'}}>{invoiceErrors.invoiceDate}</p>}
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                        Invoice Document <span style={{ color: '#94a3b8', fontWeight: '500' }}>(PDF)</span>
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input 
+                          type="file" 
+                          accept=".pdf" 
+                          style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px dashed #cbd5e1', background: '#f8fafc', fontSize: '0.9rem', color: '#475569', boxSizing: 'border-box', cursor: 'pointer' }} 
+                          onChange={(e) => setInvoiceForm(prev => ({ ...prev, invoiceFile: e.target.files[0] }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '0 1.5rem 1.5rem', background: 'white' }}>
+                    <button style={{ padding: '0.6rem 1.25rem', background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.9rem', transition: 'all 0.2s' }} onClick={resetModal} onMouseOver={(e) => e.target.style.background = '#e2e8f0'} onMouseOut={(e) => e.target.style.background = '#f1f5f9'}>Cancel</button>
+                    <button style={{ padding: '0.6rem 1.5rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 4px 6px rgba(37,99,235,0.2)' }} onClick={() => {
+                      const errs = {};
+                      if (!invoiceForm.invoiceNumber) errs.invoiceNumber = 'Invoice number is required';
+                      if (!invoiceForm.invoiceDate) errs.invoiceDate = 'Invoice date is required';
+                      if (Object.keys(errs).length) { setInvoiceErrors(errs); return; }
+                      setPayments(prev => prev.map(p => {
+                        if (p.id === activeUploadId) {
+                          return { ...p, invoiceDate: invoiceForm.invoiceDate, invoiceLink: invoiceForm.invoiceNumber, status: p.status === 'To be Raised' ? 'Pending' : p.status };
+                        }
+                        return p;
+                      }));
+                      resetModal();
+                    }}><i className='bx bx-upload'></i> Upload</button>
+                  </div>
+                </>
+              ) : (
+                <BillingMessageContent payment={payment} orderDetails={orderDetails} onCopy={handleCopy} copied={copied} />
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Add Payment Modal */}
       {activePaymentId !== null && (() => {
@@ -597,13 +762,18 @@ function ClientPayments() {
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Received Bank</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. Chase Bank"
-                    style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
+                  <select 
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', backgroundColor: 'white' }} 
                     value={paymentForm.receivedBank}
                     onChange={(e) => setPaymentForm(prev => ({ ...prev, receivedBank: e.target.value }))}
-                  />
+                  >
+                    <option value="" disabled hidden>Select Bank</option>
+                    <option value="AirWallex">AirWallex</option>
+                    <option value="ICICI">ICICI</option>
+                    <option value="Wise">Wise</option>
+                    <option value="Mercury">Mercury</option>
+                    <option value="ENBD">ENBD</option>
+                  </select>
                 </div>
                 
                 {!paymentForm.isChangeCurrency ? (
@@ -694,7 +864,7 @@ function ClientPayments() {
                         {pastPayments.map((pp, idx) => (
                           <div key={pp.id || idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', padding: '0.5rem', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '0.85rem', alignItems: 'center' }}>
                             <span style={{ color: '#475569' }}>{pp.paymentDate}</span>
-                            <strong style={{ color: '#0f172a' }}>{pp.amount.toLocaleString()}</strong>
+                            <strong style={{ color: '#0f172a' }}>{Number(pp.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong>
                             <span style={{ color: '#475569' }}>{pp.currency}</span>
                             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginLeft: '1rem' }}>
                               <i className='bx bx-edit' style={{ cursor: 'pointer', color: '#0ea5e9', fontSize: '1.1rem' }} onClick={() => {

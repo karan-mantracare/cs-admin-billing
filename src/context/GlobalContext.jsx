@@ -44,8 +44,25 @@ export function GlobalProvider({ children }) {
     localStorage.removeItem('cs-admin-events');
     localStorage.removeItem('cs-admin-expenses');
     localStorage.removeItem('cs-admin-clients');
+    localStorage.removeItem('division_orders');
     setEvents(defaultEvents);
     setExpenses(defaultExpenses);
+    setClients(defaultClients);
+  };
+
+  const resetEvents = () => {
+    localStorage.removeItem('cs-admin-events');
+    setEvents(defaultEvents);
+  };
+
+  const resetExpenses = () => {
+    localStorage.removeItem('cs-admin-expenses');
+    setExpenses(defaultExpenses);
+  };
+
+  const resetClients = () => {
+    localStorage.removeItem('cs-admin-clients');
+    localStorage.removeItem('division_orders');
     setClients(defaultClients);
   };
 
@@ -72,6 +89,13 @@ export function GlobalProvider({ children }) {
       }
       return { ...ev, assignedExpert: expertName, expertCost: cost, status: 'event_scheduled' };
     }));
+
+    setExpenses(prev => prev.map(exp => {
+      if (exp.expenseType === 'Expert-Request' && exp.eventId === id && (requestId ? exp.expertRequestId === requestId : true)) {
+        return { ...exp, amount: cost };
+      }
+      return exp;
+    }));
   };
 
   const rejectExpertRequest = (eventId, requestId, reason) => {
@@ -93,6 +117,29 @@ export function GlobalProvider({ children }) {
 
   const updateExpenseStatus = (id, status, rejectReason = '') => {
     const today = new Date().toISOString().split('T')[0];
+
+    const expenseToUpdate = expenses.find(exp => exp.id === id);
+    if (expenseToUpdate && expenseToUpdate.expenseType === 'Expert-Request' && status === 'Approved') {
+      if (expenseToUpdate.eventId && expenseToUpdate.expertRequestId) {
+        setEvents(prevEvents => prevEvents.map(ev => {
+          if (ev.id === expenseToUpdate.eventId) {
+            const updatedReqs = (ev.expertRequests || []).map(req => {
+              if (req.id === expenseToUpdate.expertRequestId) {
+                return { ...req, status: 'provider_allocation_pending' };
+              }
+              return req;
+            });
+            return { ...ev, status: 'provider_allocation_pending', expertRequests: updatedReqs };
+          }
+          return ev;
+        }));
+      } else if (expenseToUpdate.eventId) {
+        setEvents(prevEvents => prevEvents.map(ev => 
+          ev.id === expenseToUpdate.eventId ? { ...ev, status: 'provider_allocation_pending' } : ev
+        ));
+      }
+    }
+
     setExpenses(prev => prev.map(exp => {
       if (exp.id === id) {
         const newLog = {
@@ -249,6 +296,9 @@ export function GlobalProvider({ children }) {
       addClient,
       updateClient,
       resetData,
+      resetEvents,
+      resetExpenses,
+      resetClients,
       showToast
     }}>
       {children}

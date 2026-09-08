@@ -1,13 +1,22 @@
 import React from 'react';
 import { useGlobal } from '../context/GlobalContext';
 
-function ViewExpensesModal({ isOpen, onClose, orderId, onEditExpense }) {
-  const { expenses } = useGlobal();
+function ViewExpensesModal({ isOpen, onClose, orderId, orderName, onEditExpense }) {
+  const { expenses, events } = useGlobal();
 
   if (!isOpen) return null;
 
-  // Filter expenses associated with the current order
-  const orderExpenses = expenses.filter(exp => String(exp.orderId) === String(orderId));
+  // Filter expenses associated with the current order or its events
+  const orderExpenses = expenses.filter(exp => {
+    if (String(exp.orderId) === String(orderId)) return true;
+    if (exp.eventId && orderName) {
+      const relatedEvent = events.find(ev => String(ev.id) === String(exp.eventId));
+      if (relatedEvent && String(relatedEvent.orderName) === String(orderName)) {
+        return true;
+      }
+    }
+    return false;
+  });
 
   const formatCurrency = (amount) => {
     const num = Number(amount);

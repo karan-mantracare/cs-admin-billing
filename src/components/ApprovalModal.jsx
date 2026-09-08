@@ -70,8 +70,32 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
               </div>
               <div className="form-group">
                 <label>Client Name</label>
-                <input type="text" className="form-control" readOnly value="MantraCare Internal" />
+                <input type="text" className="form-control" readOnly value={modalData.clientName || 'MantraCare Internal'} />
               </div>
+              {!isHrRole && (
+                <div className="form-group">
+                  <label>Order *</label>
+                  <select 
+                    className="form-control" 
+                    required 
+                    name="orderName" 
+                    value={modalData.orderName || ''} 
+                    onChange={(e) => {
+                      handleChange(e);
+                      const selectedOrder = modalData.availableOrders?.find(o => o.value === e.target.value);
+                      if (selectedOrder) {
+                        setModalData(prev => ({ ...prev, clientName: selectedOrder.clientName }));
+                      }
+                    }} 
+                    disabled={isLocked}
+                  >
+                    <option value="">Select Order</option>
+                    {(modalData.availableOrders || []).map((o, i) => (
+                      <option key={i} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {isHrRole && (
                 <div className="form-group">
                   <label>Gender Preference *</label>

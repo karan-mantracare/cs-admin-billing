@@ -4,7 +4,7 @@ import { useGlobal } from '../context/GlobalContext';
 
 function ExpenseTracker() {
   const navigate = useNavigate();
-  const { expenses: allExpenses } = useGlobal();
+  const { expenses: allExpenses, resetExpenses } = useGlobal();
   const globalExpenses = allExpenses;
 
   const [expenses] = useState([
@@ -150,9 +150,19 @@ function ExpenseTracker() {
       `}</style>
 
       {/* Page Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', fontWeight: '700' }}>Client P&amp;L</h1>
-        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>Revenue vs. cost breakdown per client order</p>
+      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', fontWeight: '700' }}>Client P&amp;L</h1>
+          <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>Revenue vs. cost breakdown per client order</p>
+        </div>
+        <button className="btn-outline" style={{ borderColor: 'var(--red)', color: 'var(--red)', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => {
+          if (window.confirm('Are you sure you want to delete all expenses on this page?')) {
+            resetExpenses();
+            window.location.reload();
+          }
+        }}>
+          <i className='bx bx-reset'></i> Reset Expenses
+        </button>
       </div>
 
       {/* Summary Dashboard */}

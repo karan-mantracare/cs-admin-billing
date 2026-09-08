@@ -6,7 +6,7 @@ function ExpenseApproval() {
   const [searchParams] = useSearchParams();
   const initialClient = searchParams.get('client') || '';
 
-  const { expenses: allExpenses, updateExpenseStatus, showToast } = useGlobal();
+  const { expenses: allExpenses, updateExpenseStatus, showToast, resetExpenses } = useGlobal();
   const approvals = allExpenses;
 
   const [searchQuery, setSearchQuery] = useState(initialClient);
@@ -63,9 +63,19 @@ function ExpenseApproval() {
 
   return (
     <main className="main-content">
-      <div className="page-header" style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', fontWeight: '700' }}>Expense Approval</h1>
-        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>Review and approve employee expense requests</p>
+      <div className="page-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', fontWeight: '700' }}>Expense Approval</h1>
+          <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>Review and approve employee expense requests</p>
+        </div>
+        <button className="btn-outline" style={{ borderColor: 'var(--red)', color: 'var(--red)', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => {
+          if (window.confirm('Are you sure you want to delete all expenses on this page?')) {
+            resetExpenses();
+            window.location.reload();
+          }
+        }}>
+          <i className='bx bx-reset'></i> Reset Expenses
+        </button>
       </div>
 
       {/* Summary Dashboard */}

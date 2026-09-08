@@ -70,19 +70,9 @@ function CustomSelect({ label, options, value, onChange, id }) {
 function Dashboard() {
   const navigate = useNavigate();
   
-  const orderOptions = [
-    { value: 'adv', label: 'Advanced Plan 2026-0...' },
-    { value: 'ai', label: 'All Products with AI bot' },
-    { value: 'comp20', label: 'Comprehensive Plan 20...' },
-    { value: 'compw', label: 'Comprehensive Wellness...' },
-  ];
-  
-  const divisionOptions = [
-    { value: 'safi', label: 'Al Safi - Danone Co Ltd' },
-    { value: 'api', label: 'API Client' },
-    { value: 'aspen', label: 'Aspen Medical' },
-    { value: 'avery', label: 'Avery Dennison (India)' },
-  ];
+  const { events, updateEventStatus, requestReschedule, updateEventDetails, addEvent, addExpense, showToast, clients, resetEvents } = useGlobal();
+
+  const savedOrders = JSON.parse(localStorage.getItem('division_orders') || '[]');
 
   const timeOptions = [
     { value: 'all', label: 'All Time' },
@@ -91,11 +81,40 @@ function Dashboard() {
     { value: '1m', label: 'Last month' },
   ];
 
-  const [order, setOrder] = useState(orderOptions[3]);
-  const [division, setDivision] = useState({ value: 'mc', label: 'MantraCare Intern...' });
+  const [order, setOrder] = useState({ value: 'all', label: 'All Orders' });
+  const [division, setDivision] = useState({ value: 'all', label: 'All Divisions' });
   const [time, setTime] = useState(timeOptions[0]);
 
-  const { events, updateEventStatus, requestReschedule, updateEventDetails, addEvent, addExpense, showToast } = useGlobal();
+  const filteredOrdersForDropdown = savedOrders.filter(o => {
+    if (division && division.value !== 'all') {
+      return String(o.divisionId) === String(division.value) || o.divisionName === division.label;
+    }
+    return true;
+  });
+
+  const orderOptions = [{ value: 'all', label: 'All Orders' }, ...filteredOrdersForDropdown.map((o) => {
+    const client = clients?.find(c => String(c.id) === String(o.divisionId) || c.divisionName === o.divisionName);
+    return { 
+      value: `${o.divisionName || 'Unknown'} | ${o.planStart} - ${o.plan}`, 
+      label: `${o.divisionName || 'Unknown Division'} - ${o.planStart} - ${o.plan}`,
+      clientName: client ? client.name : 'MantraCare Internal'
+    };
+  })];
+
+  const filteredClientsForDropdown = (clients || []).filter(c => c.divisionName).filter(c => {
+    if (order && order.value !== 'all') {
+      const selectedOrder = savedOrders.find(o => `${o.divisionName || 'Unknown'} | ${o.planStart} - ${o.plan}` === order.value);
+      if (selectedOrder) {
+        return String(c.id) === String(selectedOrder.divisionId) || c.divisionName === selectedOrder.divisionName;
+      }
+    }
+    return true;
+  });
+
+  const divisionOptions = [{ value: 'all', label: 'All Divisions' }, ...filteredClientsForDropdown.map(c => ({ 
+    value: c.id.toString(), 
+    label: c.divisionName 
+  }))];
 
   // Add Expense State
   const [expenseModalEventId, setExpenseModalEventId] = useState(null);
@@ -152,10 +171,21 @@ function Dashboard() {
       return;
     }
 
+    let defaultOrderName = '';
+    let defaultClientName = 'MantraCare Internal';
+    if (order && order.value !== 'all') {
+      defaultOrderName = order.value;
+      const foundOrder = orderOptions.find(o => o.value === defaultOrderName);
+      if (foundOrder) defaultClientName = foundOrder.clientName || 'MantraCare Internal';
+    } else if (orderOptions.length > 1) {
+      defaultOrderName = orderOptions[1].value;
+      defaultClientName = orderOptions[1].clientName || 'MantraCare Internal';
+    }
+
     addEvent({
       submittedOn: new Date().toISOString().split('T')[0],
       sessionName: newActivity.sessionName,
-      clientName: 'MantraCare Internal',
+      clientName: defaultClientName,
       sessionDate: newActivity.sessionDate,
       sessionType: newActivity.sessionType,
       location: 'Online',
@@ -163,6 +193,7 @@ function Dashboard() {
       genderPref: 'no_preference',
       budget: 0,
       otherCosts: 0,
+      orderName: defaultOrderName,
       requirements: 'Generated from inline CS Calendar.',
       status: 'tentative',
       createdBy: 'CS-Karan'
@@ -219,7 +250,17 @@ function Dashboard() {
   return (
     <main className="main-content">
       <div className="page-header">
-        <h1>Calendar</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <h1>Calendar</h1>
+          <button className="btn-outline" style={{ borderColor: 'var(--red)', color: 'var(--red)', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => {
+            if (window.confirm('Are you sure you want to delete all events on this page?')) {
+              resetEvents();
+              window.location.reload();
+            }
+          }}>
+            <i className='bx bx-reset'></i> Reset Events
+          </button>
+        </div>
         
         <div className="filters">
           <CustomSelect label="Order" options={orderOptions} value={order} onChange={setOrder} id="orderSelect" />
@@ -271,7 +312,37 @@ function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            {events.map((w, i) => (
+            {events
+              .filter(w => {
+                let matches = true;
+                if (order && order.value !== 'all') {
+                  matches = matches && w.orderName === order.value;
+                }
+                if (division && division.value !== 'all') {
+                  const evOrder = savedOrders.find(o => `${o.divisionName || 'Unknown'} | ${o.planStart} - ${o.plan}` === w.orderName);
+                  if (evOrder) {
+                    matches = matches && (String(evOrder.divisionId) === String(division.value) || evOrder.divisionName === division.label);
+                  } else {
+                    // if it doesn't have an order mapped, we can't tie it to a division, hide it.
+                    matches = false;
+                  }
+                }
+                if (time && time.value !== 'all' && time.value !== 'custom') {
+                  const evDate = new Date(w.sessionDate);
+                  const now = new Date();
+                  if (time.value === '6m') {
+                    const sixMonthsAgo = new Date();
+                    sixMonthsAgo.setMonth(now.getMonth() - 6);
+                    matches = matches && (evDate >= sixMonthsAgo);
+                  } else if (time.value === '1m') {
+                    const oneMonthAgo = new Date();
+                    oneMonthAgo.setMonth(now.getMonth() - 1);
+                    matches = matches && (evDate >= oneMonthAgo);
+                  }
+                }
+                return matches;
+              })
+              .map((w, i) => (
               <tr key={i}>
                 <td style={{ whiteSpace: 'nowrap' }}>{w.sessionDate}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{w.submittedOn}</td>

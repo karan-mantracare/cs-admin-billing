@@ -11,7 +11,7 @@ function EditWebinar() {
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get('id');
   const userRole = searchParams.get('role');
-  const { addExpense, addEvent, addComment, updateEventDetails, events, expenses, updateExpenseStatus, updateExpense, deleteEvent, requestReschedule, updateEventStatus: _unusedStatus, showToast } = useGlobal();
+  const { addExpense, addEvent, addComment, updateEventDetails, events, expenses, updateExpenseStatus, updateExpense, deleteEvent, requestReschedule, updateEventStatus: _unusedStatus, showToast, clients } = useGlobal();
 
   const currentEvent = eventId
     ? events.find(ev => ev.id.toString() === eventId)
@@ -61,6 +61,9 @@ function EditWebinar() {
   const [isExpertDetailsOpen, setIsExpertDetailsOpen] = useState(false);
   const [isExpenseDetailsOpen, setIsExpenseDetailsOpen] = useState(false);
 
+  const [isConfirmSettleOpen, setIsConfirmSettleOpen] = useState(false);
+  const [settleReqId, setSettleReqId] = useState(null);
+
   // New Modals State
   const [isExpertProfileOpen, setIsExpertProfileOpen] = useState(false);
   const [selectedExpertProfile, setSelectedExpertProfile] = useState('');
@@ -99,7 +102,9 @@ function EditWebinar() {
     budget: '',
     otherCosts: '',
     participantCount: '',
-    duration: ''
+    duration: '',
+    clientName: 'MantraCare Internal',
+    availableOrders: []
   });
   const [isLocked, setIsLocked] = useState(false);
 
@@ -111,16 +116,36 @@ function EditWebinar() {
   sessionDateObj.setHours(0, 0, 0, 0);
   const isAddFinalPaymentDisabled = sessionDateObj > todayDate || status === 'rejected' || status === 'canceled_by_hr' || status === 'canceled_by_cs';
 
+  // Load orders from localStorage for the dropdown
+  const savedOrders = JSON.parse(localStorage.getItem('division_orders') || '[]');
+  const orderOptions = savedOrders.map(o => {
+    const client = clients?.find(c => String(c.id) === String(o.divisionId) || c.divisionName === o.divisionName);
+    return {
+      value: `${o.divisionName || 'Unknown'} | ${o.planStart} - ${o.plan}`,
+      label: `${o.divisionName || 'Unknown Division'} - ${o.planStart} - ${o.plan}`,
+      clientName: client ? client.name : 'MantraCare Internal'
+    };
+  });
+
   useEffect(() => {
     if (currentEvent) {
       setStatus(currentEvent.status.toLowerCase());
+      const selectedOrder = orderOptions.find(o => o.value === currentEvent.orderName);
       setModalData(prev => ({
         ...prev,
         sessionType: currentEvent.sessionType === 'seminar' ? 'onsite' : (currentEvent.sessionType === 'webinar' ? 'online' : (currentEvent.sessionType || '')),
-        sessionLocation: currentEvent.location || ''
+        sessionLocation: currentEvent.location || '',
+        orderName: currentEvent.orderName || '',
+        clientName: selectedOrder ? selectedOrder.clientName : (currentEvent.clientName || 'MantraCare Internal'),
+        availableOrders: orderOptions
+      }));
+    } else {
+      setModalData(prev => ({
+        ...prev,
+        availableOrders: orderOptions
       }));
     }
-  }, [currentEvent]);
+  }, [currentEvent, clients]);
 
   const getStatusLabel = (s = status) => {
     if (s === 'tentative' || s === 'pending_confirmation') return 'Tentative';
@@ -352,7 +377,10 @@ function EditWebinar() {
                         </tr>
                       );
                     }
-                    return reqs.map((req, idx) => (
+                    return reqs.map((req, idx) => {
+                      const exp = expenses.find(e => e.expertRequestId === req.id);
+                      const isSettled = exp && exp.status === 'Settled';
+                      return (
                       <tr key={idx}>
                         <td>
                           <span style={{
@@ -386,7 +414,7 @@ function EditWebinar() {
                             <td>${req.expertCost || 0}</td>
                             <td>
                           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <button className="btn-outline" style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem' }} onClick={() => {
+                            <button className="action-btn edit" title="Edit Request" style={{ padding: '0.25rem', fontSize: '1.2rem', background: 'transparent', border: 'none', cursor: 'pointer' }} onClick={() => {
                               if (req.assignedExpert) {
                                 setChangeExpertData({
                                   sessionName: currentEvent.sessionName,
@@ -415,14 +443,35 @@ function EditWebinar() {
                                 setIsModalOpen(true);
                               }
                             }}>
-                              {req.status?.toLowerCase() === 'rejected' ? 'Edit' : 'Edit'}
+                              <i className='bx bx-edit' style={{ color: '#64748b' }}></i>
+                            </button>
+                            <button 
+                              className="action-btn" 
+                              title={isSettled ? "Expense Settled" : "Mark Expert Present & Settle"} 
+                              style={{ 
+                                padding: '0.25rem', 
+                                fontSize: '1.2rem', 
+                                background: 'transparent', 
+                                border: 'none', 
+                                cursor: isSettled ? 'not-allowed' : 'pointer',
+                                opacity: isSettled ? 0.5 : 1
+                              }} 
+                              onClick={() => {
+                                if (isSettled) return;
+                                setSettleReqId(req.id);
+                                setIsConfirmSettleOpen(true);
+                              }}
+                              disabled={isSettled}
+                            >
+                              <i className='bx bx-check-circle' style={{ color: isSettled ? '#64748b' : 'var(--green)' }}></i>
                             </button>
                           </div>
                         </td>
                           </>
                         )}
                       </tr>
-                    ));
+                    );
+                    });
                   })()}
                 </tbody>
               </table>
@@ -464,7 +513,10 @@ function EditWebinar() {
                     participantCount: currentEvent.participantCount || '',
                     duration: lastReq.duration || '',
                     status: status === 'rejected' ? 'rejected' : '',
-                    rejectionReason: status === 'rejected' ? currentEvent.rejectReason : ''
+                    rejectionReason: status === 'rejected' ? currentEvent.rejectReason : '',
+                    availableOrders: orderOptions,
+                    orderName: currentEvent.orderName || '',
+                    clientName: currentEvent.clientName || 'MantraCare Internal'
                   });
                 } else {
                   setModalData({
@@ -477,7 +529,10 @@ function EditWebinar() {
                     participantCount: currentEvent?.participantCount || '',
                     duration: '',
                     status: status === 'rejected' ? 'rejected' : '',
-                    rejectionReason: status === 'rejected' ? currentEvent.rejectReason : ''
+                    rejectionReason: status === 'rejected' ? currentEvent.rejectReason : '',
+                    availableOrders: orderOptions,
+                    orderName: currentEvent?.orderName || '',
+                    clientName: currentEvent?.clientName || 'MantraCare Internal'
                   });
                 }
                 setIsModalOpen(true);
@@ -663,10 +718,23 @@ function EditWebinar() {
         status={status}
         onSubmit={(data) => {
           const finalSessionType = (currentEvent && currentEvent.sessionType === 'seminar') ? 'onsite' : data.sessionType;
+          const reqId = editingRequestId || Date.now();
+
+          addExpense({
+            date: new Date().toISOString().split('T')[0],
+            clientName: data.clientName || (currentEvent ? currentEvent.clientName : 'MantraCare Internal'),
+            sessionName: pageTitle,
+            sessionDate: pageDate,
+            addedBy: 'Admin',
+            expenseType: 'Expert-Request',
+            details: `Session: ${pageTitle}\nDate: ${pageDate}\nTime: ${data.sessionTime || ''}`,
+            deliveredBy: pageDate,
+            amount: parseFloat(data.budget) || 0,
+            eventId: currentEvent ? currentEvent.id : null,
+            expertRequestId: reqId
+          });
 
           if (currentEvent && currentEvent.id) {
-            const isSubmitForApproval = currentEvent.status === 'hr_requested' || currentEvent.status === 'tentative' || currentEvent.status?.toLowerCase() === 'rejected';
-
             const existingReqs = currentEvent.expertRequests ||
               ((currentEvent.status && currentEvent.status !== 'tentative') ? [currentEvent] : []);
 
@@ -674,7 +742,6 @@ function EditWebinar() {
             if (editingRequestId) {
               updatedReqs = existingReqs.map(req => {
                 if (req.id === editingRequestId) {
-                  const isRejected = req.status?.toLowerCase() === 'rejected';
                   return {
                     ...req,
                     sessionType: finalSessionType,
@@ -684,8 +751,8 @@ function EditWebinar() {
                     budget: parseFloat(data.budget) || 0,
                     language: data.language || 'English',
                     duration: data.duration || '',
-                    status: isRejected ? 'provider_allocation_pending' : req.status,
-                    rejectionReason: isRejected ? null : req.rejectionReason
+                    status: 'pending_expense_approval',
+                    rejectionReason: null
                   };
                 }
                 return req;
@@ -693,7 +760,7 @@ function EditWebinar() {
               setEditingRequestId(null);
             } else {
               const newReq = {
-                id: Date.now(),
+                id: reqId,
                 sessionType: finalSessionType,
                 location: data.sessionLocation || 'Online',
                 sessionTime: data.sessionTime || '',
@@ -701,14 +768,14 @@ function EditWebinar() {
                 budget: parseFloat(data.budget) || 0,
                 language: data.language || 'English',
                 duration: data.duration || '',
-                status: isSubmitForApproval ? 'pending_confirmation' : currentEvent.status,
+                status: 'pending_expense_approval',
                 assignedExpert: null,
                 expertCost: 0
               };
               updatedReqs = [...existingReqs, newReq];
             }
 
-            updateEventDetails(currentEvent.id, {
+              updateEventDetails(currentEvent.id, {
               expertRequests: updatedReqs,
               sessionType: finalSessionType,
               location: data.sessionLocation || 'Online',
@@ -719,14 +786,17 @@ function EditWebinar() {
               budget: parseFloat(data.budget) || 0,
               otherCosts: parseFloat(data.otherCosts) || 0,
               participantCount: data.participantCount !== undefined ? data.participantCount : (currentEvent.participantCount || 0),
-              status: isSubmitForApproval ? 'pending_confirmation' : currentEvent.status,
+              status: 'pending_expense_approval',
+              orderName: data.orderName,
+              clientName: data.clientName || currentEvent.clientName,
               requirements: currentEvent.requirements || 'Generated from Edit Webinar flow.'
             });
           } else {
             addEvent({
+              id: reqId,
               submittedOn: new Date().toISOString().split('T')[0],
               sessionName: pageTitle,
-              clientName: 'MantraCare Internal',
+              clientName: data.clientName || 'MantraCare Internal',
               sessionDate: pageDate,
               sessionType: finalSessionType,
               location: data.sessionLocation || 'Online',
@@ -736,9 +806,12 @@ function EditWebinar() {
               genderPref: data.genderPref,
               budget: parseFloat(data.budget) || 0,
               otherCosts: parseFloat(data.otherCosts) || 0,
-              requirements: 'Generated from Edit Webinar flow.'
+              orderName: data.orderName,
+              requirements: 'Generated from Edit Webinar flow.',
+              status: 'pending_expense_approval'
             });
           }
+          showToast("Request Sent for Expense Approval Successfully!", 3000);
         }}
       />
 
@@ -1142,6 +1215,29 @@ function EditWebinar() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={isConfirmSettleOpen}
+        onClose={() => { setIsConfirmSettleOpen(false); setSettleReqId(null); }}
+        title="Confirm Settlement"
+        message="Mark expert as present and settle the related expense?"
+        confirmText="Confirm"
+        onConfirm={() => {
+          if (settleReqId) {
+            const req = currentEvent?.expertRequests?.find(r => r.id === settleReqId);
+            if (req) {
+              const updatedReqs = currentEvent.expertRequests.map(r => r.id === req.id ? { ...r, status: 'completed' } : r);
+              updateEventDetails(currentEvent.id, { expertRequests: updatedReqs, status: 'completed' });
+              
+              const exp = expenses.find(e => e.expertRequestId === req.id);
+              if (exp) {
+                updateExpenseStatus(exp.id, 'Settled');
+              }
+              showToast("Expert marked as present. Expense settled.", "success");
+            }
+          }
+        }}
+      />
     </main>
   );
 }

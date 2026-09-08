@@ -38,7 +38,8 @@ function EditDivision() {
     const fetchOrders = () => {
       const saved = localStorage.getItem('division_orders');
       if (saved) {
-        setOrders(JSON.parse(saved));
+        const allOrders = JSON.parse(saved);
+        setOrders(allOrders.filter(o => o.divisionName === formData.divisionName));
       } else {
         setOrders([]);
       }
@@ -433,7 +434,7 @@ function EditDivision() {
               <button style={{ padding: '0.4rem 0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '4px', color: '#0f172a', cursor: 'pointer', fontSize: '0.85rem' }}><i className='bx bx-chevrons-right'></i></button>
             </div>
             
-            <button onClick={() => navigate('/corporate/division/order/add', { state: { clientName: formData.clientName } })} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #cbd5e1', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}>
+            <button onClick={() => navigate('/corporate/division/order/add', { state: { clientName: formData.clientName, divisionName: formData.divisionName, divisionId: division.id } })} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #cbd5e1', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}>
               <i className='bx bx-plus'></i> Add Order
             </button>
           </div>

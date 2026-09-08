@@ -69,19 +69,50 @@ function CustomSelect({ label, options, value, onChange, id }) {
 
 function HrDash() {
   const navigate = useNavigate();
-  const { events, addEvent, deleteEvent, updateEventStatus, requestReschedule, updateEventDetails } = useGlobal();
+  const { events, addEvent, deleteEvent, updateEventStatus, requestReschedule, updateEventDetails, clients, resetEvents } = useGlobal();
   
-  const orderOptions = [{ value: 'all', label: 'All' }];
-  const divisionOptions = [{ value: 'all', label: 'All' }];
+  const savedOrders = JSON.parse(localStorage.getItem('division_orders') || '[]');
+
   const timeOptions = [
     { value: 'all', label: 'All Time' },
     { value: 'custom', label: 'Custom Range' },
     { value: '1m', label: 'Last month' },
   ];
 
-  const [order, setOrder] = useState(orderOptions[0]);
-  const [division, setDivision] = useState(divisionOptions[0]);
+  const [order, setOrder] = useState({ value: 'all', label: 'All Orders' });
+  const [division, setDivision] = useState({ value: 'all', label: 'All Divisions' });
   const [time, setTime] = useState(timeOptions[0]);
+
+  const filteredOrdersForDropdown = savedOrders.filter(o => {
+    if (division && division.value !== 'all') {
+      return String(o.divisionId) === String(division.value) || o.divisionName === division.label;
+    }
+    return true;
+  });
+
+  const orderOptions = [{ value: 'all', label: 'All Orders' }, ...filteredOrdersForDropdown.map((o) => {
+    const client = clients?.find(c => String(c.id) === String(o.divisionId) || c.divisionName === o.divisionName);
+    return { 
+      value: `${o.divisionName || 'Unknown'} | ${o.planStart} - ${o.plan}`, 
+      label: `${o.divisionName || 'Unknown Division'} - ${o.planStart} - ${o.plan}`,
+      clientName: client ? client.name : 'MantraCare Internal'
+    };
+  })];
+
+  const filteredClientsForDropdown = (clients || []).filter(c => c.divisionName).filter(c => {
+    if (order && order.value !== 'all') {
+      const selectedOrder = savedOrders.find(o => `${o.divisionName || 'Unknown'} | ${o.planStart} - ${o.plan}` === order.value);
+      if (selectedOrder) {
+        return String(c.id) === String(selectedOrder.divisionId) || c.divisionName === selectedOrder.divisionName;
+      }
+    }
+    return true;
+  });
+
+  const divisionOptions = [{ value: 'all', label: 'All Divisions' }, ...filteredClientsForDropdown.map(c => ({ 
+    value: c.id.toString(), 
+    label: c.divisionName 
+  }))];
 
   // Reschedule Prompt State
   const [showReschedulePrompt, setShowReschedulePrompt] = useState(false);
@@ -142,10 +173,21 @@ function HrDash() {
       return;
     }
 
+    let defaultOrderName = '';
+    let defaultClientName = 'MantraCare Internal';
+    if (order && order.value !== 'all') {
+      defaultOrderName = order.value;
+      const foundOrder = orderOptions.find(o => o.value === defaultOrderName);
+      if (foundOrder) defaultClientName = foundOrder.clientName || 'MantraCare Internal';
+    } else if (orderOptions.length > 1) {
+      defaultOrderName = orderOptions[1].value;
+      defaultClientName = orderOptions[1].clientName || 'MantraCare Internal';
+    }
+
     addEvent({
       submittedOn: new Date().toISOString().split('T')[0],
       sessionName: newActivity.sessionName,
-      clientName: 'MantraCare Internal',
+      clientName: defaultClientName,
       sessionDate: newActivity.sessionDate,
       sessionType: newActivity.sessionType,
       location: 'Online',
@@ -153,6 +195,7 @@ function HrDash() {
       genderPref: 'no_preference',
       budget: 0,
       otherCosts: 0,
+      orderName: defaultOrderName,
       requirements: 'Generated from inline HR Calendar.',
       status: 'tentative', // as explicitly requested
       createdBy: 'HR-Rakesh'
@@ -203,7 +246,32 @@ function HrDash() {
             </tr>
           </thead>
           <tbody>
-            {hrEvents.map((w, i) => (
+            {hrEvents
+              .filter(w => {
+                let matches = true;
+                if (order && order.value !== 'all') {
+                  matches = matches && w.orderName === order.value;
+                }
+                if (division && division.value !== 'all') {
+                  const evOrder = savedOrders.find(o => `${o.divisionName || 'Unknown'} | ${o.planStart} - ${o.plan}` === w.orderName);
+                  if (evOrder) {
+                    matches = matches && (String(evOrder.divisionId) === String(division.value) || evOrder.divisionName === division.label);
+                  } else {
+                    matches = false;
+                  }
+                }
+                if (time && time.value !== 'all' && time.value !== 'custom') {
+                  const evDate = new Date(w.sessionDate);
+                  const now = new Date();
+                  if (time.value === '1m') {
+                    const oneMonthAgo = new Date();
+                    oneMonthAgo.setMonth(now.getMonth() - 1);
+                    matches = matches && (evDate >= oneMonthAgo);
+                  }
+                }
+                return matches;
+              })
+              .map((w, i) => (
               <tr key={w.id || i}>
                 <td style={{ whiteSpace: 'nowrap' }}>{w.sessionDate}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{w.submittedOn}</td>

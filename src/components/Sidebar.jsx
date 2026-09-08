@@ -30,7 +30,6 @@ function Sidebar({ isOpen, onClose }) {
         {
           title: 'Admin-Mantra',
           links: [
-            { path: '/event-approval', label: 'Event Approval', icon: 'bx-check-shield' },
             { path: '/expert-assignment', label: 'Expert Assignment', icon: 'bx-user-plus' },
           ]
         }

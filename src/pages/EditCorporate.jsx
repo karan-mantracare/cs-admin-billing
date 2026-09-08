@@ -33,15 +33,19 @@ function EditCorporate() {
     setFormData(prev => ({ ...prev, status: prev.status === 'Active' ? 'Inactive' : 'Active' }));
   };
 
-  const [divisions, setDivisions] = useState([
-    {
-      id: 1,
-      divisionName: client.divisionName || 'Default Division',
-      clientName: client.clientName || 'N/A',
-      responsible: client.responsible || 'N/A',
-      remarks: client.divisionRemarks || ''
-    }
-  ]);
+  const [divisions, setDivisions] = useState(
+    client.divisions && client.divisions.length > 0 
+      ? client.divisions 
+      : [
+          {
+            id: `div_${client.id || Date.now()}`,
+            divisionName: client.divisionName || 'Default Division',
+            clientName: client.clientName || 'N/A',
+            responsible: client.responsible || 'N/A',
+            remarks: client.divisionRemarks || ''
+          }
+        ]
+  );
   
   const [isAddDivisionOpen, setIsAddDivisionOpen] = useState(false);
 

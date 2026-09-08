@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useGlobal } from '../context/GlobalContext';
 import BillingDetailsModal from '../components/BillingDetailsModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
 import PaymentSummaryModal from '../components/PaymentSummaryModal';
@@ -10,7 +11,9 @@ import ViewExpensesModal from '../components/ViewExpensesModal';
 function AddOrder() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { showToast, expenses, updateExpense } = useGlobal();
   const isEditMode = location.state?.edit === true;
+  const tempSessionId = useRef(`temp_${Date.now()}`).current;
   
   const [formData, setFormData] = useState({
     contractDetails: {
@@ -686,12 +689,27 @@ function AddOrder() {
             let orders = saved ? JSON.parse(saved) : [];
 
             if (isEditMode) {
-              orders = orders.map(o => o.id === location.state.orderId ? { ...formData, id: location.state.orderId, status: o.status || 'Active' } : o);
-              alert('Order Updated!');
+              orders = orders.map(o => o.id === location.state.orderId ? { ...o, ...formData, id: location.state.orderId, status: o.status || 'Active' } : o);
+              showToast('Order Updated!', 5000);
             } else {
-              const newOrder = { ...formData, id: Date.now(), status: 'Active' };
+              const newOrderId = Date.now();
+              const newOrder = { 
+                ...formData, 
+                id: newOrderId, 
+                status: 'Active',
+                divisionName: location.state?.divisionName || '',
+                clientName: location.state?.clientName || '',
+                divisionId: location.state?.divisionId || ''
+              };
               orders.push(newOrder);
-              alert('Order Created!');
+
+              // Link any expenses added during this session to the new order
+              const sessionExpenses = expenses.filter(e => e.orderId === tempSessionId);
+              sessionExpenses.forEach(exp => {
+                updateExpense(exp.id, { orderId: newOrderId });
+              });
+
+              showToast('Order Created!', 5000);
             }
             
             localStorage.setItem('division_orders', JSON.stringify(orders));
@@ -736,14 +754,15 @@ function AddOrder() {
       <AddExpenseModal
         isOpen={isAddExpenseModalOpen}
         onClose={() => setIsAddExpenseModalOpen(false)}
-        orderId={location.state?.orderId || 'new'}
+        orderId={location.state?.orderId || tempSessionId}
         clientName={location.state?.clientName || formData.billingDetails?.billFrom || formData.appConfig?.domain || 'Current Order'}
         editExpenseData={editExpenseData}
       />
       <ViewExpensesModal
         isOpen={isViewExpensesModalOpen}
         onClose={() => setIsViewExpensesModalOpen(false)}
-        orderId={location.state?.orderId || 'new'}
+        orderId={location.state?.orderId || tempSessionId}
+        orderName={`${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart} - ${formData.plan}`}
         onEditExpense={(expense) => {
           setIsViewExpensesModalOpen(false);
           setEditExpenseData(expense);

@@ -29,7 +29,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
   useEffect(() => {
     if (isOpen) {
       // 1. Load Corporates from GlobalContext
-      const uniqueCorps = [...new Set(globalClients.map(c => c.name).filter(Boolean))];
+      const safeClients = Array.isArray(globalClients) ? globalClients : [];
+      const uniqueCorps = [...new Set(safeClients.map(c => c?.name).filter(Boolean))];
       setCorporates(uniqueCorps);
 
       // 2. Load Orders from localStorage (division_orders)
@@ -66,12 +67,23 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
     }
   }, [formData.corporate, globalClients]);
 
+  const [isPreview, setIsPreview] = useState(false);
+  const [previewInvoices, setPreviewInvoices] = useState([]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIsPreview(false);
+      setPreviewInvoices([]);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const filteredCorps = corporates.filter(c => c.toLowerCase().includes(corpSearch.toLowerCase()));
-  const filteredDivs = divisions.filter(d => d.toLowerCase().includes(divSearch.toLowerCase()));
+  const filteredCorps = Array.isArray(corporates) ? corporates.filter(c => c && c.toLowerCase().includes(corpSearch.toLowerCase())) : [];
+  const filteredDivs = Array.isArray(divisions) ? divisions.filter(d => d && d.toLowerCase().includes(divSearch.toLowerCase())) : [];
   
-  const filteredOrders = orders.filter(o => {
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const filteredOrders = safeOrders.filter(o => {
     // If corporate/division is provided but the order doesn't have it, we still show it (assume global orders for now)
     // Or if it strictly matches.
     const matchCorp = !formData.corporate || !o.corporate || o.corporate === formData.corporate;
@@ -80,7 +92,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
   });
 
   // Calculate currently selected order details for validation
-  const selectedOrder = formData.orderName ? orders.find(o => {
+  const selectedOrder = formData.orderName ? safeOrders.find(o => {
     const ps = o.planStart || 'Unknown Date';
     const pn = o.plan || o.planName || o.product || `Order #${o.id}`;
     return `${ps} & ${pn}` === formData.orderName;
@@ -103,7 +115,57 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
     }
   }
 
-  const handleSave = () => {
+  const generateInvoices = () => {
+    if (!selectedOrder) return [];
+    
+    const terms = Number(formData.paymentTerms);
+    if (!terms || terms <= 0) return [];
+
+    const amountInUSD = Number(selectedOrder.billingDetails?.amountInUSD) || 0;
+    const contractValue = Number(selectedOrder.billingDetails?.contractValue) || 0;
+    const currency = selectedOrder.billingDetails?.clientCurrency || 'USD';
+    const planStart = selectedOrder.planStart || '';
+    const planEnd = selectedOrder.planEnd || '';
+    const paymentDueDays = Number(selectedOrder.billingDetails?.paymentDue) || 30;
+
+    let startDate = new Date(planStart);
+    if (isNaN(startDate.getTime())) startDate = new Date();
+    
+    let endDate = new Date(planEnd);
+    if (isNaN(endDate.getTime())) endDate = new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000); // default 1 year
+
+    const durationDays = (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24);
+    const intervalDays = durationDays / terms;
+
+    const usdPerTerm = amountInUSD / terms;
+    const valuePerTerm = contractValue / terms;
+
+    const invoices = [];
+    for (let i = 0; i < terms; i++) {
+      const invoiceDate = new Date(startDate.getTime() + i * intervalDays * 24 * 60 * 60 * 1000);
+      const dueDate = new Date(invoiceDate.getTime() + paymentDueDays * 24 * 60 * 60 * 1000);
+      
+      invoices.push({
+        id: `INV-${Date.now()}-${i}`,
+        clientName: formData.corporate || 'Unknown',
+        orderId: String(selectedOrder.id),
+        billingCompany: selectedOrder.billingDetails?.billFrom || 'Unknown',
+        amountDueUsd: usdPerTerm,
+        amountDue: valuePerTerm,
+        currency: currency,
+        status: 'To be Raised',
+        invoiceByDate: invoiceDate.toISOString().split('T')[0],
+        dueByDate: dueDate.toISOString().split('T')[0],
+        invoiceDate: '', // Will be set when actually raised
+        totalPaid: 0,
+        dueAmount: usdPerTerm,
+        overdueDays: 0
+      });
+    }
+    return invoices;
+  };
+
+  const handlePreview = () => {
     if (mode === 'schedule') {
       if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
         setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
@@ -113,13 +175,21 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
         setPaymentTermError('Payment terms are required');
         return;
       }
+      const invoices = generateInvoices();
+      setPreviewInvoices(invoices);
+      setIsPreview(true);
     } else {
       if (!formData.amount || Number(formData.amount) <= 0) {
         alert("Please provide a valid amount");
         return;
       }
+      onSave({ formData, selectedOrder, mode });
+      onClose();
     }
-    onSave({ formData, selectedOrder, mode });
+  };
+
+  const handleSave = () => {
+    onSave({ formData, selectedOrder, mode, invoices: previewInvoices });
     onClose();
   };
 
@@ -128,6 +198,62 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
     border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box',
     fontFamily: 'inherit'
   };
+
+  if (isPreview) {
+    return (
+      <div style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+        display: 'flex', justifyContent: 'center', alignItems: 'center'
+      }}>
+        <div style={{
+          background: 'white', borderRadius: '8px', width: '90%', maxWidth: '600px',
+          padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Invoice Schedule Preview</h2>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
+              &times;
+            </button>
+          </div>
+          
+          <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '1.5rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ background: '#f1f5f9', color: '#475569', textAlign: 'left' }}>
+                  <th style={{ padding: '0.5rem' }}>S.No</th>
+                  <th style={{ padding: '0.5rem' }}>Invoice Date</th>
+                  <th style={{ padding: '0.5rem' }}>Due Date</th>
+                  <th style={{ padding: '0.5rem' }}>Amount ({selectedOrder?.billingDetails?.clientCurrency || 'USD'})</th>
+                  <th style={{ padding: '0.5rem' }}>Amount (USD)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {previewInvoices.map((inv, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '0.5rem', color: '#334155' }}>{idx + 1}</td>
+                    <td style={{ padding: '0.5rem', color: '#334155' }}>{inv.invoiceByDate}</td>
+                    <td style={{ padding: '0.5rem', color: '#334155' }}>{inv.dueByDate}</td>
+                    <td style={{ padding: '0.5rem', color: '#334155' }}>{Number(inv.amountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
+                    <td style={{ padding: '0.5rem', color: '#10b981', fontWeight: '600' }}>${Number(inv.amountDueUsd).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <button onClick={() => setIsPreview(false)} style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
+              Back
+            </button>
+            <button onClick={handleSave} style={{ padding: '0.5rem 1rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
+              Add Schedule
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -284,7 +410,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                   <div>
                     <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Contract Value</label>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#0f172a' }}>{contractValue.toLocaleString()}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#0f172a' }}>{Number(contractValue).toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
                   </div>
                   <div>
                     <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Currency</label>
@@ -292,7 +418,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
                   </div>
                   <div>
                     <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Contract Value (USD)</label>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#10b981' }}>${Number(amountInUSD).toLocaleString()}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#10b981' }}>${Number(amountInUSD).toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
                   </div>
                 </div>
 
@@ -352,8 +478,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
           <button onClick={onClose} style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
             Cancel
           </button>
-          <button onClick={handleSave} style={{ padding: '0.5rem 1rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
-            {mode === 'row' ? 'Add Row' : 'Add Schedule'}
+          <button onClick={handlePreview} style={{ padding: '0.5rem 1rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
+            {mode === 'row' ? 'Add Row' : 'Preview'}
           </button>
         </div>
       </div>
