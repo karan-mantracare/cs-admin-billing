@@ -16,6 +16,10 @@ function ExpenseApproval() {
   const [rejectingRequestId, setRejectingRequestId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   
+  // Revoke State
+  const [revokingRequestId, setRevokingRequestId] = useState(null);
+  const [revokeReason, setRevokeReason] = useState('');
+  
   // View State
   const [viewingRequestId, setViewingRequestId] = useState(null);
   const viewingDetails = approvals.find(r => r.id === viewingRequestId);
@@ -56,6 +60,8 @@ function ExpenseApproval() {
       showToast('Expense request approved successfully.', 5000);
     } else if (newStatus === 'Rejected') {
       showToast('Expense request rejected.', 5000);
+    } else if (newStatus === 'Revoked') {
+      showToast('Expense request revoked.', 5000);
     }
   };
 
@@ -158,6 +164,11 @@ function ExpenseApproval() {
                     <button className="icon-btn text-blue" title="View Details" onClick={() => setViewingRequestId(req.id)}>
                       <i className='bx bx-show'></i>
                     </button>
+                    {req.status === 'Approved' && (
+                      <button className="icon-btn text-warning" title="Revoke Expense" onClick={() => setRevokingRequestId(req.id)}>
+                        <i className='bx bx-undo'></i>
+                      </button>
+                    )}
                     {req.status === 'Pending' ? (
                       <>
                         <button className="icon-btn text-success" title="Approve" onClick={() => handleUpdateStatus(req.id, 'Approved')}>
@@ -225,6 +236,21 @@ function ExpenseApproval() {
             </div>
           </div>
         )}
+        {/* Filtered Totals Footer */}
+        <div style={{ padding: '1rem', background: '#f8fafc', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '2rem', fontSize: '0.95rem' }}>
+          <div>
+            <span style={{ color: 'var(--text-muted)' }}>Total Pending: </span>
+            <span style={{ fontWeight: '600', color: '#b45309' }}>
+              {formatCurrency(filteredApprovals.filter(req => req.status === 'Pending').reduce((sum, req) => sum + (parseFloat(req.amount) || 0), 0))}
+            </span>
+          </div>
+          <div>
+            <span style={{ color: 'var(--text-muted)' }}>Total Approved: </span>
+            <span style={{ fontWeight: '600', color: '#15803d' }}>
+              {formatCurrency(filteredApprovals.filter(req => req.status === 'Approved' || req.status === 'Settled' || req.status === 'Disbursed').reduce((sum, req) => sum + (parseFloat(req.amount) || 0), 0))}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* View Details Modal */}
@@ -283,14 +309,14 @@ function ExpenseApproval() {
                 <div className="form-group">
                   <label>Status</label>
                   <div style={{ padding: '0.5rem' }}>
-                    <span className={`badge badge-${viewingDetails.status === 'Approved' ? 'success' : viewingDetails.status === 'Rejected' ? 'danger' : 'warning'}`}>
+                    <span className={`badge badge-${viewingDetails.status === 'Approved' ? 'success' : (viewingDetails.status === 'Rejected' || viewingDetails.status === 'Revoked') ? 'danger' : 'warning'}`}>
                       {viewingDetails.status}
                     </span>
                   </div>
                 </div>
-                {viewingDetails.status === 'Rejected' && (
+                {(viewingDetails.status === 'Rejected' || viewingDetails.status === 'Revoked') && (
                   <div className="form-group full-width">
-                    <label>Rejection Reason</label>
+                    <label>{viewingDetails.status === 'Revoked' ? 'Revocation Reason' : 'Rejection Reason'}</label>
                     <div style={{ padding: '0.5rem', background: '#fee2e2', color: 'var(--red)', borderRadius: 'var(--radius-md)', border: '1px solid #fca5a5' }}>
                       {viewingDetails.rejectReason}
                     </div>
@@ -381,6 +407,44 @@ function ExpenseApproval() {
               <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                 <button type="button" className="btn-outline" onClick={() => { setRejectingRequestId(null); setRejectReason(''); }}>Cancel</button>
                 <button type="submit" className="btn-primary" style={{ background: '#ef4444', borderColor: '#ef4444' }}>Confirm Reject</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Revoke Reason Modal */}
+      {revokingRequestId !== null && (
+        <div className="modal-overlay" onClick={() => { setRevokingRequestId(null); setRevokeReason(''); }}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Provide Revocation Reason</h2>
+              <button className="close-btn" onClick={() => { setRevokingRequestId(null); setRevokeReason(''); }}>
+                <i className='bx bx-x'></i>
+              </button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleUpdateStatus(revokingRequestId, 'Revoked', revokeReason);
+              setRevokingRequestId(null);
+              setRevokeReason('');
+            }}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Reason for revocation <span className="text-red">*</span></label>
+                  <textarea 
+                    className="form-control" 
+                    rows="4" 
+                    required 
+                    placeholder="Please explain why this expense is being revoked..."
+                    value={revokeReason}
+                    onChange={(e) => setRevokeReason(e.target.value)}
+                  ></textarea>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button type="button" className="btn-outline" onClick={() => { setRevokingRequestId(null); setRevokeReason(''); }}>Cancel</button>
+                <button type="submit" className="btn-primary" style={{ background: '#f59e0b', borderColor: '#f59e0b' }}>Confirm Revoke</button>
               </div>
             </form>
           </div>

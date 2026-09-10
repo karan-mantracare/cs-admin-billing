@@ -64,6 +64,9 @@ function EditWebinar() {
   const [isConfirmSettleOpen, setIsConfirmSettleOpen] = useState(false);
   const [settleReqId, setSettleReqId] = useState(null);
 
+  const [revokingExpenseId, setRevokingExpenseId] = useState(null);
+  const [revokeReason, setRevokeReason] = useState('');
+
   // New Modals State
   const [isExpertProfileOpen, setIsExpertProfileOpen] = useState(false);
   const [selectedExpertProfile, setSelectedExpertProfile] = useState('');
@@ -613,25 +616,35 @@ function EditWebinar() {
                         </td>
                         <td>
                           {exp.status === 'Approved' && (
-                            <button
-                              className="btn-outline"
-                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                              onClick={() => {
-                                updateExpenseStatus(exp.id, 'Settled');
-                                showToast('Expense marked as settled', 3000);
-                              }}
-                              title="Mark as Settled"
-                            >
-                              <i className='bx bx-check-double'></i> Settle
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button
+                                className="btn-outline"
+                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                onClick={() => {
+                                  updateExpenseStatus(exp.id, 'Settled');
+                                  showToast('Expense marked as settled', 3000);
+                                }}
+                                title="Mark as Settled"
+                              >
+                                <i className='bx bx-check-double'></i> Settle
+                              </button>
+                              <button
+                                className="btn-outline text-warning"
+                                style={{ padding: '0.2rem 0.5rem', fontSize: '1.2rem', color: '#f59e0b', borderColor: 'transparent' }}
+                                onClick={() => setRevokingExpenseId(exp.id)}
+                                title="Revoke Expense"
+                              >
+                                <i className='bx bx-undo'></i>
+                              </button>
+                            </div>
                           )}
-                          {exp.status === 'Rejected' && (
+                          {(exp.status === 'Rejected' || exp.status === 'Revoked') && (
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                               <button
                                 className="btn-outline"
                                 style={{ padding: '0.2rem 0.5rem', fontSize: '1.2rem', color: '#64748b' }}
                                 onClick={() => setViewRejectExpense(exp)}
-                                title="View Rejection Reason"
+                                title={exp.status === 'Revoked' ? "View Revocation Reason" : "View Rejection Reason"}
                               >
                                 <i className='bx bx-show'></i>
                               </button>
@@ -910,7 +923,7 @@ function EditWebinar() {
                       type="date"
                       className="form-control"
                       required
-                      min={new Date().toISOString().split('T')[0]}
+                      min={pageDate || new Date().toISOString().split('T')[0]}
                       value={otherExpData.deliveredBy}
                       onChange={(e) => setOtherExpData({ ...otherExpData, deliveredBy: e.target.value })}
                     />
@@ -1192,20 +1205,24 @@ function EditWebinar() {
         <div className="modal-overlay" onClick={() => setViewRejectExpense(null)}>
           <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
             <div className="modal-header">
-              <h2>Rejection Details</h2>
+              <h2>{viewRejectExpense.status === 'Revoked' ? 'Revocation Details' : 'Rejection Details'}</h2>
               <button className="close-btn" onClick={() => setViewRejectExpense(null)}>
                 <i className='bx bx-x'></i>
               </button>
             </div>
             <div className="modal-body">
               <div style={{ marginBottom: '1rem' }}>
-                <strong style={{ color: 'var(--text-light)', display: 'block', marginBottom: '0.25rem' }}>Reason for Rejection:</strong>
+                <strong style={{ color: 'var(--text-light)', display: 'block', marginBottom: '0.25rem' }}>
+                  {viewRejectExpense.status === 'Revoked' ? 'Reason for Revocation:' : 'Reason for Rejection:'}
+                </strong>
                 <p style={{ margin: 0, color: 'var(--text-main)', background: 'var(--bg-light)', padding: '0.75rem', borderRadius: '4px' }}>
                   {viewRejectExpense.rejectReason || 'No reason provided.'}
                 </p>
               </div>
               <div>
-                <strong style={{ color: 'var(--text-light)', display: 'block', marginBottom: '0.25rem' }}>Rejected By:</strong>
+                <strong style={{ color: 'var(--text-light)', display: 'block', marginBottom: '0.25rem' }}>
+                  {viewRejectExpense.status === 'Revoked' ? 'Revoked By:' : 'Rejected By:'}
+                </strong>
                 <p style={{ margin: 0, color: 'var(--text-main)' }}>Admin</p>
               </div>
             </div>
@@ -1238,6 +1255,44 @@ function EditWebinar() {
           }
         }}
       />
+      {/* Revoke Reason Modal */}
+      {revokingExpenseId !== null && (
+        <div className="modal-overlay" onClick={() => { setRevokingExpenseId(null); setRevokeReason(''); }}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Provide Revocation Reason</h2>
+              <button className="close-btn" onClick={() => { setRevokingExpenseId(null); setRevokeReason(''); }}>
+                <i className='bx bx-x'></i>
+              </button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              updateExpenseStatus(revokingExpenseId, 'Revoked', revokeReason);
+              showToast("Expense request revoked.", 3000);
+              setRevokingExpenseId(null);
+              setRevokeReason('');
+            }}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Reason for revocation <span className="text-red">*</span></label>
+                  <textarea 
+                    className="form-control" 
+                    rows="4" 
+                    required 
+                    placeholder="Please explain why this expense is being revoked..."
+                    value={revokeReason}
+                    onChange={(e) => setRevokeReason(e.target.value)}
+                  ></textarea>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button type="button" className="btn-outline" onClick={() => { setRevokingExpenseId(null); setRevokeReason(''); }}>Cancel</button>
+                <button type="submit" className="btn-primary" style={{ background: '#f59e0b', borderColor: '#f59e0b' }}>Confirm Revoke</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
