@@ -852,9 +852,11 @@ function EditWebinar() {
                 } else {
                   addExpense({
                     date: new Date().toISOString().split('T')[0],
-                    clientName: 'MantraCare Internal',
+                    clientName: currentEvent?.clientName || 'MantraCare Internal',
                     sessionName: pageTitle,
                     sessionDate: pageDate,
+                    eventId: currentEvent?.id,
+                    orderId: currentEvent?.orderId,
                     addedBy: 'Admin',
                     expenseType: otherExpData.expenseType,
                     details: otherExpData.details,
@@ -893,7 +895,7 @@ function EditWebinar() {
                       </div>
                       <div className="form-group" style={{ marginBottom: '1rem' }}>
                         <label>Client Name</label>
-                        <input type="text" className="form-control" readOnly value="MantraCare Internal" />
+                        <input type="text" className="form-control" readOnly value={currentEvent?.clientName || 'MantraCare Internal'} />
                       </div>
                     </>
                   )}

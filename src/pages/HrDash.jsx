@@ -390,7 +390,16 @@ function HrDash() {
       </div>
 
       <div style={{ marginTop: '1.5rem', display: 'flex' }}>
-        <button className="btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding}>
+        <button 
+          className="btn-primary" 
+          onClick={() => setIsAdding(true)} 
+          disabled={isAdding || !order || order.value === 'all' || !division || division.value === 'all'}
+          title={(!order || order.value === 'all' || !division || division.value === 'all') ? "Please select both Order and Division to add an activity" : ""}
+          style={{
+            opacity: (!order || order.value === 'all' || !division || division.value === 'all') ? 0.6 : 1,
+            cursor: (!order || order.value === 'all' || !division || division.value === 'all') ? 'not-allowed' : 'pointer'
+          }}
+        >
           <i className='bx bx-plus'></i> Add Activity
         </button>
       </div>
