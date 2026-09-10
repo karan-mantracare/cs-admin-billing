@@ -81,6 +81,19 @@ function AddOrder() {
   const [isViewExpensesModalOpen, setIsViewExpensesModalOpen] = useState(false);
   const [editExpenseData, setEditExpenseData] = useState(null);
   const [paymentDueBadge, setPaymentDueBadge] = useState(null);
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const productDropdownRef = useRef(null);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (productDropdownRef.current && !productDropdownRef.current.contains(event.target)) {
+        setIsProductDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Calculate Payment Due from stored payments filtered by this orderId
   useEffect(() => {
@@ -278,17 +291,7 @@ function AddOrder() {
               </span>
             </div>
             
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsPaymentScheduleOpen(true);
-              }}
-              style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '0.4rem 0.75rem', color: '#0f172a', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', transition: 'background 0.2s' }}
-              onMouseEnter={(e) => e.target.style.background = '#f1f5f9'}
-              onMouseLeave={(e) => e.target.style.background = 'white'}
-            >
-              <i className='bx bx-calendar'></i> View Payment Schedule
-            </button>
+
           </div>
 
           <i className={`bx bx-chevron-${expandedSections.contractDetails ? 'up' : 'down'}`} style={{ fontSize: '1.5rem', color: '#94a3b8' }}></i>
@@ -298,14 +301,40 @@ function AddOrder() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           <div>
             <label style={labelStyle}>Product <span style={{color: '#ef4444'}}>*</span></label>
-            <input 
-              type="text" 
-              placeholder="e.g. EAP;Listener" 
-              style={inputStyle} 
-              value={formData.contractDetails.product} 
-              onChange={e => setFormData({...formData, contractDetails: {...formData.contractDetails, product: e.target.value}})} 
-            />
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>Separate products by ";"</p>
+            <div ref={productDropdownRef} style={{ position: 'relative', marginTop: '0.5rem' }}>
+              <div 
+                onClick={() => setIsProductDropdownOpen(!isProductDropdownOpen)}
+                style={{ ...inputStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: 'white' }}
+              >
+                <span style={{ color: formData.contractDetails.product ? '#0f172a' : '#94a3b8' }}>
+                  {formData.contractDetails.product ? 'Select Services...' : 'Select Services...'}
+                </span>
+                <i className={`bx bx-chevron-${isProductDropdownOpen ? 'up' : 'down'}`} style={{ color: '#94a3b8', fontSize: '1.2rem' }}></i>
+              </div>
+              
+              {isProductDropdownOpen && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.25rem', background: 'white', borderRadius: '6px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', zIndex: 10, padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.2rem', maxHeight: '200px', overflowY: 'auto' }}>
+                  {['Emotional Wellbeing', 'Yoga', 'Physio', 'Listener', 'Financial Wellbeing'].map((prod) => {
+                    const isSelected = (formData.contractDetails.product || '').split(';').map(p => p.trim()).includes(prod);
+                    return (
+                      <label key={prod} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#334155', cursor: 'pointer', padding: '0.5rem', borderRadius: '4px', background: isSelected ? '#f0f9ff' : 'transparent', transition: 'background 0.2s' }} onMouseEnter={e => !isSelected && (e.currentTarget.style.background = '#f8fafc')} onMouseLeave={e => !isSelected && (e.currentTarget.style.background = 'transparent')}>
+                        <input 
+                          type="checkbox" 
+                          checked={isSelected}
+                          onChange={() => {
+                            const current = (formData.contractDetails.product || '').split(';').map(p => p.trim()).filter(Boolean);
+                            const next = isSelected ? current.filter(p => p !== prod) : [...current, prod];
+                            setFormData({...formData, contractDetails: {...formData.contractDetails, product: next.join(';')}});
+                          }}
+                          style={{ cursor: 'pointer', accentColor: '#0ea5e9' }}
+                        />
+                        {prod}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             {formData.contractDetails.product.trim() && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
                 {formData.contractDetails.product.split(';').map((prod, idx) => prod.trim() ? (
@@ -444,11 +473,11 @@ function AddOrder() {
           
           <div>
             <label style={labelStyle}>Plan Start</label>
-            <input type="date" style={inputStyle} value={formData.planStart} onChange={e => setFormData({...formData, planStart: e.target.value})} />
+            <input type="date" max="9999-12-31" style={inputStyle} value={formData.planStart} onChange={e => setFormData({...formData, planStart: e.target.value})} />
           </div>
           <div>
             <label style={labelStyle}>Plan End</label>
-            <input type="date" style={inputStyle} value={formData.planEnd} onChange={e => setFormData({...formData, planEnd: e.target.value})} />
+            <input type="date" max="9999-12-31" style={inputStyle} value={formData.planEnd} onChange={e => setFormData({...formData, planEnd: e.target.value})} />
           </div>
           
           <div>
@@ -745,6 +774,22 @@ function AddOrder() {
         onClose={() => setIsPaymentSummaryOpen(false)}
         contractValue={formData.billingDetails?.amountInUSD || formData.amount}
         orderId={location.state?.orderId}
+        onViewPaymentSchedule={() => {
+          if (!location.state?.orderId) {
+            showToast('Please complete the order completion process first.', 5000);
+            return;
+          }
+          setIsPaymentSummaryOpen(false);
+          setIsPaymentScheduleOpen(true);
+        }}
+        onViewBillingSchedule={() => {
+          if (!location.state?.orderId) {
+            showToast('Please complete the order completion process first.', 5000);
+            return;
+          }
+          setIsPaymentSummaryOpen(false);
+          navigate('/client-payments', { state: { filterOrderId: location.state.orderId } });
+        }}
       />
       <PaymentScheduleModal
         isOpen={isPaymentScheduleOpen}

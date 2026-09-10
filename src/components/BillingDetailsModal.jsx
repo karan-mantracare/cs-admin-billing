@@ -331,7 +331,7 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
                 <label style={labelStyle}>Billing Date <span style={{color: '#ef4444'}}>*</span></label>
-                <input type="date" name="billingDate" style={{...inputStyle, borderColor: errors.billingDate ? '#ef4444' : '#cbd5e1'}} value={formData.billingDate} onChange={handleChange} />
+                <input type="date" max="9999-12-31" name="billingDate" style={{...inputStyle, borderColor: errors.billingDate ? '#ef4444' : '#cbd5e1'}} value={formData.billingDate} onChange={handleChange} />
                 {errors.billingDate && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{errors.billingDate}</div>}
               </div>
               

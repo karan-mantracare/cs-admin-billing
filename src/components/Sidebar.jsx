@@ -7,9 +7,8 @@ function Sidebar({ isOpen, onClose }) {
   const { resetData } = useGlobal();
 
   const [openGroups, setOpenGroups] = useState({
-    'Session Management': false,
-    'Client Billing': false,
-    'Management': false
+    'CS Portal': false,
+    'Admin Portal': false
   });
 
   const toggleGroup = (group) => {
@@ -18,33 +17,18 @@ function Sidebar({ isOpen, onClose }) {
 
   const menuGroups = [
     {
-      title: 'Session Management',
-      subGroups: [
-        {
-          title: 'cs-mantra',
-          links: [
-            { path: '/calendar', label: 'CS Calendar', icon: 'bx-calendar' },
-            { path: '/hr-dash', label: 'HR Calendar', icon: 'bx-user-circle' },
-          ]
-        },
-        {
-          title: 'Admin-Mantra',
-          links: [
-            { path: '/expert-assignment', label: 'Expert Assignment', icon: 'bx-user-plus' },
-          ]
-        }
+      title: 'CS Portal',
+      links: [
+        { path: '/calendar', label: 'CS Calendar', icon: 'bx-calendar' },
+        { path: '/hr-dash', label: 'HR Calendar', icon: 'bx-user-circle' },
       ]
     },
     {
-      title: 'Client Billing',
+      title: 'Admin Portal',
       links: [
         { path: '/corporate', label: 'Corporate', icon: 'bx-buildings' },
         { path: '/client-payments', label: 'Billing and Payment', icon: 'bx-credit-card' },
-      ]
-    },
-    {
-      title: 'Management',
-      links: [
+        { path: '/expert-assignment', label: 'Expert Assignment', icon: 'bx-user-plus' },
         { path: '/expense-approval', label: 'Expense Approval', icon: 'bx-receipt' },
         { path: '/expense-tracker', label: 'Client P&L', icon: 'bx-money' },
       ]
@@ -111,7 +95,7 @@ function Sidebar({ isOpen, onClose }) {
                           <li key={link.path}>
                             <Link
                               to={link.path}
-                              className={`nav-link ${location.pathname === link.path ? 'active' : ''}`}
+                              className={`nav-link ${location.pathname === link.path || (link.path === '/calendar' && location.pathname === '/') ? 'active' : ''}`}
                               onClick={onClose}
                             >
                               <i className={`bx ${link.icon}`}></i>

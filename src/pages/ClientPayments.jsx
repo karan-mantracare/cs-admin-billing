@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import AddScheduleModal from '../components/AddScheduleModal';
 import EditPaymentModal from '../components/EditPaymentModal';
 import BillingMessageModal, { BillingMessageContent } from '../components/BillingMessageModal';
-
+import UniversalFilter from '../components/UniversalFilter';
 // Custom Multi-Select Dropdown Component
 function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -68,6 +68,7 @@ function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
 
 function ClientPayments() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const initialClient = searchParams.get('client');
 
   const [isAddScheduleOpen, setIsAddScheduleOpen] = useState(false);
@@ -114,11 +115,9 @@ function ClientPayments() {
   const [activeTab, setActiveTab] = useState('billing');
 
   // Search & Filter State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedClients, setSelectedClients] = useState(initialClient ? [initialClient] : []);
+  const [advancedFilters, setAdvancedFilters] = useState({ conditions: [], searchText: '' });
   
-  // Unique clients for the dropdown
+  // Unique clients for the dropdown (if still needed elsewhere)
   const uniqueClients = [...new Set(payments.map(p => p?.clientName).filter(Boolean))];
 
   // Popup State
@@ -154,15 +153,50 @@ function ClientPayments() {
 
   // Filtering Logic
   const filteredPayments = payments.filter(p => {
-    const query = searchQuery.toLowerCase();
+    // Free text search
+    const query = String(advancedFilters.searchText || '').toLowerCase();
     const matchesSearch = !query || 
       String(p.clientName || '').toLowerCase().includes(query) || 
       String(p.orderId || '').toLowerCase().includes(query) ||
       String(p.billingCompany || '').toLowerCase().includes(query);
     
-    const matchesClient = selectedClients.length === 0 || selectedClients.includes(p.clientName);
+    // Conditions
+    let matchesConditions = true;
+    for (const cond of advancedFilters.conditions) {
+       // Skip empty conditions
+       if (!cond.value || (Array.isArray(cond.value) && !cond.value[0] && !cond.value[1])) {
+         continue;
+       }
+
+       const fieldVal = String(p[cond.fieldId] || '');
+       if (cond.operator === 'Is') {
+          if (fieldVal !== cond.value) matchesConditions = false;
+       } else if (cond.operator === 'Is not') {
+          if (fieldVal === cond.value) matchesConditions = false;
+       } else if (cond.operator === 'Contains') {
+          if (!fieldVal.toLowerCase().includes((cond.value || '').toLowerCase())) matchesConditions = false;
+       } else if (cond.operator === 'Not Contains') {
+          if (fieldVal.toLowerCase().includes((cond.value || '').toLowerCase())) matchesConditions = false;
+       } else if (cond.operator === 'Between' && Array.isArray(cond.value)) {
+          // date logic
+          const d = new Date(fieldVal);
+          const start = cond.value[0] ? new Date(cond.value[0]) : new Date('1900-01-01');
+          const end = cond.value[1] ? new Date(cond.value[1]) : new Date('2100-01-01');
+          if (d < start || d > end) matchesConditions = false;
+       } else if (cond.operator === 'Before') {
+          const d = new Date(fieldVal);
+          if (d >= new Date(cond.value)) matchesConditions = false;
+       } else if (cond.operator === 'After') {
+          const d = new Date(fieldVal);
+          if (d <= new Date(cond.value)) matchesConditions = false;
+       } else if (cond.operator === 'Greater than') {
+          if (Number(fieldVal) <= Number(cond.value)) matchesConditions = false;
+       } else if (cond.operator === 'Less than') {
+          if (Number(fieldVal) >= Number(cond.value)) matchesConditions = false;
+       }
+    }
     
-    return matchesSearch && matchesClient;
+    return matchesSearch && matchesConditions;
   });
 
   // Pagination Logic
@@ -193,19 +227,22 @@ function ClientPayments() {
           <h1 style={{ margin: 0, fontSize: '1.4rem' }}>Accounts Receivable</h1>
           
           <div className="table-toolbar" style={{ margin: 0 }}>
-            <div className="search-input-wrapper">
-              <i className='bx bx-search'></i>
-              <input 
-                type="text" 
-                className="search-input" 
-                placeholder="Search Client, Order ID..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <button className="filter-btn" onClick={() => setIsFilterOpen(true)}>
-              <i className='bx bx-filter-alt'></i> Filters
-            </button>
+            <UniversalFilter 
+              pageName="Client Payments"
+              storageKey="client_payments_universal_filters"
+              initialSearchText={location.state?.filterOrderId ? String(location.state.filterOrderId) : ''}
+              fields={[
+                { id: 'clientName', label: 'Client Name', type: 'text' },
+                { id: 'orderId', label: 'Order ID', type: 'text' },
+                { id: 'corporateName', label: 'Corporate Name', type: 'text' },
+                { id: 'billingCompany', label: 'Billing Company', type: 'text' },
+                { id: 'status', label: 'Status', type: 'select', options: ['To be Raised', 'Pending', 'Partial', 'Received', 'Overdue', 'Invoice Pending'] },
+                { id: 'dueByDate', label: 'Due By Date', type: 'date' },
+                { id: 'invoiceDate', label: 'Invoice Date', type: 'date' }
+              ]}
+              defaultFields={['clientName', 'status', 'dueByDate']}
+              onApply={(conditions, searchText) => setAdvancedFilters({ conditions, searchText })}
+            />
           </div>
         </div>
 
@@ -508,44 +545,6 @@ function ClientPayments() {
         onDelete={handleDeletePayment}
       />
 
-      {/* Filter Modal */}
-      {isFilterOpen && (
-        <div className="modal-overlay" onClick={() => setIsFilterOpen(false)}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Filters</h2>
-              <button className="close-btn" onClick={() => setIsFilterOpen(false)}>
-                <i className='bx bx-x'></i>
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                <label>Client Name</label>
-                <MultiSelectDropdown 
-                  options={uniqueClients} 
-                  selected={selectedClients} 
-                  onChange={setSelectedClients} 
-                  placeholder="Select clients..." 
-                />
-              </div>
-            </div>
-            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button 
-                className="btn-outline" 
-                onClick={() => {
-                  setSelectedClients([]);
-                  setSearchQuery('');
-                }}
-              >
-                Clear All
-              </button>
-              <button className="btn-primary" onClick={() => setIsFilterOpen(false)}>
-                Apply Filters
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Manage Invoice Modal (Upload + Billing Message) */}
       {activeUploadId !== null && (() => {

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ViewOnboardingModal from '../components/ViewOnboardingModal';
+import PaymentSummaryModal from '../components/PaymentSummaryModal';
+import PaymentScheduleModal from '../components/PaymentScheduleModal';
 
 function EditDivision() {
   const location = useLocation();
@@ -33,6 +35,10 @@ function EditDivision() {
   const [filedData, setFiledData] = useState(null);
   
   const [orders, setOrders] = useState([]);
+
+  const [isPaymentSummaryOpen, setIsPaymentSummaryOpen] = useState(false);
+  const [isPaymentScheduleOpen, setIsPaymentScheduleOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
     const fetchOrders = () => {
@@ -407,6 +413,9 @@ function EditDivision() {
                     <button onClick={() => deleteOrder(order.id)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                       <i className='bx bx-trash' style={{ fontSize: '1rem' }}></i>
                     </button>
+                    <button onClick={() => { setSelectedOrder(order); setIsPaymentSummaryOpen(true); }} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #93c5fd', background: '#eff6ff', color: '#3b82f6', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '0.5rem' }}>
+                      <i className='bx bx-receipt' style={{ fontSize: '1rem' }}></i>
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -446,6 +455,25 @@ function EditDivision() {
         isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
         data={filedData || formData}
+      />
+      <PaymentSummaryModal
+        isOpen={isPaymentSummaryOpen}
+        onClose={() => setIsPaymentSummaryOpen(false)}
+        contractValue={selectedOrder?.billingDetails?.amountInUSD || selectedOrder?.amount || 0}
+        orderId={selectedOrder?.id}
+        onViewPaymentSchedule={() => {
+          setIsPaymentSummaryOpen(false);
+          setIsPaymentScheduleOpen(true);
+        }}
+        onViewBillingSchedule={() => {
+          setIsPaymentSummaryOpen(false);
+          navigate('/client-payments', { state: { filterOrderId: selectedOrder?.id } });
+        }}
+      />
+      <PaymentScheduleModal
+        isOpen={isPaymentScheduleOpen}
+        onClose={() => setIsPaymentScheduleOpen(false)}
+        contractValue={selectedOrder?.billingDetails?.amountInUSD || selectedOrder?.amount || 0}
       />
     </main>
   );

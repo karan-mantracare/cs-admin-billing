@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId }) {
+function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, onViewPaymentSchedule, onViewBillingSchedule }) {
   const [totalReceived, setTotalReceived] = useState(0);
   const [totalBillsRaised, setTotalBillsRaised] = useState(0);
   const [billsCount, setBillsCount] = useState(0);
@@ -49,11 +49,11 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId }) {
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
       display: 'flex', justifyContent: 'center', alignItems: 'center'
-    }}>
+    }} onClick={onClose}>
       <div style={{
         background: 'white', borderRadius: '12px', width: '90%', maxWidth: '420px',
         boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden'
-      }}>
+      }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={{ background: 'linear-gradient(135deg, #1e40af, #0ea5e9)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -62,7 +62,7 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId }) {
             </h2>
             <p style={{ margin: '0.15rem 0 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.75rem' }}>Order #{orderId || '—'}</p>
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '30px', height: '30px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '30px', height: '30px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.35)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}>×</button>
         </div>
 
         {/* Progress bar */}
@@ -85,9 +85,14 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId }) {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', background: '#f8fafc' }}>
-          <button onClick={onClose} style={{ padding: '0.45rem 1.25rem', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>
-            Close
+        <div style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
+          <button onClick={onViewPaymentSchedule} style={{ padding: '0.5rem 1rem', background: 'white', border: '1px solid #cbd5e1', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', lineHeight: '1.2' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+            <i className='bx bx-calendar' style={{ fontSize: '1rem', color: '#334155' }}></i>
+            <div style={{ textAlign: 'center' }}>View Payment<br/>Schedule</div>
+          </button>
+          <button onClick={onViewBillingSchedule} style={{ padding: '0.5rem 1rem', background: 'white', border: '1px solid #cbd5e1', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', lineHeight: '1.2' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+            <i className='bx bx-receipt' style={{ fontSize: '1rem', color: '#334155' }}></i>
+            <div style={{ textAlign: 'center' }}>View Billing<br/>Schedule</div>
           </button>
         </div>
       </div>
