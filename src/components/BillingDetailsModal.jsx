@@ -37,6 +37,62 @@ const parseBankDetails = () => {
 
 const bankData = parseBankDetails();
 
+const Tooltip = ({ text, align = 'center' }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  let posStyles = { left: '50%', transform: 'translateX(-50%)' };
+  let arrowStyles = { left: '50%', transform: 'translateX(-50%)' };
+  
+  if (align === 'right') {
+    posStyles = { right: '-10px', transform: 'none' };
+    arrowStyles = { right: '14px', transform: 'none' };
+  } else if (align === 'left') {
+    posStyles = { left: '-10px', transform: 'none' };
+    arrowStyles = { left: '14px', transform: 'none' };
+  }
+
+  return (
+    <div 
+      style={{ position: 'relative', display: 'inline-block', marginLeft: '4px' }}
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+    >
+      <i className="bx bx-info-circle" style={{ color: '#94a3b8', cursor: 'help', fontSize: '0.8rem' }}></i>
+      {isVisible && (
+        <div style={{
+          position: 'absolute',
+          bottom: '100%',
+          ...posStyles,
+          marginBottom: '5px',
+          backgroundColor: '#334155',
+          color: 'white',
+          padding: '5px 8px',
+          borderRadius: '4px',
+          fontSize: '0.65rem',
+          fontWeight: '400',
+          whiteSpace: 'normal',
+          width: 'max-content',
+          maxWidth: '180px',
+          textAlign: align === 'center' ? 'center' : (align === 'right' ? 'right' : 'left'),
+          zIndex: 9999,
+          pointerEvents: 'none',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+        }}>
+          {text}
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            ...arrowStyles,
+            borderWidth: '4px',
+            borderStyle: 'solid',
+            borderColor: '#334155 transparent transparent transparent'
+          }}></div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
   const [formData, setFormData] = useState({
     billingEntity: 'HR Provided Entity', // Mock default or pass from props
@@ -257,13 +313,13 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
             {/* Row 2 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <label style={labelStyle}>Contract Value</label>
+                <label style={labelStyle}>Contract Value <Tooltip text="Total contract value." align="left" /></label>
                 <input type="number" name="contractValue" style={{...inputStyle, borderColor: errors.contractValue ? '#ef4444' : '#cbd5e1'}} value={formData.contractValue} onChange={handleChange} placeholder="0.00" />
                 {errors.contractValue && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{errors.contractValue}</div>}
               </div>
 
               <div>
-                <label style={labelStyle}>Client Currency <span style={{color: '#ef4444'}}>*</span></label>
+                <label style={labelStyle}>Contract Currency <span style={{color: '#ef4444'}}>*</span> <Tooltip text="Currency as per the contract. This will be used in billing as well." align="right" /></label>
                 <div style={{ position: 'relative' }} ref={dropdownRef}>
                   <div 
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -316,12 +372,12 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
             {/* Row 3 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <label style={labelStyle}>Currency Exchange Value (USD to {formData.clientCurrency || 'Client Currency'})</label>
+                <label style={labelStyle}>Currency Exchange Value (USD to {formData.clientCurrency || 'Contract Currency'}) <Tooltip text={`Search for USD to ${formData.clientCurrency || 'Contract Currency'} in Google and update the value here.`} align="left" /></label>
                 <input type="number" name="currencyExchangeValue" style={inputStyle} value={formData.currencyExchangeValue} onChange={handleChange} placeholder="1.0" step="0.01" />
               </div>
 
               <div>
-                <label style={labelStyle}>Payment Due (in Days) <span style={{color: '#ef4444'}}>*</span></label>
+                <label style={labelStyle}>Payment Due (in Days) <span style={{color: '#ef4444'}}>*</span> <Tooltip text="The credit period that will be provided to the client to pay the invoice." align="right" /></label>
                 <input type="number" name="paymentDueDays" style={{...inputStyle, borderColor: errors.paymentDueDays ? '#ef4444' : '#cbd5e1'}} value={formData.paymentDueDays} onChange={handleChange} placeholder="e.g. 30" />
                 {errors.paymentDueDays && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{errors.paymentDueDays}</div>}
               </div>
@@ -341,7 +397,7 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
             {/* Row 5 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <label style={labelStyle}>Bill From <span style={{color: '#ef4444'}}>*</span></label>
+                <label style={labelStyle}>Bill From <span style={{color: '#ef4444'}}>*</span> <Tooltip text="As per the contract, select our company." align="left" /></label>
                 <select name="billFrom" style={{...inputStyle, borderColor: errors.billFrom ? '#ef4444' : '#cbd5e1'}} value={formData.billFrom} onChange={handleChange}>
                   <option value="" disabled hidden>Select Company</option>
                   <option value="MCC">MCC</option>
@@ -354,7 +410,7 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
               </div>
 
               <div>
-                <label style={labelStyle}>Receiving Bank Name <span style={{color: '#ef4444'}}>*</span></label>
+                <label style={labelStyle}>Receiving Bank Name <span style={{color: '#ef4444'}}>*</span> <Tooltip text="Select the bank that will be used to receive the amount." align="right" /></label>
                 <select name="receivingBankName" style={{...inputStyle, borderColor: errors.receivingBankName ? '#ef4444' : '#cbd5e1'}} value={formData.receivingBankName} onChange={handleChange}>
                   <option value="" disabled hidden>Select Bank</option>
                   <option value="AirWallex">AirWallex</option>
@@ -370,14 +426,32 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
             {/* Row 6 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <label style={labelStyle}>Billing Date <span style={{color: '#ef4444'}}>*</span></label>
+                <label style={labelStyle}>Billing Date <span style={{color: '#ef4444'}}>*</span> <Tooltip text="From this date, the billing will start. It has no relation to the plan start date." align="left" /></label>
                 <input type="date" max="9999-12-31" name="billingDate" style={{...inputStyle, borderColor: errors.billingDate ? '#ef4444' : '#cbd5e1'}} value={formData.billingDate} onChange={handleChange} />
                 {errors.billingDate && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{errors.billingDate}</div>}
               </div>
               
               <div>
-                <label style={labelStyle}>Bank Details link <span style={{color: '#ef4444'}}>*</span></label>
-                <input type="url" name="bankDetailsLink" style={{...inputStyle, backgroundColor: '#f1f5f9', borderColor: errors.bankDetailsLink ? '#ef4444' : '#cbd5e1'}} value={formData.bankDetailsLink} readOnly placeholder="Auto-populated based on selection" />
+                <label style={labelStyle}>Bank Details link <span style={{color: '#ef4444'}}>*</span> <Tooltip text="This is the bank details link. Verify the bank. For any concerns, reach out to the product team." align="right" /></label>
+                <div style={{ position: 'relative' }}>
+                  <input type="url" name="bankDetailsLink" style={{...inputStyle, backgroundColor: '#f1f5f9', borderColor: errors.bankDetailsLink ? '#ef4444' : '#cbd5e1', paddingRight: '2.5rem'}} value={formData.bankDetailsLink} readOnly placeholder="Auto-populated based on selection" />
+                  <button 
+                    type="button" 
+                    title="Copy Link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if(formData.bankDetailsLink) {
+                        navigator.clipboard.writeText(formData.bankDetailsLink);
+                        const icon = e.currentTarget.querySelector('i');
+                        icon.className = 'bx bx-check';
+                        setTimeout(() => { icon.className = 'bx bx-copy'; }, 2000);
+                      }
+                    }}
+                    style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <i className="bx bx-copy" style={{ fontSize: '1.2rem' }}></i>
+                  </button>
+                </div>
                 {errors.bankDetailsLink && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{errors.bankDetailsLink}</div>}
               </div>
             </div>
