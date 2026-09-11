@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const BANK_DETAILS_CSV = `company;bank;bank link;default;accepted currency
 MCC;AirWallex;https://drive.google.com/file/d/117mGedlJb_piH4TW1SubSRYkwAuPDfZG/view?usp=drive_link;0;AUD
@@ -53,6 +53,19 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const currencies = [
     { code: 'USD', name: 'US Dollar' },
@@ -75,11 +88,11 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
 
   useEffect(() => {
     if (isOpen) {
-      let hrEntity = 'HR Provided Entity';
-      let hrTax = 'GST-1234';
+      let hrEntity = '';
+      let hrTax = '';
       
       try {
-        const savedData = localStorage.getItem('onboardingFiled_1');
+        const savedData = localStorage.getItem('onboardingFiled_' + (initialData?.id || '1'));
         if (savedData) {
           const parsedData = JSON.parse(savedData);
           if (parsedData.billingDetails) {
@@ -203,16 +216,43 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
           
             {/* Row 1 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              <div>
-                <label style={labelStyle}>Billing Entity (from HR)</label>
-                <input type="text" style={{...inputStyle, backgroundColor: '#f1f5f9'}} value={formData.billingEntity} readOnly />
+            {(!formData.billingEntity && !formData.taxDetails) ? (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '1rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                  <i className='bx bx-error-circle' style={{ color: '#ef4444', fontSize: '1.5rem' }}></i>
+                  <div>
+                    <h4 style={{ margin: 0, color: '#991b1b', fontSize: '0.9rem', fontWeight: '600' }}>Onboarding form is pending</h4>
+                    <p style={{ margin: '0.25rem 0 0 0', color: '#b91c1c', fontSize: '0.8rem' }}>Client's Entity and Tax Details are unavailable.</p>
+                  </div>
+                </div>
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const url = `${window.location.origin}/client-onboarding/${initialData?.id || '1'}`;
+                    navigator.clipboard.writeText(url);
+                    const btn = e.currentTarget;
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = `<i class='bx bx-check'></i> Copied`;
+                    setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+                  }}
+                  style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
+                  <i className='bx bx-copy'></i> Form Link
+                </button>
               </div>
-              <div>
-                <label style={labelStyle}>Tax Details (from HR)</label>
-                <input type="text" style={{...inputStyle, backgroundColor: '#f1f5f9'}} value={formData.taxDetails} readOnly />
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={labelStyle}>Billing Entity (from HR)</label>
+                  <input type="text" style={{...inputStyle, backgroundColor: '#f1f5f9'}} value={formData.billingEntity} readOnly />
+                </div>
+                <div>
+                  <label style={labelStyle}>Tax Details (from HR)</label>
+                  <input type="text" style={{...inputStyle, backgroundColor: '#f1f5f9'}} value={formData.taxDetails} readOnly />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Row 2 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -224,7 +264,7 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData }) {
 
               <div>
                 <label style={labelStyle}>Client Currency <span style={{color: '#ef4444'}}>*</span></label>
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative' }} ref={dropdownRef}>
                   <div 
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     style={{...inputStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: 'white', borderColor: errors.clientCurrency ? '#ef4444' : '#cbd5e1'}}

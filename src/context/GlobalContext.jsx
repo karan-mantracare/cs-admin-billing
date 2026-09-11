@@ -266,10 +266,22 @@ export function GlobalProvider({ children }) {
 
   const [toastMessage, setToastMessage] = useState('');
   const [toastDuration, setToastDuration] = useState(5000);
+  const [toastType, setToastType] = useState('success');
 
-  const showToast = (message, duration = 5000) => {
+  const showToast = (message, arg2 = 5000, arg3 = 'success') => {
+    let duration = 5000;
+    let type = 'success';
+    if (typeof arg2 === 'string') {
+      type = arg2;
+    } else {
+      duration = arg2;
+      if (typeof arg3 === 'string') {
+        type = arg3;
+      }
+    }
     setToastMessage(message);
     setToastDuration(duration);
+    setToastType(type);
     setTimeout(() => {
       setToastMessage('');
     }, duration);
@@ -310,11 +322,11 @@ export function GlobalProvider({ children }) {
           animation: 'slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-            <i className='bx bx-check-circle' style={{ color: '#10B981', fontSize: '1.5rem' }}></i>
+            <i className={`bx bx-${toastType === 'error' ? 'error-circle' : 'check-circle'}`} style={{ color: toastType === 'error' ? '#EF4444' : '#10B981', fontSize: '1.5rem' }}></i>
             <span style={{ fontWeight: '500', fontSize: '0.95rem' }}>{toastMessage}</span>
           </div>
           <div style={{
-            position: 'absolute', bottom: 0, left: 0, height: '4px', background: '#6366F1',
+            position: 'absolute', bottom: 0, left: 0, height: '4px', background: toastType === 'error' ? '#EF4444' : '#6366F1',
             animation: `progressShrink ${toastDuration}ms linear forwards`
           }}></div>
         </div>

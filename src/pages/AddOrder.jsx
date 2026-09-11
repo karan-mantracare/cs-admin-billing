@@ -152,6 +152,19 @@ function AddOrder() {
     }));
   };
 
+  const addMonthsToPlanStart = (months) => {
+    if (!formData.planStart) {
+      showToast('Please select Plan Start first.', 3000);
+      return;
+    }
+    const startDate = new Date(formData.planStart);
+    startDate.setMonth(startDate.getMonth() + months);
+    const yyyy = startDate.getFullYear();
+    const mm = String(startDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(startDate.getDate()).padStart(2, '0');
+    setFormData(prev => ({ ...prev, planEnd: `${yyyy}-${mm}-${dd}` }));
+  };
+
   const ToggleSwitch = ({ checked, onChange }) => (
     <div 
       onClick={onChange}
@@ -476,7 +489,14 @@ function AddOrder() {
             <input type="date" max="9999-12-31" style={inputStyle} value={formData.planStart} onChange={e => setFormData({...formData, planStart: e.target.value})} />
           </div>
           <div>
-            <label style={labelStyle}>Plan End</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+              <label style={{ margin: 0, fontSize: '0.8rem', fontWeight: '600', color: '#475569' }}>Plan End</label>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button type="button" onClick={() => addMonthsToPlanStart(3)} style={{ fontSize: '0.7rem', color: '#0ea5e9', background: '#e0f2fe', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}>+3M</button>
+                <button type="button" onClick={() => addMonthsToPlanStart(6)} style={{ fontSize: '0.7rem', color: '#0ea5e9', background: '#e0f2fe', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}>+6M</button>
+                <button type="button" onClick={() => addMonthsToPlanStart(12)} style={{ fontSize: '0.7rem', color: '#0ea5e9', background: '#e0f2fe', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}>+12M</button>
+              </div>
+            </div>
             <input type="date" max="9999-12-31" style={inputStyle} value={formData.planEnd} onChange={e => setFormData({...formData, planEnd: e.target.value})} />
           </div>
           

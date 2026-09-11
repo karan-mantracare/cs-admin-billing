@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useGlobal } from '../context/GlobalContext';
 
 function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, onViewPaymentSchedule, onViewBillingSchedule }) {
+  const { showToast } = useGlobal();
   const [totalReceived, setTotalReceived] = useState(0);
   const [totalBillsRaised, setTotalBillsRaised] = useState(0);
   const [billsCount, setBillsCount] = useState(0);
@@ -90,7 +92,14 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, onViewPa
             <i className='bx bx-calendar' style={{ fontSize: '1rem', color: '#334155' }}></i>
             <div style={{ textAlign: 'center' }}>View Payment<br/>Schedule</div>
           </button>
-          <button onClick={onViewBillingSchedule} style={{ padding: '0.5rem 1rem', background: 'white', border: '1px solid #cbd5e1', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', lineHeight: '1.2' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+          <button onClick={() => {
+            const isFilled = localStorage.getItem('onboardingFiled_' + (orderId || '1'));
+            if (!isFilled) {
+              showToast('Onboarding form not filled.', 3000, 'error');
+            } else {
+              onViewBillingSchedule();
+            }
+          }} style={{ padding: '0.5rem 1rem', background: 'white', border: '1px solid #cbd5e1', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', lineHeight: '1.2' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'white'}>
             <i className='bx bx-receipt' style={{ fontSize: '1rem', color: '#334155' }}></i>
             <div style={{ textAlign: 'center' }}>View Billing<br/>Schedule</div>
           </button>
