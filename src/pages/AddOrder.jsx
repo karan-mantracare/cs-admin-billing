@@ -263,6 +263,19 @@ function AddOrder() {
     }));
   };
 
+  const getPendingFields = () => {
+    const pending = [];
+    if (!formData.contractDetails.product) pending.push('Product');
+    if (!formData.contractDetails.isSessionUnlimited && !formData.contractDetails.sessionLimits) pending.push('Session Limits');
+    if (!formData.employees) pending.push('No of Employees');
+    if (!formData.billingDetails) pending.push('Billing Details');
+    if (!formData.contractDetails.documents || formData.contractDetails.documents.length === 0) pending.push('Documents');
+    return pending;
+  };
+
+  const pendingFields = getPendingFields();
+  const isCreateDisabled = pendingFields.length > 0;
+
   return (
     <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', background: '#f1f5f9', minHeight: '100vh' }}>
       
@@ -395,8 +408,8 @@ function AddOrder() {
               <button 
                 onClick={() => setIsBillingModalOpen(true)}
                 style={{ 
-                  flex: 1, padding: '0.6rem', background: '#0ea5e9', color: 'white', 
-                  border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' 
+                  flex: 1, padding: '0.6rem', background: formData.billingDetails ? '#f1f5f9' : '#0ea5e9', color: formData.billingDetails ? '#0f172a' : 'white', 
+                  border: formData.billingDetails ? '1px solid #cbd5e1' : 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' 
                 }}
               >
                 {formData.billingDetails ? 'Edit Billing Details' : 'Add Billing Details'}
@@ -712,7 +725,7 @@ function AddOrder() {
       </div>
 
       {/* Action Footer */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', marginBottom: '2rem', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '1rem', marginBottom: '2rem', gap: '1rem' }}>
         <button 
           onClick={() => setIsViewExpensesModalOpen(true)}
           className="btn-outline" 
@@ -732,43 +745,57 @@ function AddOrder() {
           <i className='bx bx-plus'></i> Add Expenses
         </button>
 
-        <button 
-          onClick={() => {
-            const saved = localStorage.getItem('division_orders');
-            let orders = saved ? JSON.parse(saved) : [];
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto' }}>
+          <button 
+            title={isCreateDisabled ? `Pending: ${pendingFields.join(', ')}` : ''}
+            onClick={() => {
+              if (isCreateDisabled) return;
+              const saved = localStorage.getItem('division_orders');
+              let orders = saved ? JSON.parse(saved) : [];
 
-            if (isEditMode) {
-              orders = orders.map(o => o.id === location.state.orderId ? { ...o, ...formData, id: location.state.orderId, status: o.status || 'Active' } : o);
-              showToast('Order Updated!', 5000);
-            } else {
-              const newOrderId = Date.now();
-              const newOrder = { 
-                ...formData, 
-                id: newOrderId, 
-                status: 'Active',
-                divisionName: location.state?.divisionName || '',
-                clientName: location.state?.clientName || '',
-                divisionId: location.state?.divisionId || ''
-              };
-              orders.push(newOrder);
+              if (isEditMode) {
+                orders = orders.map(o => o.id === location.state.orderId ? { ...o, ...formData, id: location.state.orderId, status: o.status || 'Active' } : o);
+                showToast('Order Updated!', 5000);
+              } else {
+                const newOrderId = Date.now();
+                const newOrder = { 
+                  ...formData, 
+                  id: newOrderId, 
+                  status: 'Active',
+                  divisionName: location.state?.divisionName || '',
+                  clientName: location.state?.clientName || '',
+                  divisionId: location.state?.divisionId || ''
+                };
+                orders.push(newOrder);
 
-              // Link any expenses added during this session to the new order
-              const sessionExpenses = expenses.filter(e => e.orderId === tempSessionId);
-              sessionExpenses.forEach(exp => {
-                updateExpense(exp.id, { orderId: newOrderId });
-              });
+                // Link any expenses added during this session to the new order
+                const sessionExpenses = expenses.filter(e => e.orderId === tempSessionId);
+                sessionExpenses.forEach(exp => {
+                  updateExpense(exp.id, { orderId: newOrderId });
+                });
 
-              showToast('Order Created!', 5000);
-            }
-            
-            localStorage.setItem('division_orders', JSON.stringify(orders));
-            navigate(-1);
-          }}
-          className="btn-primary" 
-          style={{ padding: '0.6rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer' }}
-        >
-          {isEditMode ? 'Save Changes' : 'Create Order'}
-        </button>
+                showToast('Order Created!', 5000);
+              }
+              
+              localStorage.setItem('division_orders', JSON.stringify(orders));
+              navigate(-1);
+            }}
+            className="btn-primary" 
+            style={{ 
+              padding: '0.6rem 1.5rem', 
+              background: isCreateDisabled ? '#94a3b8' : '#3b82f6', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '6px', 
+              fontSize: '0.95rem', 
+              fontWeight: '600', 
+              cursor: isCreateDisabled ? 'not-allowed' : 'pointer',
+              opacity: isCreateDisabled ? 0.7 : 1
+            }}
+          >
+            {isEditMode ? 'Save Changes' : 'Create Order'}
+          </button>
+        </div>
       </div>
 
       {/* Modals */}
@@ -776,6 +803,7 @@ function AddOrder() {
         isOpen={isBillingModalOpen} 
         onClose={() => setIsBillingModalOpen(false)} 
         initialData={formData.billingDetails || {}}
+        divisionId={location.state?.divisionId}
         onSave={(data) => {
           setFormData(prev => ({
             ...prev, 
@@ -794,6 +822,7 @@ function AddOrder() {
         onClose={() => setIsPaymentSummaryOpen(false)}
         contractValue={formData.billingDetails?.amountInUSD || formData.amount}
         orderId={location.state?.orderId}
+        divisionId={location.state?.divisionId}
         onViewPaymentSchedule={() => {
           if (!location.state?.orderId) {
             showToast('Please complete the order completion process first.', 5000);
@@ -820,7 +849,8 @@ function AddOrder() {
         isOpen={isAddExpenseModalOpen}
         onClose={() => setIsAddExpenseModalOpen(false)}
         orderId={location.state?.orderId || tempSessionId}
-        clientName={location.state?.clientName || formData.billingDetails?.billFrom || formData.appConfig?.domain || 'Current Order'}
+        orderName={`${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart} - ${formData.plan}`}
+        clientName={formData.clientName || location.state?.clientName || formData.billingDetails?.billFrom || formData.appConfig?.domain || 'Current Order'}
         editExpenseData={editExpenseData}
       />
       <ViewExpensesModal

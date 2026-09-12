@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGlobal } from '../context/GlobalContext';
 
-function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, onViewPaymentSchedule, onViewBillingSchedule }) {
+function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, divisionId, onViewPaymentSchedule, onViewBillingSchedule }) {
   const { showToast } = useGlobal();
   const [totalReceived, setTotalReceived] = useState(0);
   const [totalBillsRaised, setTotalBillsRaised] = useState(0);
@@ -93,7 +93,8 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, onViewPa
             <div style={{ textAlign: 'center' }}>View Payment<br/>Schedule</div>
           </button>
           <button onClick={() => {
-            const isFilled = localStorage.getItem('onboardingFiled_' + (orderId || '1'));
+            const targetId = divisionId || orderId || '1';
+            const isFilled = localStorage.getItem('onboardingFiled_' + targetId);
             if (!isFilled) {
               showToast('Onboarding form not filled.', 3000, 'error');
             } else {

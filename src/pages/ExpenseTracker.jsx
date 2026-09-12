@@ -1,16 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
 
 function ExpenseTracker() {
   const navigate = useNavigate();
-  const { expenses: allExpenses, resetExpenses } = useGlobal();
+  const { expenses: allExpenses, resetExpenses, clients } = useGlobal();
   const globalExpenses = allExpenses;
 
-  const [expenses] = useState([
+  const [expenses, setExpenses] = useState([
     {
       id: 1,
-      clientName: 'MantraCare Internal',
+      clientName: 'Sample 1',
       division: 'Healthcare',
       divisionStatus: 'Active',
       csResponsible: 'John Doe',
@@ -33,7 +33,7 @@ function ExpenseTracker() {
     },
     {
       id: 2,
-      clientName: 'Comprehensive Wellness',
+      clientName: 'Sample 2',
       division: 'Wellness',
       divisionStatus: 'Active',
       csResponsible: 'Jane Smith',
@@ -56,7 +56,7 @@ function ExpenseTracker() {
     },
     {
       id: 3,
-      clientName: 'Tech Corp LLC',
+      clientName: 'Sample 3',
       division: 'Tech',
       divisionStatus: 'Inactive',
       csResponsible: 'Mike Johnson',
@@ -79,6 +79,70 @@ function ExpenseTracker() {
     }
   ]);
 
+  useEffect(() => {
+    const savedOrders = localStorage.getItem('division_orders');
+    if (savedOrders) {
+      try {
+        const parsedOrders = JSON.parse(savedOrders);
+        const newExpenses = parsedOrders.map((o, idx) => {
+          const client = (clients || []).find(c => c.clientName === o.clientName) || {};
+          let csResponsible = 'Unassigned';
+          if (client.divisions && Array.isArray(client.divisions)) {
+            const div = client.divisions.find(d => d.divisionName === o.divisionName);
+            if (div && div.responsible) {
+              csResponsible = div.responsible;
+            }
+          }
+          if (csResponsible === 'Unassigned') {
+            csResponsible = client.responsible || client.csResponsible || 'Unassigned';
+          }
+
+          const contractAmount = Number(o.billingDetails?.amountInUSD || o.amount || 0);
+
+          const savedPayments = localStorage.getItem('client_payments');
+          let totalReceived = 0;
+          if (savedPayments) {
+            const allPayments = JSON.parse(savedPayments);
+            const orderPayments = allPayments.filter(p => String(p.orderId) === String(o.id));
+            totalReceived = orderPayments.reduce((acc, curr) => acc + (Number(curr.totalPaid) || 0), 0);
+          }
+          const totalDue = Math.max(0, contractAmount - totalReceived);
+
+          return {
+            id: `order_${o.id || idx}`,
+            clientName: o.clientName || 'Unknown',
+            division: o.divisionName || 'Unknown',
+            divisionStatus: 'Active',
+            csResponsible: csResponsible,
+            orderName: `${o.divisionName || 'Unknown'} | ${o.planStart} - ${o.plan}`,
+            orderActive: o.status === 'Active' ? 'Yes' : 'No',
+            orderStatus: o.status || 'Active',
+            startDate: o.planStart || '-',
+            endDate: o.planEnd || '-',
+            employeeCovered: o.employees || 0,
+            engagements: 0,
+            contractAmount: contractAmount,
+            sessionCount: 0,
+            orderEndDate: o.planEnd || '-',
+            totalOrderAmount: contractAmount,
+            totalReceived: totalReceived,
+            totalDue: totalDue,
+            totalSessionCost: 0,
+            totalWebinarCost: 0,
+            otherCost: 0
+          };
+        });
+
+        setExpenses(prev => {
+          const baseExpenses = prev.filter(p => typeof p.id === 'number');
+          return [...baseExpenses, ...newExpenses];
+        });
+      } catch (err) {
+        console.error('Failed to parse orders', err);
+      }
+    }
+  }, [clients]);
+
   const [searchQuery, setSearchQuery] = useState('');
 
   // Pagination State
@@ -87,7 +151,10 @@ function ExpenseTracker() {
 
   const enrichedExpenses = useMemo(() => {
     return expenses.map(exp => {
-      const clientExpenses = globalExpenses.filter(ge => ge.clientName === exp.clientName && (ge.status === 'Approved' || ge.status === 'Settled' || ge.status === 'Disbursed'));
+      const clientExpenses = globalExpenses.filter(ge => {
+        const orderIdMatch = ge.orderId ? String(ge.orderId) === String(exp.id).replace('order_', '') : ge.orderName === exp.orderName;
+        return orderIdMatch && ge.expenseType !== 'Expert-Request' && ge.status === 'Settled';
+      });
       const calculatedOtherCost = clientExpenses.reduce((sum, current) => sum + current.amount, 0);
       return { ...exp, otherCost: exp.otherCost + calculatedOtherCost };
     });
@@ -112,20 +179,38 @@ function ExpenseTracker() {
     return sum + (e.totalReceived - e.totalSessionCost - e.totalWebinarCost - e.otherCost);
   }, 0);
 
-  const formatCurrency = (amount) => `$${amount.toLocaleString()}`;
+  const formatCurrency = (amount) => `$${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <main className="main-content expense-tracker-page">
       <style>{`
+        .expense-tracker-page .table-container {
+          overflow-x: auto;
+          width: 100%;
+        }
+        .expense-tracker-page .data-table {
+          table-layout: fixed;
+          width: max-content;
+          min-width: 100%;
+        }
         .expense-tracker-page .data-table th,
         .expense-tracker-page .data-table td {
-          font-size: 10px !important;
-          padding: 4px 6px !important;
+          font-size: 12px !important;
+          padding: 6px 8px !important;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .expense-tracker-page .data-table th {
+          resize: horizontal;
+          min-width: 80px;
+          width: 100px;
         }
         .expense-tracker-page .badge {
-          font-size: 10px !important;
-          padding: 2px 6px !important;
+          font-size: 11px !important;
+          padding: 3px 8px !important;
         }
+        .text-right { text-align: right !important; }
         .et-stat-card {
           flex: 1;
           background: white;
@@ -204,7 +289,7 @@ function ExpenseTracker() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>S. NO.</th>
+              <th className="text-right">S. NO.</th>
               <th>CLIENT NAME</th>
               <th>DIVISION</th>
               <th>DIVISION STATUS</th>
@@ -212,20 +297,20 @@ function ExpenseTracker() {
               <th>ORDER NAME</th>
               <th>ORDER ACTIVE</th>
               <th>ORDER STATUS</th>
-              <th>START DATE</th>
-              <th>END DATE</th>
-              <th>EMPLOYEE COVERED</th>
-              <th>ENGAGEMENTS</th>
-              <th>CONTRACT AMOUNT</th>
-              <th>SESSION COUNT</th>
-              <th>ORDER END DATE</th>
-              <th>TOTAL ORDER AMOUNT</th>
-              <th>TOTAL RECEIVED</th>
-              <th>TOTAL DUE</th>
-              <th>SESSION COST</th>
-              <th>WEBINAR COST</th>
-              <th>OTHER COST</th>
-              <th>NET REVENUE</th>
+              <th className="text-right">START DATE</th>
+              <th className="text-right">END DATE</th>
+              <th className="text-right">EMPLOYEE COVERED</th>
+              <th className="text-right">ENGAGEMENTS</th>
+              <th className="text-right">CONTRACT AMOUNT</th>
+              <th className="text-right">SESSION COUNT</th>
+              <th className="text-right">ORDER END DATE</th>
+              <th className="text-right">TOTAL ORDER AMOUNT</th>
+              <th className="text-right">TOTAL RECEIVED</th>
+              <th className="text-right">TOTAL DUE</th>
+              <th className="text-right">SESSION COST</th>
+              <th className="text-right">WEBINAR COST</th>
+              <th className="text-right">OTHER COST</th>
+              <th className="text-right">NET REVENUE</th>
             </tr>
           </thead>
           <tbody>
@@ -233,12 +318,12 @@ function ExpenseTracker() {
               const netRevenue = exp.totalReceived - exp.totalSessionCost - exp.totalWebinarCost - exp.otherCost;
               const margin = exp.totalReceived > 0 ? (netRevenue / exp.totalReceived) * 100 : 0;
               let revenueColor = 'var(--red)';
-              if (margin > 50) revenueColor = 'var(--green)';
+              if (margin > 40) revenueColor = 'var(--green)';
               else if (margin >= 11) revenueColor = 'var(--orange)';
 
               return (
                 <tr key={exp.id}>
-                  <td>{startIndex + index + 1}</td>
+                  <td className="text-right">{startIndex + index + 1}</td>
 
                   {/* Routes to /clients */}
                   <td className="event-name" style={{ cursor: 'pointer' }} onClick={() => navigate('/clients')}>
@@ -262,46 +347,46 @@ function ExpenseTracker() {
                     {exp.orderStatus}
                   </td>
 
-                  <td>{exp.startDate}</td>
-                  <td>{exp.endDate}</td>
-                  <td>{exp.employeeCovered}</td>
-                  <td>{exp.engagements}</td>
-                  <td>{formatCurrency(exp.contractAmount)}</td>
-                  <td>{exp.sessionCount}</td>
+                  <td className="text-right">{exp.startDate}</td>
+                  <td className="text-right">{exp.endDate}</td>
+                  <td className="text-right">{Number(exp.employeeCovered || 0).toLocaleString('en-US')}</td>
+                  <td className="text-right">{Number(exp.engagements || 0).toLocaleString('en-US')}</td>
+                  <td className="text-right">{formatCurrency(exp.contractAmount)}</td>
+                  <td className="text-right">{Number(exp.sessionCount || 0).toLocaleString('en-US')}</td>
 
                   {/* Routes to /clients */}
-                  <td style={{ cursor: 'pointer', color: 'var(--primary)', whiteSpace: 'nowrap' }} onClick={() => navigate('/clients')}>
+                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--primary)', whiteSpace: 'nowrap' }} onClick={() => navigate('/clients')}>
                     {exp.orderEndDate}
                   </td>
 
                   {/* Routes to /clients */}
-                  <td style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate('/clients')}>
+                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate('/clients')}>
                     {formatCurrency(exp.totalOrderAmount)}
                   </td>
 
                   {/* Routes to /client-payments */}
-                  <td style={{ cursor: 'pointer', color: 'var(--success)', fontWeight: '500' }} onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}>
+                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--success)', fontWeight: '500' }} onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}>
                     {formatCurrency(exp.totalReceived)}
                   </td>
 
                   {/* Routes to /client-payments */}
-                  <td style={{ cursor: 'pointer', color: 'var(--warning)', fontWeight: '500' }} onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}>
+                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--warning)', fontWeight: '500' }} onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}>
                     {formatCurrency(exp.totalDue)}
                   </td>
 
-                  <td>{formatCurrency(exp.totalSessionCost)}</td>
+                  <td className="text-right">{formatCurrency(exp.totalSessionCost)}</td>
 
                   {/* Routes to /event-approval */}
-                  <td style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate(`/event-approval?client=${encodeURIComponent(exp.clientName)}`)}>
+                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate(`/event-approval?client=${encodeURIComponent(exp.clientName)}`)}>
                     {formatCurrency(exp.totalWebinarCost)}
                   </td>
 
                   {/* Routes to /expense-approval */}
-                  <td style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate(`/expense-approval?client=${encodeURIComponent(exp.clientName)}`)}>
+                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate(`/expense-approval?client=${encodeURIComponent(exp.clientName)}`)}>
                     {formatCurrency(exp.otherCost)}
                   </td>
 
-                  <td style={{ fontWeight: '600', color: revenueColor }}>
+                  <td className="text-right" style={{ fontWeight: '600', color: revenueColor }}>
                     {formatCurrency(netRevenue)}
                   </td>
                 </tr>

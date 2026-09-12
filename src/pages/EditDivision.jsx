@@ -461,6 +461,7 @@ function EditDivision() {
         onClose={() => setIsPaymentSummaryOpen(false)}
         contractValue={selectedOrder?.billingDetails?.amountInUSD || selectedOrder?.amount || 0}
         orderId={selectedOrder?.id}
+        divisionId={division.id}
         onViewPaymentSchedule={() => {
           setIsPaymentSummaryOpen(false);
           setIsPaymentScheduleOpen(true);

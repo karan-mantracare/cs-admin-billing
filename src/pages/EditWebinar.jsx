@@ -736,6 +736,7 @@ function EditWebinar() {
           addExpense({
             date: new Date().toISOString().split('T')[0],
             clientName: data.clientName || (currentEvent ? currentEvent.clientName : 'MantraCare Internal'),
+            orderName: data.orderName || (currentEvent ? currentEvent.orderName : ''),
             sessionName: pageTitle,
             sessionDate: pageDate,
             addedBy: 'Admin',
@@ -853,6 +854,7 @@ function EditWebinar() {
                   addExpense({
                     date: new Date().toISOString().split('T')[0],
                     clientName: currentEvent?.clientName || 'MantraCare Internal',
+                    orderName: currentEvent?.orderName || '',
                     sessionName: pageTitle,
                     sessionDate: pageDate,
                     eventId: currentEvent?.id,

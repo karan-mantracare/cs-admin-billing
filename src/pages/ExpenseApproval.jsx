@@ -9,6 +9,24 @@ function ExpenseApproval() {
   const { expenses: allExpenses, updateExpenseStatus, showToast, resetExpenses } = useGlobal();
   const approvals = allExpenses;
 
+  const savedOrders = JSON.parse(localStorage.getItem('division_orders') || '[]');
+  const resolveOrderName = (req) => {
+    // Try to match orderId first
+    if (req.orderId && !String(req.orderId).startsWith('temp_')) {
+      const order = savedOrders.find(o => String(o.id) === String(req.orderId));
+      if (order) return `${order.divisionName || 'Unknown'} | ${order.planStart || '-'} - ${order.plan || '-'}`;
+    }
+    // Next try orderName, maybe it's actually an ID
+    if (req.orderName && !String(req.orderName).startsWith('temp_')) {
+      const order = savedOrders.find(o => String(o.id) === String(req.orderName));
+      if (order) return `${order.divisionName || 'Unknown'} | ${order.planStart || '-'} - ${order.plan || '-'}`;
+    }
+    // Return orderName or orderId if it's just temp
+    if (String(req.orderId).startsWith('temp_') || String(req.orderName).startsWith('temp_')) return 'New Order (Pending)';
+    
+    return req.orderName || req.orderId || '-';
+  };
+
   const [searchQuery, setSearchQuery] = useState(initialClient);
   const [statusFilter, setStatusFilter] = useState('All');
   
@@ -133,6 +151,7 @@ function ExpenseApproval() {
             <tr>
               <th>DATE</th>
               <th>CLIENT NAME</th>
+              <th>ORDER</th>
               <th>ADDED BY</th>
               <th>EXPENSE TYPE</th>
               <th>DETAILS</th>
@@ -147,6 +166,9 @@ function ExpenseApproval() {
               <tr key={req.id}>
                 <td style={{ whiteSpace: 'nowrap' }}>{req.date}</td>
                 <td className="event-name">{req.clientName}</td>
+                <td style={{ fontSize: '0.8rem', color: '#475569', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={resolveOrderName(req)}>
+                  {resolveOrderName(req)}
+                </td>
                 <td>{req.addedBy}</td>
                 <td>{req.expenseType}</td>
                 <td style={{ maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={req.details}>
@@ -185,7 +207,7 @@ function ExpenseApproval() {
             ))}
             {filteredApprovals.length === 0 && (
               <tr>
-                <td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>No expense approvals found</td>
+                <td colSpan="10" style={{ textAlign: 'center', padding: '2rem' }}>No expense approvals found</td>
               </tr>
             )}
           </tbody>
@@ -281,6 +303,10 @@ function ExpenseApproval() {
                 <div className="form-group">
                   <label>Client Name</label>
                   <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)' }}>{viewingDetails.clientName}</div>
+                </div>
+                <div className="form-group">
+                  <label>Order</label>
+                  <div style={{ padding: '0.5rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)' }}>{resolveOrderName(viewingDetails)}</div>
                 </div>
               </div>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGlobal } from '../context/GlobalContext';
 
-function AddExpenseModal({ isOpen, onClose, orderId, clientName, editExpenseData }) {
+function AddExpenseModal({ isOpen, onClose, orderId, orderName, clientName, editExpenseData }) {
   const { addExpense, updateExpense, showToast } = useGlobal();
 
   const [formData, setFormData] = useState({
@@ -65,6 +65,7 @@ function AddExpenseModal({ isOpen, onClose, orderId, clientName, editExpenseData
     
     const newExpenseData = {
       orderId,
+      orderName,
       clientName: clientName || 'Unknown Client',
       date: new Date().toISOString().split('T')[0], // Submitted/Resubmitted date
       expenseType: expenseCategory,

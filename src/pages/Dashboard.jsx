@@ -167,7 +167,7 @@ function Dashboard() {
 
   const handleSaveInline = () => {
     if (!newActivity.sessionDate || !newActivity.sessionName) {
-      alert('Please fill out Date and Event Name');
+      showToast('Please fill out Date and Event Name', 3000, 'error');
       return;
     }
 
@@ -413,22 +413,22 @@ function Dashboard() {
             
             {/* Inline Add Row */}
             {isAdding && (
-              <tr style={{ background: 'var(--bg-light)' }}>
-                <td>
+              <tr style={{ background: '#f8fafc', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
+                <td style={{ padding: '0.75rem 0.5rem' }}>
                   <input 
                     type="date" 
                     className="form-control" 
-                    style={{ padding: '0.25rem', width: '130px', fontSize: '0.85rem' }} 
+                    style={{ padding: '0.5rem 0.75rem', width: '140px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', transition: 'border-color 0.2s' }} 
                     value={newActivity.sessionDate}
                     onChange={(e) => setNewActivity({...newActivity, sessionDate: e.target.value})}
                   />
                 </td>
-                <td>-</td>
-                <td>CS-Karan</td>
-                <td>
+                <td style={{ padding: '0.75rem 0.5rem' }}>-</td>
+                <td style={{ padding: '0.75rem 0.5rem', fontWeight: '500' }}>CS-Karan</td>
+                <td style={{ padding: '0.75rem 0.5rem' }}>
                   <select 
                     className="form-control" 
-                    style={{ padding: '0.25rem', fontSize: '0.85rem' }}
+                    style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', transition: 'border-color 0.2s', width: '120px' }}
                     value={newActivity.sessionType}
                     onChange={(e) => {
                       const newType = e.target.value;
@@ -444,10 +444,10 @@ function Dashboard() {
                     <option value="assessment">Assessment</option>
                   </select>
                 </td>
-                <td>
+                <td style={{ padding: '0.75rem 0.5rem' }}>
                   <select 
                     className="form-control" 
-                    style={{ padding: '0.25rem', fontSize: '0.85rem' }}
+                    style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', transition: 'border-color 0.2s', minWidth: '200px' }}
                     value={newActivity.sessionName}
                     onChange={(e) => setNewActivity({...newActivity, sessionName: e.target.value})}
                   >
@@ -456,14 +456,18 @@ function Dashboard() {
                     ))}
                   </select>
                 </td>
-                <td><span className="status-pill status-tentative">Tentative</span></td>
-                <td>-</td>
-                <td>0</td>
-                <td className="actions" style={{ gap: '0.5rem' }}>
-                  <button className="btn-primary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }} onClick={handleSaveInline}>
+                <td style={{ padding: '0.75rem 0.5rem' }}>
+                  <span className="status-pill status-tentative" style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', padding: '0.25rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '600' }}>
+                    <i className='bx bx-time' style={{ marginRight: '4px' }}></i> Tentative
+                  </span>
+                </td>
+                <td style={{ padding: '0.75rem 0.5rem' }}>-</td>
+                <td style={{ padding: '0.75rem 0.5rem', fontWeight: '500' }}>0</td>
+                <td className="actions" style={{ gap: '0.5rem', padding: '0.75rem 0.5rem' }}>
+                  <button className="btn-primary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', borderRadius: '6px', background: '#3b82f6', border: 'none', color: 'white', fontWeight: '600' }} onClick={handleSaveInline}>
                     Save
                   </button>
-                  <button className="btn-outline" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }} onClick={() => setIsAdding(false)}>
+                  <button className="btn-outline" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: '600' }} onClick={() => setIsAdding(false)}>
                     Cancel
                   </button>
                 </td>
@@ -519,10 +523,10 @@ function Dashboard() {
                   />
                   <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
                     <button className="btn-primary" onClick={() => {
-                      if (!newRescheduleDate) { alert('Please select a date.'); return; }
+                      if (!newRescheduleDate) { showToast('Please select a date.', 3000, 'error'); return; }
                       if (reschedulingEventId) {
                         requestReschedule(reschedulingEventId, newRescheduleDate);
-                        alert("Request sent to the Team.");
+                        showToast("Request sent to the Team.", 3000);
                         setShowReschedulePrompt(false);
                         setShowRescheduleDatepicker(false);
                         setNewRescheduleDate('');
@@ -598,7 +602,7 @@ function Dashboard() {
               <button className="btn-outline" onClick={() => { setMarkCompleteId(null); setParticipantCount(''); }}>Cancel</button>
               <button className="btn-primary" style={{ background: 'var(--green)', borderColor: 'var(--green)' }} onClick={() => {
                 if (!participantCount) {
-                  alert('Please enter a participant count.');
+                  showToast('Please enter a participant count.', 3000, 'error');
                   return;
                 }
                 updateEventDetails(markCompleteId, { 
