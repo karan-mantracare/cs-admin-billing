@@ -118,6 +118,7 @@ function Dashboard() {
 
   // Add Expense State
   const [expenseModalEventId, setExpenseModalEventId] = useState(null);
+  const [confirmCancelEventId, setConfirmCancelEventId] = useState(null);
   const [expenseData, setExpenseData] = useState({
     expenseType: 'Session Expense',
     deliveredBy: 'CS-Karan',
@@ -394,9 +395,7 @@ function Dashboard() {
                   ) : (
                     (!w.status || (w.status.toLowerCase() !== 'canceled_by_cs' && w.status.toLowerCase() !== 'canceled_by_hr' && w.status.toLowerCase() !== 'complete' && w.status.toLowerCase() !== 'completed' && w.status.toLowerCase() !== 'event_completed')) && (
                       <button className="action-btn delete" title="Cancel" onClick={() => {
-                        if (window.confirm('Are you sure you want to cancel this event?')) {
-                          updateEventStatus(w.id, 'canceled_by_cs');
-                        }
+                        setConfirmCancelEventId(w.id);
                       }}>
                         <i className='bx bx-minus-circle'></i>
                       </button>
@@ -678,6 +677,48 @@ function Dashboard() {
                 <button type="submit" className="btn-primary" style={{ background: 'var(--green)', borderColor: 'var(--green)' }}>Submit Expense</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Cancel Event Modal */}
+      {confirmCancelEventId && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.4)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(2px)'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '12px', width: '90%', maxWidth: '400px',
+            display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{ padding: '1.5rem 1.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ width: '48px', height: '48px', background: '#fee2e2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                <i className='bx bx-error-circle' style={{ fontSize: '1.8rem', color: '#b91c1c' }}></i>
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a', fontSize: '1.15rem', fontWeight: '700' }}>Cancel Event</h3>
+              <p style={{ margin: 0, color: '#64748b', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                Are you sure you want to cancel this event? This action will mark it as canceled.
+              </p>
+            </div>
+            <div style={{ padding: '1rem 1.5rem 1.5rem', display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
+              <button
+                onClick={() => {
+                  updateEventStatus(confirmCancelEventId, 'canceled_by_cs');
+                  showToast('Event canceled successfully', 3000);
+                  setConfirmCancelEventId(null);
+                }}
+                style={{ padding: '0.5rem 1.25rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem' }}
+              >
+                Yes, Cancel
+              </button>
+              <button
+                onClick={() => setConfirmCancelEventId(null)}
+                style={{ padding: '0.5rem 1.25rem', background: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500', fontSize: '0.95rem' }}
+              >
+                Keep Event
+              </button>
+            </div>
           </div>
         </div>
       )}

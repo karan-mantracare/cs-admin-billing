@@ -63,6 +63,7 @@ function EditWebinar() {
 
   const [isConfirmSettleOpen, setIsConfirmSettleOpen] = useState(false);
   const [settleReqId, setSettleReqId] = useState(null);
+  const [confirmDirectSettleId, setConfirmDirectSettleId] = useState(null);
 
   const [revokingExpenseId, setRevokingExpenseId] = useState(null);
   const [revokeReason, setRevokeReason] = useState('');
@@ -621,8 +622,7 @@ function EditWebinar() {
                                 className="btn-outline"
                                 style={{ padding: '0.2rem 0.5rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                                 onClick={() => {
-                                  updateExpenseStatus(exp.id, 'Settled');
-                                  showToast('Expense marked as settled', 3000);
+                                  setConfirmDirectSettleId(exp.id);
                                 }}
                                 title="Mark as Settled"
                               >
@@ -1294,6 +1294,47 @@ function EditWebinar() {
                 <button type="submit" className="btn-primary" style={{ background: '#f59e0b', borderColor: '#f59e0b' }}>Confirm Revoke</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Custom Confirm Direct Settle Modal */}
+      {confirmDirectSettleId && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.4)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(2px)'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '12px', width: '90%', maxWidth: '400px',
+            display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{ padding: '1.5rem 1.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ width: '48px', height: '48px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                <i className='bx bx-check-double' style={{ fontSize: '1.8rem', color: '#166534' }}></i>
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a', fontSize: '1.15rem', fontWeight: '700' }}>Settle Expense</h3>
+              <p style={{ margin: 0, color: '#64748b', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                Are you sure you want to settle this expense? This action cannot be undone.
+              </p>
+            </div>
+            <div style={{ padding: '1rem 1.5rem 1.5rem', display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
+              <button
+                onClick={() => {
+                  updateExpenseStatus(confirmDirectSettleId, 'Settled');
+                  showToast('Expense marked as settled', 3000);
+                  setConfirmDirectSettleId(null);
+                }}
+                style={{ padding: '0.5rem 1.25rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem' }}
+              >
+                Yes, Settle
+              </button>
+              <button
+                onClick={() => setConfirmDirectSettleId(null)}
+                style={{ padding: '0.5rem 1.25rem', background: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500', fontSize: '0.95rem' }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

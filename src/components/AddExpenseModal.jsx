@@ -37,6 +37,14 @@ function AddExpenseModal({ isOpen, onClose, orderId, orderName, clientName, edit
     }
   }, [isOpen, editExpenseData]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleChange = (e) => {
@@ -121,11 +129,14 @@ function AddExpenseModal({ isOpen, onClose, orderId, orderName, clientName, edit
   };
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
-      display: 'flex', justifyContent: 'center', alignItems: 'center'
-    }}>
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+        display: 'flex', justifyContent: 'center', alignItems: 'center'
+      }}
+    >
       <div style={{
         background: 'white', borderRadius: '12px', width: '90%', maxWidth: '450px',
         boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden'

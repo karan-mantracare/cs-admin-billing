@@ -144,6 +144,7 @@ function ExpenseTracker() {
   }, [clients]);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -164,11 +165,33 @@ function ExpenseTracker() {
     exp.clientName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Sorting Logic
+  const sortedExpenses = useMemo(() => {
+    let sortableItems = [...filteredExpenses];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+        
+        // Handle calculated Net Revenue sorting
+        if (sortConfig.key === 'netRevenue') {
+          aValue = a.totalReceived - a.totalSessionCost - a.otherCost;
+          bValue = b.totalReceived - b.totalSessionCost - b.otherCost;
+        }
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredExpenses, sortConfig]);
+
   // Pagination Logic
-  const totalItems = filteredExpenses.length;
+  const totalItems = sortedExpenses.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
-  const paginatedExpenses = filteredExpenses.slice(startIndex, startIndex + rowsPerPage);
+  const paginatedExpenses = sortedExpenses.slice(startIndex, startIndex + rowsPerPage);
 
   // Summary Logic
   const sumOrderAmount = filteredExpenses.reduce((sum, e) => sum + e.totalOrderAmount, 0);
@@ -176,8 +199,23 @@ function ExpenseTracker() {
   const sumDue = filteredExpenses.reduce((sum, e) => sum + e.totalDue, 0);
 
   const totalProfit = filteredExpenses.reduce((sum, e) => {
-    return sum + (e.totalReceived - e.totalSessionCost - e.totalWebinarCost - e.otherCost);
+    return sum + (e.totalReceived - e.totalSessionCost - e.otherCost);
   }, 0);
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return <i className='bx bx-sort' style={{ color: '#cbd5e1', marginLeft: '4px' }}></i>;
+    return sortConfig.direction === 'asc' 
+      ? <i className='bx bx-sort-up' style={{ color: '#3b82f6', marginLeft: '4px' }}></i> 
+      : <i className='bx bx-sort-down' style={{ color: '#3b82f6', marginLeft: '4px' }}></i>;
+  };
 
   const formatCurrency = (amount) => `$${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -290,32 +328,31 @@ function ExpenseTracker() {
           <thead>
             <tr>
               <th className="text-right">S. NO.</th>
-              <th>CLIENT NAME</th>
+              <th onClick={() => requestSort('clientName')} style={{ cursor: 'pointer' }}>CLIENT NAME {getSortIcon('clientName')}</th>
               <th>DIVISION</th>
               <th>DIVISION STATUS</th>
               <th>CS RESPONSIBLE</th>
-              <th>ORDER NAME</th>
+              <th onClick={() => requestSort('orderName')} style={{ cursor: 'pointer' }}>ORDER NAME {getSortIcon('orderName')}</th>
               <th>ORDER ACTIVE</th>
               <th>ORDER STATUS</th>
               <th className="text-right">START DATE</th>
               <th className="text-right">END DATE</th>
-              <th className="text-right">EMPLOYEE COVERED</th>
+              <th className="text-right" onClick={() => requestSort('employeeCovered')} style={{ cursor: 'pointer' }}>EMPLOYEE COVERED {getSortIcon('employeeCovered')}</th>
               <th className="text-right">ENGAGEMENTS</th>
-              <th className="text-right">CONTRACT AMOUNT</th>
+              <th className="text-right" onClick={() => requestSort('contractAmount')} style={{ cursor: 'pointer' }}>CONTRACT AMOUNT {getSortIcon('contractAmount')}</th>
               <th className="text-right">SESSION COUNT</th>
               <th className="text-right">ORDER END DATE</th>
-              <th className="text-right">TOTAL ORDER AMOUNT</th>
-              <th className="text-right">TOTAL RECEIVED</th>
-              <th className="text-right">TOTAL DUE</th>
+              <th className="text-right" onClick={() => requestSort('totalOrderAmount')} style={{ cursor: 'pointer' }}>TOTAL ORDER AMOUNT {getSortIcon('totalOrderAmount')}</th>
+              <th className="text-right" onClick={() => requestSort('totalReceived')} style={{ cursor: 'pointer' }}>TOTAL RECEIVED {getSortIcon('totalReceived')}</th>
+              <th className="text-right" onClick={() => requestSort('totalDue')} style={{ cursor: 'pointer' }}>TOTAL DUE {getSortIcon('totalDue')}</th>
               <th className="text-right">SESSION COST</th>
-              <th className="text-right">WEBINAR COST</th>
-              <th className="text-right">OTHER COST</th>
-              <th className="text-right">NET REVENUE</th>
+              <th className="text-right" onClick={() => requestSort('otherCost')} style={{ cursor: 'pointer' }}>OTHER COST {getSortIcon('otherCost')}</th>
+              <th className="text-right" onClick={() => requestSort('netRevenue')} style={{ cursor: 'pointer' }}>NET REVENUE {getSortIcon('netRevenue')}</th>
             </tr>
           </thead>
           <tbody>
             {paginatedExpenses.map((exp, index) => {
-              const netRevenue = exp.totalReceived - exp.totalSessionCost - exp.totalWebinarCost - exp.otherCost;
+              const netRevenue = exp.totalReceived - exp.totalSessionCost - exp.otherCost;
               const margin = exp.totalReceived > 0 ? (netRevenue / exp.totalReceived) * 100 : 0;
               let revenueColor = 'var(--red)';
               if (margin > 40) revenueColor = 'var(--green)';
@@ -375,12 +412,6 @@ function ExpenseTracker() {
                   </td>
 
                   <td className="text-right">{formatCurrency(exp.totalSessionCost)}</td>
-
-                  {/* Routes to /event-approval */}
-                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate(`/event-approval?client=${encodeURIComponent(exp.clientName)}`)}>
-                    {formatCurrency(exp.totalWebinarCost)}
-                  </td>
-
                   {/* Routes to /expense-approval */}
                   <td className="text-right" style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate(`/expense-approval?client=${encodeURIComponent(exp.clientName)}`)}>
                     {formatCurrency(exp.otherCost)}

@@ -323,7 +323,7 @@ body {
     background: var(--primary);
     color: #ffffff;
     border: none;
-    padding: 0.65rem 1.5rem;
+    padding: 0.4rem 1rem;
     border-radius: var(--radius-md);
     font-family: inherit;
     font-size: 0.95rem;
@@ -355,7 +355,7 @@ body {
     background: var(--bg-surface);
     color: var(--primary);
     border: 1px solid var(--primary);
-    padding: 0.65rem 1.5rem;
+    padding: 0.4rem 1rem;
     border-radius: var(--radius-md);
     font-family: inherit;
     font-size: 0.95rem;

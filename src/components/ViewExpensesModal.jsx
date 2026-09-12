@@ -1,10 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGlobal } from '../context/GlobalContext';
 
 function ViewExpensesModal({ isOpen, onClose, orderId, orderName, onEditExpense }) {
   const { expenses, events, updateExpenseStatus, showToast } = useGlobal();
   const [viewingExpenseId, setViewingExpenseId] = useState(null);
   const [confirmSettleId, setConfirmSettleId] = useState(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (confirmSettleId) setConfirmSettleId(null);
+        else if (viewingExpenseId) setViewingExpenseId(null);
+        else onClose();
+      }
+    };
+    if (isOpen) window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, confirmSettleId, viewingExpenseId]);
 
   if (!isOpen) return null;
   const viewingExpense = expenses.find(e => e.id === viewingExpenseId);
@@ -42,11 +54,14 @@ function ViewExpensesModal({ isOpen, onClose, orderId, orderName, onEditExpense 
   };
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
-      display: 'flex', justifyContent: 'center', alignItems: 'center'
-    }}>
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+        display: 'flex', justifyContent: 'center', alignItems: 'center'
+      }}
+    >
       <div style={{
         background: 'white', borderRadius: '12px', width: '90%', maxWidth: '800px',
         maxHeight: '90vh', display: 'flex', flexDirection: 'column',
