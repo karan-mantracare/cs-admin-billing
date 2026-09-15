@@ -255,8 +255,54 @@ function AddOrder() {
     details: true,
     addOns: true,
     appConfig: true,
-    accessSecurity: true
+    accessSecurity: true,
+    expenseDetails: true
   });
+
+  const orderExpenses = (expenses || []).filter(exp => {
+    const targetOrderId = location.state?.orderId || tempSessionId;
+    if (String(exp.orderId) === String(targetOrderId)) return true;
+    if (exp.eventId && formData.orderName) {
+      const relatedEvent = events?.find(ev => String(ev.id) === String(exp.eventId));
+      if (relatedEvent && String(relatedEvent.orderName) === String(formData.orderName)) {
+        return true;
+      }
+    }
+    return false;
+  });
+
+  const formatCurrency = (amount) => {
+    const num = Number(amount);
+    return isNaN(num) ? amount : `$${num.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'Approved':
+        return <span style={{ padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600', backgroundColor: '#dcfce7', color: '#166534' }}>Approved</span>;
+      case 'Rejected':
+        return <span style={{ padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600', backgroundColor: '#fee2e2', color: '#991b1b' }}>Rejected</span>;
+      case 'Settled':
+        return <span style={{ padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600', backgroundColor: '#e0e7ff', color: '#3730a3' }}>Settled</span>;
+      case 'Revoked':
+        return <span style={{ padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600', backgroundColor: '#f3f4f6', color: '#4b5563' }}>Revoked</span>;
+      default:
+        return <span style={{ padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600', backgroundColor: '#fef3c7', color: '#92400e' }}>{status || 'Pending'}</span>;
+    }
+  };
+
+  const handleSettleExpense = (id) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Settle Expense',
+      message: 'Are you sure you want to mark this expense as settled? This will update the status and log the action.',
+      confirmText: 'Confirm Settle',
+      onConfirm: () => {
+        updateExpenseStatus(id, 'Settled', 'Expense settled by CS');
+        showToast('Expense marked as settled', 5000);
+      }
+    });
+  };
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
