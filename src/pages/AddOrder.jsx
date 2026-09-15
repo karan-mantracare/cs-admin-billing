@@ -5,6 +5,7 @@ import BillingDetailsModal from '../components/BillingDetailsModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
 import DocumentConnectModalV2 from '../components/DocumentConnectModalV2';
 import PaymentSummaryModal from '../components/PaymentSummaryModal';
+import ConfirmModal from '../components/ConfirmModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
 import AddExpenseModal from '../components/AddExpenseModal';
 import ViewExpensesModal from '../components/ViewExpensesModal';
@@ -138,6 +139,14 @@ function AddOrder() {
   const [isViewExpensesModalOpen, setIsViewExpensesModalOpen] = useState(false);
   const [editExpenseData, setEditExpenseData] = useState(null);
   const [paymentDueBadge, setPaymentDueBadge] = useState(null);
+  
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    confirmText: 'Confirm'
+  });
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const productDropdownRef = useRef(null);
   
@@ -199,13 +208,45 @@ function AddOrder() {
   };
   
   const removeDocument = (id) => {
-    setFormData(prev => ({
-      ...prev,
-      contractDetails: {
-        ...prev.contractDetails,
-        documents: prev.contractDetails.documents.filter(doc => doc.id !== id)
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Document',
+      message: 'Are you sure you want to delete this document?',
+      confirmText: 'Delete',
+      onConfirm: () => {
+        setFormData(prev => ({
+          ...prev,
+          contractDetails: {
+            ...prev.contractDetails,
+            documents: prev.contractDetails.documents.filter(doc => doc.id !== id)
+          }
+        }));
       }
-    }));
+    });
+  };
+
+  const removeV2Document = (doc) => {
+    const isDirect = doc.isDirectlyUploaded;
+    const title = isDirect ? 'Delete Document' : 'Disconnect Document';
+    const message = isDirect 
+      ? 'Are you sure you want to delete this document? It will be removed from both the Division and this Order.' 
+      : 'Are you sure you want to disconnect this document from this order?';
+    
+    setConfirmConfig({
+      isOpen: true,
+      title,
+      message,
+      confirmText: isDirect ? 'Delete' : 'Disconnect',
+      onConfirm: () => {
+        setFormData(prev => ({
+          ...prev,
+          contractDetails: {
+            ...prev.contractDetails,
+            v2Documents: prev.contractDetails.v2Documents.filter(d => d.id !== doc.id)
+          }
+        }));
+      }
+    });
   };
 
   const [expandedSections, setExpandedSections] = useState({
@@ -520,15 +561,7 @@ function AddOrder() {
                     <span style={{ fontWeight: '500', color: '#0f172a' }}>{doc.name}</span>
                   </div>
                 </div>
-                <button onClick={() => {
-                  setFormData(prev => ({
-                    ...prev,
-                    contractDetails: {
-                      ...prev.contractDetails,
-                      v2Documents: prev.contractDetails.v2Documents.filter(d => d.id !== doc.id)
-                    }
-                  }));
-                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => removeV2Document(doc)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <i className='bx bx-trash' style={{ fontSize: '1.1rem' }}></i>
                 </button>
               </div>
@@ -858,7 +891,7 @@ function AddOrder() {
               localStorage.setItem('division_orders', JSON.stringify(orders));
               
               // Process V2 documents connecting/saving
-              if (formData.contractDetails.v2Documents && formData.contractDetails.v2Documents.length > 0) {
+              if (formData.contractDetails.v2Documents) {
                 const targetOrderId = isEditMode ? location.state.orderId : orders[orders.length - 1].id;
                 const targetOrderName = `${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart} - ${formData.plan}`;
                 
@@ -878,10 +911,13 @@ function AddOrder() {
                     return { ...d, orderId: targetOrderId, orderName: targetOrderName };
                   }
                   if (String(d.orderId) === String(targetOrderId) && !v2Ids.includes(d.id)) {
-                    return { ...d, orderId: '', orderName: '' };
+                    if (d.isDirectlyUploaded) {
+                      return null; // Remove it completely if it was uploaded directly for this order
+                    }
+                    return { ...d, orderId: '', orderName: '' }; // Just disconnect it
                   }
                   return d;
-                });
+                }).filter(Boolean);
                 
                 localStorage.setItem('division_documents', JSON.stringify(updatedDivDocs));
               }
@@ -976,11 +1012,20 @@ function AddOrder() {
         onClose={() => setIsViewExpensesModalOpen(false)}
         orderId={location.state?.orderId || tempSessionId}
         orderName={`${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart} - ${formData.plan}`}
-        onEditExpense={(expense) => {
-          setIsViewExpensesModalOpen(false);
+        expenses={expenses.filter(e => e.orderId === tempSessionId || e.orderId === location.state?.orderId)}
+        onEdit={(expense) => {
           setEditExpenseData(expense);
           setIsAddExpenseModalOpen(true);
         }}
+      />
+      
+      <ConfirmModal 
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
       />
     </main>
   );

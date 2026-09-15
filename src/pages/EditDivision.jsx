@@ -4,6 +4,7 @@ import ViewOnboardingModal from '../components/ViewOnboardingModal';
 import PaymentSummaryModal from '../components/PaymentSummaryModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 function EditDivision() {
   const location = useLocation();
@@ -43,6 +44,13 @@ function EditDivision() {
 
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [divisionDocs, setDivisionDocs] = useState([]);
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    confirmText: 'Confirm'
+  });
 
   useEffect(() => {
     const fetchDocs = () => {
@@ -75,6 +83,21 @@ function EditDivision() {
     setIsDocModalOpen(false);
   };
 
+  const deleteDivisionDocument = (id) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Document',
+      message: 'Are you sure you want to delete this document from the division?',
+      confirmText: 'Delete',
+      onConfirm: () => {
+        const allDocs = JSON.parse(localStorage.getItem('division_documents') || '[]');
+        const updatedDocs = allDocs.filter(d => d.id !== id);
+        localStorage.setItem('division_documents', JSON.stringify(updatedDocs));
+        setDivisionDocs(prev => prev.filter(d => d.id !== id));
+      }
+    });
+  };
+
   useEffect(() => {
     const fetchOrders = () => {
       const saved = localStorage.getItem('division_orders');
@@ -94,11 +117,17 @@ function EditDivision() {
   }, []);
 
   const deleteOrder = (id) => {
-    if (window.confirm('Are you sure you want to delete this order?')) {
-      const updatedOrders = orders.filter(o => o.id !== id);
-      setOrders(updatedOrders);
-      localStorage.setItem('division_orders', JSON.stringify(updatedOrders));
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Order',
+      message: 'Are you sure you want to delete this order?',
+      confirmText: 'Delete',
+      onConfirm: () => {
+        const updatedOrders = orders.filter(o => o.id !== id);
+        setOrders(updatedOrders);
+        localStorage.setItem('division_orders', JSON.stringify(updatedOrders));
+      }
+    });
   };
 
   useEffect(() => {
@@ -285,6 +314,7 @@ function EditDivision() {
                               <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Document Name</th>
                               <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Order Name</th>
                               <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Date</th>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600', width: '50px' }}></th>
                             </tr>
                           </thead>
                           <tbody>
@@ -300,6 +330,11 @@ function EditDivision() {
                                   {doc.orderName || '— Unlinked —'}
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>{doc.date}</td>
+                                <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                  <button onClick={() => deleteDivisionDocument(doc.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Delete Document">
+                                    <i className='bx bx-trash' style={{ fontSize: '1.1rem' }}></i>
+                                  </button>
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -539,7 +574,7 @@ function EditDivision() {
       </div>
       
       
-            <ViewOnboardingModal 
+      <ViewOnboardingModal 
         isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
         data={filedData || formData}
@@ -571,6 +606,15 @@ function EditDivision() {
         isOpen={isDocModalOpen}
         onClose={() => setIsDocModalOpen(false)}
         onSave={handleSaveDocument}
+      />
+
+      <ConfirmModal 
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
       />
     </main>
   );

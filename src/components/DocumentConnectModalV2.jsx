@@ -83,7 +83,8 @@ function DocumentConnectModalV2({ isOpen, onClose, onConnect, divisionId, orderI
         otherType: uploadData.otherType,
         divisionId: divisionId,
         orderId: orderId || '', // Might be blank if order is new
-        orderName: '' // Will be updated on save
+        orderName: '', // Will be updated on save
+        isDirectlyUploaded: true
       };
 
       onConnect([newDoc], 'upload');
