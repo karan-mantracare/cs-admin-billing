@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import ViewOnboardingModal from '../components/ViewOnboardingModal';
 import PaymentSummaryModal from '../components/PaymentSummaryModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
+import DocumentUploadModal from '../components/DocumentUploadModal';
 
 function EditDivision() {
   const location = useLocation();
@@ -39,6 +40,40 @@ function EditDivision() {
   const [isPaymentSummaryOpen, setIsPaymentSummaryOpen] = useState(false);
   const [isPaymentScheduleOpen, setIsPaymentScheduleOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [divisionDocs, setDivisionDocs] = useState([]);
+
+  useEffect(() => {
+    const fetchDocs = () => {
+      const saved = localStorage.getItem('division_documents');
+      if (saved) {
+        const allDocs = JSON.parse(saved);
+        setDivisionDocs(allDocs.filter(d => String(d.divisionId) === String(division.id)));
+      } else {
+        setDivisionDocs([]);
+      }
+    };
+    fetchDocs();
+    window.addEventListener('storage', fetchDocs);
+    return () => window.removeEventListener('storage', fetchDocs);
+  }, [division.id]);
+
+  const handleSaveDocument = (doc) => {
+    const newDoc = {
+      ...doc,
+      divisionId: division.id,
+      orderId: '',
+      orderName: ''
+    };
+    
+    const allDocs = JSON.parse(localStorage.getItem('division_documents') || '[]');
+    allDocs.push(newDoc);
+    localStorage.setItem('division_documents', JSON.stringify(allDocs));
+    
+    setDivisionDocs(prev => [...prev, newDoc]);
+    setIsDocModalOpen(false);
+  };
 
   useEffect(() => {
     const fetchOrders = () => {
@@ -224,6 +259,59 @@ function EditDivision() {
                       </button>
                     </div>
                   </div>
+
+                  <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9', margin: 0 }} />
+
+                  {/* Upload Documents V2 */}
+                  <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 0.25rem 0', color: '#1e293b', fontSize: '1rem' }}>Division Documents</h4>
+                        <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>Upload documents to this division. They can be linked to orders later.</p>
+                      </div>
+                      <button 
+                        onClick={() => setIsDocModalOpen(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}
+                      >
+                        <i className='bx bx-upload'></i> Upload Document
+                      </button>
+                    </div>
+
+                    {divisionDocs.length > 0 ? (
+                      <div style={{ overflowX: 'auto', background: 'white', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                          <thead>
+                            <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Document Name</th>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Order Name</th>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {divisionDocs.map((doc, idx) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                <td style={{ padding: '0.75rem 1rem', color: '#0f172a', fontWeight: '500' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <i className='bx bxs-file-pdf' style={{ color: '#ef4444', fontSize: '1.25rem' }}></i>
+                                    {doc.name}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', color: doc.orderName ? '#0f172a' : '#94a3b8' }}>
+                                  {doc.orderName || '— Unlinked —'}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>{doc.date}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '1.5rem', textAlign: 'center', background: 'white', border: '1px dashed #cbd5e1', borderRadius: '6px', color: '#94a3b8', fontSize: '0.85rem' }}>
+                        No documents uploaded for this division yet.
+                      </div>
+                    )}
+                  </div>
+
                 </div>
               )}
             </div>
@@ -407,7 +495,7 @@ function EditDivision() {
                     <span style={{ padding: '0.25rem 0.75rem', background: order.status === 'Active' ? '#dcfce7' : '#fee2e2', color: order.status === 'Active' ? '#16a34a' : '#ef4444', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '600' }}>{order.status}</span>
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <button onClick={() => navigate('/corporate/division/order/add', { state: { edit: true, orderId: order.id, clientName: formData.clientName } })} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.5rem' }}>
+                    <button onClick={() => navigate('/corporate/division/order/add', { state: { edit: true, orderId: order.id, clientName: formData.clientName, divisionName: formData.divisionName, divisionId: division.id } })} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.5rem' }}>
                       <i className='bx bx-pencil' style={{ fontSize: '1rem' }}></i>
                     </button>
                     <button onClick={() => deleteOrder(order.id)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -471,10 +559,18 @@ function EditDivision() {
           navigate('/client-payments', { state: { filterOrderId: selectedOrder?.id } });
         }}
       />
-      <PaymentScheduleModal
+      <PaymentScheduleModal 
         isOpen={isPaymentScheduleOpen}
         onClose={() => setIsPaymentScheduleOpen(false)}
-        contractValue={selectedOrder?.billingDetails?.amountInUSD || selectedOrder?.amount || 0}
+        contractValue={selectedOrder?.amount || 0}
+        orderId={selectedOrder?.id}
+        divisionId={division.id}
+      />
+      
+      <DocumentUploadModal
+        isOpen={isDocModalOpen}
+        onClose={() => setIsDocModalOpen(false)}
+        onSave={handleSaveDocument}
       />
     </main>
   );

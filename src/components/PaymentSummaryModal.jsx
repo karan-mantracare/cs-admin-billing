@@ -6,6 +6,7 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, division
   const [totalReceived, setTotalReceived] = useState(0);
   const [totalBillsRaised, setTotalBillsRaised] = useState(0);
   const [billsCount, setBillsCount] = useState(0);
+  const [sessionAlert, setSessionAlert] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -26,6 +27,28 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, division
         }
       } catch (e) {
         console.error('Failed to parse client payments', e);
+      }
+
+      // Check session limit
+      try {
+        const savedOrders = localStorage.getItem('division_orders');
+        if (savedOrders) {
+          const orders = JSON.parse(savedOrders);
+          const currentOrder = orders.find(o => String(o.id) === String(orderId));
+          if (currentOrder && currentOrder.contractDetails?.checkSessions) {
+            const limit = Number(currentOrder.contractDetails.sessionLimits) || 0;
+            const used = Number(currentOrder.sessionCount) || 0;
+            if (used > limit && limit > 0) {
+              setSessionAlert(true);
+            } else {
+              setSessionAlert(false);
+            }
+          } else {
+            setSessionAlert(false);
+          }
+        }
+      } catch(e) {
+        console.error('Failed to parse division orders', e);
       }
     }
   }, [isOpen, orderId]);
@@ -85,6 +108,13 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, division
           <Row icon="bx-check-circle"    label="Total Payment Received"       value={`$${totalReceived.toFixed(2)}`}        valueColor="#16a34a" />
           <Row icon="bx-error-circle"    label="Payment Due"                  value={`$${paymentDue.toFixed(2)}`}           valueColor={paymentDue > 0 ? '#ef4444' : '#16a34a'} noBorder />
         </div>
+
+        {sessionAlert && (
+          <div style={{ padding: '0.5rem 1.5rem', background: '#fef2f2', borderTop: '1px solid #fee2e2', color: '#b91c1c', fontSize: '0.8rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+            <i className='bx bx-error-circle' style={{ fontSize: '1.2rem' }}></i>
+            Session limit exceeded!
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>

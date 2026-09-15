@@ -469,13 +469,12 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
             </button>
             <button 
               onClick={handleSave}
-              disabled={!formData.billingEntity && !formData.taxDetails}
               style={{ 
                 padding: '0.5rem 1.25rem', 
-                background: (!formData.billingEntity && !formData.taxDetails) ? '#cbd5e1' : 'linear-gradient(135deg, #0369a1, #0ea5e9)', 
+                background: 'linear-gradient(135deg, #0369a1, #0ea5e9)', 
                 border: 'none', 
                 borderRadius: '6px', 
-                cursor: (!formData.billingEntity && !formData.taxDetails) ? 'not-allowed' : 'pointer', 
+                cursor: 'pointer', 
                 color: 'white', 
                 fontWeight: '600', 
                 fontSize: '0.85rem', 

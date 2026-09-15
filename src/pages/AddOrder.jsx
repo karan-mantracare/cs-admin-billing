@@ -3,10 +3,67 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
 import BillingDetailsModal from '../components/BillingDetailsModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
+import DocumentConnectModalV2 from '../components/DocumentConnectModalV2';
 import PaymentSummaryModal from '../components/PaymentSummaryModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
 import AddExpenseModal from '../components/AddExpenseModal';
 import ViewExpensesModal from '../components/ViewExpensesModal';
+
+const Tooltip = ({ text, align = 'center' }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  let posStyles = { left: '50%', transform: 'translateX(-50%)' };
+  let arrowStyles = { left: '50%', transform: 'translateX(-50%)' };
+  
+  if (align === 'right') {
+    posStyles = { right: '-10px', transform: 'none' };
+    arrowStyles = { right: '14px', transform: 'none' };
+  } else if (align === 'left') {
+    posStyles = { left: '-10px', transform: 'none' };
+    arrowStyles = { left: '14px', transform: 'none' };
+  }
+
+  return (
+    <div 
+      style={{ position: 'relative', display: 'inline-block', marginLeft: '4px' }}
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+    >
+      <i className="bx bx-info-circle" style={{ color: '#94a3b8', cursor: 'pointer', fontSize: '0.8rem' }}></i>
+      {isVisible && (
+        <div style={{
+          position: 'absolute',
+          bottom: '100%',
+          ...posStyles,
+          marginBottom: '5px',
+          backgroundColor: '#334155',
+          color: 'white',
+          padding: '5px 8px',
+          borderRadius: '4px',
+          fontSize: '0.65rem',
+          fontWeight: '400',
+          whiteSpace: 'normal',
+          width: 'max-content',
+          maxWidth: '180px',
+          textAlign: align === 'center' ? 'center' : (align === 'right' ? 'right' : 'left'),
+          zIndex: 9999,
+          pointerEvents: 'none',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+        }}>
+          {text}
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            ...arrowStyles,
+            borderWidth: '4px',
+            borderStyle: 'solid',
+            borderColor: '#334155 transparent transparent transparent'
+          }}></div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 function AddOrder() {
   const navigate = useNavigate();
@@ -17,9 +74,8 @@ function AddOrder() {
   
   const [formData, setFormData] = useState({
     contractDetails: {
-      product: '',
       sessionLimits: '',
-      isSessionUnlimited: false,
+      checkSessions: false,
       documents: [],
       remarks: ''
     },
@@ -75,6 +131,7 @@ function AddOrder() {
 
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [isDocModalV2Open, setIsDocModalV2Open] = useState(false);
   const [isPaymentSummaryOpen, setIsPaymentSummaryOpen] = useState(false);
   const [isPaymentScheduleOpen, setIsPaymentScheduleOpen] = useState(false);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
@@ -124,6 +181,21 @@ function AddOrder() {
       }
     }));
     setIsDocModalOpen(false);
+  };
+
+  const addV2Documents = (docs) => {
+    setFormData(prev => {
+      const existing = prev.contractDetails.v2Documents || [];
+      const newDocs = docs.filter(d => !existing.find(ed => ed.id === d.id));
+      return {
+        ...prev,
+        contractDetails: {
+          ...prev.contractDetails,
+          v2Documents: [...existing, ...newDocs]
+        }
+      };
+    });
+    setIsDocModalV2Open(false);
   };
   
   const removeDocument = (id) => {
@@ -265,11 +337,8 @@ function AddOrder() {
 
   const getPendingFields = () => {
     const pending = [];
-    if (!formData.contractDetails.product) pending.push('Product');
-    if (!formData.contractDetails.isSessionUnlimited && !formData.contractDetails.sessionLimits) pending.push('Session Limits');
+    if (formData.contractDetails.checkSessions && !formData.contractDetails.sessionLimits) pending.push('Session Limits');
     if (!formData.employees) pending.push('No of Employees');
-    if (!formData.billingDetails) pending.push('Billing Details');
-    if (!formData.contractDetails.documents || formData.contractDetails.documents.length === 0) pending.push('Documents');
     return pending;
   };
 
@@ -326,74 +395,31 @@ function AddOrder() {
         {expandedSections.contractDetails && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           <div>
-            <label style={labelStyle}>Product <span style={{color: '#ef4444'}}>*</span></label>
-            <div ref={productDropdownRef} style={{ position: 'relative', marginTop: '0.5rem' }}>
-              <div 
-                onClick={() => setIsProductDropdownOpen(!isProductDropdownOpen)}
-                style={{ ...inputStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: 'white' }}
-              >
-                <span style={{ color: formData.contractDetails.product ? '#0f172a' : '#94a3b8' }}>
-                  {formData.contractDetails.product ? 'Select Services...' : 'Select Services...'}
-                </span>
-                <i className={`bx bx-chevron-${isProductDropdownOpen ? 'up' : 'down'}`} style={{ color: '#94a3b8', fontSize: '1.2rem' }}></i>
-              </div>
-              
-              {isProductDropdownOpen && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.25rem', background: 'white', borderRadius: '6px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', zIndex: 10, padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.2rem', maxHeight: '200px', overflowY: 'auto' }}>
-                  {['Emotional Wellbeing', 'Yoga', 'Physio', 'Listener', 'Financial Wellbeing'].map((prod) => {
-                    const isSelected = (formData.contractDetails.product || '').split(';').map(p => p.trim()).includes(prod);
-                    return (
-                      <label key={prod} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#334155', cursor: 'pointer', padding: '0.5rem', borderRadius: '4px', background: isSelected ? '#f0f9ff' : 'transparent', transition: 'background 0.2s' }} onMouseEnter={e => !isSelected && (e.currentTarget.style.background = '#f8fafc')} onMouseLeave={e => !isSelected && (e.currentTarget.style.background = 'transparent')}>
-                        <input 
-                          type="checkbox" 
-                          checked={isSelected}
-                          onChange={() => {
-                            const current = (formData.contractDetails.product || '').split(';').map(p => p.trim()).filter(Boolean);
-                            const next = isSelected ? current.filter(p => p !== prod) : [...current, prod];
-                            setFormData({...formData, contractDetails: {...formData.contractDetails, product: next.join(';')}});
-                          }}
-                          style={{ cursor: 'pointer', accentColor: '#0ea5e9' }}
-                        />
-                        {prod}
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            {formData.contractDetails.product.trim() && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-                {formData.contractDetails.product.split(';').map((prod, idx) => prod.trim() ? (
-                  <span key={idx} style={{ background: '#e0f2fe', color: '#0284c7', padding: '0.25rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600', border: '1px solid #bae6fd' }}>
-                    {prod.trim()}
-                  </span>
-                ) : null)}
-              </div>
-            )}
-          </div>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <label style={{...labelStyle, marginBottom: 0}}>Overall session limits <span style={{color: '#ef4444'}}>*</span></label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#0f172a', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', minHeight: '24px' }}>
+              <label style={{...labelStyle, marginBottom: 0}}>Overall session limits</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#334155', cursor: 'pointer', fontWeight: '500' }}>
                 <input 
                   type="checkbox" 
-                  checked={formData.contractDetails.isSessionUnlimited} 
-                  onChange={e => setFormData({...formData, contractDetails: {...formData.contractDetails, isSessionUnlimited: e.target.checked}})} 
+                  checked={formData.contractDetails.checkSessions} 
+                  onChange={e => setFormData({...formData, contractDetails: {...formData.contractDetails, checkSessions: e.target.checked}})} 
+                  style={{ accentColor: '#0ea5e9', width: '14px', height: '14px', cursor: 'pointer' }}
                 />
-                Unlimited
+                Check Sessions
+                <Tooltip text="If checked, the total sessions used will be monitored and a notification will appear in the payment summary if the limit is exceeded." align="center" />
               </label>
             </div>
             <input 
               type="number" 
-              placeholder="Check the box if Unlimited" 
-              style={{...inputStyle, backgroundColor: formData.contractDetails.isSessionUnlimited ? '#f1f5f9' : 'white'}} 
-              disabled={formData.contractDetails.isSessionUnlimited}
-              value={formData.contractDetails.isSessionUnlimited ? ((formData.contractDetails.product.split(';').filter(p => p.trim()).length) * 48 * (parseInt(formData.employees) || 0)) : formData.contractDetails.sessionLimits} 
+              placeholder="Enter session limit" 
+              style={{...inputStyle, backgroundColor: 'white'}} 
+              value={formData.contractDetails.sessionLimits} 
               onChange={e => setFormData({...formData, contractDetails: {...formData.contractDetails, sessionLimits: e.target.value}})} 
             />
           </div>
           <div>
-            <label style={labelStyle}>No of Employees <span style={{color: '#ef4444'}}>*</span></label>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.4rem', minHeight: '24px' }}>
+              <label style={{...labelStyle, marginBottom: 0}}>No of Employees <span style={{color: '#ef4444'}}>*</span></label>
+            </div>
             <input type="number" style={inputStyle} value={formData.employees} onChange={e => {
               let val = e.target.value;
               if (val.length > 1 && val.startsWith('0')) {
@@ -402,43 +428,69 @@ function AddOrder() {
               setFormData({...formData, employees: val});
             }} placeholder="e.g. 100" />
           </div>
-          <div>
-            <label style={labelStyle}>Billing Details <span style={{color: '#ef4444'}}>*</span></label>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+
+          <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label style={{...labelStyle, marginBottom: 0}}>Billing Details</label>
               <button 
                 onClick={() => setIsBillingModalOpen(true)}
-                style={{ 
-                  flex: 1, padding: '0.6rem', background: formData.billingDetails ? '#f1f5f9' : '#0ea5e9', color: formData.billingDetails ? '#0f172a' : 'white', 
-                  border: formData.billingDetails ? '1px solid #cbd5e1' : 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' 
-                }}
+                style={{ padding: '0.4rem 0.8rem', background: 'transparent', color: '#0ea5e9', border: '1px solid #0ea5e9', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f0f9ff'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
               >
-                {formData.billingDetails ? 'Edit Billing Details' : 'Add Billing Details'}
+                <i className={`bx bx-${formData.billingDetails ? 'edit' : 'plus'}`} style={{ marginRight: '0.25rem', fontSize: '1rem' }}></i>
+                {formData.billingDetails ? 'Edit' : 'Add'} Billing Details
               </button>
-              {formData.billingDetails && (
-                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#0f172a' }}>
-                  ${formData.amount}
-                </div>
-              )}
             </div>
+            
+            {formData.billingDetails ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: 'linear-gradient(to right, #f8fafc, #ffffff)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ padding: '0.6rem', background: '#e0f2fe', borderRadius: '8px', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <i className='bx bx-receipt' style={{ fontSize: '1.25rem' }}></i>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>Total Contract Value</div>
+                    <div style={{ fontSize: '1.25rem', color: '#0f172a', fontWeight: '800' }}>${formData.amount}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#16a34a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.35rem', background: '#dcfce7', padding: '0.35rem 0.75rem', borderRadius: '20px', border: '1px solid #bbf7d0' }}>
+                  <i className='bx bx-check-circle' style={{ fontSize: '1rem' }}></i> Configured
+                </div>
+              </div>
+            ) : (
+              <div style={{ width: '100%', padding: '1.5rem', border: '1px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', color: '#94a3b8', fontSize: '0.85rem' }}>
+                No billing details added yet.
+              </div>
+            )}
           </div>
           
           <div style={{ gridColumn: '1 / -1' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label style={{...labelStyle, marginBottom: 0}}>Documents <span style={{color: '#ef4444'}}>*</span></label>
-              <button 
-                onClick={() => setIsDocModalOpen(true)}
-                style={{ padding: '0.4rem 0.8rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '500' }}
-              >
-                <i className='bx bx-plus' style={{ marginRight: '0.25rem' }}></i>Upload Document
-              </button>
+              <label style={{...labelStyle, marginBottom: 0}}>Documents</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  onClick={() => setIsDocModalOpen(true)}
+                  style={{ padding: '0.4rem 0.8rem', background: 'white', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '500' }}
+                >
+                  <i className='bx bx-plus' style={{ marginRight: '0.25rem' }}></i>Upload Document V1
+                </button>
+                <button 
+                  onClick={() => setIsDocModalV2Open(true)}
+                  style={{ padding: '0.4rem 0.8rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                >
+                  <i className='bx bx-link'></i> Upload Document V2
+                </button>
+              </div>
             </div>
             
-            {(!formData.contractDetails.documents || formData.contractDetails.documents.length === 0) && (
+            {(!formData.contractDetails.documents || formData.contractDetails.documents.length === 0) && (!formData.contractDetails.v2Documents || formData.contractDetails.v2Documents.length === 0) && (
               <div style={{ width: '100%', padding: '1.5rem', border: '1px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', color: '#94a3b8', fontSize: '0.85rem' }}>
                 No documents uploaded yet.
               </div>
             )}
             
+            {/* Legacy V1 Documents */}
             {(formData.contractDetails.documents || []).map((doc) => (
               <div key={doc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '0.5rem', background: 'white' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
@@ -452,6 +504,31 @@ function AddOrder() {
                   </div>
                 </div>
                 <button onClick={() => removeDocument(doc.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <i className='bx bx-trash' style={{ fontSize: '1.1rem' }}></i>
+                </button>
+              </div>
+            ))}
+            
+            {/* V2 Documents */}
+            {(formData.contractDetails.v2Documents || []).map((doc) => (
+              <div key={doc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '1px solid #bae6fd', borderRadius: '8px', marginBottom: '0.5rem', background: '#f0f9ff' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                  <i className='bx bxs-file-pdf' style={{ color: '#0ea5e9', fontSize: '1.25rem' }}></i>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
+                    <span style={{ color: '#0284c7', fontWeight: '600' }}>{doc.type === 'Others' ? doc.otherType : doc.type} (V2)</span>
+                    <span style={{ color: '#cbd5e1' }}>|</span>
+                    <span style={{ fontWeight: '500', color: '#0f172a' }}>{doc.name}</span>
+                  </div>
+                </div>
+                <button onClick={() => {
+                  setFormData(prev => ({
+                    ...prev,
+                    contractDetails: {
+                      ...prev.contractDetails,
+                      v2Documents: prev.contractDetails.v2Documents.filter(d => d.id !== doc.id)
+                    }
+                  }));
+                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <i className='bx bx-trash' style={{ fontSize: '1.1rem' }}></i>
                 </button>
               </div>
@@ -764,7 +841,8 @@ function AddOrder() {
                   status: 'Active',
                   divisionName: location.state?.divisionName || '',
                   clientName: location.state?.clientName || '',
-                  divisionId: location.state?.divisionId || ''
+                  divisionId: location.state?.divisionId || '',
+                  sessionCount: 0
                 };
                 orders.push(newOrder);
 
@@ -778,6 +856,36 @@ function AddOrder() {
               }
               
               localStorage.setItem('division_orders', JSON.stringify(orders));
+              
+              // Process V2 documents connecting/saving
+              if (formData.contractDetails.v2Documents && formData.contractDetails.v2Documents.length > 0) {
+                const targetOrderId = isEditMode ? location.state.orderId : orders[orders.length - 1].id;
+                const targetOrderName = `${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart} - ${formData.plan}`;
+                
+                const allDivDocs = JSON.parse(localStorage.getItem('division_documents') || '[]');
+                const v2Ids = formData.contractDetails.v2Documents.map(d => d.id);
+                
+                // Add any newly uploaded docs that aren't in localStorage yet
+                formData.contractDetails.v2Documents.forEach(doc => {
+                  if (!allDivDocs.find(d => d.id === doc.id)) {
+                    allDivDocs.push(doc);
+                  }
+                });
+                
+                // Update their orderId and orderName
+                const updatedDivDocs = allDivDocs.map(d => {
+                  if (v2Ids.includes(d.id)) {
+                    return { ...d, orderId: targetOrderId, orderName: targetOrderName };
+                  }
+                  if (String(d.orderId) === String(targetOrderId) && !v2Ids.includes(d.id)) {
+                    return { ...d, orderId: '', orderName: '' };
+                  }
+                  return d;
+                });
+                
+                localStorage.setItem('division_documents', JSON.stringify(updatedDivDocs));
+              }
+
               navigate(-1);
             }}
             className="btn-primary" 
@@ -817,6 +925,16 @@ function AddOrder() {
         onClose={() => setIsDocModalOpen(false)} 
         onSave={addDocument} 
       />
+      
+      <DocumentConnectModalV2 
+        isOpen={isDocModalV2Open}
+        onClose={() => setIsDocModalV2Open(false)}
+        onConnect={addV2Documents}
+        divisionId={formData.divisionId || location.state?.divisionId || ''}
+        orderId={isEditMode ? location.state?.orderId : ''}
+        existingV2Docs={formData.contractDetails?.v2Documents || []}
+      />
+
       <PaymentSummaryModal
         isOpen={isPaymentSummaryOpen}
         onClose={() => setIsPaymentSummaryOpen(false)}
