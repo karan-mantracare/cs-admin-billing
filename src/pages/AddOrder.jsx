@@ -147,6 +147,8 @@ function AddOrder() {
     onConfirm: () => {},
     confirmText: 'Confirm'
   });
+  const [revokingExpenseId, setRevokingExpenseId] = useState(null);
+  const [revokeReason, setRevokeReason] = useState('');
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const productDropdownRef = useRef(null);
   
@@ -927,13 +929,22 @@ function AddOrder() {
                           <i className='bx bx-show'></i>
                         </button>
                         {exp.status === 'Approved' && (
-                          <button 
-                            onClick={() => handleSettleExpense(exp.id)}
-                            style={{ padding: '0.35rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#10b981', fontSize: '1.2rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                            title="Settle Expense"
-                          >
-                            <i className='bx bx-check-double'></i>
-                          </button>
+                          <>
+                            <button 
+                              onClick={() => handleSettleExpense(exp.id)}
+                              style={{ padding: '0.35rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#10b981', fontSize: '1.2rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              title="Settle Expense"
+                            >
+                              <i className='bx bx-check-double'></i>
+                            </button>
+                            <button 
+                              onClick={() => setRevokingExpenseId(exp.id)}
+                              style={{ padding: '0.35rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#f59e0b', fontSize: '1.2rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '0.25rem' }}
+                              title="Revoke Expense"
+                            >
+                              <i className='bx bx-undo'></i>
+                            </button>
+                          </>
                         )}
                         {(exp.status === 'Rejected' || exp.status === 'Revoked') && (
                           <button 
@@ -1137,6 +1148,44 @@ function AddOrder() {
         onConfirm={confirmConfig.onConfirm}
         onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
       />
+      {/* Revoke Reason Modal */}
+      {revokingExpenseId !== null && (
+        <div className="modal-overlay" onClick={() => { setRevokingExpenseId(null); setRevokeReason(''); }}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Provide Revocation Reason</h2>
+              <button className="close-btn" onClick={() => { setRevokingExpenseId(null); setRevokeReason(''); }}>
+                <i className='bx bx-x'></i>
+              </button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              updateExpenseStatus(revokingExpenseId, 'Revoked', revokeReason);
+              showToast("Expense request revoked.", 3000);
+              setRevokingExpenseId(null);
+              setRevokeReason('');
+            }}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Reason for revocation <span className="text-red">*</span></label>
+                  <textarea 
+                    className="form-control" 
+                    rows="4" 
+                    required 
+                    placeholder="Please explain why this expense is being revoked..."
+                    value={revokeReason}
+                    onChange={(e) => setRevokeReason(e.target.value)}
+                  ></textarea>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button type="button" className="btn-outline" onClick={() => { setRevokingExpenseId(null); setRevokeReason(''); }}>Cancel</button>
+                <button type="submit" className="btn-primary" style={{ background: '#f59e0b', borderColor: '#f59e0b' }}>Confirm Revoke</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
