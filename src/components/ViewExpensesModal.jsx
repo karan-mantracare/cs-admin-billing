@@ -151,6 +151,7 @@ function ViewExpensesModal({ isOpen, onClose, viewingExpense }) {
           </button>
         </div>
 
+      </div>
     </div>
   );
 }
