@@ -295,7 +295,7 @@ function AddOrder() {
     setConfirmConfig({
       isOpen: true,
       title: 'Settle Expense',
-      message: 'Are you sure you want to mark this expense as settled? This will update the status and log the action.',
+      message: 'Are you sure you want to mark this expense as settled? Once settled, the expense can not be revoked.',
       confirmText: 'Confirm Settle',
       onConfirm: () => {
         updateExpenseStatus(id, 'Settled', 'Expense settled by CS');
