@@ -57,11 +57,11 @@ const Tooltip = ({ text, align = 'center' }) => {
       onMouseEnter={() => setIsVisible(true)}
       onMouseLeave={() => setIsVisible(false)}
     >
-      <i className="bx bx-info-circle" style={{ color: '#94a3b8', cursor: 'help', fontSize: '0.8rem' }}></i>
+      <i className="bx bx-info-circle" style={{ color: '#94a3b8', cursor: 'pointer', fontSize: '0.8rem' }}></i>
       {isVisible && (
         <div style={{
           position: 'absolute',
-          bottom: '100%',
+          bottom: '120%',
           ...posStyles,
           marginBottom: '5px',
           backgroundColor: '#334155',
@@ -255,7 +255,7 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
     }}>
       <div style={{
         background: 'white', borderRadius: '12px', width: '90%', maxWidth: '500px',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden'
+        boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
       }}>
         {/* Header */}
         <div style={{ background: 'linear-gradient(135deg, #0369a1, #0ea5e9)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

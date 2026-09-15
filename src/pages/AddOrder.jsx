@@ -34,7 +34,7 @@ const Tooltip = ({ text, align = 'center' }) => {
       {isVisible && (
         <div style={{
           position: 'absolute',
-          bottom: '100%',
+          bottom: '120%',
           ...posStyles,
           marginBottom: '5px',
           backgroundColor: '#334155',
@@ -69,7 +69,7 @@ const Tooltip = ({ text, align = 'center' }) => {
 function AddOrder() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { showToast, expenses, updateExpense } = useGlobal();
+  const { showToast, expenses, updateExpense, events, updateExpenseStatus } = useGlobal();
   const isEditMode = location.state?.edit === true;
   const tempSessionId = useRef(`temp_${Date.now()}`).current;
   
@@ -136,7 +136,7 @@ function AddOrder() {
   const [isPaymentSummaryOpen, setIsPaymentSummaryOpen] = useState(false);
   const [isPaymentScheduleOpen, setIsPaymentScheduleOpen] = useState(false);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
-  const [isViewExpensesModalOpen, setIsViewExpensesModalOpen] = useState(false);
+  const [viewingExpense, setViewingExpense] = useState(null);
   const [editExpenseData, setEditExpenseData] = useState(null);
   const [paymentDueBadge, setPaymentDueBadge] = useState(null);
   
@@ -834,27 +834,97 @@ function AddOrder() {
         )}
       </div>
 
+      {/* Expense Details Section */}
+      <div style={cardStyle}>
+        <div 
+          onClick={() => toggleSection('expenseDetails')}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: expandedSections.expenseDetails ? '1.5rem' : '0', cursor: 'pointer' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#0f172a', fontWeight: '700', fontSize: '1rem' }}>
+            <div style={iconBoxStyle}><i className='bx bx-credit-card-front'></i></div>
+            <span>Expense Details</span>
+          </div>
+          <i className={`bx bx-chevron-${expandedSections.expenseDetails ? 'up' : 'down'}`} style={{ fontSize: '1.5rem', color: '#94a3b8' }}></i>
+        </div>
+        
+        {expandedSections.expenseDetails && (
+        <div style={{ marginTop: '0.5rem' }}>
+          {orderExpenses.length === 0 ? (
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '3rem 1rem', textAlign: 'center', color: '#0f172a', fontWeight: '500', fontSize: '0.9rem' }}>
+              <p style={{ margin: 0 }}>No expenses available.</p>
+            </div>
+          ) : (
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                <thead style={{ background: '#f8fafc' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expense Type</th>
+                    <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Details</th>
+                    <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amount (USD)</th>
+                    <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
+                    <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderExpenses.map((exp, index) => (
+                    <tr key={exp.id} style={{ borderBottom: index === orderExpenses.length - 1 ? 'none' : '1px solid #e2e8f0', background: 'white' }}>
+                      <td style={{ padding: '0.75rem 1rem', color: '#334155', fontWeight: '500' }}>{exp.expenseType}</td>
+                      <td style={{ padding: '0.75rem 1rem', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={exp.details}>{exp.details || '-'}</td>
+                      <td style={{ padding: '0.75rem 1rem', color: '#0f172a', fontWeight: '600' }}>{formatCurrency(exp.amount)}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}>{getStatusBadge(exp.status)}</td>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', display: 'flex', gap: '0.25rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <button 
+                          onClick={() => setViewingExpense(exp)}
+                          style={{ padding: '0.35rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#3b82f6', fontSize: '1.2rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="View Details"
+                        >
+                          <i className='bx bx-show'></i>
+                        </button>
+                        {exp.status === 'Approved' && (
+                          <button 
+                            onClick={() => handleSettleExpense(exp.id)}
+                            style={{ padding: '0.35rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#10b981', fontSize: '1.2rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Settle Expense"
+                          >
+                            <i className='bx bx-check-double'></i>
+                          </button>
+                        )}
+                        {(exp.status === 'Rejected' || exp.status === 'Revoked') && (
+                          <button 
+                            onClick={() => {
+                              setEditExpenseData(exp);
+                              setIsAddExpenseModalOpen(true);
+                            }}
+                            style={{ padding: '0.35rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#3b82f6', fontSize: '1.2rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '0.25rem' }}
+                            title="Edit & Resubmit"
+                          >
+                            <i className='bx bx-edit'></i>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <button 
+              onClick={() => {
+                setEditExpenseData(null);
+                setIsAddExpenseModalOpen(true);
+              }}
+              style={{ padding: '0.5rem 1.25rem', background: '#6366f1', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 1px 2px rgba(99, 102, 241, 0.2)' }}
+            >
+              Add Expense
+            </button>
+          </div>
+        </div>
+        )}
+      </div>
+
       {/* Action Footer */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '1rem', marginBottom: '2rem', gap: '1rem' }}>
-        <button 
-          onClick={() => setIsViewExpensesModalOpen(true)}
-          className="btn-outline" 
-          style={{ padding: '0.6rem 1.5rem', background: 'white', color: '#3b82f6', border: '1px solid #3b82f6', borderRadius: '6px', fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <i className='bx bx-list-ul'></i> View Expenses
-        </button>
-        
-        <button 
-          onClick={() => {
-            setEditExpenseData(null);
-            setIsAddExpenseModalOpen(true);
-          }}
-          className="btn-outline" 
-          style={{ padding: '0.6rem 1.5rem', background: 'white', color: '#10b981', border: '1px solid #10b981', borderRadius: '6px', fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <i className='bx bx-plus'></i> Add Expenses
-        </button>
-
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto' }}>
           <button 
             title={isCreateDisabled ? `Pending: ${pendingFields.join(', ')}` : ''}
@@ -1008,15 +1078,9 @@ function AddOrder() {
         editExpenseData={editExpenseData}
       />
       <ViewExpensesModal
-        isOpen={isViewExpensesModalOpen}
-        onClose={() => setIsViewExpensesModalOpen(false)}
-        orderId={location.state?.orderId || tempSessionId}
-        orderName={`${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart} - ${formData.plan}`}
-        expenses={expenses.filter(e => e.orderId === tempSessionId || e.orderId === location.state?.orderId)}
-        onEdit={(expense) => {
-          setEditExpenseData(expense);
-          setIsAddExpenseModalOpen(true);
-        }}
+        isOpen={!!viewingExpense}
+        onClose={() => setViewingExpense(null)}
+        viewingExpense={viewingExpense}
       />
       
       <ConfirmModal 
