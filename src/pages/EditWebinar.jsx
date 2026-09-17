@@ -927,7 +927,11 @@ function EditWebinar() {
                       type="date"
                       className="form-control"
                       required
-                      min={pageDate || new Date().toISOString().split('T')[0]}
+                      min={
+                        pageDate 
+                          ? new Date(new Date(pageDate).setDate(new Date(pageDate).getDate() - 3)).toISOString().split('T')[0] 
+                          : new Date().toISOString().split('T')[0]
+                      }
                       value={otherExpData.deliveredBy}
                       onChange={(e) => setOtherExpData({ ...otherExpData, deliveredBy: e.target.value })}
                     />
