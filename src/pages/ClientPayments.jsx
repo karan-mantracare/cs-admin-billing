@@ -319,6 +319,7 @@ function ClientPayments() {
                 { id: 'billingCompany', label: 'Billing Company', type: 'text' },
                 { id: 'status', label: 'Status', type: 'select', options: ['To be Raised', 'Pending', 'Partial', 'Received', 'Overdue', 'Invoice Pending'] },
                 { id: 'dueByDate', label: 'Due By Date', type: 'date' },
+                { id: 'invoiceByDate', label: 'Invoice By Date', type: 'date' },
                 { id: 'invoiceDate', label: 'Invoice Date', type: 'date' }
               ]}
               defaultFields={['clientName', 'status', 'dueByDate']}

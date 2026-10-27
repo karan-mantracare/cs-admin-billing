@@ -587,7 +587,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                 <tr style={{ background: '#f1f5f9', color: '#475569', textAlign: 'left' }}>
                   <th style={{ padding: '0.5rem' }}>S.No</th>
                   <th style={{ padding: '0.5rem' }}>Billed Entity</th>
-                  <th style={{ padding: '0.5rem' }}>Invoice Date</th>
+                  <th style={{ padding: '0.5rem' }}>Invoice By Date</th>
                   <th style={{ padding: '0.5rem' }}>Due Date</th>
                   <th style={{ padding: '0.5rem' }}>Amount ({selectedOrder?.billingDetails?.clientCurrency || 'USD'})</th>
                   <th style={{ padding: '0.5rem' }}>Amount (USD)</th>
@@ -1141,7 +1141,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                     <thead>
                       <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         <th style={{ padding: '0.55rem 0.65rem' }}>Invoice #</th>
-                        <th style={{ padding: '0.55rem 0.65rem' }}>Invoice Date</th>
+                        <th style={{ padding: '0.55rem 0.65rem' }}>Invoice By Date</th>
                         <th style={{ padding: '0.55rem 0.65rem' }}>Due Date</th>
                         <th style={{ padding: '0.55rem 0.65rem', minWidth: '155px' }}>Share (%)</th>
                         <th style={{ padding: '0.55rem 0.65rem' }}>Amount ({currency})</th>

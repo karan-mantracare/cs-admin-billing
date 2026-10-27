@@ -376,7 +376,7 @@ function EditPaymentModal({ isOpen, onClose, payment, onSave, onDelete }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>
-                Invoice Date
+                Invoice By Date
               </label>
               <input 
                 type="date" 
