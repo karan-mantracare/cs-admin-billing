@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
 import { getPrimaryCS } from '../utils/roleUtils';
+import HealthScoreDropdown from '../components/HealthScoreDropdown';
 
 function ExpenseTracker() {
   const navigate = useNavigate();
@@ -283,6 +284,20 @@ function ExpenseTracker() {
           overflow: hidden;
           text-overflow: ellipsis;
         }
+        .expense-tracker-page .data-table td.health-score-cell {
+          overflow: visible !important;
+          position: relative;
+        }
+        @keyframes dropdownFadeIn {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
         .expense-tracker-page .data-table th {
           resize: horizontal;
           min-width: 80px;
@@ -398,7 +413,6 @@ function ExpenseTracker() {
               else if (margin >= 11) revenueColor = 'var(--orange)';
 
               const currentScore = healthScores[exp.id] || (margin > 40 ? 'Healthy' : (margin >= 11 ? 'Moderate' : 'Risky'));
-              const scoreStyle = getHealthStyle(currentScore);
 
               return (
                 <tr key={exp.id}>
@@ -519,28 +533,12 @@ function ExpenseTracker() {
                   </td>
 
                   {/* Health Score Dropdown */}
-                  <td className="text-center">
-                    <select
+                  <td className="text-center health-score-cell">
+                    <HealthScoreDropdown
                       value={currentScore}
-                      onChange={(e) => handleHealthScoreChange(exp.id, e.target.value)}
-                      style={{
-                        padding: '0.25rem 0.6rem',
-                        borderRadius: '999px',
-                        fontSize: '0.78rem',
-                        fontWeight: '700',
-                        cursor: 'pointer',
-                        border: `1px solid ${scoreStyle.border}`,
-                        background: scoreStyle.bg,
-                        color: scoreStyle.color,
-                        outline: 'none',
-                        appearance: 'auto',
-                        textAlign: 'center'
-                      }}
-                    >
-                      <option value="Healthy" style={{ background: '#ffffff', color: '#15803d', fontWeight: '600' }}>Healthy</option>
-                      <option value="Moderate" style={{ background: '#ffffff', color: '#b45309', fontWeight: '600' }}>Moderate</option>
-                      <option value="Risky" style={{ background: '#ffffff', color: '#b91c1c', fontWeight: '600' }}>Risky</option>
-                    </select>
+                      onChange={(newScore) => handleHealthScoreChange(exp.id, newScore)}
+                      openUpwards={index >= paginatedExpenses.length - 2 && paginatedExpenses.length > 2}
+                    />
                   </td>
                 </tr>
               );
