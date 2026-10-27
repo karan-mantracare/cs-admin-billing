@@ -1,10 +1,22 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
+import { DEFAULT_USER } from '../utils/userStorage';
 
 function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const { resetData } = useGlobal();
+
+  // Resolve active logged-in user and Admin privilege (Karan Hinduja)
+  const currentUser = (() => {
+    try {
+      const stored = localStorage.getItem('logged_in_user');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return DEFAULT_USER; // Default is Karan Hinduja (Admin)
+  })();
+
+  const isAdmin = currentUser?.role === 'Admin' || currentUser?.email === 'hinduja1988@gmail.com';
 
   // All menu items collapsed by default
   const [expandedGroup, setExpandedGroup] = useState(null);
@@ -48,6 +60,14 @@ function Sidebar({ isOpen, onClose }) {
       icon: 'bx-shield-quarter',
       isDirect: true,
       badge: 'Portal'
+    },
+    {
+      title: 'Users',
+      path: '/user',
+      icon: 'bx-user-check',
+      isDirect: true,
+      badge: 'Admin',
+      adminOnly: true
     }
   ];
 
@@ -106,6 +126,14 @@ function Sidebar({ isOpen, onClose }) {
       isDirect: true
     },
     {
+      title: 'Users',
+      path: '/user',
+      icon: 'bx-user-check',
+      isDirect: true,
+      badge: 'Admin Only',
+      adminOnly: true
+    },
+    {
       title: 'Settings',
       path: '/cs/settings',
       icon: 'bx-cog',
@@ -115,6 +143,14 @@ function Sidebar({ isOpen, onClose }) {
 
   // Admin Portal Menu Structure (from user screenshots)
   const adminMenuSections = [
+    {
+      title: 'Users',
+      path: '/user',
+      icon: 'bx-user-check',
+      isDirect: true,
+      badge: 'Admin Only',
+      adminOnly: true
+    },
     {
       title: 'Orders',
       icon: 'bx-clipboard',
@@ -139,17 +175,6 @@ function Sidebar({ isOpen, onClose }) {
         { label: 'Appointment Report', path: '/providers/appointment-report', icon: 'bx-calendar' },
         { label: 'Malicious Chat', path: '/providers/malicious-chat', icon: 'bx-error-alt' },
         { label: 'Country × service counts', path: '/providers/country-service-counts', icon: 'bx-globe' },
-      ]
-    },
-    {
-      title: 'Users',
-      icon: 'bx-user-circle',
-      subItems: [
-        { label: 'All Users', path: '/users/all', icon: 'bx-user' },
-        { label: 'Blocklist Rules', path: '/users/blocklist-rules', icon: 'bx-shield' },
-        { label: 'Chat Rooms', path: '/users/chat-rooms', icon: 'bx-message-rounded-dots' },
-        { label: 'Chat Groups', path: '/users/chat-groups', icon: 'bx-group' },
-        { label: 'Complaints', path: '/users/complaints', icon: 'bx-flag' },
       ]
     },
     {
@@ -259,6 +284,12 @@ function Sidebar({ isOpen, onClose }) {
     activeMenu = csMenuSections;
   }
 
+  // Restrict admin-only items (Users page) so only Admin (Karan Hinduja) can access
+  const visibleMenu = activeMenu.filter((section) => {
+    if (section.adminOnly && !isAdmin) return false;
+    return true;
+  });
+
   return (
     <>
       <div className={`sidebar-overlay ${isOpen ? 'active' : ''}`} onClick={onClose}></div>
@@ -336,7 +367,7 @@ function Sidebar({ isOpen, onClose }) {
         {/* Sidebar Navigation */}
         <nav style={{ padding: '0.75rem 0.85rem', overflowY: 'auto', flex: '1 1 auto' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            {activeMenu.map((section, idx) => {
+            {visibleMenu.map((section, idx) => {
               // Divider item
               if (section.isDivider) {
                 return <div key={`div-${idx}`} style={{ height: '1px', background: '#e2e8f0', margin: '0.6rem 0.25rem' }} />;

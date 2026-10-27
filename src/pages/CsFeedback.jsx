@@ -467,35 +467,26 @@ export default function CsFeedback() {
         >
           {!submitted ? (
             <div>
-              {/* Stepper Progress Bar */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#034ea2' }}>
-                      {isDetailsStep ? 'Final Step: Corporate SPOC & Summary' : `Question ${currentStep + 1} of ${PILLAR_QUESTIONS.length}`}
-                    </span>
-                    {!isDetailsStep && (
-                      <span style={{ fontSize: '0.75rem', background: '#f1f5f9', color: '#475569', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
-                        {activeQuestion.category}
-                      </span>
-                    )}
-                  </div>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>
-                    {Math.round((currentStep / (PILLAR_QUESTIONS.length + 1)) * 100)}% Complete
-                  </span>
-                </div>
+              {/* Stepper Header exactly matching user screenshot */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#034ea2' }}>
+                  {isDetailsStep ? 'FINAL STEP' : `QUESTION ${currentStep + 1} OF ${PILLAR_QUESTIONS.length}`}
+                </span>
 
-                {/* Progress bar line */}
-                <div style={{ width: '100%', height: '6px', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${(currentStep / PILLAR_QUESTIONS.length) * 100}%`,
-                      background: 'linear-gradient(90deg, #034ea2, #0284c7)',
-                      borderRadius: '3px',
-                      transition: 'width 0.25s ease'
-                    }}
-                  />
+                {/* Dashed Segment Progress Indicators matching screenshot */}
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  {PILLAR_QUESTIONS.map((_, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        width: '26px',
+                        height: '4px',
+                        borderRadius: '2px',
+                        background: idx === currentStep ? '#034ea2' : idx < currentStep ? '#93c5fd' : '#e2e8f0',
+                        transition: 'all 0.2s ease'
+                      }}
+                    />
+                  ))}
                 </div>
               </div>
 

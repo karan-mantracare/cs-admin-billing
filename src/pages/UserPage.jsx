@@ -18,6 +18,17 @@ export default function UserPage() {
   const [toastMessage, setToastMessage] = useState('');
   const [copiedId, setCopiedId] = useState(null);
 
+  // Current session determination (Only Karan Hinduja - Admin can access)
+  const currentLoggedInUser = (() => {
+    try {
+      const stored = localStorage.getItem('logged_in_user');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return DEFAULT_USER;
+  })();
+
+  const isAdmin = currentLoggedInUser?.role === 'Admin' || currentLoggedInUser?.email === 'hinduja1988@gmail.com';
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -171,21 +182,94 @@ export default function UserPage() {
           <span style={{ color: '#0f172a', fontWeight: '600' }}>User Access & Directory</span>
         </div>
 
-        {/* Page Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.25rem 0' }}>
-              User Access Management
-            </h1>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
-              Inspect user privileges, division accessibility, and invite corporate or CS team members.
+        {/* Access Restriction Guard for non-admin sessions */}
+        {!isAdmin ? (
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '12px',
+              border: '1px solid #fed7aa',
+              padding: '3rem 2rem',
+              textAlign: 'center',
+              maxWidth: '560px',
+              margin: '3rem auto',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+            }}
+          >
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: '#fff7ed',
+                color: '#ea580c',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2rem',
+                margin: '0 auto 1.5rem auto'
+              }}
+            >
+              <i className="bx bx-shield-x"></i>
+            </div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.5rem' }}>
+              Admin Access Only
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '0.92rem', lineHeight: '1.5', marginBottom: '1.75rem' }}>
+              User and access privilege management can only be accessed by an Administrator (<strong>Karan Hinduja</strong>). You are currently logged in as <strong>{currentLoggedInUser?.name || 'Staff'}</strong> ({currentLoggedInUser?.role || 'User'}).
             </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('logged_in_user', JSON.stringify(DEFAULT_USER));
+                  window.location.reload();
+                }}
+                style={{
+                  padding: '0.65rem 1.25rem',
+                  borderRadius: '6px',
+                  background: '#034ea2',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Log in as Admin (Karan Hinduja)
+              </button>
+              <Link
+                to="/home"
+                style={{
+                  padding: '0.65rem 1.25rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  fontWeight: '600',
+                  textDecoration: 'none'
+                }}
+              >
+                Back to Home
+              </Link>
+            </div>
           </div>
+        ) : (
+          <>
+            {/* Page Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h1 style={{ fontSize: '2rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.25rem 0' }}>
+                  User Access Management
+                </h1>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
+                  Inspect user privileges, division accessibility, and invite corporate or CS team members.
+                </p>
+              </div>
 
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={handleResetToAdmin}
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleResetToAdmin}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -677,6 +761,8 @@ export default function UserPage() {
             </table>
           </div>
         </div>
+      </>
+    )}
 
       </div>
 
