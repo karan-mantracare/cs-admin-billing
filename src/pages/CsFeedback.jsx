@@ -250,7 +250,7 @@ export default function CsFeedback() {
           setClientDetails((prev) => ({ ...prev, name: parsedHr.name }));
         }
       }
-    } catch {}
+    } catch { }
 
     // 2. Discover divisions and resolve CS SPOC from Division Information
     try {
@@ -383,7 +383,7 @@ export default function CsFeedback() {
     try {
       const existing = JSON.parse(localStorage.getItem('mc_cs_feedback_submissions') || '[]');
       localStorage.setItem('mc_cs_feedback_submissions', JSON.stringify([newSubmission, ...existing]));
-    } catch {}
+    } catch { }
 
     setSubmitted(true);
     setCurrentStep(PILLAR_QUESTIONS.length + 1);
@@ -627,7 +627,7 @@ export default function CsFeedback() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            padding: '0.42rem 0.75rem',
+                            padding: '0.60rem 0.75rem',
                             borderRadius: '6px',
                             cursor: 'pointer',
                             userSelect: 'none',
@@ -688,7 +688,7 @@ export default function CsFeedback() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          padding: '0.42rem 0.75rem',
+                          padding: '0.60rem 0.75rem',
                           borderRadius: '6px',
                           cursor: 'pointer',
                           userSelect: 'none',
@@ -1266,22 +1266,22 @@ export default function CsFeedback() {
                                 ans === 'Very satisfied'
                                   ? '#dcfce7'
                                   : ans === 'Satisfied'
-                                  ? '#e0f2fe'
-                                  : ans === 'Neutral'
-                                  ? '#fef3c7'
-                                  : ans?.includes('Not a part')
-                                  ? '#f1f5f9'
-                                  : '#fee2e2',
+                                    ? '#e0f2fe'
+                                    : ans === 'Neutral'
+                                      ? '#fef3c7'
+                                      : ans?.includes('Not a part')
+                                        ? '#f1f5f9'
+                                        : '#fee2e2',
                               color:
                                 ans === 'Very satisfied'
                                   ? '#166534'
                                   : ans === 'Satisfied'
-                                  ? '#0369a1'
-                                  : ans === 'Neutral'
-                                  ? '#92400e'
-                                  : ans?.includes('Not a part')
-                                  ? '#475569'
-                                  : '#991b1b'
+                                    ? '#0369a1'
+                                    : ans === 'Neutral'
+                                      ? '#92400e'
+                                      : ans?.includes('Not a part')
+                                        ? '#475569'
+                                        : '#991b1b'
                             }}
                           >
                             {ans || 'Not answered'}
@@ -1508,274 +1508,274 @@ export default function CsFeedback() {
           {isMatrixExpanded && (
             <div style={{ padding: '0.85rem', overflowX: 'auto', background: '#ffffff' }}>
               <table
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                minWidth: '1020px',
-                fontSize: '0.85rem',
-                color: '#1e293b'
-              }}
-            >
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #94a3b8' }}>
-                  <th
-                    style={{
-                      width: '180px',
-                      padding: '0.85rem 1rem',
-                      borderRight: '1px solid #94a3b8',
-                      background: '#f8fafc'
-                    }}
-                  ></th>
-                  <th
-                    style={{
-                      padding: '0.85rem 0.75rem',
-                      borderRight: '1px solid #94a3b8',
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      color: '#0f172a',
-                      lineHeight: '1.3'
-                    }}
-                  >
-                    Call Center<br />Representative
-                  </th>
-                  <th
-                    style={{
-                      padding: '0.85rem 0.75rem',
-                      borderRight: '1px solid #94a3b8',
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      color: '#0f172a',
-                      lineHeight: '1.3'
-                    }}
-                  >
-                    Call Center<br />Support Manager
-                  </th>
-                  <th
-                    style={{
-                      padding: '0.85rem 0.75rem',
-                      borderRight: '1px solid #94a3b8',
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      color: '#0f172a',
-                      lineHeight: '1.3'
-                    }}
-                  >
-                    Account<br />Manager
-                  </th>
-                  <th
-                    style={{
-                      padding: '0.85rem 0.75rem',
-                      borderRight: '1px solid #94a3b8',
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      color: '#0f172a',
-                      lineHeight: '1.3'
-                    }}
-                  >
-                    Sales Manager
-                  </th>
-                  <th
-                    style={{
-                      padding: '0.85rem 0.75rem',
-                      borderRight: '1px solid #94a3b8',
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      color: '#0f172a',
-                      lineHeight: '1.3'
-                    }}
-                  >
-                    Director of Sales &<br />Operations
-                  </th>
-                  <th
-                    style={{
-                      padding: '0.85rem 0.75rem',
-                      borderRight: '1px solid #94a3b8',
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      color: '#0f172a',
-                      lineHeight: '1.3'
-                    }}
-                  >
-                    Stake Holder
-                  </th>
-                  <th
-                    style={{
-                      padding: '0.85rem 0.75rem',
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      color: '#0f172a',
-                      lineHeight: '1.3'
-                    }}
-                  >
-                    Senior<br />Management
-                  </th>
-                </tr>
-              </thead>
+                style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  minWidth: '1020px',
+                  fontSize: '0.85rem',
+                  color: '#1e293b'
+                }}
+              >
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #94a3b8' }}>
+                    <th
+                      style={{
+                        width: '180px',
+                        padding: '0.85rem 1rem',
+                        borderRight: '1px solid #94a3b8',
+                        background: '#f8fafc'
+                      }}
+                    ></th>
+                    <th
+                      style={{
+                        padding: '0.85rem 0.75rem',
+                        borderRight: '1px solid #94a3b8',
+                        fontWeight: '700',
+                        textAlign: 'center',
+                        color: '#0f172a',
+                        lineHeight: '1.3'
+                      }}
+                    >
+                      Call Center<br />Representative
+                    </th>
+                    <th
+                      style={{
+                        padding: '0.85rem 0.75rem',
+                        borderRight: '1px solid #94a3b8',
+                        fontWeight: '700',
+                        textAlign: 'center',
+                        color: '#0f172a',
+                        lineHeight: '1.3'
+                      }}
+                    >
+                      Call Center<br />Support Manager
+                    </th>
+                    <th
+                      style={{
+                        padding: '0.85rem 0.75rem',
+                        borderRight: '1px solid #94a3b8',
+                        fontWeight: '700',
+                        textAlign: 'center',
+                        color: '#0f172a',
+                        lineHeight: '1.3'
+                      }}
+                    >
+                      Account<br />Manager
+                    </th>
+                    <th
+                      style={{
+                        padding: '0.85rem 0.75rem',
+                        borderRight: '1px solid #94a3b8',
+                        fontWeight: '700',
+                        textAlign: 'center',
+                        color: '#0f172a',
+                        lineHeight: '1.3'
+                      }}
+                    >
+                      Sales Manager
+                    </th>
+                    <th
+                      style={{
+                        padding: '0.85rem 0.75rem',
+                        borderRight: '1px solid #94a3b8',
+                        fontWeight: '700',
+                        textAlign: 'center',
+                        color: '#0f172a',
+                        lineHeight: '1.3'
+                      }}
+                    >
+                      Director of Sales &<br />Operations
+                    </th>
+                    <th
+                      style={{
+                        padding: '0.85rem 0.75rem',
+                        borderRight: '1px solid #94a3b8',
+                        fontWeight: '700',
+                        textAlign: 'center',
+                        color: '#0f172a',
+                        lineHeight: '1.3'
+                      }}
+                    >
+                      Stake Holder
+                    </th>
+                    <th
+                      style={{
+                        padding: '0.85rem 0.75rem',
+                        fontWeight: '700',
+                        textAlign: 'center',
+                        color: '#0f172a',
+                        lineHeight: '1.3'
+                      }}
+                    >
+                      Senior<br />Management
+                    </th>
+                  </tr>
+                </thead>
 
-              <tbody>
-                {/* ROW 1: Timeline */}
-                <tr style={{ borderBottom: '1px solid #94a3b8' }}>
-                  <td
-                    style={{
-                      padding: '0.75rem 1rem',
-                      fontWeight: '600',
-                      background: '#f8fafc',
-                      borderRight: '1px solid #94a3b8',
-                      color: '#334155'
-                    }}
-                  >
-                    Timeline
-                  </td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                    15mins – 30mins
-                  </td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                    30mins – 1hr
-                  </td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                    1hr – 2hr
-                  </td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                    2hr – 5hr
-                  </td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                    1-2 business days
-                  </td>
-                  <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                    1-3 business days
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'left', color: '#1e293b' }}>
-                    Resolution
-                  </td>
-                </tr>
+                <tbody>
+                  {/* ROW 1: Timeline */}
+                  <tr style={{ borderBottom: '1px solid #94a3b8' }}>
+                    <td
+                      style={{
+                        padding: '0.75rem 1rem',
+                        fontWeight: '600',
+                        background: '#f8fafc',
+                        borderRight: '1px solid #94a3b8',
+                        color: '#334155'
+                      }}
+                    >
+                      Timeline
+                    </td>
+                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
+                      15mins – 30mins
+                    </td>
+                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
+                      30mins – 1hr
+                    </td>
+                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
+                      1hr – 2hr
+                    </td>
+                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
+                      2hr – 5hr
+                    </td>
+                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
+                      1-2 business days
+                    </td>
+                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
+                      1-3 business days
+                    </td>
+                    <td style={{ padding: '0.75rem', textAlign: 'left', color: '#1e293b' }}>
+                      Resolution
+                    </td>
+                  </tr>
 
-                {/* ROW 2: Complaint about product quality or past customer service */}
-                <tr style={{ borderBottom: '1px solid #94a3b8', verticalAlign: 'top' }}>
-                  <td
-                    style={{
-                      padding: '0.85rem 1rem',
-                      fontWeight: '600',
-                      background: '#f8fafc',
-                      borderRight: '1px solid #94a3b8',
-                      color: '#334155',
-                      lineHeight: '1.4'
-                    }}
-                  >
-                    Complaint about product quality or past customer service
-                  </td>
+                  {/* ROW 2: Complaint about product quality or past customer service */}
+                  <tr style={{ borderBottom: '1px solid #94a3b8', verticalAlign: 'top' }}>
+                    <td
+                      style={{
+                        padding: '0.85rem 1rem',
+                        fontWeight: '600',
+                        background: '#f8fafc',
+                        borderRight: '1px solid #94a3b8',
+                        color: '#334155',
+                        lineHeight: '1.4'
+                      }}
+                    >
+                      Complaint about product quality or past customer service
+                    </td>
 
-                  {/* Call Center Representative */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Customer states their problem</div>
-                  </td>
+                    {/* Call Center Representative */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Customer states their problem</div>
+                    </td>
 
-                  {/* Call Center Support Manager */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Attempted solution</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Collect Contact Details</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Follow-up after internal review</div>
-                  </td>
+                    {/* Call Center Support Manager */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Attempted solution</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Collect Contact Details</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Follow-up after internal review</div>
+                    </td>
 
-                  {/* Account Manager */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Review Account Details</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Communicate new information</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Outline resolution plan</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Attempt Solution</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Create incident report</div>
-                  </td>
+                    {/* Account Manager */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Review Account Details</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Communicate new information</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Outline resolution plan</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Attempt Solution</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Create incident report</div>
+                    </td>
 
-                  {/* Sales Manager */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Further investigate issue</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Offers financial incentive</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Documentation of conversation and problems</div>
-                  </td>
+                    {/* Sales Manager */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Further investigate issue</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Offers financial incentive</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Documentation of conversation and problems</div>
+                    </td>
 
-                  {/* Director of Sales & Operations */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Apologize</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Ask for feedback</div>
-                  </td>
+                    {/* Director of Sales & Operations */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Apologize</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Ask for feedback</div>
+                    </td>
 
-                  {/* Stake Holder */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Review prior attempts</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Offers refund or cancellation</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Speak to representatives</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Plan to improve process</div>
-                  </td>
+                    {/* Stake Holder */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Review prior attempts</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Offers refund or cancellation</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Speak to representatives</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Plan to improve process</div>
+                    </td>
 
-                  {/* Senior Management */}
-                  <td style={{ padding: '0.85rem 0.75rem', lineHeight: '1.45' }}>
-                    <div>– Review incident report</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Sign off on plans</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Redefine objectives</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Hire experts to evaluate new process</div>
-                  </td>
-                </tr>
+                    {/* Senior Management */}
+                    <td style={{ padding: '0.85rem 0.75rem', lineHeight: '1.45' }}>
+                      <div>– Review incident report</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Sign off on plans</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Redefine objectives</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Hire experts to evaluate new process</div>
+                    </td>
+                  </tr>
 
-                {/* ROW 3: Triggers */}
-                <tr style={{ verticalAlign: 'top' }}>
-                  <td
-                    style={{
-                      padding: '0.85rem 1rem',
-                      fontWeight: '600',
-                      background: '#f8fafc',
-                      borderRight: '1px solid #94a3b8',
-                      color: '#334155'
-                    }}
-                  >
-                    Triggers
-                  </td>
+                  {/* ROW 3: Triggers */}
+                  <tr style={{ verticalAlign: 'top' }}>
+                    <td
+                      style={{
+                        padding: '0.85rem 1rem',
+                        fontWeight: '600',
+                        background: '#f8fafc',
+                        borderRight: '1px solid #94a3b8',
+                        color: '#334155'
+                      }}
+                    >
+                      Triggers
+                    </td>
 
-                  {/* Call Center Representative */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Representatives unable to solve problem</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Representatives asks to speak to manager</div>
-                  </td>
+                    {/* Call Center Representative */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Representatives unable to solve problem</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Representatives asks to speak to manager</div>
+                    </td>
 
-                  {/* Call Center Support Manager */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Unsuccessful Solution</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Requires a specific department or skill</div>
-                  </td>
+                    {/* Call Center Support Manager */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Unsuccessful Solution</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Requires a specific department or skill</div>
+                    </td>
 
-                  {/* Account Manager */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Account closure threatened</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Potential switch to competitor</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Bad review</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Issue remains unsolved</div>
-                  </td>
+                    {/* Account Manager */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Account closure threatened</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Potential switch to competitor</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Bad review</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Issue remains unsolved</div>
+                    </td>
 
-                  {/* Sales Manager */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Issue unsolved</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Customer's privacy/data threatened</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Customer lodges formal complaint</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Customer asks to speak to director</div>
-                  </td>
+                    {/* Sales Manager */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Issue unsolved</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Customer's privacy/data threatened</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Customer lodges formal complaint</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Customer asks to speak to director</div>
+                    </td>
 
-                  {/* Director of Sales & Operations */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Customer demands refund/cancellation</div>
-                    <div style={{ marginTop: '0.35rem' }}>– No possible resolution</div>
-                    <div style={{ marginTop: '0.35rem' }}>– Customer wants to keep account</div>
-                  </td>
+                    {/* Director of Sales & Operations */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Customer demands refund/cancellation</div>
+                      <div style={{ marginTop: '0.35rem' }}>– No possible resolution</div>
+                      <div style={{ marginTop: '0.35rem' }}>– Customer wants to keep account</div>
+                    </td>
 
-                  {/* Stake Holder */}
-                  <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                    <div>– Senior management approval needed</div>
-                  </td>
+                    {/* Stake Holder */}
+                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
+                      <div>– Senior management approval needed</div>
+                    </td>
 
-                  {/* Senior Management */}
-                  <td style={{ padding: '0.85rem 0.75rem' }}>
-                    {/* Empty cell as shown in the reference matrix */}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                    {/* Senior Management */}
+                    <td style={{ padding: '0.85rem 0.75rem' }}>
+                      {/* Empty cell as shown in the reference matrix */}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           )}
         </div>
