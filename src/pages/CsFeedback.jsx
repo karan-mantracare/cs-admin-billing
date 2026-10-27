@@ -21,8 +21,9 @@ const NOT_APPLICABLE_OPTION = {
 const PILLAR_QUESTIONS = [
   {
     id: 'bdCommitment',
+    pillarGroup: 'BD',
     title: 'BD Commitment vs. Actual Service Delivery: *',
-    description: 'How well did actual operational execution align with the deliverables, promises, and timelines agreed upon during the Business Development / sales phase?',
+    description: 'How well did actual operational execution align with deliverables, promised scope, and timelines agreed during the Business Development / sales phase?',
     shortLabel: 'BD Commitment vs Delivery',
     category: 'Sales & Onboarding Alignment',
     icon: 'bx-briefcase-alt-2',
@@ -36,6 +37,7 @@ const PILLAR_QUESTIONS = [
   },
   {
     id: 'csSupport',
+    pillarGroup: 'CS',
     title: 'Customer Success (CS) Support & Account Management: *',
     description: 'Responsiveness, proactiveness, and helpfulness of your dedicated Customer Success SPOC in resolving queries, managing account requests, and reviewing health metrics:',
     shortLabel: 'CS Support & Responsiveness',
@@ -51,6 +53,7 @@ const PILLAR_QUESTIONS = [
   },
   {
     id: 'techSupport',
+    pillarGroup: 'Tech',
     title: 'Tech & App Support (Platform Reliability & Usability): *',
     description: 'Ease of use, app speed, uptime reliability, and technical assistance for the MantraCare employee mobile app and corporate portal:',
     shortLabel: 'Tech & App Support',
@@ -65,24 +68,58 @@ const PILLAR_QUESTIONS = [
     ]
   },
   {
-    id: 'hotlineCalls',
-    title: 'Hotline Calls (Pickup Ratio & Call Handling Capabilities): *',
-    description: 'Helpline responsiveness, immediate pickup ratio, empathy, and problem resolution capabilities when your employees dial the corporate support hotline:',
-    shortLabel: 'Hotline Pickup & Handling',
+    id: 'hotlineCallQuality',
+    pillarGroup: 'Hotline',
+    title: 'Hotline: Call Quality & Pickup Ratio: *',
+    description: 'Immediate call pickup speed, zero connection dropouts, audio clarity, and 24/7 helpline accessibility when employees call in:',
+    shortLabel: 'Hotline: Call Quality',
     category: 'Helpline & Assistance',
     icon: 'bx-phone-call',
     allowNotApplicable: true,
     lowRatingTags: [
       'High wait time before call answered',
-      'Frequent dropped / unanswered calls',
-      'Agent lacked required clinical knowledge',
-      'Resolution required multiple callbacks'
+      'Frequent dropped / disconnected calls',
+      'Audio line crackling or lag',
+      'Pickup delays during peak hours'
+    ]
+  },
+  {
+    id: 'hotlineCallSupport',
+    pillarGroup: 'Hotline',
+    title: 'Hotline: Counselor & Agent Call Support: *',
+    description: 'Empathy, active listening, problem handling, and professionalism displayed by helpline agents when handling employee situations:',
+    shortLabel: 'Hotline: Call Support',
+    category: 'Helpline & Assistance',
+    icon: 'bx-support',
+    allowNotApplicable: true,
+    lowRatingTags: [
+      'Agent sounded rushed or impatient',
+      'Lacked active empathy & understanding',
+      'Inadequate clinical / wellness guidance',
+      'Tone was perceived as unprofessional'
+    ]
+  },
+  {
+    id: 'hotlineOpsResponse',
+    pillarGroup: 'Hotline',
+    title: 'Hotline: Ops Response to Queries & Follow-ups: *',
+    description: 'Operational turnaround speed and efficiency in closing ticket escalations, scheduled callbacks, and resolving employee queries:',
+    shortLabel: 'Hotline: Ops Response',
+    category: 'Helpline & Assistance',
+    icon: 'bx-time-five',
+    allowNotApplicable: true,
+    lowRatingTags: [
+      'Scheduled callback was delayed / missed',
+      'Ticket escalation took days to resolve',
+      'Lack of clear status communication',
+      'Operations resolution was incomplete'
     ]
   },
   {
     id: 'oneOnOneSessions',
+    pillarGroup: '1-on-1',
     title: '1-on-1 Individual Sessions (Therapy, Coaching, Doctor Consultations): *',
-    description: 'Quality, punctuality, practitioner expertise, confidentiality, and employee feedback regarding individual confidential wellness sessions:',
+    description: 'Quality, punctuality, practitioner expertise, confidentiality, and employee satisfaction with individual 1-on-1 expert sessions:',
     shortLabel: '1-on-1 Expert Sessions',
     category: 'Clinical & Wellness Care',
     icon: 'bx-user-pin',
@@ -95,18 +132,51 @@ const PILLAR_QUESTIONS = [
     ]
   },
   {
-    id: 'webinars',
-    title: 'Webinars & Corporate Group Activities: *',
-    description: 'Engagement level, speaker expertise, interactive participation, and practical value of company-wide webinars and wellness group workshops:',
-    shortLabel: 'Webinars & Group Sessions',
+    id: 'webinarTopic',
+    pillarGroup: 'Webinars',
+    title: 'Webinars: Topic Relevance & Variety: *',
+    description: 'Alignment of webinar themes with workforce wellness priorities, mental health awareness, and employee interest:',
+    shortLabel: 'Webinars: Topic Relevance',
+    category: 'Engagement & Activities',
+    icon: 'bx-list-check',
+    allowNotApplicable: true, // SOW exclusion option
+    lowRatingTags: [
+      'Topics too generic or repetitive',
+      'Did not resonate with workforce needs',
+      'Need more specialized wellness themes',
+      'Too few topics to choose from'
+    ]
+  },
+  {
+    id: 'webinarContent',
+    pillarGroup: 'Webinars',
+    title: 'Webinars: Content Depth & Presentation Quality: *',
+    description: 'Practicality, visual presentation, depth of actionable health takeaways, and reference materials provided to attendees:',
+    shortLabel: 'Webinars: Content Quality',
+    category: 'Engagement & Activities',
+    icon: 'bx-slideshow',
+    allowNotApplicable: true, // SOW exclusion option
+    lowRatingTags: [
+      'Slides were text-heavy & hard to follow',
+      'Lack of actionable everyday tips',
+      'Content was too theoretical/basic',
+      'Resource guides / recordings delayed'
+    ]
+  },
+  {
+    id: 'webinarExpert',
+    pillarGroup: 'Webinars',
+    title: 'Webinars: Trainer / Expert Engagement & Q&A: *',
+    description: 'Speaker energy, subject mastery, audience engagement, and effectiveness in answering live employee questions:',
+    shortLabel: 'Webinars: Expert Engagement',
     category: 'Engagement & Activities',
     icon: 'bx-broadcast',
-    allowNotApplicable: true, // Crucial requirement: option of no session done / not a part of SOW
+    allowNotApplicable: true, // SOW exclusion option
     lowRatingTags: [
-      'Topic lacked relevance for our team',
-      'Speaker engagement was below expectations',
-      'Audio / video technical difficulties',
-      'Session timing was inconvenient'
+      'Speaker lacked dynamic engagement',
+      'Audience Q&A was rushed or skipped',
+      'Session started late or ran overtime',
+      'Could not answer complex attendee queries'
     ]
   }
 ];
@@ -123,16 +193,20 @@ const GENERAL_SUGGESTION_TAGS = [
 
 export default function CsFeedback() {
   const [searchParams] = useSearchParams();
-  const [currentStep, setCurrentStep] = useState(0); // 0 to 5 = questions, 6 = details & remarks, 7 = submitted
+  const [currentStep, setCurrentStep] = useState(0); // 0 to 9 = questions, 10 = details & remarks, 11 = submitted
 
-  // Ratings for each pillar
+  // Ratings for all 10 questions
   const [ratings, setRatings] = useState({
     bdCommitment: '',
     csSupport: '',
     techSupport: '',
-    hotlineCalls: '',
+    hotlineCallQuality: '',
+    hotlineCallSupport: '',
+    hotlineOpsResponse: '',
     oneOnOneSessions: '',
-    webinars: ''
+    webinarTopic: '',
+    webinarContent: '',
+    webinarExpert: ''
   });
 
   // Optional remarks on low responses
@@ -140,9 +214,13 @@ export default function CsFeedback() {
     bdCommitment: '',
     csSupport: '',
     techSupport: '',
-    hotlineCalls: '',
+    hotlineCallQuality: '',
+    hotlineCallSupport: '',
+    hotlineOpsResponse: '',
     oneOnOneSessions: '',
-    webinars: ''
+    webinarTopic: '',
+    webinarContent: '',
+    webinarExpert: ''
   });
 
   // Client Details state
@@ -315,17 +393,25 @@ export default function CsFeedback() {
       bdCommitment: '',
       csSupport: '',
       techSupport: '',
-      hotlineCalls: '',
+      hotlineCallQuality: '',
+      hotlineCallSupport: '',
+      hotlineOpsResponse: '',
       oneOnOneSessions: '',
-      webinars: ''
+      webinarTopic: '',
+      webinarContent: '',
+      webinarExpert: ''
     });
     setLowResponseRemarks({
       bdCommitment: '',
       csSupport: '',
       techSupport: '',
-      hotlineCalls: '',
+      hotlineCallQuality: '',
+      hotlineCallSupport: '',
+      hotlineOpsResponse: '',
       oneOnOneSessions: '',
-      webinars: ''
+      webinarTopic: '',
+      webinarContent: '',
+      webinarExpert: ''
     });
     setClientDetails((prev) => ({
       ...prev,
@@ -357,7 +443,7 @@ export default function CsFeedback() {
               Feedback
             </h1>
             <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
-              Corporate Health Partner Evaluation • 6 Core Delivery Pillars
+              Corporate Health Partner Evaluation • Granular Delivery Analysis ({PILLAR_QUESTIONS.length} Dimensions)
             </p>
           </div>
 
@@ -391,8 +477,8 @@ export default function CsFeedback() {
           </div>
         </div>
 
-        {/* Survey Progress Pills */}
-        <div style={{ maxWidth: '880px', margin: '0 auto 1.25rem auto', display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+        {/* Question Selector Quick-Bar */}
+        <div style={{ maxWidth: '880px', margin: '0 auto 1.25rem auto', display: 'flex', gap: '0.4rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
           {PILLAR_QUESTIONS.map((q, idx) => {
             const hasAnswer = Boolean(ratings[q.id]);
             const isCurrent = idx === currentStep;
@@ -406,13 +492,13 @@ export default function CsFeedback() {
                 }}
                 style={{
                   flex: '1 1 0',
-                  minWidth: '120px',
-                  padding: '0.5rem 0.65rem',
+                  minWidth: '105px',
+                  padding: '0.45rem 0.5rem',
                   borderRadius: '6px',
                   background: isCurrent ? '#034ea2' : hasAnswer ? '#e0f2fe' : '#ffffff',
                   color: isCurrent ? '#ffffff' : hasAnswer ? '#0369a1' : '#64748b',
                   border: isCurrent ? '1px solid #034ea2' : hasAnswer ? '1px solid #bae6fd' : '1px solid #e2e8f0',
-                  fontSize: '0.75rem',
+                  fontSize: '0.72rem',
                   fontWeight: '600',
                   cursor: idx <= currentStep || hasAnswer ? 'pointer' : 'default',
                   textAlign: 'center',
@@ -424,31 +510,30 @@ export default function CsFeedback() {
                 title={q.shortLabel}
               >
                 {hasAnswer && !isCurrent ? '✓ ' : `${idx + 1}. `}
-                {q.shortLabel.split(' ')[0]}
+                {q.shortLabel.replace('Hotline: ', '').replace('Webinars: ', '')}
               </div>
             );
           })}
           <div
             onClick={() => {
-              // Allow jump if all questions answered
               const allAnswered = PILLAR_QUESTIONS.every((q) => Boolean(ratings[q.id]));
               if (allAnswered) setCurrentStep(PILLAR_QUESTIONS.length);
             }}
             style={{
               flex: '1 1 0',
-              minWidth: '110px',
-              padding: '0.5rem 0.65rem',
+              minWidth: '85px',
+              padding: '0.45rem 0.5rem',
               borderRadius: '6px',
               background: isDetailsStep ? '#034ea2' : '#ffffff',
               color: isDetailsStep ? '#ffffff' : '#64748b',
               border: isDetailsStep ? '1px solid #034ea2' : '1px solid #e2e8f0',
-              fontSize: '0.75rem',
+              fontSize: '0.72rem',
               fontWeight: '600',
               textAlign: 'center',
               whiteSpace: 'nowrap'
             }}
           >
-            7. Submit
+            Submit
           </div>
         </div>
 
@@ -479,7 +564,7 @@ export default function CsFeedback() {
                     <div
                       key={idx}
                       style={{
-                        width: '26px',
+                        width: '20px',
                         height: '4px',
                         borderRadius: '2px',
                         background: idx === currentStep ? '#034ea2' : idx < currentStep ? '#93c5fd' : '#e2e8f0',
@@ -490,7 +575,7 @@ export default function CsFeedback() {
                 </div>
               </div>
 
-              {/* Step View: Questions (0 to 5) */}
+              {/* Step View: Questions (0 to 9) */}
               {!isDetailsStep ? (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.5rem' }}>
@@ -669,7 +754,7 @@ export default function CsFeedback() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                         <label style={{ fontSize: '0.88rem', fontWeight: '700', color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <i className="bx bx-message-alt-error" style={{ fontSize: '1.1rem' }}></i>
-                          <span>What could we have done better? (Optional remark)</span>
+                          <span>What could we have done better in {activeQuestion.shortLabel}? (Optional remark)</span>
                         </label>
                         <span style={{ fontSize: '0.75rem', color: '#b45309', background: '#fef3c7', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
                           Optional
@@ -677,10 +762,10 @@ export default function CsFeedback() {
                       </div>
 
                       <p style={{ margin: '0 0 0.65rem 0', fontSize: '0.8rem', color: '#78350f' }}>
-                        We strive for excellence. Click any tag below to quickly specify the issue, or leave a brief remark so your CS SPOC can take corrective action.
+                        Click any tag below to quickly specify the reason, or write your feedback so your CS SPOC can review:
                       </p>
 
-                      {/* Pillar Quick Issue Tags */}
+                      {/* Dimension Specific Issue Tags */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.65rem' }}>
                         {activeQuestion.lowRatingTags.map((tag) => (
                           <button
@@ -718,7 +803,7 @@ export default function CsFeedback() {
                             [activeQuestion.id]: e.target.value
                           })
                         }
-                        placeholder="Share any specifics about delays, missing commitments, or issues experienced (optional)..."
+                        placeholder={`Share any specific issues regarding ${activeQuestion.shortLabel.toLowerCase()} (optional)...`}
                         style={{
                           width: '100%',
                           padding: '0.65rem 0.85rem',
@@ -803,7 +888,7 @@ export default function CsFeedback() {
                   </div>
                 </div>
               ) : (
-                /* Step 7 / Final Details & Suggestions Form */
+                /* Step 11 / Final Details & Suggestions Form */
                 <form onSubmit={handleSubmit}>
                   {/* Pre-fill Intelligence Notification */}
                   <div
@@ -1115,7 +1200,7 @@ export default function CsFeedback() {
                 Thank You for Your Feedback!
               </h2>
               <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '520px', margin: '0 auto 1.75rem auto', lineHeight: '1.5' }}>
-                Your responses have been successfully submitted for <strong>{clientDetails.company}</strong>. They have been routed directly to Customer Success SPOC <strong>{clientDetails.csSpocName}</strong> and executive management.
+                Your responses have been successfully submitted for <strong>{clientDetails.company}</strong>. They have been routed directly to Customer Success SPOC <strong>{clientDetails.csSpocName}</strong> and leadership.
               </p>
 
               {/* Recorded Feedback Details Card */}
@@ -1127,7 +1212,7 @@ export default function CsFeedback() {
                   borderRadius: '10px',
                   padding: '1.5rem',
                   marginBottom: '2rem',
-                  maxWidth: '680px',
+                  maxWidth: '700px',
                   margin: '0 auto 2rem auto'
                 }}
               >
@@ -1146,12 +1231,12 @@ export default function CsFeedback() {
                   </div>
                 </div>
 
-                {/* 6 Core Pillars Summary */}
+                {/* 10 Granular Dimensions Summary */}
                 <div style={{ fontSize: '0.78rem', fontWeight: '700', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.6rem' }}>
-                  6 Service Pillars Evaluation:
+                  Service Evaluation ({PILLAR_QUESTIONS.length} Dimensions):
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginBottom: '1.25rem' }}>
                   {PILLAR_QUESTIONS.map((q) => {
                     const ans = ratings[q.id];
                     const remark = lowResponseRemarks[q.id];
@@ -1159,7 +1244,7 @@ export default function CsFeedback() {
                       <div
                         key={q.id}
                         style={{
-                          padding: '0.65rem 0.85rem',
+                          padding: '0.6rem 0.85rem',
                           background: '#ffffff',
                           border: '1px solid #f1f5f9',
                           borderRadius: '6px'
@@ -1171,7 +1256,7 @@ export default function CsFeedback() {
                           </span>
                           <span
                             style={{
-                              fontSize: '0.75rem',
+                              fontSize: '0.74rem',
                               fontWeight: '700',
                               padding: '0.15rem 0.5rem',
                               borderRadius: '4px',
