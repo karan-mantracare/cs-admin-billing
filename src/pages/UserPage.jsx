@@ -16,7 +16,6 @@ export default function UserPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
-  const [copiedId, setCopiedId] = useState(null);
 
   // Current session determination (Only Karan Hinduja - Admin can access)
   const currentLoggedInUser = (() => {
@@ -129,16 +128,6 @@ export default function UserPage() {
       setSearchParams({});
     }
     showToast('User removed');
-  };
-
-  const handleCopyLink = (uid) => {
-    const url = `${window.location.origin}/user?user_id=${encodeURIComponent(uid)}`;
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(url);
-    }
-    setCopiedId(uid);
-    setTimeout(() => setCopiedId(null), 2000);
-    showToast('Direct user access URL copied!');
   };
 
   const filteredUsers = usersList.filter((u) => {
@@ -357,27 +346,6 @@ export default function UserPage() {
                 URL Parameter: <code>{userIdQuery ? `?user_id=${userIdQuery}` : '(default: none specified)'}</code>
               </span>
             </div>
-
-            <button
-              type="button"
-              onClick={() => handleCopyLink(activeUser.user_id)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.35rem 0.75rem',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                background: '#ffffff',
-                color: '#475569',
-                fontSize: '0.8rem',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              <i className={copiedId === activeUser.user_id ? 'bx bx-check' : 'bx bx-copy'}></i>
-              <span>{copiedId === activeUser.user_id ? 'Link Copied!' : 'Share Access URL'}</span>
-            </button>
           </div>
 
           {/* User Details Grid */}
