@@ -840,41 +840,7 @@ function EditDivision() {
 
                       {/* Right: Actions in a clean, unified horizontal row */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {/* 1. Preview Link */}
-                        <button
-                          type="button"
-                          onClick={() => window.open(`${window.location.origin}/client-onboarding/${division?.id || '1'}`, '_blank')}
-                          title="Open onboarding form in new tab"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.35rem',
-                            padding: '0.45rem 0.85rem',
-                            background: '#ffffff',
-                            border: '1px solid #cbd5e1',
-                            borderRadius: '8px',
-                            color: '#475569',
-                            fontSize: '0.85rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#f8fafc';
-                            e.currentTarget.style.borderColor = '#94a3b8';
-                            e.currentTarget.style.color = '#0f172a';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = '#ffffff';
-                            e.currentTarget.style.borderColor = '#cbd5e1';
-                            e.currentTarget.style.color = '#475569';
-                          }}
-                        >
-                          <i className='bx bx-external-link' style={{ fontSize: '1rem' }}></i>
-                          Preview
-                        </button>
-
-                        {/* 2. Copy Link Button */}
+                        {/* 1. Copy Link Button */}
                         <button 
                           type="button"
                           onClick={handleCopyLink}
