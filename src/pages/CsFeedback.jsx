@@ -425,11 +425,11 @@ export default function CsFeedback() {
   };
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 65px)', backgroundColor: '#f8fafc', padding: '2rem 1.5rem 4rem' }}>
-      <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
+    <div style={{ minHeight: 'calc(100vh - 65px)', backgroundColor: '#f8fafc', padding: '1.25rem 1.25rem 2.5rem' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
         {/* Breadcrumb Navigation */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', color: '#64748b', marginBottom: '0.75rem' }}>
           <Link to="/home" style={{ color: '#0284c7', textDecoration: 'none' }}>Home</Link>
           <span>/</span>
           <Link to="/cs/home" style={{ color: '#0284c7', textDecoration: 'none' }}>Customer Success</Link>
@@ -438,18 +438,18 @@ export default function CsFeedback() {
         </div>
 
         {/* Page Heading & Metadata */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.25rem 0' }}>
+            <h1 style={{ fontSize: '1.65rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.2rem 0' }}>
               Feedback
             </h1>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
               Corporate Health Partner Evaluation • Granular Delivery Analysis ({PILLAR_QUESTIONS.length} Dimensions)
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#ffffff', border: '1px solid #e2e8f0', padding: '0.35rem 0.75rem', borderRadius: '6px', fontSize: '0.82rem', color: '#475569' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#ffffff', border: '1px solid #e2e8f0', padding: '0.3rem 0.65rem', borderRadius: '6px', fontSize: '0.8rem', color: '#475569' }}>
               <i className="bx bx-user" style={{ color: '#0284c7' }}></i>
               <span>Logged in: <strong style={{ color: '#0f172a' }}>{clientDetails.name}</strong> ({clientDetails.company})</span>
             </div>
@@ -460,13 +460,13 @@ export default function CsFeedback() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.4rem',
-                padding: '0.45rem 0.9rem',
+                gap: '0.35rem',
+                padding: '0.35rem 0.75rem',
                 borderRadius: '6px',
                 border: '1px solid #cbd5e1',
                 background: showHistory ? '#e0f2fe' : '#ffffff',
                 color: showHistory ? '#0284c7' : '#475569',
-                fontSize: '0.85rem',
+                fontSize: '0.8rem',
                 fontWeight: '600',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
@@ -479,7 +479,7 @@ export default function CsFeedback() {
         </div>
 
         {/* Question Selector Quick-Bar */}
-        <div style={{ maxWidth: '880px', margin: '0 auto 1.25rem auto', display: 'flex', gap: '0.4rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+        <div style={{ maxWidth: '860px', margin: '0 auto 0.75rem auto', display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
           {PILLAR_QUESTIONS.map((q, idx) => {
             const hasAnswer = Boolean(ratings[q.id]);
             const isCurrent = idx === currentStep;
@@ -493,13 +493,13 @@ export default function CsFeedback() {
                 }}
                 style={{
                   flex: '1 1 0',
-                  minWidth: '105px',
-                  padding: '0.45rem 0.5rem',
-                  borderRadius: '6px',
+                  minWidth: '95px',
+                  padding: '0.35rem 0.45rem',
+                  borderRadius: '5px',
                   background: isCurrent ? '#034ea2' : hasAnswer ? '#e0f2fe' : '#ffffff',
                   color: isCurrent ? '#ffffff' : hasAnswer ? '#0369a1' : '#64748b',
                   border: isCurrent ? '1px solid #034ea2' : hasAnswer ? '1px solid #bae6fd' : '1px solid #e2e8f0',
-                  fontSize: '0.72rem',
+                  fontSize: '0.7rem',
                   fontWeight: '600',
                   cursor: idx <= currentStep || hasAnswer ? 'pointer' : 'default',
                   textAlign: 'center',
@@ -522,13 +522,13 @@ export default function CsFeedback() {
             }}
             style={{
               flex: '1 1 0',
-              minWidth: '85px',
-              padding: '0.45rem 0.5rem',
-              borderRadius: '6px',
+              minWidth: '75px',
+              padding: '0.35rem 0.45rem',
+              borderRadius: '5px',
               background: isDetailsStep ? '#034ea2' : '#ffffff',
               color: isDetailsStep ? '#ffffff' : '#64748b',
               border: isDetailsStep ? '1px solid #034ea2' : '1px solid #e2e8f0',
-              fontSize: '0.72rem',
+              fontSize: '0.7rem',
               fontWeight: '600',
               textAlign: 'center',
               whiteSpace: 'nowrap'
@@ -541,21 +541,21 @@ export default function CsFeedback() {
         {/* Main Survey Card Container */}
         <div
           style={{
-            maxWidth: '880px',
-            margin: '0 auto 3rem auto',
+            maxWidth: '860px',
+            margin: '0 auto 1.5rem auto',
             background: '#ffffff',
-            borderRadius: '10px',
+            borderRadius: '8px',
             border: '1px solid #e2e8f0',
-            boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.05)',
-            padding: '2.25rem 2.5rem',
+            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.05)',
+            padding: '1.25rem 1.5rem',
             position: 'relative'
           }}
         >
           {!submitted ? (
             <div>
               {/* Stepper Header exactly matching user screenshot */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#034ea2' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#034ea2' }}>
                   {isDetailsStep ? 'FINAL STEP' : `QUESTION ${currentStep + 1} OF ${PILLAR_QUESTIONS.length}`}
                 </span>
 
@@ -579,18 +579,18 @@ export default function CsFeedback() {
               {/* Step View: Questions (0 to 9) */}
               {!isDetailsStep ? (
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', marginBottom: '0.35rem' }}>
                     <div
                       style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '8px',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '6px',
                         background: '#eff6ff',
                         color: '#034ea2',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '1.25rem',
+                        fontSize: '1.15rem',
                         flexShrink: 0
                       }}
                     >
@@ -600,23 +600,23 @@ export default function CsFeedback() {
                       <label
                         style={{
                           display: 'block',
-                          fontSize: '1.1rem',
+                          fontSize: '1.02rem',
                           fontWeight: '700',
                           color: '#1e293b',
-                          lineHeight: '1.4'
+                          lineHeight: '1.35'
                         }}
                       >
                         {activeQuestion.title.split('*')[0]}
                         <span style={{ color: '#ef4444' }}>*</span>
                       </label>
-                      <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.88rem', color: '#64748b', lineHeight: '1.45' }}>
+                      <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.82rem', color: '#64748b', lineHeight: '1.4' }}>
                         {activeQuestion.description}
                       </p>
                     </div>
                   </div>
 
                   {/* Radio Options List */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', margin: '1.75rem 0 1.25rem 0' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', margin: '0.75rem 0 0.75rem 0' }}>
                     {STANDARD_RATING_OPTIONS.map((opt) => {
                       const isSelected = ratings[activeQuestion.id] === opt.value;
                       return (
@@ -627,17 +627,17 @@ export default function CsFeedback() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            padding: '0.75rem 1rem',
-                            borderRadius: '8px',
+                            padding: '0.42rem 0.75rem',
+                            borderRadius: '6px',
                             cursor: 'pointer',
                             userSelect: 'none',
                             transition: 'all 0.15s ease',
                             backgroundColor: isSelected ? '#f0f7ff' : '#ffffff',
                             border: isSelected ? '1.5px solid #034ea2' : '1px solid #e2e8f0',
-                            boxShadow: isSelected ? '0 2px 6px rgba(3, 78, 162, 0.1)' : 'none'
+                            boxShadow: isSelected ? '0 1px 3px rgba(3, 78, 162, 0.08)' : 'none'
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                             <input
                               type="radio"
                               name={activeQuestion.id}
@@ -645,8 +645,8 @@ export default function CsFeedback() {
                               checked={isSelected}
                               onChange={() => handleSelectOption(opt.value)}
                               style={{
-                                width: '18px',
-                                height: '18px',
+                                width: '16px',
+                                height: '16px',
                                 accentColor: '#034ea2',
                                 cursor: 'pointer',
                                 margin: 0
@@ -654,9 +654,9 @@ export default function CsFeedback() {
                             />
                             <span
                               style={{
-                                fontSize: '0.95rem',
+                                fontSize: '0.88rem',
                                 color: isSelected ? '#034ea2' : '#334155',
-                                fontWeight: isSelected ? '600' : '400'
+                                fontWeight: isSelected ? '600' : '500'
                               }}
                             >
                               {opt.label}
@@ -665,15 +665,15 @@ export default function CsFeedback() {
 
                           <span
                             style={{
-                              fontSize: '0.75rem',
+                              fontSize: '0.72rem',
                               fontWeight: '600',
-                              padding: '0.2rem 0.55rem',
+                              padding: '0.15rem 0.5rem',
                               borderRadius: '4px',
                               background: opt.bg,
                               color: opt.color
                             }}
                           >
-                            <i className={`bx ${opt.icon}`} style={{ marginRight: '0.25rem' }}></i>
+                            <i className={`bx ${opt.icon}`} style={{ marginRight: '0.2rem' }}></i>
                             {opt.value}
                           </span>
                         </label>
@@ -688,8 +688,8 @@ export default function CsFeedback() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          padding: '0.75rem 1rem',
-                          borderRadius: '8px',
+                          padding: '0.42rem 0.75rem',
+                          borderRadius: '6px',
                           cursor: 'pointer',
                           userSelect: 'none',
                           transition: 'all 0.15s ease',
@@ -697,7 +697,7 @@ export default function CsFeedback() {
                           border: ratings[activeQuestion.id] === NOT_APPLICABLE_OPTION.value ? '1.5px solid #64748b' : '1px dashed #cbd5e1'
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                           <input
                             type="radio"
                             name={activeQuestion.id}
@@ -705,8 +705,8 @@ export default function CsFeedback() {
                             checked={ratings[activeQuestion.id] === NOT_APPLICABLE_OPTION.value}
                             onChange={() => handleSelectOption(NOT_APPLICABLE_OPTION.value)}
                             style={{
-                              width: '18px',
-                              height: '18px',
+                              width: '16px',
+                              height: '16px',
                               accentColor: '#64748b',
                               cursor: 'pointer',
                               margin: 0
@@ -714,7 +714,7 @@ export default function CsFeedback() {
                           />
                           <span
                             style={{
-                              fontSize: '0.92rem',
+                              fontSize: '0.85rem',
                               color: ratings[activeQuestion.id] === NOT_APPLICABLE_OPTION.value ? '#0f172a' : '#64748b',
                               fontWeight: ratings[activeQuestion.id] === NOT_APPLICABLE_OPTION.value ? '600' : '500'
                             }}
@@ -725,9 +725,9 @@ export default function CsFeedback() {
 
                         <span
                           style={{
-                            fontSize: '0.72rem',
+                            fontSize: '0.7rem',
                             fontWeight: '600',
-                            padding: '0.2rem 0.5rem',
+                            padding: '0.15rem 0.45rem',
                             borderRadius: '4px',
                             background: '#f1f5f9',
                             color: '#64748b'
@@ -743,43 +743,43 @@ export default function CsFeedback() {
                   {isLowRating(ratings[activeQuestion.id]) && (
                     <div
                       style={{
-                        marginTop: '1.25rem',
-                        marginBottom: '1.5rem',
-                        padding: '1.25rem',
+                        marginTop: '0.65rem',
+                        marginBottom: '0.65rem',
+                        padding: '0.75rem 0.9rem',
                         background: '#fffbeb',
                         border: '1px solid #fde68a',
-                        borderRadius: '8px',
+                        borderRadius: '6px',
                         animation: 'fadeIn 0.2s ease-in'
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.88rem', fontWeight: '700', color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <i className="bx bx-message-alt-error" style={{ fontSize: '1.1rem' }}></i>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                        <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <i className="bx bx-message-alt-error" style={{ fontSize: '1rem' }}></i>
                           <span>What could we have done better in {activeQuestion.shortLabel}? (Optional remark)</span>
                         </label>
-                        <span style={{ fontSize: '0.75rem', color: '#b45309', background: '#fef3c7', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#b45309', background: '#fef3c7', padding: '0.1rem 0.45rem', borderRadius: '4px', fontWeight: '600' }}>
                           Optional
                         </span>
                       </div>
 
-                      <p style={{ margin: '0 0 0.65rem 0', fontSize: '0.8rem', color: '#78350f' }}>
+                      <p style={{ margin: '0 0 0.45rem 0', fontSize: '0.76rem', color: '#78350f' }}>
                         Click any tag below to quickly specify the reason, or write your feedback so your CS SPOC can review:
                       </p>
 
                       {/* Dimension Specific Issue Tags */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.65rem' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.5rem' }}>
                         {activeQuestion.lowRatingTags.map((tag) => (
                           <button
                             key={tag}
                             type="button"
                             onClick={() => handleAddLowRatingTag(activeQuestion.id, tag)}
                             style={{
-                              padding: '0.2rem 0.55rem',
-                              borderRadius: '12px',
+                              padding: '0.15rem 0.45rem',
+                              borderRadius: '10px',
                               border: '1px solid #fcd34d',
                               background: '#ffffff',
                               color: '#92400e',
-                              fontSize: '0.75rem',
+                              fontSize: '0.72rem',
                               cursor: 'pointer',
                               transition: 'all 0.15s ease'
                             }}
@@ -796,7 +796,7 @@ export default function CsFeedback() {
                       </div>
 
                       <textarea
-                        rows={3}
+                        rows={2}
                         value={lowResponseRemarks[activeQuestion.id]}
                         onChange={(e) =>
                           setLowResponseRemarks({
@@ -807,15 +807,15 @@ export default function CsFeedback() {
                         placeholder={`Share any specific issues regarding ${activeQuestion.shortLabel.toLowerCase()} (optional)...`}
                         style={{
                           width: '100%',
-                          padding: '0.65rem 0.85rem',
-                          borderRadius: '6px',
+                          padding: '0.45rem 0.65rem',
+                          borderRadius: '5px',
                           border: '1px solid #fcd34d',
                           background: '#ffffff',
-                          fontSize: '0.88rem',
+                          fontSize: '0.82rem',
                           color: '#1e293b',
                           boxSizing: 'border-box',
                           fontFamily: 'inherit',
-                          lineHeight: '1.45',
+                          lineHeight: '1.4',
                           resize: 'vertical'
                         }}
                       />
@@ -826,16 +826,16 @@ export default function CsFeedback() {
                   {validationError && (
                     <div
                       style={{
-                        marginBottom: '1.25rem',
-                        padding: '0.65rem 0.85rem',
+                        marginBottom: '0.85rem',
+                        padding: '0.5rem 0.75rem',
                         borderRadius: '6px',
                         background: '#fef2f2',
                         border: '1px solid #fecaca',
                         color: '#b91c1c',
-                        fontSize: '0.85rem',
+                        fontSize: '0.8rem',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.4rem'
+                        gap: '0.35rem'
                       }}
                     >
                       <i className="bx bx-error-circle"></i>
@@ -844,18 +844,18 @@ export default function CsFeedback() {
                   )}
 
                   {/* Navigation Buttons */}
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '1.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', marginTop: '0.85rem' }}>
                     {currentStep > 0 && (
                       <button
                         type="button"
                         onClick={handlePrevious}
                         style={{
-                          padding: '0.75rem 1.35rem',
+                          padding: '0.5rem 1.15rem',
                           borderRadius: '6px',
                           background: '#ffffff',
                           border: '1px solid #cbd5e1',
                           color: '#475569',
-                          fontSize: '0.95rem',
+                          fontSize: '0.88rem',
                           fontWeight: '600',
                           cursor: 'pointer',
                           transition: 'all 0.15s ease'
@@ -870,15 +870,15 @@ export default function CsFeedback() {
                       onClick={handleNext}
                       style={{
                         flex: 1,
-                        padding: '0.75rem 1.5rem',
+                        padding: '0.55rem 1.25rem',
                         borderRadius: '6px',
                         background: '#034ea2',
                         border: 'none',
                         color: '#ffffff',
-                        fontSize: '1rem',
+                        fontSize: '0.92rem',
                         fontWeight: '600',
                         cursor: 'pointer',
-                        boxShadow: '0 2px 4px rgba(3, 78, 162, 0.25)',
+                        boxShadow: '0 1px 3px rgba(3, 78, 162, 0.2)',
                         transition: 'all 0.15s ease'
                       }}
                       onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#023c7d')}
@@ -896,26 +896,26 @@ export default function CsFeedback() {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.6rem',
+                      gap: '0.5rem',
                       background: '#f0f9ff',
                       border: '1px solid #bae6fd',
-                      borderRadius: '8px',
-                      padding: '0.75rem 1rem',
-                      marginBottom: '1.5rem',
-                      fontSize: '0.85rem',
+                      borderRadius: '6px',
+                      padding: '0.5rem 0.75rem',
+                      marginBottom: '0.85rem',
+                      fontSize: '0.8rem',
                       color: '#0369a1'
                     }}
                   >
-                    <i className="bx bx-info-circle" style={{ fontSize: '1.25rem', color: '#0284c7' }}></i>
+                    <i className="bx bx-info-circle" style={{ fontSize: '1.1rem', color: '#0284c7' }}></i>
                     <div>
-                      <strong>Pre-Populated Identity:</strong> Your details are prefilled based on your HR session, and your Customer Success SPOC is linked from your division configuration.
+                      <strong>Pre-Populated Identity:</strong> Details are prefilled based on your HR session, and your CS SPOC is linked from your division configuration.
                     </div>
                   </div>
 
                   {/* Division Switcher if multiple divisions exist */}
                   {availableDivisions.length > 1 && (
-                    <div style={{ marginBottom: '1.25rem' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#475569', marginBottom: '0.4rem' }}>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', color: '#475569', marginBottom: '0.25rem' }}>
                         Corporate Division:
                       </label>
                       <select
@@ -923,11 +923,11 @@ export default function CsFeedback() {
                         onChange={(e) => handleDivisionChange(e.target.value)}
                         style={{
                           width: '100%',
-                          padding: '0.65rem 0.85rem',
+                          padding: '0.45rem 0.7rem',
                           borderRadius: '6px',
                           border: '1px solid #cbd5e1',
                           background: '#ffffff',
-                          fontSize: '0.9rem',
+                          fontSize: '0.85rem',
                           color: '#1e293b'
                         }}
                       >
@@ -941,12 +941,12 @@ export default function CsFeedback() {
                   )}
 
                   {/* Name field (Prefilled as HR name) */}
-                  <div style={{ marginBottom: '1.25rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                      <label style={{ fontSize: '0.92rem', fontWeight: '600', color: '#1e293b' }}>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1e293b' }}>
                         Name <span style={{ color: '#ef4444' }}>*</span>
                       </label>
-                      <span style={{ fontSize: '0.75rem', color: '#0284c7', background: '#e0f2fe', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
+                      <span style={{ fontSize: '0.7rem', color: '#0284c7', background: '#e0f2fe', padding: '0.1rem 0.45rem', borderRadius: '4px', fontWeight: '600' }}>
                         Prefilled from HR Login ID
                       </span>
                     </div>
@@ -958,10 +958,10 @@ export default function CsFeedback() {
                       placeholder="Enter your full name"
                       style={{
                         width: '100%',
-                        padding: '0.7rem 0.9rem',
+                        padding: '0.45rem 0.75rem',
                         borderRadius: '6px',
                         border: '1px solid #cbd5e1',
-                        fontSize: '0.95rem',
+                        fontSize: '0.88rem',
                         color: '#1e293b',
                         boxSizing: 'border-box',
                         outline: 'none',
@@ -973,12 +973,12 @@ export default function CsFeedback() {
                   </div>
 
                   {/* Company field */}
-                  <div style={{ marginBottom: '1.25rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                      <label style={{ fontSize: '0.92rem', fontWeight: '600', color: '#1e293b' }}>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1e293b' }}>
                         Company <span style={{ color: '#ef4444' }}>*</span>
                       </label>
-                      <span style={{ fontSize: '0.75rem', color: '#059669', background: '#dcfce7', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
+                      <span style={{ fontSize: '0.7rem', color: '#059669', background: '#dcfce7', padding: '0.1rem 0.45rem', borderRadius: '4px', fontWeight: '600' }}>
                         Corporate Account
                       </span>
                     </div>
@@ -990,10 +990,10 @@ export default function CsFeedback() {
                       placeholder="Enter corporate company name"
                       style={{
                         width: '100%',
-                        padding: '0.7rem 0.9rem',
+                        padding: '0.45rem 0.75rem',
                         borderRadius: '6px',
                         border: '1px solid #cbd5e1',
-                        fontSize: '0.95rem',
+                        fontSize: '0.88rem',
                         color: '#1e293b',
                         boxSizing: 'border-box',
                         outline: 'none',
@@ -1005,12 +1005,12 @@ export default function CsFeedback() {
                   </div>
 
                   {/* Customer Success SPOC Name field */}
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                      <label style={{ fontSize: '0.92rem', fontWeight: '600', color: '#1e293b' }}>
+                  <div style={{ marginBottom: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1e293b' }}>
                         Customer Success SPOC Name <span style={{ color: '#ef4444' }}>*</span>
                       </label>
-                      <span style={{ fontSize: '0.75rem', color: '#034ea2', background: '#e0f2fe', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
+                      <span style={{ fontSize: '0.7rem', color: '#034ea2', background: '#e0f2fe', padding: '0.1rem 0.45rem', borderRadius: '4px', fontWeight: '600' }}>
                         Prefilled from Division Roles
                       </span>
                     </div>
@@ -1022,10 +1022,10 @@ export default function CsFeedback() {
                       placeholder="Enter Customer Success SPOC Name"
                       style={{
                         width: '100%',
-                        padding: '0.7rem 0.9rem',
+                        padding: '0.45rem 0.75rem',
                         borderRadius: '6px',
                         border: '1px solid #cbd5e1',
-                        fontSize: '0.95rem',
+                        fontSize: '0.88rem',
                         color: '#1e293b',
                         boxSizing: 'border-box',
                         outline: 'none',
@@ -1037,26 +1037,26 @@ export default function CsFeedback() {
                   </div>
 
                   {/* Suggestions / Feedback Textarea */}
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.92rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.4rem' }}>
+                  <div style={{ marginBottom: '0.85rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.25rem' }}>
                       Do you have any suggestions or feedback for us to improve our services?
                     </label>
 
                     {/* Quick Suggestions Chips */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.65rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b', alignSelf: 'center' }}>Quick insert:</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.45rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', alignSelf: 'center' }}>Quick insert:</span>
                       {GENERAL_SUGGESTION_TAGS.map((tag) => (
                         <button
                           key={tag}
                           type="button"
                           onClick={() => handleAddGeneralSuggestionTag(tag)}
                           style={{
-                            padding: '0.25rem 0.6rem',
-                            borderRadius: '12px',
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '10px',
                             border: '1px solid #cbd5e1',
                             background: '#f8fafc',
                             color: '#334155',
-                            fontSize: '0.75rem',
+                            fontSize: '0.72rem',
                             cursor: 'pointer',
                             transition: 'all 0.15s ease'
                           }}
@@ -1077,20 +1077,20 @@ export default function CsFeedback() {
                     </div>
 
                     <textarea
-                      rows={4}
+                      rows={3}
                       value={clientDetails.suggestions}
                       onChange={(e) => setClientDetails({ ...clientDetails, suggestions: e.target.value })}
                       placeholder="Share your overall experience regarding webinar variety, response times, session quality, or any new features you would like to see..."
                       style={{
                         width: '100%',
-                        padding: '0.75rem 0.9rem',
+                        padding: '0.5rem 0.75rem',
                         borderRadius: '6px',
                         border: '1px solid #cbd5e1',
-                        fontSize: '0.92rem',
+                        fontSize: '0.88rem',
                         color: '#1e293b',
                         boxSizing: 'border-box',
                         fontFamily: 'inherit',
-                        lineHeight: '1.5',
+                        lineHeight: '1.45',
                         resize: 'vertical',
                         outline: 'none'
                       }}
@@ -1100,15 +1100,15 @@ export default function CsFeedback() {
                   </div>
 
                   {/* Follow-up Checkbox */}
-                  <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <input
                       type="checkbox"
                       id="followUpCheck"
                       checked={clientDetails.wantsFollowUp}
                       onChange={(e) => setClientDetails({ ...clientDetails, wantsFollowUp: e.target.checked })}
-                      style={{ width: '17px', height: '17px', accentColor: '#034ea2', cursor: 'pointer' }}
+                      style={{ width: '16px', height: '16px', accentColor: '#034ea2', cursor: 'pointer' }}
                     />
-                    <label htmlFor="followUpCheck" style={{ fontSize: '0.88rem', color: '#475569', cursor: 'pointer' }}>
+                    <label htmlFor="followUpCheck" style={{ fontSize: '0.82rem', color: '#475569', cursor: 'pointer' }}>
                       Request Customer Success SPOC ({clientDetails.csSpocName}) to schedule a brief follow-up call regarding this feedback.
                     </label>
                   </div>
@@ -1117,16 +1117,16 @@ export default function CsFeedback() {
                   {validationError && (
                     <div
                       style={{
-                        marginBottom: '1.25rem',
-                        padding: '0.65rem 0.85rem',
+                        marginBottom: '0.85rem',
+                        padding: '0.5rem 0.75rem',
                         borderRadius: '6px',
                         background: '#fef2f2',
                         border: '1px solid #fecaca',
                         color: '#b91c1c',
-                        fontSize: '0.85rem',
+                        fontSize: '0.8rem',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.4rem'
+                        gap: '0.35rem'
                       }}
                     >
                       <i className="bx bx-error-circle"></i>
@@ -1134,20 +1134,21 @@ export default function CsFeedback() {
                     </div>
                   )}
 
-                  {/* Navigation and Submit Buttons */}
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  {/* Action Buttons for Step 11 */}
+                  <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', marginTop: '0.85rem' }}>
                     <button
                       type="button"
-                      onClick={handlePrevious}
+                      onClick={() => setCurrentStep(PILLAR_QUESTIONS.length - 1)}
                       style={{
-                        padding: '0.8rem 1.4rem',
+                        padding: '0.5rem 1.15rem',
                         borderRadius: '6px',
                         background: '#ffffff',
                         border: '1px solid #cbd5e1',
                         color: '#475569',
-                        fontSize: '0.95rem',
+                        fontSize: '0.88rem',
                         fontWeight: '600',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
                       }}
                     >
                       Back
@@ -1157,19 +1158,19 @@ export default function CsFeedback() {
                       type="submit"
                       style={{
                         flex: 1,
-                        padding: '0.8rem 1.5rem',
+                        padding: '0.55rem 1.25rem',
                         borderRadius: '6px',
-                        background: '#034ea2',
+                        background: '#059669',
                         border: 'none',
                         color: '#ffffff',
-                        fontSize: '1rem',
+                        fontSize: '0.92rem',
                         fontWeight: '600',
                         cursor: 'pointer',
-                        boxShadow: '0 2px 5px rgba(3, 78, 162, 0.3)',
+                        boxShadow: '0 1px 3px rgba(5, 150, 105, 0.25)',
                         transition: 'all 0.15s ease'
                       }}
-                      onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#023c7d')}
-                      onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#034ea2')}
+                      onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#047857')}
+                      onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#059669')}
                     >
                       Submit Feedback
                     </button>
@@ -1415,11 +1416,11 @@ export default function CsFeedback() {
         {/* Customer Escalation & Resolution Matrix Collapsible Accordion */}
         <div
           style={{
-            marginTop: '2.5rem',
+            marginTop: '1.25rem',
             background: '#ffffff',
-            borderRadius: '10px',
+            borderRadius: '8px',
             border: '1px solid #cbd5e1',
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
+            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
             overflow: 'hidden',
             transition: 'all 0.2s ease'
           }}
@@ -1428,7 +1429,7 @@ export default function CsFeedback() {
           <div
             onClick={() => setIsMatrixExpanded(!isMatrixExpanded)}
             style={{
-              padding: '1.25rem 1.5rem',
+              padding: '0.75rem 1rem',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -1444,32 +1445,32 @@ export default function CsFeedback() {
               if (!isMatrixExpanded) e.currentTarget.style.backgroundColor = '#ffffff';
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <div
                 style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '8px',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
                   background: isMatrixExpanded ? '#e0f2fe' : '#f1f5f9',
                   color: isMatrixExpanded ? '#034ea2' : '#64748b',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1.25rem'
+                  fontSize: '1.1rem'
                 }}
               >
                 <i className="bx bx-table"></i>
               </div>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <h2 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: '1.02rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
                     Customer Service Escalation Matrix
                   </h2>
-                  <span style={{ fontSize: '0.72rem', fontWeight: '600', color: '#034ea2', background: '#e0f2fe', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: '600', color: '#034ea2', background: '#e0f2fe', padding: '0.1rem 0.45rem', borderRadius: '4px' }}>
                     8-Tier SLA Protocol
                   </span>
                 </div>
-                <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+                <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.15rem 0 0 0' }}>
                   {isMatrixExpanded
                     ? 'Click to collapse standard resolution SLAs and intervention triggers across support tiers.'
                     : 'Click to expand standard operational resolution SLAs, complaint workflows, and intervention triggers.'}
@@ -1486,26 +1487,26 @@ export default function CsFeedback() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.4rem',
-                padding: '0.45rem 0.9rem',
-                borderRadius: '6px',
+                gap: '0.35rem',
+                padding: '0.35rem 0.75rem',
+                borderRadius: '5px',
                 border: '1px solid #cbd5e1',
                 background: isMatrixExpanded ? '#034ea2' : '#ffffff',
                 color: isMatrixExpanded ? '#ffffff' : '#334155',
-                fontSize: '0.82rem',
+                fontSize: '0.78rem',
                 fontWeight: '600',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
               }}
             >
               <span>{isMatrixExpanded ? 'Collapse Matrix' : 'Expand Matrix'}</span>
-              <i className={`bx ${isMatrixExpanded ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.1rem' }}></i>
+              <i className={`bx ${isMatrixExpanded ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1rem' }}></i>
             </button>
           </div>
 
           {/* Collapsible Body containing the full 8-column matrix table */}
           {isMatrixExpanded && (
-            <div style={{ padding: '1.25rem', overflowX: 'auto', background: '#ffffff' }}>
+            <div style={{ padding: '0.85rem', overflowX: 'auto', background: '#ffffff' }}>
               <table
               style={{
                 width: '100%',
