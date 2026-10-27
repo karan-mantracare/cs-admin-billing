@@ -104,6 +104,8 @@ function ExpenseTracker() {
 
             return {
               id: `order_${o.id || idx}`,
+              orderId: o.id || idx,
+              rawOrderId: o.id || idx,
               clientName: o.clientName || 'Unknown',
               division: o.divisionName || 'Unknown',
               divisionStatus: 'Active',
@@ -492,24 +494,52 @@ function ExpenseTracker() {
                     {formatCurrency(exp.contractAmount)}
                   </td>
 
-                  {/* Amount Received (hyperlinked to client-payments) */}
+                  {/* Amount Received (hyperlinked to client-payments with orderId & type=received) */}
                   <td 
                     className="text-right" 
                     style={{ cursor: 'pointer', color: 'var(--success)', fontWeight: '600' }} 
-                    onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}
-                    title="View in Accounts Receivable"
+                    onClick={() => {
+                      const cleanOrderId = exp.rawOrderId || String(exp.id).replace('order_', '');
+                      navigate(`/client-payments?orderId=${encodeURIComponent(cleanOrderId)}&type=received`, {
+                        state: {
+                          filterOrderId: cleanOrderId,
+                          filterPaymentType: 'received'
+                        }
+                      });
+                    }}
+                    title={`View Received Payments for Order #${exp.rawOrderId || String(exp.id).replace('order_', '')}`}
                   >
-                    {formatCurrency(exp.totalReceived)}
+                    <span 
+                      style={{ textDecoration: 'underline', textUnderlineOffset: '2px' }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                    >
+                      {formatCurrency(exp.totalReceived)}
+                    </span>
                   </td>
 
-                  {/* Amount Due (hyperlinked to client-payments) */}
+                  {/* Amount Due (hyperlinked to client-payments with orderId & type=due) */}
                   <td 
                     className="text-right" 
                     style={{ cursor: 'pointer', color: 'var(--warning)', fontWeight: '600' }} 
-                    onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}
-                    title="View in Accounts Receivable"
+                    onClick={() => {
+                      const cleanOrderId = exp.rawOrderId || String(exp.id).replace('order_', '');
+                      navigate(`/client-payments?orderId=${encodeURIComponent(cleanOrderId)}&type=due`, {
+                        state: {
+                          filterOrderId: cleanOrderId,
+                          filterPaymentType: 'due'
+                        }
+                      });
+                    }}
+                    title={`View Due Payments for Order #${exp.rawOrderId || String(exp.id).replace('order_', '')}`}
                   >
-                    {formatCurrency(exp.totalDue)}
+                    <span 
+                      style={{ textDecoration: 'underline', textUnderlineOffset: '2px' }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                    >
+                      {formatCurrency(exp.totalDue)}
+                    </span>
                   </td>
 
                   {/* Session Cost */}

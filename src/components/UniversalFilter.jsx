@@ -42,6 +42,10 @@ export default function UniversalFilter({
     } catch(e) {}
   }, [storageKey]);
 
+  useEffect(() => {
+    setSearchText(initialSearchText || '');
+  }, [initialSearchText]);
+
   // Load default fields initially
   useEffect(() => {
     if (draftConditions.length === 0 && activePreset === pageName) {

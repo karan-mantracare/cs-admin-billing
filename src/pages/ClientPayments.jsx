@@ -98,6 +98,20 @@ function ClientPayments() {
   const [addModalMode, setAddModalMode] = useState('schedule');
   const [initialScheduleSelection, setInitialScheduleSelection] = useState(null);
 
+  const [activeLinkFilter, setActiveLinkFilter] = useState(() => {
+    const oId = searchParams.get('orderId') || location.state?.filterOrderId || location.state?.orderId || '';
+    const t = searchParams.get('type') || location.state?.filterPaymentType || location.state?.type || '';
+    return (oId || t) ? { orderId: String(oId).trim(), type: String(t).trim().toLowerCase() } : null;
+  });
+
+  useEffect(() => {
+    const oId = searchParams.get('orderId') || location.state?.filterOrderId || location.state?.orderId || '';
+    const t = searchParams.get('type') || location.state?.filterPaymentType || location.state?.type || '';
+    if (oId || t) {
+      setActiveLinkFilter({ orderId: String(oId).trim(), type: String(t).trim().toLowerCase() });
+    }
+  }, [searchParams, location.state]);
+
   useEffect(() => {
     if (location.state?.openAddSchedule) {
       setInitialScheduleSelection({
@@ -190,6 +204,24 @@ function ClientPayments() {
 
   // Filtering Logic
   const filteredPayments = payments.filter(p => {
+    // 1. Link Filter (from URL query ?orderId=...&type=received/due)
+    if (activeLinkFilter) {
+      if (activeLinkFilter.orderId) {
+        const targetOrder = String(activeLinkFilter.orderId).toLowerCase();
+        const pOrder = String(p.orderId || '').toLowerCase();
+        if (pOrder !== targetOrder && !pOrder.includes(targetOrder)) {
+          return false;
+        }
+      }
+      if (activeLinkFilter.type === 'received') {
+        const isReceived = Number(p.totalPaid || 0) > 0 || p.status === 'Received' || p.status === 'Partial';
+        if (!isReceived) return false;
+      } else if (activeLinkFilter.type === 'due') {
+        const isDue = Number(p.dueAmount || 0) > 0 || p.status === 'Pending' || p.status === 'Overdue' || p.status === 'Partial' || p.status === 'To be Raised' || p.status === 'Invoice Pending';
+        if (!isDue) return false;
+      }
+    }
+
     // Free text search
     const query = String(advancedFilters.searchText || '').toLowerCase();
     const matchesSearch = !query || 
@@ -236,6 +268,17 @@ function ClientPayments() {
     return matchesSearch && matchesConditions;
   });
 
+  const filteredPaymentRecords = paymentRecords.filter(r => {
+    if (activeLinkFilter?.orderId) {
+      const targetOrder = String(activeLinkFilter.orderId).toLowerCase();
+      const rOrder = String(r.orderId || '').toLowerCase();
+      if (rOrder !== targetOrder && !rOrder.includes(targetOrder)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   // Pagination Logic
   const totalItems = filteredPayments.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
@@ -267,7 +310,7 @@ function ClientPayments() {
             <UniversalFilter 
               pageName="Client Payments"
               storageKey="client_payments_universal_filters"
-              initialSearchText={location.state?.filterOrderId ? String(location.state.filterOrderId) : ''}
+              initialSearchText={activeLinkFilter?.orderId || (location.state?.filterOrderId ? String(location.state.filterOrderId) : '')}
               fields={[
                 { id: 'clientName', label: 'Client Name', type: 'text' },
                 { id: 'orderId', label: 'Order ID', type: 'text' },
@@ -340,6 +383,61 @@ function ClientPayments() {
           <span style={{ background: activeTab === 'records' ? '#0ea5e9' : '#e2e8f0', color: activeTab === 'records' ? 'white' : '#64748b', borderRadius: '10px', padding: '0.1rem 0.5rem', fontSize: '0.72rem', fontWeight: '700' }}>{paymentRecords.length}</span>
         </button>
       </div>
+
+      {/* Active Link Filter Banner */}
+      {activeLinkFilter && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: activeLinkFilter.type === 'received' ? '#f0fdf4' : '#fffbeb',
+          border: `1px solid ${activeLinkFilter.type === 'received' ? '#bbf7d0' : '#fde68a'}`,
+          borderRadius: '8px',
+          padding: '0.65rem 1rem',
+          marginBottom: '1.25rem',
+          fontSize: '0.85rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <i className={`bx ${activeLinkFilter.type === 'received' ? 'bx-check-circle' : 'bx-time-five'}`} style={{ fontSize: '1.3rem', color: activeLinkFilter.type === 'received' ? '#16a34a' : '#d97706' }}></i>
+            <div>
+              <span style={{ fontWeight: '600', color: '#0f172a' }}>
+                Filtered by {activeLinkFilter.type === 'received' ? 'Amount Received' : 'Amount Due'}:
+              </span>
+              {activeLinkFilter.orderId && (
+                <span style={{ marginLeft: '0.5rem', padding: '0.2rem 0.55rem', background: '#ffffff', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: '700', color: '#0284c7' }}>
+                  Order #{activeLinkFilter.orderId}
+                </span>
+              )}
+              <span style={{ marginLeft: '0.6rem', color: '#64748b', fontSize: '0.82rem' }}>
+                ({filteredPayments.length} matching schedule record{filteredPayments.length !== 1 ? 's' : ''})
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setActiveLinkFilter(null);
+              navigate('/client-payments', { replace: true, state: {} });
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              background: '#ffffff',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              padding: '0.3rem 0.75rem',
+              fontSize: '0.8rem',
+              fontWeight: '600',
+              color: '#475569',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.color = '#475569'; }}
+          >
+            <i className='bx bx-x' style={{ fontSize: '1.1rem' }}></i> Clear Filter
+          </button>
+        </div>
+      )}
 
       {activeTab === 'billing' ? (
       <div className="table-container" style={{ overflowX: 'auto' }}>
@@ -485,7 +583,42 @@ function ClientPayments() {
             ))}
             {filteredPayments.length === 0 && (
               <tr>
-                <td colSpan="14" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No records found matching your criteria.</td>
+                <td colSpan="14" style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                  {activeLinkFilter ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                      <i className='bx bx-search-alt' style={{ fontSize: '2rem', color: '#94a3b8' }}></i>
+                      <div style={{ fontWeight: '600', color: '#0f172a' }}>
+                        No {activeLinkFilter.type === 'received' ? 'received payments' : 'due payments'} found for Order #{activeLinkFilter.orderId}
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                        This order does not have any {activeLinkFilter.type === 'received' ? 'received payments recorded' : 'pending or due invoices'}.
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <button
+                          onClick={() => {
+                            setInitialScheduleSelection({ orderId: activeLinkFilter.orderId });
+                            setAddModalMode('schedule');
+                            setIsAddScheduleOpen(true);
+                          }}
+                          style={{ padding: '0.4rem 0.85rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}
+                        >
+                          <i className='bx bx-calendar-plus'></i> Add Schedule for Order #{activeLinkFilter.orderId}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setActiveLinkFilter(null);
+                            navigate('/client-payments', { replace: true, state: {} });
+                          }}
+                          style={{ padding: '0.4rem 0.85rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', color: '#64748b', cursor: 'pointer' }}
+                        >
+                          Clear Filter
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    'No records found matching your criteria.'
+                  )}
+                </td>
               </tr>
             )}
           </tbody>
@@ -570,7 +703,7 @@ function ClientPayments() {
             </tr>
           </thead>
           <tbody>
-            {paymentRecords.map((r, i) => (
+            {filteredPaymentRecords.map((r, i) => (
               <tr key={i}>
                 <td>{r.entryDate}</td>
                 <td>{r.paymentDate}</td>
@@ -600,9 +733,11 @@ function ClientPayments() {
                 <td><strong className="text-green">${Number(r.amountInUSD || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
               </tr>
             ))}
-            {paymentRecords.length === 0 && (
+            {filteredPaymentRecords.length === 0 && (
               <tr>
-                <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No payment records found.</td>
+                <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                  No payment records found{activeLinkFilter?.orderId ? ` for Order #${activeLinkFilter.orderId}` : ''}.
+                </td>
               </tr>
             )}
           </tbody>
