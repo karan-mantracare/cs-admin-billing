@@ -5,6 +5,7 @@ import ViewOnboardingModal from '../components/ViewOnboardingModal';
 import PaymentSummaryModal from '../components/PaymentSummaryModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
 import ConfirmModal from '../components/ConfirmModal';
+import DocumentUploadModal from '../components/DocumentUploadModal';
 import { saveUser } from '../utils/userStorage';
 
 function EditDivision() {
