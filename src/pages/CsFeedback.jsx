@@ -236,6 +236,7 @@ export default function CsFeedback() {
   const [validationError, setValidationError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [isMatrixExpanded, setIsMatrixExpanded] = useState(false); // Collapsed by default for compact page
   const [availableDivisions, setAvailableDivisions] = useState([]);
 
   // Auto pre-fill HR name and Customer Success SPOC Name
@@ -1411,32 +1412,101 @@ export default function CsFeedback() {
           </div>
         )}
 
-        {/* Customer Escalation & Resolution Matrix Table */}
-        <div style={{ marginTop: '2.5rem' }}>
-          <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.25rem 0' }}>
-                Customer Service Escalation Matrix
-              </h2>
-              <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
-                Standard operational escalation workflow, resolution SLAs, and intervention triggers across support tiers.
-              </p>
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#64748b', background: '#f1f5f9', padding: '0.3rem 0.6rem', borderRadius: '4px' }}>
-              8-Tier Matrix • Internal Protocol
-            </span>
-          </div>
-
+        {/* Customer Escalation & Resolution Matrix Collapsible Accordion */}
+        <div
+          style={{
+            marginTop: '2.5rem',
+            background: '#ffffff',
+            borderRadius: '10px',
+            border: '1px solid #cbd5e1',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
+            overflow: 'hidden',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          {/* Accordion Header Trigger */}
           <div
+            onClick={() => setIsMatrixExpanded(!isMatrixExpanded)}
             style={{
-              overflowX: 'auto',
-              background: '#ffffff',
-              borderRadius: '8px',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-              border: '1px solid #94a3b8'
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              cursor: 'pointer',
+              background: isMatrixExpanded ? '#f8fafc' : '#ffffff',
+              borderBottom: isMatrixExpanded ? '1px solid #e2e8f0' : 'none',
+              transition: 'background-color 0.15s ease'
+            }}
+            onMouseOver={(e) => {
+              if (!isMatrixExpanded) e.currentTarget.style.backgroundColor = '#f8fafc';
+            }}
+            onMouseOut={(e) => {
+              if (!isMatrixExpanded) e.currentTarget.style.backgroundColor = '#ffffff';
             }}
           >
-            <table
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <div
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '8px',
+                  background: isMatrixExpanded ? '#e0f2fe' : '#f1f5f9',
+                  color: isMatrixExpanded ? '#034ea2' : '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.25rem'
+                }}
+              >
+                <i className="bx bx-table"></i>
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+                    Customer Service Escalation Matrix
+                  </h2>
+                  <span style={{ fontSize: '0.72rem', fontWeight: '600', color: '#034ea2', background: '#e0f2fe', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                    8-Tier SLA Protocol
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+                  {isMatrixExpanded
+                    ? 'Click to collapse standard resolution SLAs and intervention triggers across support tiers.'
+                    : 'Click to expand standard operational resolution SLAs, complaint workflows, and intervention triggers.'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMatrixExpanded(!isMatrixExpanded);
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 0.9rem',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                background: isMatrixExpanded ? '#034ea2' : '#ffffff',
+                color: isMatrixExpanded ? '#ffffff' : '#334155',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>{isMatrixExpanded ? 'Collapse Matrix' : 'Expand Matrix'}</span>
+              <i className={`bx ${isMatrixExpanded ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.1rem' }}></i>
+            </button>
+          </div>
+
+          {/* Collapsible Body containing the full 8-column matrix table */}
+          {isMatrixExpanded && (
+            <div style={{ padding: '1.25rem', overflowX: 'auto', background: '#ffffff' }}>
+              <table
               style={{
                 width: '100%',
                 borderCollapse: 'collapse',
@@ -1705,7 +1775,8 @@ export default function CsFeedback() {
                 </tr>
               </tbody>
             </table>
-          </div>
+            </div>
+          )}
         </div>
 
       </div>
