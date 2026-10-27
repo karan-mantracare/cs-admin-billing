@@ -163,8 +163,44 @@ function AddOrder() {
           console.error("Error loading order:", e);
         }
       }
+    } else {
+      const targetDivId = location.state?.divisionId || searchParams.get('divisionId');
+      if (targetDivId) {
+        try {
+          const savedOnboarding = localStorage.getItem('onboardingFiled_' + targetDivId);
+          if (savedOnboarding) {
+            const parsed = JSON.parse(savedOnboarding);
+            if (parsed.billingDetails && (parsed.billingDetails.companyName || parsed.billingDetails.gstNumber || parsed.billingDetails.address)) {
+              setFormData(prev => {
+                if (prev.billingDetails) return prev;
+                return {
+                  ...prev,
+                  divisionId: targetDivId,
+                  clientName: location.state?.clientName || prev.clientName || '',
+                  divisionName: location.state?.divisionName || prev.divisionName || '',
+                  billingDetails: {
+                    billingEntity: parsed.billingDetails.companyName || '',
+                    taxDetails: parsed.billingDetails.gstNumber || '',
+                    billingAddress: parsed.billingDetails.address || '',
+                    contractValue: '',
+                    clientCurrency: 'USD',
+                    currencyExchangeValue: '1',
+                    paymentDueDays: '30',
+                    billFrom: 'Mantracare',
+                    receivingBankName: '',
+                    bankDetailsLink: '',
+                    billingDate: new Date().toISOString().split('T')[0]
+                  }
+                };
+              });
+            }
+          }
+        } catch (e) {
+          console.error("Error loading onboarding billing data:", e);
+        }
+      }
     }
-  }, [isEditMode, effectiveOrderId, location.state]);
+  }, [isEditMode, effectiveOrderId, location.state, searchParams]);
 
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
@@ -470,29 +506,36 @@ function AddOrder() {
   const pendingFields = getPendingFields();
   const isCreateDisabled = pendingFields.length > 0;
 
-  const handleSaveAsDraft = () => {
+  const saveDraftInternal = () => {
     try {
       const saved = localStorage.getItem('division_orders');
       let orders = saved ? JSON.parse(saved) : [];
 
       let targetOrderId;
+      let targetOrderName;
+      const resolvedClientName = location.state?.clientName || formData.clientName || '';
+      const resolvedDivisionName = location.state?.divisionName || formData.divisionName || '';
+
       if (isEditMode && effectiveOrderId) {
         targetOrderId = effectiveOrderId;
+        targetOrderName = formData.orderName || `${resolvedDivisionName || 'Draft Order'} | ${formData.planStart || 'Draft'} - ${formData.plan || 'Draft'}`;
         orders = orders.map(o => String(o.id) === String(targetOrderId) ? { 
           ...o, 
           ...formData, 
           id: targetOrderId, 
-          status: 'Draft' 
+          status: 'Draft',
+          clientName: resolvedClientName,
+          divisionName: resolvedDivisionName
         } : o);
-        showToast('Order saved as draft!', 4000);
       } else {
         targetOrderId = Date.now();
+        targetOrderName = `${resolvedDivisionName || 'Draft Order'} | ${formData.planStart || 'Draft'} - ${formData.plan || 'Draft'}`;
         const newDraftOrder = { 
           ...formData, 
           id: targetOrderId, 
           status: 'Draft',
-          divisionName: location.state?.divisionName || formData.divisionName || '',
-          clientName: location.state?.clientName || formData.clientName || '',
+          divisionName: resolvedDivisionName,
+          clientName: resolvedClientName,
           divisionId: location.state?.divisionId || formData.divisionId || searchParams.get('divisionId') || '',
           sessionCount: formData.sessionCount || 0
         };
@@ -503,15 +546,12 @@ function AddOrder() {
         sessionExpenses.forEach(exp => {
           updateExpense(exp.id, { orderId: targetOrderId });
         });
-
-        showToast('Order saved as draft!', 4000);
       }
 
       localStorage.setItem('division_orders', JSON.stringify(orders));
 
       // Process V2 documents connecting/saving
       if (formData.contractDetails?.v2Documents) {
-        const targetOrderName = `${location.state?.divisionName || formData.divisionName || 'Draft Order'} | ${formData.planStart || 'Draft'} - ${formData.plan || 'Draft'}`;
         const allDivDocs = JSON.parse(localStorage.getItem('division_documents') || '[]');
         const v2Ids = formData.contractDetails.v2Documents.map(d => d.id);
 
@@ -537,12 +577,31 @@ function AddOrder() {
         localStorage.setItem('division_documents', JSON.stringify(updatedDivDocs));
       }
 
-      navigate(-1);
+      return { targetOrderId, targetOrderName, clientName: resolvedClientName, divisionName: resolvedDivisionName };
     } catch (e) {
       console.error("Error saving draft:", e);
-      showToast('Order saved as draft!', 4000);
-      navigate(-1);
+      return null;
     }
+  };
+
+  const handleSaveAsDraft = () => {
+    saveDraftInternal();
+    showToast('Order saved as draft!', 4000);
+    navigate(-1);
+  };
+
+  const handleSaveDraftAndCreateSchedule = () => {
+    const res = saveDraftInternal();
+    showToast('Draft order saved! Opening billing schedule...', 3500);
+    navigate('/client-payments', {
+      state: {
+        openAddSchedule: true,
+        corporate: res?.clientName || location.state?.clientName || formData.clientName || '',
+        division: res?.divisionName || location.state?.divisionName || formData.divisionName || '',
+        orderId: res?.targetOrderId || Date.now(),
+        orderName: res?.targetOrderName || 'Draft Order'
+      }
+    });
   };
 
   const handleCreateOrPublishOrder = () => {
@@ -674,6 +733,32 @@ function AddOrder() {
             <i className='bx bx-file-blank' style={{ fontSize: '1.1rem' }}></i>
             Save As Draft
           </button>
+
+          <button
+            type="button"
+            onClick={handleSaveDraftAndCreateSchedule}
+            title="Save draft order with billing details and jump directly to creating payment schedule"
+            style={{
+              padding: '0.55rem 1.25rem',
+              background: '#059669',
+              color: 'white',
+              border: '1px solid #047857',
+              borderRadius: '6px',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 1px 2px rgba(5, 150, 105, 0.2)',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#047857'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#059669'}
+          >
+            <i className='bx bx-calendar-plus' style={{ fontSize: '1.1rem' }}></i>
+            Save Draft & Create Schedule
+          </button>
         </div>
       </div>
 
@@ -763,23 +848,68 @@ function AddOrder() {
             </div>
             
             {formData.billingDetails ? (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: 'linear-gradient(to right, #f8fafc, #ffffff)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ padding: '0.6rem', background: '#e0f2fe', borderRadius: '8px', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <i className='bx bx-receipt' style={{ fontSize: '1.25rem' }}></i>
+              <div style={{ padding: '1rem', border: '1px solid #bfdbfe', borderRadius: '8px', background: 'linear-gradient(to right, #f0f9ff, #ffffff)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ padding: '0.6rem', background: '#dbeafe', borderRadius: '8px', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className='bx bx-receipt' style={{ fontSize: '1.4rem' }}></i>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Contract Value</div>
+                      <div style={{ fontSize: '1.35rem', color: '#0f172a', fontWeight: '800' }}>
+                        {formData.billingDetails.clientCurrency || '$'} {formData.billingDetails.contractValue || formData.amount || '0'}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>Total Contract Value</div>
-                    <div style={{ fontSize: '1.25rem', color: '#0f172a', fontWeight: '800' }}>${formData.amount}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#dcfce7', padding: '0.35rem 0.75rem', borderRadius: '20px', border: '1px solid #bbf7d0' }}>
+                      <i className='bx bx-check-circle' style={{ fontSize: '1rem' }}></i> Billing Configured
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSaveDraftAndCreateSchedule}
+                      style={{ padding: '0.4rem 0.85rem', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                    >
+                      <i className='bx bx-calendar-plus'></i> Schedule Billing
+                    </button>
                   </div>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#16a34a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.35rem', background: '#dcfce7', padding: '0.35rem 0.75rem', borderRadius: '20px', border: '1px solid #bbf7d0' }}>
-                  <i className='bx bx-check-circle' style={{ fontSize: '1rem' }}></i> Configured
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px dashed #cbd5e1', fontSize: '0.82rem' }}>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Billing Entity</span>
+                    <strong style={{ color: '#1e293b' }}>{formData.billingDetails.billingEntity || formData.clientName || 'Not specified'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Tax / GST ID</span>
+                    <strong style={{ color: '#1e293b' }}>{formData.billingDetails.taxDetails || 'N/A'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Payment Terms</span>
+                    <strong style={{ color: '#1e293b' }}>{formData.billingDetails.paymentDueDays ? `Net ${formData.billingDetails.paymentDueDays} days` : 'Net 30 days'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Billing Entity From</span>
+                    <strong style={{ color: '#1e293b' }}>{formData.billingDetails.billFrom || 'Mantracare'}</strong>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div style={{ width: '100%', padding: '1.5rem', border: '1px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', color: '#94a3b8', fontSize: '0.85rem' }}>
-                No billing details added yet.
+              <div style={{ width: '100%', padding: '1.25rem', border: '1px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', color: '#64748b', fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                  <i className='bx bx-info-circle' style={{ fontSize: '1.3rem', color: '#3b82f6' }}></i>
+                  <div>
+                    <span>No billing details added yet. Fill the onboarding form or click </span>
+                    <button 
+                      type="button" 
+                      onClick={() => setIsBillingModalOpen(true)}
+                      style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                    >
+                      Add Billing Details
+                    </button>
+                    <span> to set contract value and generate invoices/schedules.</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1256,6 +1386,32 @@ function AddOrder() {
           >
             <i className='bx bx-file-blank' style={{ fontSize: '1.1rem' }}></i>
             Save As Draft
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSaveDraftAndCreateSchedule}
+            title="Save draft order with billing details and immediately generate payment schedule"
+            style={{
+              padding: '0.6rem 1.35rem',
+              background: '#059669',
+              color: 'white',
+              border: '1px solid #047857',
+              borderRadius: '6px',
+              fontSize: '0.95rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 1px 2px rgba(5, 150, 105, 0.2)',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#047857'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#059669'}
+          >
+            <i className='bx bx-calendar-plus' style={{ fontSize: '1.1rem' }}></i>
+            Save Draft & Create Schedule
           </button>
 
           <button 

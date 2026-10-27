@@ -96,6 +96,20 @@ function ClientPayments() {
 
   const [isAddScheduleOpen, setIsAddScheduleOpen] = useState(false);
   const [addModalMode, setAddModalMode] = useState('schedule');
+  const [initialScheduleSelection, setInitialScheduleSelection] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.openAddSchedule) {
+      setInitialScheduleSelection({
+        corporate: location.state.corporate || location.state.clientName || '',
+        division: location.state.division || location.state.divisionName || '',
+        orderName: location.state.orderName || '',
+        orderId: location.state.orderId || ''
+      });
+      setAddModalMode('schedule');
+      setIsAddScheduleOpen(true);
+    }
+  }, [location.state]);
   
   // Generating mock data matching the new 14-column layout
   const [payments, setPayments] = useState(() => {
@@ -1048,7 +1062,11 @@ function ClientPayments() {
       {/* Add Schedule Modal */}
       <AddScheduleModal 
         isOpen={isAddScheduleOpen} 
-        onClose={() => setIsAddScheduleOpen(false)} 
+        onClose={() => {
+          setIsAddScheduleOpen(false);
+          setInitialScheduleSelection(null);
+        }}
+        initialSelection={initialScheduleSelection}
         mode={addModalMode}
         onSave={({ formData, selectedOrder, mode, invoices }) => {
           if (invoices && invoices.length > 0) {

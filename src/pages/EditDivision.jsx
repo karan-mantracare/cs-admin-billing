@@ -1631,6 +1631,35 @@ function EditDivision() {
       {/* Orders Section */}
       <div style={{ padding: '1.5rem 2rem', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', marginTop: '2rem' }}>
         
+        {/* Section Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <i className='bx bx-receipt' style={{ color: '#3b82f6' }}></i> Division Orders
+            </h3>
+            <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.82rem' }}>
+              BD team can configure billing details and save as a draft order to create billing schedules & invoices.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            {isFiled ? (
+              <span style={{ fontSize: '0.75rem', background: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0', padding: '0.35rem 0.75rem', borderRadius: '20px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <i className='bx bx-check-circle'></i> Onboarding Filled (Billing Ready)
+              </span>
+            ) : (
+              <span style={{ fontSize: '0.75rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '0.35rem 0.75rem', borderRadius: '20px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <i className='bx bx-time'></i> Onboarding Pending
+              </span>
+            )}
+            <button 
+              onClick={() => navigate(`/corporate/division/order/add?divisionId=${division.id}`, { state: { clientName: formData.clientName, divisionName: formData.divisionName, divisionId: division.id } })} 
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}
+            >
+              <i className='bx bx-plus'></i> Add Order / Draft
+            </button>
+          </div>
+        </div>
+
         {/* Controls */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <div style={{ position: 'relative', width: '300px' }}>
@@ -1638,7 +1667,7 @@ function EditDivision() {
             <input type="text" placeholder="Search orders..." style={{ width: '100%', padding: '0.6rem 1rem 0.6rem 2.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.85rem' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem', color: '#64748b' }}>
-            <span>Total: <strong>27</strong></span>
+            <span>Total: <strong>{orders.length}</strong></span>
             <span>Rows:</span>
             <select style={{ padding: '0.4rem 2rem 0.4rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', fontSize: '0.85rem', outline: 'none', appearance: 'none', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1em' }}>
               <option>25</option>
@@ -1690,21 +1719,54 @@ function EditDivision() {
                     </span>
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <button onClick={() => navigate(`/corporate/division/order/edit/${order.id}`, { state: { edit: true, orderId: order.id, clientName: formData.clientName, divisionName: formData.divisionName, divisionId: division.id } })} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.5rem' }}>
+                    <button title="Edit Order" onClick={() => navigate(`/corporate/division/order/edit/${order.id}`, { state: { edit: true, orderId: order.id, clientName: formData.clientName, divisionName: formData.divisionName, divisionId: division.id } })} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.35rem' }}>
                       <i className='bx bx-pencil' style={{ fontSize: '1rem' }}></i>
                     </button>
-                    <button onClick={() => deleteOrder(order.id)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <button title="Delete Order" onClick={() => deleteOrder(order.id)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.35rem' }}>
                       <i className='bx bx-trash' style={{ fontSize: '1rem' }}></i>
                     </button>
-                    <button onClick={() => { setSelectedOrder(order); setIsPaymentSummaryOpen(true); }} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #93c5fd', background: '#eff6ff', color: '#3b82f6', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '0.5rem' }}>
+                    <button title="Payment Summary" onClick={() => { setSelectedOrder(order); setIsPaymentSummaryOpen(true); }} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #93c5fd', background: '#eff6ff', color: '#3b82f6', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.35rem' }}>
                       <i className='bx bx-receipt' style={{ fontSize: '1rem' }}></i>
+                    </button>
+                    <button 
+                      title="Create / View Billing Schedule" 
+                      onClick={() => navigate('/client-payments', {
+                        state: {
+                          openAddSchedule: true,
+                          corporate: formData.clientName,
+                          division: formData.divisionName,
+                          orderId: order.id,
+                          orderName: order.orderName || `${formData.divisionName} | ${order.planStart || 'Order'} - ${order.plan || order.id}`
+                        }
+                      })} 
+                      style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #a7f3d0', background: '#ecfdf5', color: '#059669', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <i className='bx bx-calendar-plus' style={{ fontSize: '1rem' }}></i>
                     </button>
                   </td>
                 </tr>
               ))}
               {orders.length === 0 && (
                 <tr>
-                  <td colSpan="8" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No orders found. Add an order to get started.</td>
+                  <td colSpan="8" style={{ padding: '2.5rem 1.5rem', textAlign: 'center', background: '#f8fafc' }}>
+                    <div style={{ maxWidth: '440px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.65rem' }}>
+                      <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>
+                        <i className='bx bx-receipt'></i>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.95rem' }}>No orders added yet</div>
+                        <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '0.2rem' }}>
+                          BD team can configure billing details and save as a draft order to create invoices & billing schedules immediately.
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => navigate(`/corporate/division/order/add?divisionId=${division.id}`, { state: { clientName: formData.clientName, divisionName: formData.divisionName, divisionId: division.id } })}
+                        style={{ padding: '0.45rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem' }}
+                      >
+                        <i className='bx bx-plus'></i> Add Order with Billing Details (Draft)
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               )}
             </tbody>

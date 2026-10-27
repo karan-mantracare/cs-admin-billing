@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGlobal, GlobalContext } from '../context/GlobalContext';
 
-function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
+function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialSelection = null }) {
+  const navigate = useNavigate();
   const { globalData } = useContext(GlobalContext);
 
   const [formData, setFormData] = useState({
@@ -30,42 +32,93 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
     if (isOpen) {
       // 1. Load Corporates from GlobalContext
       const safeClients = Array.isArray(globalClients) ? globalClients : [];
-      const uniqueCorps = [...new Set(safeClients.map(c => c?.name).filter(Boolean))];
-      setCorporates(uniqueCorps);
+      let uniqueCorps = [...new Set(safeClients.map(c => c?.name || c?.clientName).filter(Boolean))];
 
       // 2. Load Orders from localStorage (division_orders)
+      let loadedOrders = [];
       try {
         const divisionOrdersStr = localStorage.getItem('division_orders');
         if (divisionOrdersStr) {
-          const loadedOrders = JSON.parse(divisionOrdersStr);
+          loadedOrders = JSON.parse(divisionOrdersStr);
           setOrders(loadedOrders);
+          // Also include any corporates from orders
+          loadedOrders.forEach(o => {
+            const cName = o.corporate || o.clientName;
+            if (cName && !uniqueCorps.includes(cName)) {
+              uniqueCorps.push(cName);
+            }
+          });
         } else {
-          // Fallback mock data for testing if no orders exist yet
-          setOrders([
+          loadedOrders = [
             { id: 101, corporate: 'First Client', division: 'Tech', planStart: '2024-01-01', planName: 'Enterprise EAP' },
             { id: 102, corporate: 'Second Client', division: 'HR', planStart: '2024-06-01', planName: 'Wellness Workshop' }
-          ]);
+          ];
+          setOrders(loadedOrders);
         }
       } catch (e) {
         console.error("Failed to load orders", e);
       }
+      setCorporates(uniqueCorps);
+
+      // 3. Pre-fill if initialSelection is passed
+      if (initialSelection) {
+        const selCorp = initialSelection.corporate || initialSelection.clientName || '';
+        const selDiv = initialSelection.division || initialSelection.divisionName || '';
+        let selOrderName = initialSelection.orderName || '';
+
+        // If orderId is passed but not orderName, find matching order
+        if (initialSelection.orderId && !selOrderName) {
+          const matched = loadedOrders.find(o => String(o.id) === String(initialSelection.orderId));
+          if (matched) {
+            const ps = matched.planStart || 'Unknown Date';
+            const pn = matched.plan || matched.planName || matched.product || `Order #${matched.id}`;
+            selOrderName = `${ps} & ${pn}`;
+          }
+        }
+
+        setFormData(prev => ({
+          ...prev,
+          corporate: selCorp || prev.corporate,
+          division: selDiv || prev.division,
+          orderName: selOrderName || prev.orderName,
+          paymentTerms: initialSelection.paymentTerms || prev.paymentTerms || '',
+          amount: initialSelection.amount || prev.amount || ''
+        }));
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialSelection, globalClients]);
 
   useEffect(() => {
     // Update divisions when corporate changes
     if (formData.corporate) {
-      // Find the selected corporate in globalClients
-      const matchedClient = globalClients.find(c => c.name === formData.corporate);
+      const safeClients = Array.isArray(globalClients) ? globalClients : [];
+      const matchedClient = safeClients.find(c => (c.name === formData.corporate || c.clientName === formData.corporate));
       const divs = [];
-      if (matchedClient && matchedClient.divisionName) {
-        divs.push(matchedClient.divisionName);
+      if (matchedClient) {
+        if (matchedClient.divisions && Array.isArray(matchedClient.divisions)) {
+          matchedClient.divisions.forEach(d => {
+            if (d.divisionName) divs.push(d.divisionName);
+          });
+        }
+        if (matchedClient.divisionName) {
+          divs.push(matchedClient.divisionName);
+        }
       }
-      setDivisions(divs.length > 0 ? divs : ['Default Division']);
+      // Also add divisions from loaded orders under this corporate
+      const safeOrders = Array.isArray(orders) ? orders : [];
+      safeOrders.forEach(o => {
+        const oCorp = o.corporate || o.clientName;
+        const oDiv = o.division || o.divisionName;
+        if (oCorp === formData.corporate && oDiv) {
+          divs.push(oDiv);
+        }
+      });
+      const uniqueDivs = [...new Set(divs.filter(Boolean))];
+      setDivisions(uniqueDivs.length > 0 ? uniqueDivs : ['Default Division']);
     } else {
       setDivisions([]);
     }
-  }, [formData.corporate, globalClients]);
+  }, [formData.corporate, globalClients, orders]);
 
   const [isPreview, setIsPreview] = useState(false);
   const [previewInvoices, setPreviewInvoices] = useState([]);
@@ -85,10 +138,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
   
   const safeOrders = Array.isArray(orders) ? orders : [];
   const filteredOrders = safeOrders.filter(o => {
-    // If corporate/division is provided but the order doesn't have it, we still show it (assume global orders for now)
-    // Or if it strictly matches.
-    const matchCorp = !formData.corporate || !o.corporate || o.corporate === formData.corporate;
-    const matchDiv = !formData.division || !o.division || o.division === formData.division;
+    const oCorp = o.corporate || o.clientName;
+    const oDiv = o.division || o.divisionName;
+    const matchCorp = !formData.corporate || !oCorp || oCorp === formData.corporate;
+    const matchDiv = !formData.division || !oDiv || oDiv === formData.division;
     return matchCorp && matchDiv;
   });
 
@@ -96,10 +149,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
   const selectedOrder = formData.orderName ? safeOrders.find(o => {
     const ps = o.planStart || 'Unknown Date';
     const pn = o.plan || o.planName || o.product || `Order #${o.id}`;
-    return `${ps} & ${pn}` === formData.orderName;
+    const nameKey = `${ps} & ${pn}`;
+    return nameKey === formData.orderName || String(o.id) === formData.orderName;
   }) : null;
 
-  let maxPaymentTerms = 0;
+  let maxPaymentTerms = 12; // Default flexible payment terms
   if (selectedOrder) {
     const planStart = selectedOrder.planStart || '';
     const planEnd = selectedOrder.planEnd || '';
@@ -110,8 +164,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
         // Calculate the difference in days and divide by average days in a month (30.44)
         const timeDiff = d2.getTime() - d1.getTime();
         const daysDiff = timeDiff / (1000 * 3600 * 24);
-        maxPaymentTerms = Math.round(daysDiff / 30.44);
-        maxPaymentTerms = Math.max(1, maxPaymentTerms);
+        const calculated = Math.round(daysDiff / 30.44);
+        maxPaymentTerms = Math.max(1, calculated);
       }
     }
   }
@@ -122,8 +176,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
     const terms = Number(formData.paymentTerms);
     if (!terms || terms <= 0) return [];
 
-    const amountInUSD = Number(selectedOrder.billingDetails?.amountInUSD) || 0;
-    const contractValue = Number(selectedOrder.billingDetails?.contractValue) || 0;
+    const amountInUSD = Number(selectedOrder.billingDetails?.amountInUSD) || Number(selectedOrder.amount) || 0;
+    const contractValue = Number(selectedOrder.billingDetails?.contractValue) || Number(selectedOrder.amount) || 0;
     const currency = selectedOrder.billingDetails?.clientCurrency || 'USD';
     const planStart = selectedOrder.planStart || '';
     const planEnd = selectedOrder.planEnd || '';
@@ -445,9 +499,23 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
-              Order Name <span style={{ color: '#ef4444' }}>*</span>
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0 }}>
+                Order Name <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              {formData.division && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate(`/corporate/division/order/add`, { state: { clientName: formData.corporate, divisionName: formData.division } });
+                  }}
+                  style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                >
+                  <i className='bx bx-plus'></i> New Draft Order
+                </button>
+              )}
+            </div>
             <select 
               style={{ ...inputStyle, color: formData.orderName ? '#0f172a' : '#64748b', background: formData.division ? 'white' : '#f1f5f9' }}
               value={formData.orderName}
@@ -458,29 +526,58 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
               {filteredOrders.map(o => {
                 const planStart = o.planStart || 'Unknown Date';
                 const planName = o.plan || o.planName || o.product || `Order #${o.id}`;
+                const isDraft = o.status === 'Draft';
+                const statusTag = isDraft ? ' — [Draft: Ready to Bill]' : '';
                 return (
                   <option key={o.id} value={`${planStart} & ${planName}`}>
-                    {planStart} & {planName}
+                    {planStart} & {planName}{statusTag}
                   </option>
                 );
               })}
             </select>
+
+            {formData.division && filteredOrders.length === 0 && (
+              <div style={{ marginTop: '0.6rem', padding: '0.75rem 0.85rem', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe', fontSize: '0.8rem', color: '#1e40af' }}>
+                <div style={{ fontWeight: '700', marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <i className='bx bx-info-circle' style={{ fontSize: '1rem', color: '#2563eb' }}></i> No existing orders found for this division
+                </div>
+                <div style={{ lineHeight: '1.4', color: '#1e3a8a', marginBottom: '0.5rem' }}>
+                  BD team can create an order with billing details and save as draft to immediately generate the billing schedule and invoice.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate(`/corporate/division/order/add`, { state: { clientName: formData.corporate, divisionName: formData.division } });
+                  }}
+                  style={{ padding: '0.4rem 0.85rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                >
+                  <i className='bx bx-plus'></i> Add Order with Billing Details (Draft)
+                </button>
+              </div>
+            )}
           </div>
 
           {selectedOrder && (() => {
-            const contractValue = Number(selectedOrder.billingDetails?.contractValue) || 0;
+            const contractValue = Number(selectedOrder.billingDetails?.contractValue) || Number(selectedOrder.amount) || 0;
             const currency = selectedOrder.billingDetails?.clientCurrency || 'USD';
-            const amountInUSD = Number(selectedOrder.billingDetails?.amountInUSD) || 0;
+            const amountInUSD = Number(selectedOrder.billingDetails?.amountInUSD) || Number(selectedOrder.amount) || 0;
             const planStart = selectedOrder.planStart || '';
             const planEnd = selectedOrder.planEnd || '';
             
             const termDisplay = maxPaymentTerms > 0 
-              ? `${maxPaymentTerms} Months (${planStart} to ${planEnd})`
-              : (planStart ? `${planStart} to ${planEnd || 'N/A'}` : 'N/A');
+              ? `${maxPaymentTerms} Months (${planStart || 'Start'} to ${planEnd || 'Ongoing'})`
+              : (planStart ? `${planStart} to ${planEnd || 'Ongoing'}` : 'Open Term');
 
             return (
               <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 
+                {selectedOrder.status === 'Draft' && (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '700', width: 'fit-content' }}>
+                    <i className='bx bx-edit-alt'></i> Draft Order • Billing Details Configured
+                  </div>
+                )}
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                   <div>
                     <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Contract Value</label>
