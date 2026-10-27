@@ -125,13 +125,30 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   const [showRemarksTooltip, setShowRemarksTooltip] = useState(false);
   const [hoveredSplitRow, setHoveredSplitRow] = useState(null);
 
+  // Dynamic % distribution & live schedule states
+  const [pinnedPercentages, setPinnedPercentages] = useState({});
+  const [tempPercentageInputs, setTempPercentageInputs] = useState({});
+  const [customDates, setCustomDates] = useState({});
+  const [customRemarks, setCustomRemarks] = useState({});
+
   useEffect(() => {
     if (!isOpen) {
       setIsPreview(false);
       setPreviewInvoices([]);
       setHoveredSplitRow(null);
+      setPinnedPercentages({});
+      setTempPercentageInputs({});
+      setCustomDates({});
+      setCustomRemarks({});
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    // When terms or order change, reset any pinned percentages
+    setPinnedPercentages({});
+    setTempPercentageInputs({});
+    setCustomDates({});
+  }, [formData.paymentTerms, formData.orderName]);
 
   if (!isOpen) return null;
 
@@ -163,7 +180,6 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       const d1 = new Date(planStart);
       const d2 = new Date(planEnd);
       if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
-        // Calculate the difference in days and divide by average days in a month (30.44)
         const timeDiff = d2.getTime() - d1.getTime();
         const daysDiff = timeDiff / (1000 * 3600 * 24);
         const calculated = Math.round(daysDiff / 30.44);
@@ -172,7 +188,124 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     }
   }
 
-  const generateInvoices = () => {
+  // --- Monthly Back-to-Back Date Helpers ---
+  const getMonthlyDate = (baseDateStr, monthOffset) => {
+    let d = baseDateStr ? new Date(baseDateStr) : new Date();
+    if (isNaN(d.getTime())) d = new Date();
+    
+    const startDay = d.getDate();
+    const res = new Date(d);
+    res.setMonth(res.getMonth() + monthOffset);
+    
+    if (res.getDate() !== startDay) {
+      res.setDate(0);
+    }
+    return res.toISOString().split('T')[0];
+  };
+
+  const getDueDate = (invoiceDateStr, dueDays) => {
+    const d = new Date(invoiceDateStr);
+    if (isNaN(d.getTime())) return invoiceDateStr;
+    d.setDate(d.getDate() + (Number(dueDays) || 30));
+    return d.toISOString().split('T')[0];
+  };
+
+  // --- Automatic Percentage Rebalancing ---
+  const recalculateSplits = (termsCount, pinnedMap = {}) => {
+    const terms = Number(termsCount) || 1;
+    const result = [];
+    
+    let pinnedSum = 0;
+    let pinnedCount = 0;
+    for (let i = 0; i < terms; i++) {
+      if (pinnedMap[i] !== undefined && pinnedMap[i] !== null && pinnedMap[i] !== '') {
+        pinnedSum += Number(pinnedMap[i]);
+        pinnedCount++;
+      }
+    }
+
+    const unpinnedCount = terms - pinnedCount;
+    const remainingPct = Math.max(0, 100 - pinnedSum);
+
+    let unpinnedRunningSum = 0;
+    let unpinnedEncountered = 0;
+
+    for (let i = 0; i < terms; i++) {
+      if (pinnedMap[i] !== undefined && pinnedMap[i] !== null && pinnedMap[i] !== '') {
+        result.push({
+          index: i,
+          installmentNumber: i + 1,
+          percentage: Number(pinnedMap[i]),
+          isPinned: true
+        });
+      } else {
+        unpinnedEncountered++;
+        let pct = 0;
+        if (unpinnedCount > 0) {
+          if (unpinnedEncountered === unpinnedCount) {
+            pct = Number((remainingPct - unpinnedRunningSum).toFixed(2));
+          } else {
+            pct = Number((remainingPct / unpinnedCount).toFixed(2));
+            unpinnedRunningSum += pct;
+          }
+        }
+        result.push({
+          index: i,
+          installmentNumber: i + 1,
+          percentage: pct,
+          isPinned: false
+        });
+      }
+    }
+    return result;
+  };
+
+  const confirmPercentage = (idx, valueStr, termsCount) => {
+    const val = Number(valueStr);
+    if (isNaN(val) || val <= 0) {
+      alert("Please enter a valid percentage greater than 0");
+      return;
+    }
+    
+    let otherPinnedSum = 0;
+    Object.keys(pinnedPercentages).forEach(key => {
+      if (Number(key) !== idx) {
+        otherPinnedSum += Number(pinnedPercentages[key]);
+      }
+    });
+
+    const maxAllowed = Number((100 - otherPinnedSum).toFixed(2));
+    if (val >= 100 || val > maxAllowed) {
+      alert(`Cannot exceed available share. Maximum possible for this invoice is ${maxAllowed}%`);
+      return;
+    }
+
+    setPinnedPercentages(prev => ({
+      ...prev,
+      [idx]: val
+    }));
+
+    setTempPercentageInputs(prev => {
+      const n = { ...prev };
+      delete n[idx];
+      return n;
+    });
+  };
+
+  const resetPercentage = (idx) => {
+    setPinnedPercentages(prev => {
+      const n = { ...prev };
+      delete n[idx];
+      return n;
+    });
+    setTempPercentageInputs(prev => {
+      const n = { ...prev };
+      delete n[idx];
+      return n;
+    });
+  };
+
+  const generateInvoices = (activeSplitsOverride = null) => {
     if (!selectedOrder) return [];
     
     const terms = Number(formData.paymentTerms);
@@ -182,48 +315,42 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     const contractValue = Number(selectedOrder.billingDetails?.contractValue) || Number(selectedOrder.amount) || 0;
     const currency = selectedOrder.billingDetails?.clientCurrency || 'USD';
     const planStart = selectedOrder.planStart || '';
-    const planEnd = selectedOrder.planEnd || '';
     const paymentDueDays = Number(selectedOrder.billingDetails?.paymentDue) || 30;
 
-    let startDate = new Date(planStart);
-    if (isNaN(startDate.getTime())) startDate = new Date();
-    
-    let endDate = new Date(planEnd);
-    if (isNaN(endDate.getTime())) endDate = new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000); // default 1 year
-
-    const durationDays = (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24);
-    const intervalDays = durationDays / terms;
-
-    const usdPerTerm = amountInUSD / terms;
-    const valuePerTerm = contractValue / terms;
-
-    const activeSplits = selectedOrder.billingDetails?.billingSplits?.filter(s => s.selected) || [];
+    const activeSplits = activeSplitsOverride || selectedOrder.billingDetails?.billingSplits?.filter(s => s.selected) || [];
     const hasMultiSplits = activeSplits.length > 1;
 
+    const termSplits = recalculateSplits(terms, pinnedPercentages);
     const invoices = [];
-    for (let i = 0; i < terms; i++) {
-      const invoiceDate = new Date(startDate.getTime() + i * intervalDays * 24 * 60 * 60 * 1000);
-      const dueDate = new Date(invoiceDate.getTime() + paymentDueDays * 24 * 60 * 60 * 1000);
-      const invoiceByDateStr = invoiceDate.toISOString().split('T')[0];
-      const dueByDateStr = dueDate.toISOString().split('T')[0];
+
+    termSplits.forEach((termSplit, i) => {
+      const termPct = termSplit.percentage;
+      const termValue = Number(((contractValue * termPct) / 100).toFixed(2));
+      const termUsd = Number(((amountInUSD * termPct) / 100).toFixed(2));
+
+      const invoiceByDateStr = customDates[i]?.invoiceDate || getMonthlyDate(planStart, i);
+      const dueByDateStr = customDates[i]?.dueByDate || getDueDate(invoiceByDateStr, paymentDueDays);
 
       if (hasMultiSplits) {
         let runningValSum = 0;
         let runningUsdSum = 0;
 
         activeSplits.forEach((split, sIdx) => {
-          const pct = Number(split.percentage) || 0;
+          const compPct = Number(split.percentage) || 0;
           let splitVal, splitUsd;
 
           if (sIdx === activeSplits.length - 1) {
-            splitVal = Number((valuePerTerm - runningValSum).toFixed(2));
-            splitUsd = Number((usdPerTerm - runningUsdSum).toFixed(2));
+            splitVal = Number((termValue - runningValSum).toFixed(2));
+            splitUsd = Number((termUsd - runningUsdSum).toFixed(2));
           } else {
-            splitVal = Number(((valuePerTerm * pct) / 100).toFixed(2));
-            splitUsd = Number(((usdPerTerm * pct) / 100).toFixed(2));
+            splitVal = Number(((termValue * compPct) / 100).toFixed(2));
+            splitUsd = Number(((termUsd * compPct) / 100).toFixed(2));
             runningValSum += splitVal;
             runningUsdSum += splitUsd;
           }
+
+          const remarkKey = `${i}-${split.companyName}`;
+          const remarkVal = customRemarks[remarkKey] || customRemarks[i] || '';
 
           invoices.push({
             id: `INV-${Date.now()}-${i}-${sIdx}`,
@@ -237,7 +364,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             billingCompany: split.companyName,
             clientBillingEntity: split.companyName,
             taxId: split.taxId || '',
-            splitPercentage: pct,
+            splitPercentage: compPct,
+            termPercentage: termPct,
             billFrom: selectedOrder.billingDetails?.billFrom || 'Unknown',
             amountDueUsd: splitUsd,
             amountDue: splitVal,
@@ -250,7 +378,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             totalPaid: 0,
             dueAmount: splitUsd,
             overdueDays: 0,
-            remarks: ''
+            remarks: remarkVal
           });
         });
       } else {
@@ -262,6 +390,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         const taxId = (activeSplits.length === 1 ? activeSplits[0].taxId : null)
           || selectedOrder.billingDetails?.taxDetails 
           || '';
+
+        const remarkVal = customRemarks[i] || '';
 
         invoices.push({
           id: `INV-${Date.now()}-${i}`,
@@ -277,8 +407,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           taxId: taxId,
           billFrom: selectedOrder.billingDetails?.billFrom || 'Unknown',
           splitPercentage: 100,
-          amountDueUsd: usdPerTerm,
-          amountDue: valuePerTerm,
+          termPercentage: termPct,
+          amountDueUsd: termUsd,
+          amountDue: termValue,
           currency: currency,
           status: 'To be Raised',
           invoiceByDate: invoiceByDateStr,
@@ -286,12 +417,13 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           invoiceDate: '-',
           invoiceLink: '',
           totalPaid: 0,
-          dueAmount: usdPerTerm,
+          dueAmount: termUsd,
           overdueDays: 0,
-          remarks: ''
+          remarks: remarkVal
         });
       }
-    }
+    });
+
     return invoices;
   };
 
@@ -314,6 +446,22 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         return;
       }
       onSave({ formData, selectedOrder, mode });
+      onClose();
+    }
+  };
+
+  const handleSaveDirect = () => {
+    if (mode === 'schedule') {
+      if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
+        setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+        return;
+      }
+      if (!formData.paymentTerms) {
+        setPaymentTermError('Payment terms are required');
+        return;
+      }
+      const invoices = generateInvoices();
+      onSave({ formData, selectedOrder, mode, invoices });
       onClose();
     }
   };
@@ -617,17 +765,33 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       display: 'flex', justifyContent: 'center', alignItems: 'center'
     }}>
       <div style={{
-        background: 'white', borderRadius: '8px', width: '90%', maxWidth: '500px',
-        padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+        background: 'white', 
+        borderRadius: '12px', 
+        width: '95%', 
+        maxWidth: (selectedOrder && Number(formData.paymentTerms) > 0) ? '960px' : '520px',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        padding: '1.5rem', 
+        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+        transition: 'max-width 0.25s ease'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>{mode === 'row' ? 'Add Row' : 'Add Schedule'}</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: '700' }}>
+              {mode === 'row' ? 'Add Row' : 'Add Invoice Schedule'}
+            </h2>
+            {selectedOrder && Number(formData.paymentTerms) > 0 && (
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                Configure installments, dates, and split percentages with live auto-preview.
+              </p>
+            )}
+          </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
             &times;
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
           
           <div style={{ position: 'relative' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
@@ -797,7 +961,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               : (planStart ? `${planStart} to ${planEnd || 'Ongoing'}` : 'Open Term');
 
             return (
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                 
                 {selectedOrder.status === 'Draft' && (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '700', width: 'fit-content' }}>
@@ -808,21 +972,28 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                   <div>
                     <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Contract Value</label>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#0f172a' }}>{Number(contractValue).toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>{Number(contractValue).toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
                   </div>
                   <div>
                     <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Currency</label>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#0f172a' }}>{currency}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>{currency}</div>
                   </div>
                   <div>
                     <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Contract Value (USD)</label>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#10b981' }}>${Number(amountInUSD).toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#10b981' }}>${Number(amountInUSD).toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '0.75rem' }}>
-                  <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Plan Term</label>
-                  <div style={{ fontSize: '0.85rem', color: '#334155' }}>{termDisplay}</div>
+                <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '0.65rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.1rem' }}>Plan Term</label>
+                    <div style={{ fontSize: '0.82rem', color: '#334155' }}>{termDisplay}</div>
+                  </div>
+                  {selectedOrder.billingDetails?.billingSplits?.filter(s => s.selected)?.length > 1 && (
+                    <div style={{ fontSize: '0.75rem', background: '#eff6ff', color: '#1e40af', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
+                      Multi-Company: {selectedOrder.billingDetails.billingSplits.filter(s => s.selected).length} Entities
+                    </div>
+                  )}
                 </div>
                 
               </div>
@@ -831,13 +1002,20 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
           {mode === 'schedule' ? (
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
-                Payment Terms (Installments) <span style={{ color: '#ef4444' }}>*</span>
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0 }}>
+                  Payment Terms (Installments) <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                {formData.paymentTerms && Number(formData.paymentTerms) > 0 && (
+                  <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: '600' }}>
+                    Monthly Back-to-Back Billing
+                  </span>
+                )}
+              </div>
               <input 
                 type="number"
                 style={{ ...inputStyle, borderColor: paymentTermError ? '#ef4444' : '#cbd5e1' }}
-                placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms}` : "e.g. 12"}
+                placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms} installments (e.g. 6)` : "e.g. 6"}
                 min="1"
                 max={maxPaymentTerms || undefined}
                 value={formData.paymentTerms}
@@ -870,14 +1048,342 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             </div>
           )}
 
+          {/* --- LIVE AUTO PREVIEW SCHEDULE TABLE WITH DYNAMIC PERCENTAGE REBALANCING --- */}
+          {mode === 'schedule' && selectedOrder && Number(formData.paymentTerms) > 0 && (() => {
+            const termsCount = Number(formData.paymentTerms);
+            const splits = recalculateSplits(termsCount, pinnedPercentages);
+            const contractValue = Number(selectedOrder.billingDetails?.contractValue) || Number(selectedOrder.amount) || 0;
+            const amountInUSD = Number(selectedOrder.billingDetails?.amountInUSD) || Number(selectedOrder.amount) || 0;
+            const currency = selectedOrder.billingDetails?.clientCurrency || 'USD';
+            const planStart = selectedOrder.planStart || '';
+            const paymentDueDays = Number(selectedOrder.billingDetails?.paymentDue) || 30;
+            const activeSplits = selectedOrder.billingDetails?.billingSplits?.filter(s => s.selected) || [];
+            const hasMultiSplits = activeSplits.length > 1;
+
+            const hasPinned = Object.keys(pinnedPercentages).length > 0;
+
+            return (
+              <div style={{
+                marginTop: '0.5rem',
+                background: '#ffffff',
+                border: '1px solid #bae6fd',
+                borderRadius: '10px',
+                overflow: 'hidden',
+                boxShadow: '0 4px 12px rgba(2, 132, 199, 0.08)'
+              }}>
+                {/* Auto Preview Header Bar */}
+                <div style={{
+                  padding: '0.75rem 1rem',
+                  background: 'linear-gradient(to right, #f0f9ff, #f8fafc)',
+                  borderBottom: '1px solid #e0f2fe',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <i className='bx bx-calendar-star' style={{ fontSize: '1.2rem', color: '#0284c7' }}></i>
+                    <div>
+                      <strong style={{ fontSize: '0.85rem', color: '#0369a1' }}>
+                        Schedule Auto-Preview ({termsCount} Back-to-Back Monthly Invoices)
+                      </strong>
+                      <span style={{ fontSize: '0.73rem', color: '#64748b', marginLeft: '0.5rem' }}>
+                        Edit % on any invoice & click ✓ to auto-balance remaining
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    {hasPinned && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPinnedPercentages({});
+                          setTempPercentageInputs({});
+                        }}
+                        style={{
+                          padding: '0.25rem 0.65rem',
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '5px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          color: '#475569',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                        }}
+                        title="Reset all invoices back to equal distribution"
+                      >
+                        <i className='bx bx-reset'></i> Reset to Equal Split
+                      </button>
+                    )}
+                    <span style={{
+                      background: '#dcfce7',
+                      color: '#15803d',
+                      padding: '0.25rem 0.65rem',
+                      borderRadius: '5px',
+                      fontSize: '0.75rem',
+                      fontWeight: '700',
+                      border: '1px solid #bbf7d0'
+                    }}>
+                      Total: 100% • {currency} {contractValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Table Body */}
+                <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        <th style={{ padding: '0.55rem 0.65rem' }}>Invoice #</th>
+                        <th style={{ padding: '0.55rem 0.65rem' }}>Invoice Date</th>
+                        <th style={{ padding: '0.55rem 0.65rem' }}>Due Date</th>
+                        <th style={{ padding: '0.55rem 0.65rem', minWidth: '155px' }}>Share (%)</th>
+                        <th style={{ padding: '0.55rem 0.65rem' }}>Amount ({currency})</th>
+                        <th style={{ padding: '0.55rem 0.65rem' }}>Amount (USD)</th>
+                        <th style={{ padding: '0.55rem 0.65rem', minWidth: '160px' }}>Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {splits.map((split, idx) => {
+                        const invDate = customDates[idx]?.invoiceDate || getMonthlyDate(planStart, idx);
+                        const dueDate = customDates[idx]?.dueByDate || getDueDate(invDate, paymentDueDays);
+                        const termAmt = Number(((contractValue * split.percentage) / 100).toFixed(2));
+                        const termUsd = Number(((amountInUSD * split.percentage) / 100).toFixed(2));
+
+                        const isPinned = split.isPinned;
+                        const tempVal = tempPercentageInputs[idx];
+                        const isDirty = tempVal !== undefined && Number(tempVal) !== split.percentage;
+                        const displayVal = tempVal !== undefined ? tempVal : split.percentage;
+
+                        return (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                            <td style={{ padding: '0.55rem 0.65rem', fontWeight: '700', color: '#0f172a', whiteSpace: 'nowrap' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <span>Invoice #{idx + 1}</span>
+                                {isPinned && (
+                                  <span style={{ background: '#dbeafe', color: '#1e40af', fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '3px', fontWeight: '700' }}>
+                                    PINNED
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Invoice Date */}
+                            <td style={{ padding: '0.45rem 0.65rem' }}>
+                              <input 
+                                type="date"
+                                value={invDate}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const newDue = getDueDate(val, paymentDueDays);
+                                  setCustomDates(prev => ({
+                                    ...prev,
+                                    [idx]: { ...(prev[idx] || {}), invoiceDate: val, dueByDate: newDue }
+                                  }));
+                                }}
+                                style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
+                              />
+                            </td>
+
+                            {/* Due Date */}
+                            <td style={{ padding: '0.45rem 0.65rem' }}>
+                              <input 
+                                type="date"
+                                value={dueDate}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCustomDates(prev => ({
+                                    ...prev,
+                                    [idx]: { ...(prev[idx] || {}), dueByDate: val }
+                                  }));
+                                }}
+                                style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
+                              />
+                            </td>
+
+                            {/* Percentage Control */}
+                            <td style={{ padding: '0.45rem 0.65rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <div style={{ position: 'relative', width: '78px' }}>
+                                  <input 
+                                    type="number"
+                                    step="0.01"
+                                    min="0.1"
+                                    max="99.9"
+                                    value={displayVal}
+                                    onChange={(e) => {
+                                      setTempPercentageInputs(prev => ({ ...prev, [idx]: e.target.value }));
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        confirmPercentage(idx, displayVal, termsCount);
+                                      }
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.32rem 0.45rem',
+                                      borderRadius: '5px',
+                                      border: isPinned ? '1.5px solid #2563eb' : (isDirty ? '1.5px solid #f59e0b' : '1px solid #cbd5e1'),
+                                      background: isPinned ? '#eff6ff' : '#ffffff',
+                                      fontWeight: isPinned ? '700' : '600',
+                                      color: isPinned ? '#1d4ed8' : '#0f172a',
+                                      fontSize: '0.82rem',
+                                      boxSizing: 'border-box'
+                                    }}
+                                  />
+                                </div>
+                                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>%</span>
+
+                                {/* Confirm Tick Button */}
+                                {isDirty && (
+                                  <button
+                                    type="button"
+                                    onClick={() => confirmPercentage(idx, displayVal, termsCount)}
+                                    style={{
+                                      padding: '0.3rem 0.5rem',
+                                      background: '#10b981',
+                                      color: '#ffffff',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.9rem',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      boxShadow: '0 1px 3px rgba(16, 185, 129, 0.3)'
+                                    }}
+                                    title="Confirm percentage & auto-adjust remaining"
+                                  >
+                                    <i className='bx bx-check'></i>
+                                  </button>
+                                )}
+
+                                {/* Reset Button */}
+                                {isPinned && !isDirty && (
+                                  <button
+                                    type="button"
+                                    onClick={() => resetPercentage(idx)}
+                                    style={{
+                                      padding: '0.3rem 0.45rem',
+                                      background: '#f1f5f9',
+                                      color: '#64748b',
+                                      border: '1px solid #cbd5e1',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.85rem',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center'
+                                    }}
+                                    title="Reset this invoice to auto equal split"
+                                  >
+                                    <i className='bx bx-undo'></i>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Amount ({currency}) */}
+                            <td style={{ padding: '0.55rem 0.65rem', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.85rem' }}>
+                                {termAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </div>
+                              {hasMultiSplits && (
+                                <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
+                                  {activeSplits.map((s, sIdx) => {
+                                    const partAmt = ((termAmt * (Number(s.percentage) || 0)) / 100).toFixed(2);
+                                    return (
+                                      <span key={sIdx} style={{ fontSize: '0.68rem', background: '#f1f5f9', color: '#475569', padding: '0.1rem 0.35rem', borderRadius: '3px', fontWeight: '500' }}>
+                                        {s.companyName}: {partAmt}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Amount (USD) */}
+                            <td style={{ padding: '0.55rem 0.65rem', color: '#059669', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                              ${termUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+
+                            {/* Remarks */}
+                            <td style={{ padding: '0.45rem 0.65rem' }}>
+                              <input 
+                                type="text"
+                                placeholder={`Remarks for Invoice #${idx + 1}...`}
+                                value={customRemarks[idx] || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCustomRemarks(prev => ({ ...prev, [idx]: val }));
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.35rem 0.55rem',
+                                  borderRadius: '5px',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '0.8rem',
+                                  color: '#0f172a',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-          <button onClick={onClose} style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.25rem' }}>
+          <button 
+            type="button"
+            onClick={onClose} 
+            style={{ padding: '0.55rem 1.15rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}
+          >
             Cancel
           </button>
-          <button onClick={handlePreview} style={{ padding: '0.5rem 1rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
-            {mode === 'row' ? 'Add Row' : 'Preview'}
+          
+          {mode === 'schedule' && selectedOrder && Number(formData.paymentTerms) > 0 && (
+            <button 
+              type="button"
+              onClick={handlePreview} 
+              style={{ padding: '0.55rem 1.15rem', background: '#ffffff', color: '#0284c7', border: '1px solid #0284c7', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}
+            >
+              Full Preview
+            </button>
+          )}
+
+          <button 
+            type="button"
+            onClick={mode === 'schedule' ? handleSaveDirect : handlePreview} 
+            style={{ 
+              padding: '0.55rem 1.35rem', 
+              background: 'linear-gradient(135deg, #0284c7, #0ea5e9)', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '6px', 
+              cursor: 'pointer', 
+              fontWeight: '600', 
+              fontSize: '0.85rem',
+              boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem'
+            }}
+          >
+            <i className='bx bx-check'></i> {mode === 'row' ? 'Add Row' : 'Add Schedule'}
           </button>
         </div>
       </div>
