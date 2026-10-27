@@ -18,6 +18,7 @@ import EditDivision from './pages/EditDivision';
 import ClientOnboardingPage from './pages/ClientOnboardingPage';
 import AddOrder from './pages/AddOrder';
 import ModuleSummaryPage from './pages/ModuleSummaryPage';
+import CsFeedback from './pages/CsFeedback';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -139,6 +140,8 @@ function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/cs" element={<Navigate to="/cs/home" replace />} />
         <Route path="/cs/home" element={<CsPortal />} />
+        <Route path="/cs/feedback" element={<CsFeedback />} />
+        <Route path="/feedback" element={<CsFeedback />} />
         <Route path="/cs/*" element={<ModuleSummaryPage defaultModule="Customer Success" />} />
         <Route path="/admin" element={<Navigate to="/orders/all" replace />} />
         <Route path="/calendar" element={<Dashboard />} />

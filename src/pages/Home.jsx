@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CHANGELOG_DATA } from '../data/changelogData';
 
 function Home() {
   const navigate = useNavigate();
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [changelogFilter, setChangelogFilter] = useState('All');
+  const [changelogSearch, setChangelogSearch] = useState('');
 
   const csModules = [
     {
@@ -343,6 +347,395 @@ function Home() {
           ))}
         </div>
       </div>
+
+      {/* Section 3: Project Change Log Table */}
+      <div style={{
+        background: 'white',
+        borderRadius: '16px',
+        border: '1px solid #e2e8f0',
+        padding: '1.75rem',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        marginBottom: '2rem'
+      }}>
+        {/* Table Header & Controls */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+                <i className='bx bx-history'></i>
+              </div>
+              <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '700', color: '#0f172a' }}>
+                Change Log
+              </h2>
+            </div>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+              Track what has changed across Home, CS, and Admin portals. Click the view icon to inspect details in easy language.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {/* Filter by Page */}
+            <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '8px' }}>
+              {['All', 'Home', 'CS', 'Admin'].map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setChangelogFilter(p)}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '6px',
+                    border: 'none',
+                    fontSize: '0.78rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    background: changelogFilter === p ? '#ffffff' : 'transparent',
+                    color: changelogFilter === p ? '#0f172a' : '#64748b',
+                    boxShadow: changelogFilter === p ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+
+            {/* Search */}
+            <div style={{ position: 'relative', width: '220px' }}>
+              <i className='bx bx-search' style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+              <input
+                type="text"
+                placeholder="Search changes..."
+                value={changelogSearch}
+                onChange={(e) => setChangelogSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.45rem 0.75rem 0.45rem 2.2rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.82rem',
+                  outline: 'none'
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Change Log Table */}
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+            <thead>
+              <tr style={{ background: '#0f172a', color: 'white' }}>
+                <th style={{ padding: '0.85rem 1rem', fontWeight: '600', width: '120px' }}>DATE</th>
+                <th style={{ padding: '0.85rem 1rem', fontWeight: '600', width: '110px' }}>PAGE</th>
+                <th style={{ padding: '0.85rem 1rem', fontWeight: '600', width: '190px' }}>SUB PAGE</th>
+                <th style={{ padding: '0.85rem 1rem', fontWeight: '600' }}>CHANGES</th>
+                <th style={{ padding: '0.85rem 1rem', fontWeight: '600', textAlign: 'center', width: '140px' }}>LINK</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CHANGELOG_DATA
+                .filter(item => {
+                  if (changelogFilter !== 'All' && item.page !== changelogFilter) return false;
+                  if (changelogSearch.trim()) {
+                    const q = changelogSearch.toLowerCase();
+                    return (
+                      item.subPage.toLowerCase().includes(q) ||
+                      item.summary.toLowerCase().includes(q) ||
+                      item.details.toLowerCase().includes(q) ||
+                      item.page.toLowerCase().includes(q)
+                    );
+                  }
+                  return true;
+                })
+                .map((log) => {
+                  const getPageBadge = (page) => {
+                    if (page === 'Admin') return { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' };
+                    if (page === 'CS') return { bg: '#ecfeff', color: '#0e7490', border: '#a5f3fc' };
+                    return { bg: '#f5f3ff', color: '#6d28d9', border: '#ddd6fe' };
+                  };
+                  const badge = getPageBadge(log.page);
+
+                  return (
+                    <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9', background: 'white' }}>
+                      <td style={{ padding: '0.9rem 1rem', color: '#475569', fontWeight: '500', whiteSpace: 'nowrap' }}>
+                        {log.formattedDate}
+                      </td>
+                      <td style={{ padding: '0.9rem 1rem' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '0.2rem 0.6rem',
+                          borderRadius: '999px',
+                          fontSize: '0.75rem',
+                          fontWeight: '700',
+                          background: badge.bg,
+                          color: badge.color,
+                          border: `1px solid ${badge.border}`
+                        }}>
+                          {log.page}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.9rem 1rem', fontWeight: '600', color: '#0f172a' }}>
+                        {log.subPage}
+                      </td>
+                      <td style={{ padding: '0.9rem 1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                          <span style={{ color: '#334155', lineHeight: '1.4' }}>
+                            {log.summary}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedLog(log)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              padding: '0.3rem 0.65rem',
+                              borderRadius: '6px',
+                              background: '#f8fafc',
+                              border: '1px solid #cbd5e1',
+                              color: '#0284c7',
+                              fontSize: '0.78rem',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              flexShrink: 0,
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#e0f2fe';
+                              e.currentTarget.style.borderColor = '#7dd3fc';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#f8fafc';
+                              e.currentTarget.style.borderColor = '#cbd5e1';
+                            }}
+                            title="View full change details in easy language"
+                          >
+                            <i className='bx bx-show' style={{ fontSize: '1rem' }}></i>
+                            <span>View</span>
+                          </button>
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.9rem 1rem', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => navigate(log.path)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            padding: '0.4rem 0.75rem',
+                            borderRadius: '6px',
+                            background: '#0284c7',
+                            border: 'none',
+                            color: 'white',
+                            fontSize: '0.78rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(2, 132, 199, 0.25)',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#0369a1'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#0284c7'}
+                          title={`Open ${log.linkText || log.subPage}`}
+                        >
+                          <span>{log.linkText || 'Open'}</span>
+                          <i className='bx bx-right-arrow-alt' style={{ fontSize: '1rem' }}></i>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              {CHANGELOG_DATA.length === 0 && (
+                <tr>
+                  <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                    No changes found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Change Details Popup Modal */}
+      {selectedLog && (
+        <div 
+          onClick={() => setSelectedLog(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '1rem'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              maxWidth: '620px',
+              width: '100%',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden',
+              animation: 'dropdownFadeIn 0.2s ease-out'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              background: 'linear-gradient(to right, #0f172a, #1e293b)',
+              padding: '1.25rem 1.5rem',
+              color: 'white',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                  <span style={{ fontSize: '0.72rem', background: '#38bdf8', color: '#0f172a', fontWeight: '700', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                    {selectedLog.page} Portal
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                    • {selectedLog.subPage}
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
+                    • {selectedLog.formattedDate}
+                  </span>
+                </div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', color: 'white' }}>
+                  {selectedLog.summary}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedLog(null)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  width: '32px',
+                  height: '32px',
+                  color: 'white',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.3rem'
+                }}
+              >
+                <i className='bx bx-x'></i>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', maxHeight: '70vh', overflowY: 'auto' }}>
+              {/* Easy Language Explanation */}
+              <div style={{
+                background: '#f8fafc',
+                borderLeft: '4px solid #0284c7',
+                padding: '1rem',
+                borderRadius: '8px',
+                marginBottom: '1.25rem'
+              }}>
+                <div style={{ fontSize: '0.78rem', color: '#0284c7', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <i className='bx bx-bulb'></i> In Plain Language (What & Why)
+                </div>
+                <p style={{ margin: 0, fontSize: '0.92rem', color: '#0f172a', lineHeight: '1.55' }}>
+                  {selectedLog.plainLanguage || selectedLog.details}
+                </p>
+              </div>
+
+              {/* Technical / Functional Details */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#475569', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Implementation Summary
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.88rem', color: '#334155', lineHeight: '1.5' }}>
+                  {selectedLog.details}
+                </p>
+              </div>
+
+              {/* Highlights List */}
+              {selectedLog.highlights && selectedLog.highlights.length > 0 && (
+                <div>
+                  <h4 style={{ margin: '0 0 0.6rem 0', fontSize: '0.85rem', color: '#475569', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Key Highlights
+                  </h4>
+                  <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#334155', fontSize: '0.86rem', lineHeight: '1.6' }}>
+                    {selectedLog.highlights.map((item, idx) => (
+                      <li key={idx} style={{ marginBottom: '0.35rem' }}>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '1rem 1.5rem',
+              background: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                Ref: {selectedLog.id}
+              </span>
+              <div style={{ display: 'flex', gap: '0.65rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLog(null)}
+                  style={{
+                    padding: '0.45rem 1rem',
+                    background: 'white',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    color: '#64748b',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetPath = selectedLog.path;
+                    setSelectedLog(null);
+                    navigate(targetPath);
+                  }}
+                  style={{
+                    padding: '0.45rem 1.25rem',
+                    background: '#0284c7',
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: 'white',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem'
+                  }}
+                >
+                  <span>Open {selectedLog.linkText || 'Page'}</span>
+                  <i className='bx bx-right-arrow-alt'></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </main>
   );
