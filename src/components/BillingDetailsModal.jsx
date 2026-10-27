@@ -107,6 +107,8 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
     billingDate: ''
   });
 
+  const [billingSplits, setBillingSplits] = useState([]);
+  const [isSplitCollapsed, setIsSplitCollapsed] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef(null);
@@ -146,6 +148,7 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
     if (isOpen) {
       let hrEntity = '';
       let hrTax = '';
+      let companiesFromOnboarding = [];
       
       try {
         const targetId = divisionId || initialData?.id || '1';
@@ -155,10 +158,41 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
           if (parsedData.billingDetails) {
             hrEntity = parsedData.billingDetails.companyName || hrEntity;
             hrTax = parsedData.billingDetails.gstNumber || hrTax;
+            if (parsedData.billingDetails.companies?.length) {
+              companiesFromOnboarding = parsedData.billingDetails.companies.filter(c => c.companyName && c.companyName.trim());
+            } else if (parsedData.billingDetails.companyName) {
+              companiesFromOnboarding = [{
+                id: 1,
+                companyName: parsedData.billingDetails.companyName,
+                gstNumber: parsedData.billingDetails.gstNumber || '',
+                address: parsedData.billingDetails.address || '',
+                isPrimary: true
+              }];
+            }
           }
         }
       } catch (e) {
         console.error("Could not parse onboarding data", e);
+      }
+
+      // Initialize billingSplits
+      if (initialData?.billingSplits?.length) {
+        setBillingSplits(initialData.billingSplits);
+      } else if (companiesFromOnboarding.length > 1) {
+        const count = companiesFromOnboarding.length;
+        const base = Math.floor(100 / count);
+        const remainder = 100 - (base * count);
+        const generated = companiesFromOnboarding.map((comp, idx) => ({
+          id: comp.id || idx + 1,
+          companyName: comp.companyName,
+          gstNumber: comp.gstNumber || '',
+          address: comp.address || '',
+          selected: true,
+          percentage: idx === count - 1 ? (base + remainder) : base
+        }));
+        setBillingSplits(generated);
+      } else {
+        setBillingSplits([]);
       }
 
       setFormData(prev => ({
@@ -202,6 +236,55 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
   const exchangeVal = parseFloat(formData.currencyExchangeValue) || 1;
   const amountInUSD = exchangeVal !== 0 ? (contractVal / exchangeVal).toFixed(2) : 0;
 
+  // Split calculations and actions
+  const totalPercentage = billingSplits
+    .filter(s => s.selected)
+    .reduce((sum, s) => sum + (Number(s.percentage) || 0), 0);
+
+  const applyEqualSplit = () => {
+    const selectedCompanies = billingSplits.filter(s => s.selected);
+    const selectedCount = selectedCompanies.length;
+    if (selectedCount === 0) return;
+
+    const base = Math.floor(100 / selectedCount);
+    const remainder = 100 - (base * selectedCount);
+    let selectedIdx = 0;
+
+    setBillingSplits(prev => prev.map(s => {
+      if (!s.selected) return { ...s, percentage: 0 };
+      const isLast = (selectedIdx === selectedCount - 1);
+      const pct = isLast ? (base + remainder) : base;
+      selectedIdx++;
+      return { ...s, percentage: pct };
+    }));
+
+    if (errors.billingSplits) {
+      setErrors(prev => ({ ...prev, billingSplits: null }));
+    }
+  };
+
+  const toggleCompanySelection = (id) => {
+    setBillingSplits(prev => prev.map(s => {
+      if (s.id === id) {
+        const nextSelected = !s.selected;
+        return { 
+          ...s, 
+          selected: nextSelected, 
+          percentage: nextSelected ? (s.percentage || 0) : 0 
+        };
+      }
+      return s;
+    }));
+  };
+
+  const handlePercentageChange = (id, newPctVal) => {
+    const val = newPctVal === '' ? '' : Math.max(0, Math.min(100, Number(newPctVal) || 0));
+    setBillingSplits(prev => prev.map(s => s.id === id ? { ...s, percentage: val } : s));
+    if (errors.billingSplits) {
+      setErrors(prev => ({ ...prev, billingSplits: null }));
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -220,11 +303,48 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
     if (!formData.bankDetailsLink) newErrors.bankDetailsLink = 'Bank Details Link is required.';
     if (!formData.billingDate) newErrors.billingDate = 'Billing Date is required.';
 
+    if (billingSplits.length > 1) {
+      const selectedEntities = billingSplits.filter(s => s.selected);
+      if (selectedEntities.length === 0) {
+        newErrors.billingSplits = 'Please select at least one company entity for billing.';
+      } else if (totalPercentage !== 100) {
+        newErrors.billingSplits = `Total billing split percentage must equal 100% (currently ${totalPercentage}%). Use "Equal Split" or adjust manually.`;
+      }
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    onSave({ ...formData, amountInUSD });
+
+    // Attach calculated splits and updated entity information
+    let updatedEntity = formData.billingEntity;
+    let updatedTax = formData.taxDetails;
+    let finalSplits = [];
+
+    if (billingSplits.length > 1) {
+      finalSplits = billingSplits.map(s => ({
+        ...s,
+        splitAmount: s.selected ? Number(((contractVal * (Number(s.percentage) || 0)) / 100).toFixed(2)) : 0
+      }));
+
+      const selectedList = finalSplits.filter(s => s.selected);
+      if (selectedList.length === 1) {
+        updatedEntity = selectedList[0].companyName;
+        updatedTax = selectedList[0].gstNumber || formData.taxDetails;
+      } else if (selectedList.length > 1) {
+        updatedEntity = `${selectedList[0].companyName} (+${selectedList.length - 1} entities)`;
+        updatedTax = selectedList.map(s => s.gstNumber).filter(Boolean).join(', ') || formData.taxDetails;
+      }
+    }
+
+    onSave({ 
+      ...formData, 
+      billingEntity: updatedEntity,
+      taxDetails: updatedTax,
+      amountInUSD,
+      billingSplits: finalSplits
+    });
     onClose();
   };
 
@@ -254,21 +374,21 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
       display: 'flex', justifyContent: 'center', alignItems: 'center'
     }}>
       <div style={{
-        background: 'white', borderRadius: '12px', width: '90%', maxWidth: '500px',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
+        background: 'white', borderRadius: '12px', width: '90%', maxWidth: '560px', maxHeight: '90vh',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column'
       }}>
         {/* Header */}
-        <div style={{ background: 'linear-gradient(135deg, #0369a1, #0ea5e9)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: 'linear-gradient(135deg, #0369a1, #0ea5e9)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.05rem', color: 'white', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <i className='bx bx-spreadsheet'></i> Billing Details
             </h2>
-            <p style={{ margin: '0.15rem 0 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.75rem' }}>Configure contract and payment method</p>
+            <p style={{ margin: '0.15rem 0 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.75rem' }}>Configure contract, entities and payment method</p>
           </div>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '30px', height: '30px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
 
-        <div style={{ padding: '1.25rem' }}>
+        <div style={{ padding: '1.25rem', overflowY: 'auto', flex: 1 }}>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
           
@@ -309,6 +429,189 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
                   <label style={labelStyle}>Tax Details (from HR)</label>
                   <input type="text" style={{...inputStyle, backgroundColor: '#f1f5f9'}} value={formData.taxDetails} readOnly />
                 </div>
+              </div>
+            )}
+
+            {/* Multi-Entity Billing Split (Collapse & Expand) */}
+            {billingSplits.length > 1 && (
+              <div style={{
+                background: '#f8fafc',
+                border: errors.billingSplits ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                transition: 'all 0.2s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+              }}>
+                {/* Collapse / Expand Header */}
+                <div 
+                  onClick={() => setIsSplitCollapsed(!isSplitCollapsed)}
+                  style={{
+                    padding: '0.65rem 0.85rem',
+                    background: '#f1f5f9',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    borderBottom: isSplitCollapsed ? 'none' : '1px solid #e2e8f0'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <i className='bx bx-git-branch' style={{ color: '#0284c7', fontSize: '1.15rem' }}></i>
+                    <div>
+                      <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#0f172a' }}>
+                        Multi-Entity Billing Allocation
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', marginLeft: '0.35rem' }}>
+                        ({billingSplits.length} companies mapped)
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: '700',
+                      padding: '0.15rem 0.45rem',
+                      borderRadius: '4px',
+                      background: totalPercentage === 100 ? '#dcfce7' : '#fee2e2',
+                      color: totalPercentage === 100 ? '#166534' : '#991b1b',
+                      border: totalPercentage === 100 ? '1px solid #bbf7d0' : '1px solid #fecaca'
+                    }}>
+                      {totalPercentage === 100 ? '100% Split' : `${totalPercentage}% / 100%`}
+                    </span>
+                    <i className={`bx bx-chevron-${isSplitCollapsed ? 'down' : 'up'}`} style={{ color: '#64748b', fontSize: '1.2rem' }}></i>
+                  </div>
+                </div>
+
+                {/* Collapsible Content */}
+                {!isSplitCollapsed && (
+                  <div style={{ padding: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <p style={{ margin: 0, fontSize: '0.74rem', color: '#64748b' }}>
+                        Select entities and specify the <strong>% of billing</strong>. Use <strong>Equal Split</strong> for even rounding.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          applyEqualSplit();
+                        }}
+                        style={{
+                          background: '#0284c7',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0.3rem 0.65rem',
+                          borderRadius: '5px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                        }}
+                        title="Distribute 100% evenly (e.g. 33, 33, 34 for 3 companies)"
+                      >
+                        <i className='bx bx-calculator'></i> Equal Split
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {billingSplits.map((split, index) => {
+                        const splitAmt = contractVal > 0 
+                          ? ((contractVal * (Number(split.percentage) || 0)) / 100).toFixed(2)
+                          : '0.00';
+                        return (
+                          <div 
+                            key={split.id || index}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '0.5rem 0.65rem',
+                              background: split.selected ? 'white' : '#f8fafc',
+                              border: split.selected ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              gap: '0.5rem'
+                            }}
+                          >
+                            {/* Checkbox and Company info */}
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', flex: 1, minWidth: 0, margin: 0 }}>
+                              <input 
+                                type="checkbox"
+                                checked={!!split.selected}
+                                onChange={() => toggleCompanySelection(split.id)}
+                                style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#0284c7' }}
+                              />
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: '0.8rem', fontWeight: '600', color: split.selected ? '#0f172a' : '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {split.companyName}
+                                </div>
+                                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                                  Tax / GST: {split.gstNumber || 'N/A'}
+                                </div>
+                              </div>
+                            </label>
+
+                            {/* Percentage input and calculated amount */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input 
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  disabled={!split.selected}
+                                  value={split.percentage === '' ? '' : split.percentage}
+                                  onChange={(e) => handlePercentageChange(split.id, e.target.value)}
+                                  style={{
+                                    width: '56px',
+                                    padding: '0.3rem 0.4rem',
+                                    paddingRight: '1rem',
+                                    borderRadius: '4px',
+                                    border: '1px solid #cbd5e1',
+                                    fontSize: '0.82rem',
+                                    fontWeight: '700',
+                                    textAlign: 'right',
+                                    background: split.selected ? 'white' : '#f1f5f9',
+                                    color: split.selected ? '#0f172a' : '#94a3b8',
+                                    outline: 'none'
+                                  }}
+                                  placeholder="0"
+                                />
+                                <span style={{ position: 'absolute', right: '4px', fontSize: '0.75rem', color: '#64748b', fontWeight: '600', pointerEvents: 'none' }}>%</span>
+                              </div>
+                              <div style={{ width: '90px', textAlign: 'right', fontSize: '0.78rem', color: split.selected ? '#0369a1' : '#94a3b8', fontWeight: '600' }}>
+                                {formData.clientCurrency || '$'} {splitAmt}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Total Split Validation Footer */}
+                    <div style={{ marginTop: '0.65rem', paddingTop: '0.5rem', borderTop: '1px dashed #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
+                      <span style={{ color: totalPercentage === 100 ? '#166534' : '#dc2626', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <i className={`bx ${totalPercentage === 100 ? 'bx-check-circle' : 'bx-error-circle'}`}></i>
+                        {totalPercentage === 100 
+                          ? 'Total Split: 100% (Balanced)' 
+                          : `Total Split: ${totalPercentage}% (${totalPercentage > 100 ? `Over by ${totalPercentage - 100}%` : `Remaining ${100 - totalPercentage}%`})`}
+                      </span>
+                      {contractVal > 0 && (
+                        <span style={{ color: '#475569', fontWeight: '500' }}>
+                          Contract: <strong>{formData.clientCurrency || '$'} {contractVal.toFixed(2)}</strong>
+                        </span>
+                      )}
+                    </div>
+                    {errors.billingSplits && (
+                      <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.35rem', fontWeight: '500' }}>
+                        <i className='bx bx-error-circle' style={{ marginRight: '0.25rem' }}></i>
+                        {errors.billingSplits}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

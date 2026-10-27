@@ -485,7 +485,7 @@ function EditDivision() {
         setOnboardingFormState({
           keySpoc: parsed.keySpoc || { name: '', email: '', contact: '' },
           escalationSpocs: parsed.escalationSpocs?.length ? parsed.escalationSpocs : [{ id: 1, name: '', email: '', contact: '', designation: '' }],
-          billingDetails: parsed.billingDetails || { companyName: '', gstNumber: '', address: '' },
+          billingDetails: normalizeBillingCompanies(parsed.billingDetails),
           billingSpocs: parsed.billingSpocs?.length ? parsed.billingSpocs : [{ id: 1, name: '', email: '', contact: '', department: 'Billing' }],
           expectations: parsed.expectations || ''
         });
@@ -517,12 +517,87 @@ function EditDivision() {
     }));
   };
 
+  const normalizeBillingCompanies = (details) => {
+    if (!details) return { companyName: '', gstNumber: '', address: '', companies: [] };
+    const companies = details.companies?.length
+      ? details.companies
+      : details.companyName
+        ? [{ id: Date.now(), companyName: details.companyName, gstNumber: details.gstNumber || '', address: details.address || '', isPrimary: true }]
+        : [{ id: Date.now(), companyName: '', gstNumber: '', address: '', isPrimary: true }];
+    return {
+      ...details,
+      companies,
+      companyName: details.companyName || companies[0]?.companyName || '',
+      gstNumber: details.gstNumber || companies[0]?.gstNumber || '',
+      address: details.address || companies[0]?.address || ''
+    };
+  };
+
   const handleBillingDetailsChange = (e) => {
     const { name, value } = e.target;
     setOnboardingFormState(prev => ({
       ...prev,
       billingDetails: { ...prev.billingDetails, [name]: value }
     }));
+  };
+
+  const handleDivisionCompanyChange = (id, field, value) => {
+    setOnboardingFormState(prev => {
+      const companies = (prev.billingDetails?.companies || []).map(c => 
+        c.id === id ? { ...c, [field]: value } : c
+      );
+      const primary = companies[0] || {};
+      return {
+        ...prev,
+        billingDetails: {
+          ...prev.billingDetails,
+          companies,
+          companyName: primary.companyName || '',
+          gstNumber: primary.gstNumber || '',
+          address: primary.address || ''
+        }
+      };
+    });
+  };
+
+  const addDivisionCompany = () => {
+    setOnboardingFormState(prev => {
+      const newCompany = {
+        id: Date.now(),
+        companyName: '',
+        gstNumber: '',
+        address: '',
+        isPrimary: false
+      };
+      const companies = [...(prev.billingDetails?.companies || []), newCompany];
+      return {
+        ...prev,
+        billingDetails: {
+          ...prev.billingDetails,
+          companies
+        }
+      };
+    });
+  };
+
+  const removeDivisionCompany = (id) => {
+    setOnboardingFormState(prev => {
+      const currentList = prev.billingDetails?.companies || [];
+      if (currentList.length <= 1) return prev;
+      const companies = currentList.filter(c => c.id !== id);
+      if (companies.length > 0) companies[0].isPrimary = true;
+      const primary = companies[0] || {};
+      return {
+        ...prev,
+        billingDetails: {
+          ...prev.billingDetails,
+          companies,
+          companyName: primary.companyName || '',
+          gstNumber: primary.gstNumber || '',
+          address: primary.address || ''
+        }
+      };
+    });
   };
 
   const handleEscalationChange = (id, field, value) => {
@@ -1093,41 +1168,103 @@ function EditDivision() {
                             ))}
                           </div>
 
-                          {/* 3. Billing Details */}
+                          {/* 3. Billing Details & Entities */}
                           <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                            <h5 style={{ margin: '0 0 0.75rem 0', fontSize: '0.82rem', color: '#475569', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <i className='bx bx-credit-card' style={{ color: '#10b981' }}></i> Billing Details
-                            </h5>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                              <h5 style={{ margin: 0, fontSize: '0.82rem', color: '#475569', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <i className='bx bx-credit-card' style={{ color: '#10b981' }}></i> Billing Details & Entities
+                                {(onboardingFormState.billingDetails?.companies?.length > 1) && (
+                                  <span style={{ fontSize: '0.68rem', background: '#ecfdf5', color: '#059669', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: '700' }}>
+                                    {onboardingFormState.billingDetails.companies.length} Entities
+                                  </span>
+                                )}
+                              </h5>
+                              {isEditingOnboarding && (
+                                <button
+                                  type="button"
+                                  onClick={addDivisionCompany}
+                                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.25rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', color: '#334155', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                >
+                                  <i className='bx bx-plus'></i> Add Entity
+                                </button>
+                              )}
+                            </div>
+
                             {isEditingOnboarding ? (
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label style={{ fontSize: '0.75rem', color: '#64748b' }}>Company Name</label>
-                                  <input type="text" className="form-control" name="companyName" value={onboardingFormState.billingDetails?.companyName || ''} onChange={handleBillingDetailsChange} placeholder="Registered Entity" style={{ fontSize: '0.85rem', padding: '0.45rem' }} />
-                                </div>
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label style={{ fontSize: '0.75rem', color: '#64748b' }}>GST / Tax Number</label>
-                                  <input type="text" className="form-control" name="gstNumber" value={onboardingFormState.billingDetails?.gstNumber || ''} onChange={handleBillingDetailsChange} placeholder="Tax / GST ID" style={{ fontSize: '0.85rem', padding: '0.45rem' }} />
-                                </div>
-                                <div className="form-group" style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
-                                  <label style={{ fontSize: '0.75rem', color: '#64748b' }}>Billing Address</label>
-                                  <textarea className="form-control" rows="2" name="address" value={onboardingFormState.billingDetails?.address || ''} onChange={handleBillingDetailsChange} placeholder="Full Registered Address" style={{ fontSize: '0.85rem', padding: '0.45rem' }}></textarea>
-                                </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                {(onboardingFormState.billingDetails?.companies || [{ id: 1, companyName: onboardingFormState.billingDetails?.companyName || '', gstNumber: onboardingFormState.billingDetails?.gstNumber || '', address: onboardingFormState.billingDetails?.address || '' }]).map((comp, idx) => (
+                                  <div key={comp.id || idx} style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', position: 'relative' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                      <span style={{ fontSize: '0.72rem', fontWeight: '700', color: idx === 0 ? '#1e40af' : '#475569', background: idx === 0 ? '#dbeafe' : '#e2e8f0', padding: '0.1rem 0.4rem', borderRadius: '3px', textTransform: 'uppercase' }}>
+                                        {idx === 0 ? 'Primary Entity' : `Entity #${idx + 1}`}
+                                      </span>
+                                      {(onboardingFormState.billingDetails?.companies?.length > 1) && (
+                                        <button
+                                          type="button"
+                                          onClick={() => removeDivisionCompany(comp.id)}
+                                          style={{ background: '#fee2e2', border: 'none', color: '#ef4444', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.72rem', cursor: 'pointer' }}
+                                        >
+                                          <i className='bx bx-trash'></i>
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                                      <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Company Name</label>
+                                        <input type="text" className="form-control" value={comp.companyName || ''} onChange={(e) => handleDivisionCompanyChange(comp.id, 'companyName', e.target.value)} placeholder="Registered Entity" style={{ fontSize: '0.82rem', padding: '0.4rem' }} />
+                                      </div>
+                                      <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label style={{ fontSize: '0.72rem', color: '#64748b' }}>GST / Tax Number</label>
+                                        <input type="text" className="form-control" value={comp.gstNumber || ''} onChange={(e) => handleDivisionCompanyChange(comp.id, 'gstNumber', e.target.value)} placeholder="Tax / GST ID" style={{ fontSize: '0.82rem', padding: '0.4rem' }} />
+                                      </div>
+                                      <div className="form-group" style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+                                        <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Billing Address</label>
+                                        <textarea className="form-control" rows="2" value={comp.address || ''} onChange={(e) => handleDivisionCompanyChange(comp.id, 'address', e.target.value)} placeholder="Full Registered Address" style={{ fontSize: '0.82rem', padding: '0.4rem' }}></textarea>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             ) : (
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-                                <div>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Company Name</span>
-                                  <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.billingDetails?.companyName || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                              (onboardingFormState.billingDetails?.companies?.length > 0) ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                  {onboardingFormState.billingDetails.companies.map((comp, idx) => (
+                                    <div key={comp.id || idx} style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                                        <span style={{ fontSize: '0.68rem', fontWeight: '700', color: idx === 0 ? '#1e40af' : '#475569', background: idx === 0 ? '#dbeafe' : '#e2e8f0', padding: '0.1rem 0.35rem', borderRadius: '3px', textTransform: 'uppercase' }}>
+                                          {idx === 0 ? 'Primary Entity' : `Entity #${idx + 1}`}
+                                        </span>
+                                        <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>{comp.companyName || 'Unnamed Entity'}</strong>
+                                      </div>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                                        <div>
+                                          <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>GST / Tax Number</span>
+                                          <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: '500' }}>{comp.gstNumber || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                          <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>Billing Address</span>
+                                          <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: '500', whiteSpace: 'pre-wrap' }}>{comp.address || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
-                                <div>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>GST / Tax Number</span>
-                                  <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.billingDetails?.gstNumber || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                              ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                                  <div>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Company Name</span>
+                                    <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.billingDetails?.companyName || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                  </div>
+                                  <div>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>GST / Tax Number</span>
+                                    <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.billingDetails?.gstNumber || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                  </div>
+                                  <div style={{ gridColumn: '1 / -1' }}>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Billing Address</span>
+                                    <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500', whiteSpace: 'pre-wrap' }}>{onboardingFormState.billingDetails?.address || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                  </div>
                                 </div>
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Billing Address</span>
-                                  <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500', whiteSpace: 'pre-wrap' }}>{onboardingFormState.billingDetails?.address || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
-                                </div>
-                              </div>
+                              )
                             )}
                           </div>
 

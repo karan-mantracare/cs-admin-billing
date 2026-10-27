@@ -93,23 +93,66 @@ function ViewOnboardingModal({ isOpen, onClose, data }) {
             ))}
           </div>
 
-          {/* Billing Details */}
+          {/* Billing Details / Companies */}
           <div style={{ marginBottom: '2rem' }}>
-            <h3 style={{ fontSize: '0.9rem', color: '#334155', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', marginBottom: '1rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Billing Details</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div>
-                <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Company Name</p>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.billingDetails?.companyName || 'N/A'}</p>
-              </div>
-              <div>
-                <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>GST / Tax Number</p>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.billingDetails?.gstNumber || 'N/A'}</p>
-              </div>
-              <div style={{ gridColumn: 'span 2' }}>
-                <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Address</p>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.billingDetails?.address || 'N/A'}</p>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '0.9rem', color: '#334155', margin: 0, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Billing Details & Entities
+              </h3>
+              {data?.billingDetails?.companies?.length > 1 && (
+                <span style={{ fontSize: '0.72rem', background: '#eff6ff', color: '#2563eb', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
+                  {data.billingDetails.companies.length} Registered Entities
+                </span>
+              )}
             </div>
+
+            {data?.billingDetails?.companies?.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {data.billingDetails.companies.map((comp, idx) => (
+                  <div key={comp.id || idx} style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <span style={{ 
+                        background: idx === 0 ? '#dbeafe' : '#e2e8f0', 
+                        color: idx === 0 ? '#1e40af' : '#475569', 
+                        fontSize: '0.68rem', 
+                        fontWeight: '700', 
+                        padding: '0.15rem 0.45rem', 
+                        borderRadius: '4px', 
+                        textTransform: 'uppercase' 
+                      }}>
+                        {idx === 0 ? 'Primary Entity' : `Entity #${idx + 1}`}
+                      </span>
+                      <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{comp.companyName || 'Unnamed Entity'}</strong>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.82rem' }}>
+                      <div>
+                        <p style={{ margin: '0 0 0.15rem 0', fontSize: '0.72rem', color: '#64748b' }}>GST / Tax Number</p>
+                        <p style={{ margin: 0, color: '#0f172a', fontWeight: '500' }}>{comp.gstNumber || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: '0 0 0.15rem 0', fontSize: '0.72rem', color: '#64748b' }}>Address</p>
+                        <p style={{ margin: 0, color: '#0f172a', fontWeight: '500' }}>{comp.address || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Company Name</p>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.billingDetails?.companyName || 'N/A'}</p>
+                </div>
+                <div>
+                  <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>GST / Tax Number</p>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.billingDetails?.gstNumber || 'N/A'}</p>
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Address</p>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.billingDetails?.address || 'N/A'}</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Billing SPOCs */}

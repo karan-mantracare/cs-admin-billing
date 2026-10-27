@@ -170,7 +170,22 @@ function AddOrder() {
           const savedOnboarding = localStorage.getItem('onboardingFiled_' + targetDivId);
           if (savedOnboarding) {
             const parsed = JSON.parse(savedOnboarding);
-            if (parsed.billingDetails && (parsed.billingDetails.companyName || parsed.billingDetails.gstNumber || parsed.billingDetails.address)) {
+            if (parsed.billingDetails && (parsed.billingDetails.companyName || parsed.billingDetails.gstNumber || parsed.billingDetails.address || parsed.billingDetails.companies?.length)) {
+              const companies = (parsed.billingDetails.companies || []).filter(c => c.companyName && c.companyName.trim());
+              let initialSplits = [];
+              if (companies.length > 1) {
+                const count = companies.length;
+                const base = Math.floor(100 / count);
+                const remainder = 100 - (base * count);
+                initialSplits = companies.map((c, idx) => ({
+                  id: c.id || idx + 1,
+                  companyName: c.companyName,
+                  gstNumber: c.gstNumber || '',
+                  address: c.address || '',
+                  selected: true,
+                  percentage: idx === count - 1 ? (base + remainder) : base
+                }));
+              }
               setFormData(prev => {
                 if (prev.billingDetails) return prev;
                 return {
@@ -179,7 +194,9 @@ function AddOrder() {
                   clientName: location.state?.clientName || prev.clientName || '',
                   divisionName: location.state?.divisionName || prev.divisionName || '',
                   billingDetails: {
-                    billingEntity: parsed.billingDetails.companyName || '',
+                    billingEntity: initialSplits.length > 1
+                      ? `${initialSplits[0].companyName} (+${initialSplits.length - 1} entities)`
+                      : (parsed.billingDetails.companyName || ''),
                     taxDetails: parsed.billingDetails.gstNumber || '',
                     billingAddress: parsed.billingDetails.address || '',
                     contractValue: '',
@@ -189,7 +206,8 @@ function AddOrder() {
                     billFrom: 'Mantracare',
                     receivingBankName: '',
                     bankDetailsLink: '',
-                    billingDate: new Date().toISOString().split('T')[0]
+                    billingDate: new Date().toISOString().split('T')[0],
+                    billingSplits: initialSplits
                   }
                 };
               });
@@ -893,6 +911,37 @@ function AddOrder() {
                     <strong style={{ color: '#1e293b' }}>{formData.billingDetails.billFrom || 'Mantracare'}</strong>
                   </div>
                 </div>
+
+                {/* Multi-Entity Split Allocation Preview */}
+                {formData.billingDetails.billingSplits?.filter(s => s.selected)?.length > 1 && (
+                  <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px dashed #bfdbfe' }}>
+                    <div style={{ fontSize: '0.74rem', color: '#0369a1', fontWeight: '700', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <i className='bx bx-git-branch'></i> Multi-Entity Billing Split Breakdown:
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.5rem' }}>
+                      {formData.billingDetails.billingSplits.filter(s => s.selected).map((s, idx) => {
+                        const cVal = parseFloat(formData.billingDetails.contractValue || formData.amount) || 0;
+                        const share = ((cVal * (Number(s.percentage) || 0)) / 100).toFixed(2);
+                        return (
+                          <div key={s.id || idx} style={{ background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #bfdbfe', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '0.5rem' }}>
+                              <strong style={{ color: '#0f172a', display: 'block' }}>{s.companyName}</strong>
+                              <span style={{ color: '#64748b', fontSize: '0.7rem' }}>Tax: {s.gstNumber || 'N/A'}</span>
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.45rem', borderRadius: '4px', fontWeight: '700', fontSize: '0.72rem' }}>
+                                {s.percentage}%
+                              </span>
+                              <div style={{ color: '#0369a1', fontWeight: '700', fontSize: '0.78rem', marginTop: '0.15rem' }}>
+                                {formData.billingDetails.clientCurrency || '$'} {share}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div style={{ width: '100%', padding: '1.25rem', border: '1px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', color: '#64748b', fontSize: '0.85rem' }}>
