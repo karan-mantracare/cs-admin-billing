@@ -1,5 +1,60 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-dynamic-schedule',
+    date: '2026-10-27',
+    formattedDate: 'Oct 27, 2026',
+    page: 'Admin',
+    subPage: 'Accounts Receivable / Add Schedule',
+    summary: 'Live Auto-Preview with dynamic % rebalancing & back-to-back monthly scheduling',
+    details: 'Added live auto-preview schedule generator with flexible % rebalancing (e.g. 50% upfront on Invoice 1 + 5 monthly back-to-back at 10%), inline confirmation checkmark (✓), undo (↺), and standardized "Invoice By Date".',
+    plainLanguage: 'When scheduling invoice payments for an order, a live schedule table appears dynamically inside the modal. You can set custom percentages on any invoice (e.g. 50% on Invoice 1) and click the checkmark—the remaining invoices automatically calculate and rebalance equally (10% each across the next 5 back-to-back monthly installments). You can also edit dates and remarks directly inline, or reset back to equal distribution.',
+    highlights: [
+      'Live auto-preview table inside Add Schedule modal with instant calculation',
+      'Dynamic % rebalancing algorithm: locks edited rows and automatically distributes remainder equally to reach exactly 100%',
+      'Single-click confirmation (✓) and undo reset (↺) per invoice row',
+      'Consecutive monthly back-to-back date scheduling based on payment terms',
+      'Renamed and standardized table and edit labels to "Invoice By Date" alongside "Due By Date"'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
+    id: 'cl-multicompany-billing',
+    date: '2026-10-27',
+    formattedDate: 'Oct 27, 2026',
+    page: 'Admin',
+    subPage: 'Multi-Company Billing Split',
+    summary: 'Multi-company invoice scheduling with independent remarks & entity mapping',
+    details: 'Supported multi-company order billing splits (e.g. 33%, 33%, 34%) with entity badges, individual installment calculations, and separate remarks per company invoice.',
+    plainLanguage: 'For client orders requiring billing across multiple entities (e.g., MCC, MCHI, MRC - FZCO), the system now accurately distributes each installment across all selected companies according to their split percentage, generating independent invoice line items with company badges, individual amounts, and entity-specific remarks.',
+    highlights: [
+      'Added multi-company allocation in onboarding and billing setup with 1-click Equal Split',
+      'Accurate per-entity installment breakdown in both live preview and full preview',
+      'Independent remarks input for each billing entity invoice line item',
+      'Clean entity badges and split percentages shown throughout the schedule'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
+    id: 'cl-in-modal-delete',
+    date: '2026-10-27',
+    formattedDate: 'Oct 27, 2026',
+    page: 'Admin',
+    subPage: 'Edit Scheduled Payment',
+    summary: 'Redesigned Edit Scheduled Payment with in-modal delete confirmation',
+    details: 'Replaced generic browser alert/confirm with an elegant in-modal confirmation card, updated fields to "Invoice By Date", and improved currency conversion display.',
+    plainLanguage: 'Editing scheduled payments now features a safer and cleaner experience. Clicking "Delete Invoice" displays an in-modal confirmation card with warning details and red confirm button instead of standard browser popups. Standardized date fields to "Invoice By Date" and "Due By Date".',
+    highlights: [
+      'Built-in in-modal delete confirmation dialog with smooth slide/fade animation',
+      'Standardized label to "Invoice By Date"',
+      'Dynamic USD conversion display with auto-calculation badge',
+      'Entity badge indicator showing corporate/billing company name and percentage'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
     id: 'cl-users',
     date: '2026-10-27',
     formattedDate: 'Oct 27, 2026',
