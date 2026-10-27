@@ -198,34 +198,99 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     const valuePerTerm = contractValue / terms;
 
     const activeSplits = selectedOrder.billingDetails?.billingSplits?.filter(s => s.selected) || [];
-    const clientEntity = activeSplits.length > 1
-      ? `${activeSplits[0].companyName} (+${activeSplits.length - 1} entities)`
-      : (selectedOrder.billingDetails?.billingEntity || selectedOrder.billingDetails?.companyName || selectedOrder.clientName || 'N/A');
+    const hasMultiSplits = activeSplits.length > 1;
 
     const invoices = [];
     for (let i = 0; i < terms; i++) {
       const invoiceDate = new Date(startDate.getTime() + i * intervalDays * 24 * 60 * 60 * 1000);
       const dueDate = new Date(invoiceDate.getTime() + paymentDueDays * 24 * 60 * 60 * 1000);
-      
-      invoices.push({
-        id: `INV-${Date.now()}-${i}`,
-        clientName: formData.corporate || 'Unknown',
-        orderId: String(selectedOrder.id),
-        billingCompany: selectedOrder.billingDetails?.billFrom || 'Unknown',
-        clientBillingEntity: clientEntity,
-        billingSplits: activeSplits,
-        amountDueUsd: usdPerTerm,
-        amountDue: valuePerTerm,
-        currency: currency,
-        status: 'To be Raised',
-        invoiceByDate: invoiceDate.toISOString().split('T')[0],
-        dueByDate: dueDate.toISOString().split('T')[0],
-        invoiceDate: '', // Will be set when actually raised
-        totalPaid: 0,
-        dueAmount: usdPerTerm,
-        overdueDays: 0,
-        remarks: ''
-      });
+      const invoiceByDateStr = invoiceDate.toISOString().split('T')[0];
+      const dueByDateStr = dueDate.toISOString().split('T')[0];
+
+      if (hasMultiSplits) {
+        let runningValSum = 0;
+        let runningUsdSum = 0;
+
+        activeSplits.forEach((split, sIdx) => {
+          const pct = Number(split.percentage) || 0;
+          let splitVal, splitUsd;
+
+          if (sIdx === activeSplits.length - 1) {
+            splitVal = Number((valuePerTerm - runningValSum).toFixed(2));
+            splitUsd = Number((usdPerTerm - runningUsdSum).toFixed(2));
+          } else {
+            splitVal = Number(((valuePerTerm * pct) / 100).toFixed(2));
+            splitUsd = Number(((usdPerTerm * pct) / 100).toFixed(2));
+            runningValSum += splitVal;
+            runningUsdSum += splitUsd;
+          }
+
+          invoices.push({
+            id: `INV-${Date.now()}-${i}-${sIdx}`,
+            installmentNumber: i + 1,
+            termIndex: i + 1,
+            totalTerms: terms,
+            splitIndex: sIdx + 1,
+            totalSplits: activeSplits.length,
+            clientName: formData.corporate || 'Unknown',
+            orderId: String(selectedOrder.id),
+            billingCompany: split.companyName,
+            clientBillingEntity: split.companyName,
+            taxId: split.taxId || '',
+            splitPercentage: pct,
+            billFrom: selectedOrder.billingDetails?.billFrom || 'Unknown',
+            amountDueUsd: splitUsd,
+            amountDue: splitVal,
+            currency: currency,
+            status: 'To be Raised',
+            invoiceByDate: invoiceByDateStr,
+            dueByDate: dueByDateStr,
+            invoiceDate: '-',
+            invoiceLink: '',
+            totalPaid: 0,
+            dueAmount: splitUsd,
+            overdueDays: 0,
+            remarks: ''
+          });
+        });
+      } else {
+        const entityName = (activeSplits.length === 1 ? activeSplits[0].companyName : null) 
+          || selectedOrder.billingDetails?.billingEntity 
+          || selectedOrder.billingDetails?.companyName 
+          || selectedOrder.clientName 
+          || 'N/A';
+        const taxId = (activeSplits.length === 1 ? activeSplits[0].taxId : null)
+          || selectedOrder.billingDetails?.taxDetails 
+          || '';
+
+        invoices.push({
+          id: `INV-${Date.now()}-${i}`,
+          installmentNumber: i + 1,
+          termIndex: i + 1,
+          totalTerms: terms,
+          totalSplits: 1,
+          splitIndex: 1,
+          clientName: formData.corporate || 'Unknown',
+          orderId: String(selectedOrder.id),
+          billingCompany: entityName,
+          clientBillingEntity: entityName,
+          taxId: taxId,
+          billFrom: selectedOrder.billingDetails?.billFrom || 'Unknown',
+          splitPercentage: 100,
+          amountDueUsd: usdPerTerm,
+          amountDue: valuePerTerm,
+          currency: currency,
+          status: 'To be Raised',
+          invoiceByDate: invoiceByDateStr,
+          dueByDate: dueByDateStr,
+          invoiceDate: '-',
+          invoiceLink: '',
+          totalPaid: 0,
+          dueAmount: usdPerTerm,
+          overdueDays: 0,
+          remarks: ''
+        });
+      }
     }
     return invoices;
   };
@@ -428,111 +493,106 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                 </tr>
               </thead>
               <tbody>
-                {previewInvoices.map((inv, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '0.5rem', color: '#334155' }}>{idx + 1}</td>
-                    <td style={{ padding: '0.5rem', color: '#0f172a', whiteSpace: 'nowrap', position: 'relative' }}>
-                      {(() => {
-                        const splits = selectedOrder?.billingDetails?.billingSplits?.filter(s => s.selected) || [];
-                        if (splits.length > 1) {
-                          const isHovered = hoveredSplitRow === idx;
-                          return (
-                            <div 
-                              style={{ position: 'relative', display: 'inline-block' }}
-                              onMouseEnter={() => setHoveredSplitRow(idx)}
-                              onMouseLeave={() => setHoveredSplitRow(null)}
-                            >
-                              <span style={{
-                                background: '#eff6ff',
-                                color: '#1d4ed8',
-                                border: '1px solid #bfdbfe',
-                                padding: '0.2rem 0.5rem',
-                                borderRadius: '5px',
-                                fontSize: '0.75rem',
-                                fontWeight: '700',
-                                cursor: 'help',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.3rem'
-                              }}>
-                                <i className='bx bx-buildings'></i>
-                                {splits[0].companyName} (+{splits.length - 1})
-                              </span>
+                {previewInvoices.map((inv, idx) => {
+                  const isLastSplitInTerm = !inv.totalSplits || inv.splitIndex === inv.totalSplits;
+                  const rowBg = (inv.installmentNumber % 2 === 0) ? '#f8fafc' : '#ffffff';
 
-                              {isHovered && (
-                                <div style={{
-                                  position: 'absolute',
-                                  bottom: 'calc(100% + 6px)',
-                                  left: 0,
-                                  background: '#0f172a',
-                                  color: 'white',
-                                  borderRadius: '8px',
-                                  padding: '0.65rem 0.85rem',
-                                  fontSize: '0.74rem',
-                                  zIndex: 9999,
-                                  boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
-                                  minWidth: '240px',
-                                  pointerEvents: 'none',
-                                  lineHeight: '1.4'
-                                }}>
-                                  <div style={{ fontWeight: '700', color: '#93c5fd', marginBottom: '0.35rem', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                    Installment #{idx + 1} Entity Split:
-                                  </div>
-                                  {splits.map((s, sIdx) => {
-                                    const partAmt = ((Number(inv.amountDue) * (Number(s.percentage) || 0)) / 100).toFixed(2);
-                                    return (
-                                      <div key={sIdx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0', borderBottom: sIdx === splits.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.1)' }}>
-                                        <span>{s.companyName} ({s.percentage}%)</span>
-                                        <strong style={{ color: '#38bdf8' }}>{selectedOrder?.billingDetails?.clientCurrency || '$'} {partAmt}</strong>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        }
-
-                        return (
+                  return (
+                    <tr 
+                      key={inv.id || idx} 
+                      style={{ 
+                        background: rowBg,
+                        borderBottom: isLastSplitInTerm ? '2px solid #cbd5e1' : '1px solid #f1f5f9' 
+                      }}
+                    >
+                      <td style={{ padding: '0.6rem 0.5rem', color: '#334155', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.85rem' }}>{idx + 1}</span>
+                          {inv.totalTerms > 1 && (
+                            <span style={{
+                              background: '#e2e8f0',
+                              color: '#475569',
+                              fontSize: '0.68rem',
+                              padding: '0.1rem 0.35rem',
+                              borderRadius: '4px',
+                              fontWeight: '700'
+                            }}>
+                              Term #{inv.installmentNumber}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem', color: '#0f172a', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                           <span style={{
-                            background: '#f1f5f9',
-                            color: '#334155',
-                            padding: '0.2rem 0.5rem',
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            border: '1px solid #bfdbfe',
+                            padding: '0.2rem 0.55rem',
                             borderRadius: '5px',
-                            fontSize: '0.75rem',
-                            fontWeight: '600'
+                            fontSize: '0.78rem',
+                            fontWeight: '700',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.3rem'
                           }}>
-                            {selectedOrder?.billingDetails?.billingEntity || selectedOrder?.billingDetails?.companyName || 'Single Entity'}
+                            <i className='bx bx-buildings'></i>
+                            {inv.clientBillingEntity || inv.billingCompany}
                           </span>
-                        );
-                      })()}
-                    </td>
-                    <td style={{ padding: '0.5rem', color: '#334155', whiteSpace: 'nowrap' }}>{inv.invoiceByDate}</td>
-                    <td style={{ padding: '0.5rem', color: '#334155', whiteSpace: 'nowrap' }}>{inv.dueByDate}</td>
-                    <td style={{ padding: '0.5rem', color: '#334155', whiteSpace: 'nowrap' }}>{Number(inv.amountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
-                    <td style={{ padding: '0.5rem', color: '#10b981', fontWeight: '600', whiteSpace: 'nowrap' }}>${Number(inv.amountDueUsd).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
-                    <td style={{ padding: '0.35rem 0.5rem' }}>
-                      <input 
-                        type="text" 
-                        value={inv.remarks || ''} 
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setPreviewInvoices(prev => prev.map((item, i) => i === idx ? { ...item, remarks: val } : item));
-                        }}
-                        placeholder="Enter remarks..."
-                        style={{
-                          width: '100%',
-                          padding: '0.4rem 0.6rem',
-                          borderRadius: '6px',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '0.82rem',
-                          color: '#0f172a',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                          {inv.splitPercentage && inv.splitPercentage < 100 && (
+                            <span style={{
+                              background: '#dbeafe',
+                              color: '#1e40af',
+                              padding: '0.12rem 0.38rem',
+                              borderRadius: '4px',
+                              fontSize: '0.72rem',
+                              fontWeight: '700'
+                            }}>
+                              {inv.splitPercentage}%
+                            </span>
+                          )}
+                        </div>
+                        {inv.taxId && (
+                          <div style={{ fontSize: '0.69rem', color: '#64748b', marginTop: '0.2rem' }}>
+                            Tax/GST: {inv.taxId}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem', color: '#334155', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
+                        {inv.invoiceByDate}
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem', color: '#334155', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
+                        {inv.dueByDate}
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem', color: '#0f172a', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                        {Number(inv.amountDue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem', color: '#059669', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                        ${Number(inv.amountDueUsd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
+                        <input 
+                          type="text" 
+                          value={inv.remarks || ''} 
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPreviewInvoices(prev => prev.map((item, i) => i === idx ? { ...item, remarks: val } : item));
+                          }}
+                          placeholder={`Remarks for ${inv.clientBillingEntity || 'invoice'}...`}
+                          style={{
+                            width: '100%',
+                            padding: '0.4rem 0.6rem',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.82rem',
+                            color: '#0f172a',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

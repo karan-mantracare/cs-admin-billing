@@ -227,7 +227,8 @@ function ClientPayments() {
     const matchesSearch = !query || 
       String(p.clientName || '').toLowerCase().includes(query) || 
       String(p.orderId || '').toLowerCase().includes(query) ||
-      String(p.billingCompany || '').toLowerCase().includes(query);
+      String(p.billingCompany || '').toLowerCase().includes(query) ||
+      String(p.clientBillingEntity || '').toLowerCase().includes(query);
     
     // Conditions
     let matchesConditions = true;
@@ -497,7 +498,18 @@ function ClientPayments() {
                     {p.orderId}
                   </span>
                 </td>
-                <td><span style={{ background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500' }}>{p.billingCompany}</span></td>
+                <td>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span style={{ background: '#f1f5f9', color: '#0f172a', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600' }}>
+                      {p.clientBillingEntity || p.billingCompany}
+                    </span>
+                    {p.splitPercentage && p.splitPercentage < 100 && (
+                      <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.35rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700' }}>
+                        {p.splitPercentage}%
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td><strong className="text-blue">${Number(p.amountDueUsd || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
                 <td>{Number(p.amountDue || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
                 <td>{p.currency}</td>
@@ -1226,7 +1238,7 @@ function ClientPayments() {
             duePerTermUsd = contractValueUsd / terms;
           }
           const currency = selectedOrder.billingDetails?.clientCurrency || 'USD';
-          const billingCompany = selectedOrder.billingDetails?.billFrom || 'N/A';
+          const billingCompany = selectedOrder.billingDetails?.billingEntity || selectedOrder.billingDetails?.companyName || selectedOrder.clientName || selectedOrder.billingDetails?.billFrom || 'N/A';
           const paymentDueDays = Number(selectedOrder.billingDetails?.paymentDueDays) || 30;
 
           // Generate rows

@@ -4,7 +4,7 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied })
   const billing = orderDetails?.billingDetails || {};
 
   // --- Fields ---
-  const clientBillingEntity = billing.billingEntity || payment?.billingCompany || '—';
+  const clientBillingEntity = payment?.clientBillingEntity || payment?.billingCompany || billing.billingEntity || '—';
   const clientTaxDetails    = billing.taxDetails || '—';
   const contractCurrency    = billing.clientCurrency || payment?.currency || '—';
   const contractValue       = billing.contractValue
@@ -124,7 +124,7 @@ function BillingMessageModal({ isOpen, onClose, payment }) {
   if (!isOpen || !payment) return null;
 
   const billing = orderDetails?.billingDetails || {};
-  const clientBillingEntity = billing.billingEntity || payment.billingCompany || '—';
+  const clientBillingEntity = payment?.clientBillingEntity || payment?.billingCompany || billing.billingEntity || '—';
   const clientTaxDetails    = billing.taxDetails || '—';
   const contractCurrency    = billing.clientCurrency || payment.currency || '—';
   const contractValue       = billing.contractValue ? `${contractCurrency} ${Number(billing.contractValue).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
