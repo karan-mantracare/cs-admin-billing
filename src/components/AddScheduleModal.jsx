@@ -123,11 +123,13 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   const [isPreview, setIsPreview] = useState(false);
   const [previewInvoices, setPreviewInvoices] = useState([]);
   const [showRemarksTooltip, setShowRemarksTooltip] = useState(false);
+  const [hoveredSplitRow, setHoveredSplitRow] = useState(null);
 
   useEffect(() => {
     if (!isOpen) {
       setIsPreview(false);
       setPreviewInvoices([]);
+      setHoveredSplitRow(null);
     }
   }, [isOpen]);
 
@@ -195,6 +197,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     const usdPerTerm = amountInUSD / terms;
     const valuePerTerm = contractValue / terms;
 
+    const activeSplits = selectedOrder.billingDetails?.billingSplits?.filter(s => s.selected) || [];
+    const clientEntity = activeSplits.length > 1
+      ? `${activeSplits[0].companyName} (+${activeSplits.length - 1} entities)`
+      : (selectedOrder.billingDetails?.billingEntity || selectedOrder.billingDetails?.companyName || selectedOrder.clientName || 'N/A');
+
     const invoices = [];
     for (let i = 0; i < terms; i++) {
       const invoiceDate = new Date(startDate.getTime() + i * intervalDays * 24 * 60 * 60 * 1000);
@@ -205,6 +212,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         clientName: formData.corporate || 'Unknown',
         orderId: String(selectedOrder.id),
         billingCompany: selectedOrder.billingDetails?.billFrom || 'Unknown',
+        clientBillingEntity: clientEntity,
+        billingSplits: activeSplits,
         amountDueUsd: usdPerTerm,
         amountDue: valuePerTerm,
         currency: currency,
@@ -263,10 +272,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         display: 'flex', justifyContent: 'center', alignItems: 'center'
       }}>
         <div style={{
-          background: 'white', borderRadius: '8px', width: '92%', maxWidth: '820px',
+          background: 'white', borderRadius: '8px', width: '94%', maxWidth: '880px',
           padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Invoice Schedule Preview</h2>
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
@@ -277,12 +286,94 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               &times;
             </button>
           </div>
+
+          {/* Multi-Entity / Company Header Banner on top of schedule */}
+          {(() => {
+            const activeSplits = selectedOrder?.billingDetails?.billingSplits?.filter(s => s.selected) || [];
+            if (activeSplits.length > 1) {
+              const totalVal = Number(selectedOrder?.billingDetails?.contractValue || selectedOrder?.amount || 0);
+              const curr = selectedOrder?.billingDetails?.clientCurrency || '$';
+              return (
+                <div style={{
+                  marginBottom: '1.25rem',
+                  padding: '0.75rem 1rem',
+                  background: 'linear-gradient(to right, #f0f9ff, #f8fafc)',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <i className='bx bx-git-branch' style={{ color: '#0284c7', fontSize: '1.15rem' }}></i>
+                      <strong style={{ fontSize: '0.8rem', color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Multi-Company Billing Allocation ({activeSplits.length} Entities)
+                      </strong>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      Contract Total: <strong style={{ color: '#0f172a' }}>{curr} {totalVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {activeSplits.map((entity, i) => {
+                      const shareAmt = ((totalVal * (Number(entity.percentage) || 0)) / 100).toFixed(2);
+                      return (
+                        <div key={entity.id || i} style={{
+                          background: 'white',
+                          padding: '0.35rem 0.65rem',
+                          borderRadius: '6px',
+                          border: '1px solid #bfdbfe',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.45rem',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                        }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#0f172a' }}>
+                            {entity.companyName}
+                          </span>
+                          <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.35rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700' }}>
+                            {entity.percentage}%
+                          </span>
+                          <span style={{ color: '#0369a1', fontSize: '0.78rem', fontWeight: '700' }}>
+                            {curr} {Number(shareAmt).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+
+            if (selectedOrder?.billingDetails?.billingEntity) {
+              return (
+                <div style={{
+                  marginBottom: '1rem',
+                  padding: '0.5rem 0.85rem',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.82rem'
+                }}>
+                  <span style={{ color: '#64748b' }}>Billing Entity:</span>
+                  <strong style={{ color: '#0f172a' }}>{selectedOrder.billingDetails.billingEntity}</strong>
+                  {selectedOrder.billingDetails.taxDetails && (
+                    <span style={{ color: '#64748b', marginLeft: '0.4rem' }}>({selectedOrder.billingDetails.taxDetails})</span>
+                  )}
+                </div>
+              );
+            }
+            return null;
+          })()}
           
           <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '1.5rem' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ background: '#f1f5f9', color: '#475569', textAlign: 'left' }}>
                   <th style={{ padding: '0.5rem' }}>S.No</th>
+                  <th style={{ padding: '0.5rem' }}>Billed Entity</th>
                   <th style={{ padding: '0.5rem' }}>Invoice Date</th>
                   <th style={{ padding: '0.5rem' }}>Due Date</th>
                   <th style={{ padding: '0.5rem' }}>Amount ({selectedOrder?.billingDetails?.clientCurrency || 'USD'})</th>
@@ -340,6 +431,82 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                 {previewInvoices.map((inv, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '0.5rem', color: '#334155' }}>{idx + 1}</td>
+                    <td style={{ padding: '0.5rem', color: '#0f172a', whiteSpace: 'nowrap', position: 'relative' }}>
+                      {(() => {
+                        const splits = selectedOrder?.billingDetails?.billingSplits?.filter(s => s.selected) || [];
+                        if (splits.length > 1) {
+                          const isHovered = hoveredSplitRow === idx;
+                          return (
+                            <div 
+                              style={{ position: 'relative', display: 'inline-block' }}
+                              onMouseEnter={() => setHoveredSplitRow(idx)}
+                              onMouseLeave={() => setHoveredSplitRow(null)}
+                            >
+                              <span style={{
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                border: '1px solid #bfdbfe',
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '5px',
+                                fontSize: '0.75rem',
+                                fontWeight: '700',
+                                cursor: 'help',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem'
+                              }}>
+                                <i className='bx bx-buildings'></i>
+                                {splits[0].companyName} (+{splits.length - 1})
+                              </span>
+
+                              {isHovered && (
+                                <div style={{
+                                  position: 'absolute',
+                                  bottom: 'calc(100% + 6px)',
+                                  left: 0,
+                                  background: '#0f172a',
+                                  color: 'white',
+                                  borderRadius: '8px',
+                                  padding: '0.65rem 0.85rem',
+                                  fontSize: '0.74rem',
+                                  zIndex: 9999,
+                                  boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
+                                  minWidth: '240px',
+                                  pointerEvents: 'none',
+                                  lineHeight: '1.4'
+                                }}>
+                                  <div style={{ fontWeight: '700', color: '#93c5fd', marginBottom: '0.35rem', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    Installment #{idx + 1} Entity Split:
+                                  </div>
+                                  {splits.map((s, sIdx) => {
+                                    const partAmt = ((Number(inv.amountDue) * (Number(s.percentage) || 0)) / 100).toFixed(2);
+                                    return (
+                                      <div key={sIdx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0', borderBottom: sIdx === splits.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.1)' }}>
+                                        <span>{s.companyName} ({s.percentage}%)</span>
+                                        <strong style={{ color: '#38bdf8' }}>{selectedOrder?.billingDetails?.clientCurrency || '$'} {partAmt}</strong>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <span style={{
+                            background: '#f1f5f9',
+                            color: '#334155',
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '5px',
+                            fontSize: '0.75rem',
+                            fontWeight: '600'
+                          }}>
+                            {selectedOrder?.billingDetails?.billingEntity || selectedOrder?.billingDetails?.companyName || 'Single Entity'}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td style={{ padding: '0.5rem', color: '#334155', whiteSpace: 'nowrap' }}>{inv.invoiceByDate}</td>
                     <td style={{ padding: '0.5rem', color: '#334155', whiteSpace: 'nowrap' }}>{inv.dueByDate}</td>
                     <td style={{ padding: '0.5rem', color: '#334155', whiteSpace: 'nowrap' }}>{Number(inv.amountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
