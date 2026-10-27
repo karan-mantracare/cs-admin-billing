@@ -118,9 +118,9 @@ const PILLAR_QUESTIONS = [
   {
     id: 'oneOnOneSessions',
     pillarGroup: '1-on-1',
-    title: '1-on-1 Individual Sessions (Therapy, Coaching, Doctor Consultations): *',
-    description: 'Quality, punctuality, practitioner expertise, confidentiality, and employee satisfaction with individual 1-on-1 expert sessions:',
-    shortLabel: '1-on-1 Expert Sessions',
+    title: '1-on-1 Individual Sessions: *',
+    description: 'Quality, punctuality, practitioner expertise, confidentiality, and employee satisfaction with individual 1-on-1 sessions:',
+    shortLabel: '1-on-1 Sessions',
     category: 'Clinical & Wellness Care',
     icon: 'bx-user-pin',
     allowNotApplicable: true,
