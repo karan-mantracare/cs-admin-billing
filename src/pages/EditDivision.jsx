@@ -1305,24 +1305,49 @@ function EditDivision() {
                             ))}
                           </div>
 
-                          {/* 5. Expectations */}
-                          <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                            <h5 style={{ margin: '0 0 0.75rem 0', fontSize: '0.82rem', color: '#475569', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <i className='bx bx-message-square-detail' style={{ color: '#8b5cf6' }}></i> Expectations & Notes
-                            </h5>
+                          {/* 5. Expectations & Notes */}
+                          <div style={{ background: 'white', padding: '1.25rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              <h5 style={{ margin: 0, fontSize: '0.85rem', color: '#334155', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <i className='bx bx-message-square-detail' style={{ color: '#8b5cf6', fontSize: '1.1rem' }}></i> Expectations & Operational Notes
+                              </h5>
+                              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                SLA standards, reporting frequency & special delivery guidelines
+                              </span>
+                            </div>
+
                             {isEditingOnboarding ? (
-                              <textarea 
-                                className="form-control" 
-                                rows="3" 
-                                value={onboardingFormState.expectations || ''} 
-                                onChange={(e) => setOnboardingFormState(prev => ({ ...prev, expectations: e.target.value }))} 
-                                placeholder="Any specific requirements or expectations from client..." 
-                                style={{ fontSize: '0.85rem', padding: '0.5rem' }}
-                              ></textarea>
+                              <div>
+                                <textarea 
+                                  className="form-control" 
+                                  rows="7" 
+                                  value={onboardingFormState.expectations || ''} 
+                                  onChange={(e) => setOnboardingFormState(prev => ({ ...prev, expectations: e.target.value }))} 
+                                  placeholder="Record comprehensive expectations, SLA response windows, team coordination instructions, or specific exclusions..." 
+                                  style={{ 
+                                    width: '100%',
+                                    fontSize: '0.92rem', 
+                                    lineHeight: '1.6',
+                                    padding: '0.85rem 1rem',
+                                    minHeight: '160px',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #cbd5e1',
+                                    color: '#0f172a',
+                                    outline: 'none',
+                                    resize: 'vertical'
+                                  }}
+                                ></textarea>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.45rem', fontSize: '0.75rem', color: '#94a3b8' }}>
+                                  <span>Press Enter for paragraph spacing. Rich details ensure smooth client handoff.</span>
+                                  <span style={{ fontWeight: '500' }}>{onboardingFormState.expectations?.length || 0} characters</span>
+                                </div>
+                              </div>
                             ) : (
-                              <p style={{ margin: 0, fontSize: '0.88rem', color: '#0f172a', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-                                {onboardingFormState.expectations || <em style={{ color: '#94a3b8' }}>No expectations provided.</em>}
-                              </p>
+                              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                                <p style={{ margin: 0, fontSize: '0.92rem', color: '#0f172a', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                                  {onboardingFormState.expectations || <em style={{ color: '#94a3b8' }}>No expectations provided yet. Click "Edit Onboarding" to add operational guidelines.</em>}
+                                </p>
+                              </div>
                             )}
                           </div>
 

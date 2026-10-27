@@ -407,11 +407,82 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
       case 5:
         return (
           <div className="wizard-step animate-fade-in" style={{ padding: '1rem 0' }}>
-            <h2 style={{ color: '#0f172a', marginBottom: '0.5rem', fontSize: '14px', fontWeight: '600' }}>Expectations</h2>
-            <p style={{ color: '#64748b', marginBottom: '1rem' }}>Are there any specific expectations or notes we should be aware of?</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <textarea name="expectations" value={formData.expectations} onChange={(e) => setFormData(prev => ({...prev, expectations: e.target.value}))} rows="6" style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '10px', outline: 'none', resize: 'vertical' }} placeholder="Please outline your expectations, special requests, or operational requirements..." />
+            <div style={{ marginBottom: '1.25rem' }}>
+              <h2 style={{ color: '#0f172a', marginBottom: '0.35rem', fontSize: '18px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className='bx bx-notepad' style={{ color: '#6366f1', fontSize: '1.25rem' }}></i> Client Expectations & Operational Notes
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '13px', margin: 0, lineHeight: '1.5' }}>
+                Please outline any specific delivery expectations, SLA requirements, reporting cadences, or special requests we should be aware of.
+              </p>
+            </div>
+
+            {/* Quick helper prompts */}
+            <div style={{ marginBottom: '0.85rem' }}>
+              <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                Quick Topics (click to insert):
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                {[
+                  '• SLA & Response Times: ',
+                  '• Weekly Reporting Schedule: ',
+                  '• Escalation Contact Protocol: ',
+                  '• Specific Exclusions / Boundaries: '
+                ].map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => {
+                        const current = prev.expectations ? prev.expectations.trim() + '\n' : '';
+                        return { ...prev, expectations: current + tag };
+                      });
+                    }}
+                    style={{
+                      background: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '16px',
+                      padding: '0.25rem 0.65rem',
+                      fontSize: '11px',
+                      color: '#334155',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
+                  >
+                    + {tag.replace('• ', '').replace(': ', '')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ position: 'relative' }}>
+              <textarea 
+                name="expectations" 
+                value={formData.expectations} 
+                onChange={(e) => setFormData(prev => ({...prev, expectations: e.target.value}))} 
+                rows="8" 
+                style={{ 
+                  width: '100%', 
+                  padding: '1rem', 
+                  borderRadius: '10px', 
+                  border: '1.5px solid #cbd5e1', 
+                  fontSize: '14px', 
+                  lineHeight: '1.6',
+                  outline: 'none', 
+                  resize: 'vertical',
+                  minHeight: '200px',
+                  color: '#0f172a',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                  transition: 'border-color 0.15s ease'
+                }} 
+                onFocus={(e) => { e.target.style.borderColor = '#6366f1'; }}
+                onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; }}
+                placeholder="Write your expectations, special requests, team cadence, or operational requirements here in detail..." 
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.35rem', fontSize: '11px', color: '#94a3b8' }}>
+                {formData.expectations ? `${formData.expectations.length} characters` : '0 characters'}
               </div>
             </div>
           </div>
