@@ -92,32 +92,69 @@ export default function AcceptInvite() {
 
       // 2. Mark invite as Accepted in all division_invites_* storage keys
       try {
-        Object.keys(localStorage).forEach((key) => {
-          if (key.startsWith('division_invites_')) {
-            const raw = localStorage.getItem(key);
-            if (raw) {
-              const list = JSON.parse(raw);
-              if (Array.isArray(list)) {
-                let modified = false;
-                const updatedList = list.map((inv) => {
-                  if (inv.email?.toLowerCase() === inviteData.email.toLowerCase()) {
-                    modified = true;
-                    return { ...inv, status: 'Accepted', acceptedAt: new Date().toISOString() };
-                  }
-                  return inv;
-                });
-                if (modified) {
-                  localStorage.setItem(key, JSON.stringify(updatedList));
-                }
+        const inviteKeys = new Set(Object.keys(localStorage).filter(k => k.startsWith('division_invites_')));
+        inviteKeys.add('division_invites_1');
+        inviteKeys.add('division_invites_div_1789450630540');
+
+        inviteKeys.forEach((key) => {
+          const raw = localStorage.getItem(key);
+          const list = raw ? JSON.parse(raw) : [
+            { id: 1, email: 'priya.hr@company.com', role: 'HR', status: 'Pending', invitedAt: '2026-10-15' }
+          ];
+          if (Array.isArray(list)) {
+            let found = false;
+            const updatedList = list.map((inv) => {
+              if (inv.email?.toLowerCase() === inviteData.email.toLowerCase()) {
+                found = true;
+                return { ...inv, status: 'Accepted', acceptedAt: new Date().toISOString() };
               }
+              return inv;
+            });
+            if (!found) {
+              updatedList.push({
+                id: Date.now(),
+                email: inviteData.email,
+                role: inviteData.role,
+                status: 'Accepted',
+                acceptedAt: new Date().toISOString()
+              });
             }
+            localStorage.setItem(key, JSON.stringify(updatedList));
           }
         });
       } catch (err) {
         console.warn('Error updating division invites storage:', err);
       }
 
-      // 3. Set current active session
+      // 3. Add accepted user into division_roles_* active member lists
+      try {
+        const roleKeys = new Set(Object.keys(localStorage).filter(k => k.startsWith('division_roles_')));
+        roleKeys.add('division_roles_1');
+        roleKeys.add('division_roles_div_1789450630540');
+
+        roleKeys.forEach((key) => {
+          const raw = localStorage.getItem(key);
+          const list = raw ? JSON.parse(raw) : [
+            { id: 1, name: 'Karan Hinduja', email: 'hinduja1988@gmail.com', role: 'Customer Success', isPrimary: true }
+          ];
+          if (Array.isArray(list)) {
+            if (!list.some(r => r.email?.toLowerCase() === inviteData.email.toLowerCase())) {
+              list.push({
+                id: Date.now(),
+                name: updatedUser.name,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                isPrimary: false
+              });
+              localStorage.setItem(key, JSON.stringify(list));
+            }
+          }
+        });
+      } catch (err) {
+        console.warn('Error updating division roles storage:', err);
+      }
+
+      // 4. Set current active session
       try {
         localStorage.setItem(
           'currentUser',

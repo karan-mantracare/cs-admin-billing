@@ -6,7 +6,7 @@ import PaymentSummaryModal from '../components/PaymentSummaryModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
 import ConfirmModal from '../components/ConfirmModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
-import { saveUser } from '../utils/userStorage';
+import { saveUser, getAllUsers, getUserById } from '../utils/userStorage';
 
 function EditDivision() {
   const location = useLocation();
@@ -290,6 +290,100 @@ function EditDivision() {
     localStorage.setItem('division_invites_' + (division?.id || '1'), JSON.stringify(updated));
     showToast('Invitation cancelled.');
   };
+
+  const handleMarkInviteAccepted = (invite) => {
+    const updated = invites.map(inv => inv.id === invite.id ? { ...inv, status: 'Accepted' } : inv);
+    setInvites(updated);
+    localStorage.setItem('division_invites_' + (division?.id || '1'), JSON.stringify(updated));
+
+    // Also add to roles if not present
+    if (!roles.some(r => r.email?.toLowerCase() === invite.email?.toLowerCase())) {
+      const userObj = getUserById(invite.email);
+      const newRole = {
+        id: Date.now(),
+        name: userObj?.name && userObj.name !== 'Karan Hinduja' ? userObj.name : invite.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        email: invite.email,
+        role: invite.role === 'CS' ? 'Customer Success' : invite.role === 'BD' ? 'Business Development' : invite.role || 'HR',
+        isPrimary: false
+      };
+      const updatedRoles = [...roles, newRole];
+      setRoles(updatedRoles);
+      localStorage.setItem('division_roles_' + (division?.id || '1'), JSON.stringify(updatedRoles));
+      localStorage.setItem('division_roles_' + (formData.divisionName || division?.divisionName || 'testt'), JSON.stringify(updatedRoles));
+      saveUser({ ...newRole, status: 'Active', divisionAccess: formData.divisionName || division?.divisionName || 'Healthcare' });
+    }
+
+    showToast(`Marked ${invite.email} as Accepted!`);
+  };
+
+  // Auto-sync accepted users and invites with userStorage and localStorage
+  useEffect(() => {
+    const syncRolesAndInvites = () => {
+      try {
+        const allUsers = getAllUsers();
+        const divKey = 'division_invites_' + (division?.id || '1');
+        const savedInvitesRaw = localStorage.getItem(divKey) || localStorage.getItem('division_invites_1');
+        let currentInvites = savedInvitesRaw ? JSON.parse(savedInvitesRaw) : [
+          { id: 1, email: 'priya.hr@company.com', role: 'HR', status: 'Pending', invitedAt: '2026-10-15' }
+        ];
+
+        // 1. Cross-reference invites with user directory
+        let invitesModified = false;
+        currentInvites = currentInvites.map((inv) => {
+          const matchingUser = allUsers.find(u => u.email?.toLowerCase() === inv.email?.toLowerCase());
+          if (matchingUser && (matchingUser.status === 'Active' || matchingUser.acceptedAt) && inv.status !== 'Accepted') {
+            invitesModified = true;
+            return { ...inv, status: 'Accepted', name: matchingUser.name };
+          }
+          return inv;
+        });
+
+        if (invitesModified) {
+          setInvites(currentInvites);
+          localStorage.setItem(divKey, JSON.stringify(currentInvites));
+        }
+
+        // 2. Cross-reference accepted invites with active roles list
+        const roleKey = 'division_roles_' + (division?.id || '1');
+        const savedRolesRaw = localStorage.getItem(roleKey) || localStorage.getItem('division_roles_1');
+        let currentRoles = savedRolesRaw ? JSON.parse(savedRolesRaw) : [
+          { id: 1, name: 'Karan Hinduja', email: 'hinduja1988@gmail.com', role: 'Customer Success', isPrimary: true }
+        ];
+
+        let rolesModified = false;
+        currentInvites.forEach((inv) => {
+          if (inv.status === 'Accepted') {
+            if (!currentRoles.some(r => r.email?.toLowerCase() === inv.email?.toLowerCase())) {
+              const matchingUser = allUsers.find(u => u.email?.toLowerCase() === inv.email?.toLowerCase());
+              currentRoles.push({
+                id: Date.now() + Math.floor(Math.random() * 100),
+                name: matchingUser?.name || inv.name || inv.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                email: inv.email,
+                role: inv.role === 'CS' ? 'Customer Success' : inv.role === 'BD' ? 'Business Development' : inv.role || 'HR',
+                isPrimary: false
+              });
+              rolesModified = true;
+            }
+          }
+        });
+
+        if (rolesModified) {
+          setRoles(currentRoles);
+          localStorage.setItem(roleKey, JSON.stringify(currentRoles));
+        }
+      } catch (err) {
+        console.warn('Error syncing roles and invites:', err);
+      }
+    };
+
+    syncRolesAndInvites();
+    window.addEventListener('storage', syncRolesAndInvites);
+    window.addEventListener('focus', syncRolesAndInvites);
+    return () => {
+      window.removeEventListener('storage', syncRolesAndInvites);
+      window.removeEventListener('focus', syncRolesAndInvites);
+    };
+  }, [division?.id]);
 
   useEffect(() => {
     const fetchDocs = () => {
@@ -1455,24 +1549,101 @@ function EditDivision() {
 
                   {/* Status */}
                   <div style={{ width: '130px' }}>
-                    <span style={{ 
-                      background: '#fef3c7', 
-                      color: '#b45309', 
-                      border: '1px solid #fde68a',
-                      padding: '0.2rem 0.65rem', 
-                      borderRadius: '999px', 
-                      fontSize: '0.75rem', 
-                      fontWeight: '600',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.25rem'
-                    }}>
-                      <i className='bx bx-time-five' style={{ fontSize: '0.8rem' }}></i> {invite.status || 'Pending'}
-                    </span>
+                    {invite.status === 'Accepted' || invite.status === 'Active' ? (
+                      <span style={{ 
+                        background: '#dcfce7', 
+                        color: '#15803d', 
+                        border: '1px solid #86efac',
+                        padding: '0.2rem 0.65rem', 
+                        borderRadius: '999px', 
+                        fontSize: '0.75rem', 
+                        fontWeight: '600',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}>
+                        <i className='bx bx-check-circle' style={{ fontSize: '0.85rem' }}></i> Accepted
+                      </span>
+                    ) : (
+                      <span style={{ 
+                        background: '#fef3c7', 
+                        color: '#b45309', 
+                        border: '1px solid #fde68a',
+                        padding: '0.2rem 0.65rem', 
+                        borderRadius: '999px', 
+                        fontSize: '0.75rem', 
+                        fontWeight: '600',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}>
+                        <i className='bx bx-time-five' style={{ fontSize: '0.8rem' }}></i> Pending
+                      </span>
+                    )}
                   </div>
 
-                  {/* Action (Resend Icon and Copy link icon with instant hover tooltips) */}
+                  {/* Action (Mark Accepted, Resend Icon, Copy link icon) */}
                   <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                    {/* Mark as Accepted Action (if still Pending) */}
+                    {invite.status !== 'Accepted' && invite.status !== 'Active' && (
+                      <div style={{ position: 'relative', display: 'inline-flex' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleMarkInviteAccepted(invite)}
+                          onMouseEnter={() => setHoveredAction(`${invite.id}-accept`)}
+                          onMouseLeave={() => setHoveredAction(null)}
+                          title="Mark as Accepted"
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0,
+                            background: hoveredAction === `${invite.id}-accept` ? '#dcfce7' : '#f0fdf4',
+                            border: `1px solid ${hoveredAction === `${invite.id}-accept` ? '#86efac' : '#bbf7d0'}`,
+                            borderRadius: '6px',
+                            color: '#16a34a',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <i className='bx bx-check' style={{ fontSize: '1.25rem' }}></i>
+                        </button>
+
+                        {hoveredAction === `${invite.id}-accept` && (
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 'calc(100% + 6px)',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: '#0f172a',
+                            color: 'white',
+                            fontSize: '0.72rem',
+                            fontWeight: '600',
+                            padding: '0.25rem 0.55rem',
+                            borderRadius: '4px',
+                            whiteSpace: 'nowrap',
+                            pointerEvents: 'none',
+                            zIndex: 50,
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)'
+                          }}>
+                            Mark as Accepted
+                            <div style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              width: 0,
+                              height: 0,
+                              borderLeft: '4px solid transparent',
+                              borderRight: '4px solid transparent',
+                              borderTop: '4px solid #0f172a'
+                            }} />
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {/* Resend Action */}
                     <div style={{ position: 'relative', display: 'inline-flex' }}>
                       <button
