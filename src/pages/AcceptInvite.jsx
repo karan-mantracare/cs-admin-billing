@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { getAllUsers, saveUser, getUserById } from '../utils/userStorage';
+import { getAllUsers, saveUser, getUserById, findUserByEmail } from '../utils/userStorage';
 
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
@@ -46,8 +46,8 @@ export default function AcceptInvite() {
       resolvedEmail = 'priya.hr@company.com';
     }
 
-    // Look up existing user in storage
-    const existing = getUserById(resolvedEmail);
+    // Look up existing user specifically by email
+    const existing = findUserByEmail(resolvedEmail);
     const inferredName = resolvedEmail.includes('@')
       ? resolvedEmail
           .split('@')[0]
@@ -55,14 +55,33 @@ export default function AcceptInvite() {
           .replace(/\b\w/g, (c) => c.toUpperCase())
       : 'Invited User';
 
+    // Check if invitation is already accepted in user directory or division invites
+    let isAlreadyAccepted = (existing && existing.status === 'Active' && existing.name !== 'Karan Hinduja') || Boolean(existing?.acceptedAt);
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('division_invites_')) {
+          const list = JSON.parse(localStorage.getItem(key) || '[]');
+          if (Array.isArray(list)) {
+            if (list.some(inv => inv.email?.toLowerCase() === resolvedEmail.toLowerCase() && (inv.status === 'Accepted' || inv.status === 'Active'))) {
+              isAlreadyAccepted = true;
+            }
+          }
+        }
+      });
+    } catch {}
+
     setInviteData({
       name: existing?.name && existing.name !== 'Karan Hinduja' ? existing.name : inferredName,
       email: resolvedEmail,
       role: existing?.role || resolvedRole || 'HR',
       divisionAccess: existing?.divisionAccess || 'Healthcare',
-      status: existing?.status || 'Pending',
+      status: isAlreadyAccepted ? 'Active' : (existing?.status || 'Pending'),
       invitedBy: 'Karan Hinduja (Admin)'
     });
+
+    if (isAlreadyAccepted) {
+      setIsAccepted(true);
+    }
   }, [tokenParam, emailParam]);
 
   const handleAcceptInvite = (e) => {
@@ -243,9 +262,15 @@ export default function AcceptInvite() {
                   </div>
                   <div>
                     <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>Status:</span>
-                    <span style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: '600', color: '#d97706', background: '#fef3c7', padding: '0.15rem 0.55rem', borderRadius: '4px' }}>
-                      Pending Acceptance
-                    </span>
+                    {inviteData.status === 'Active' || inviteData.status === 'Accepted' || isAccepted ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: '600', color: '#15803d', background: '#dcfce7', padding: '0.15rem 0.55rem', borderRadius: '4px' }}>
+                        <i className="bx bx-check-circle" style={{ fontSize: '0.85rem' }}></i> Active (Accepted)
+                      </span>
+                    ) : (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: '600', color: '#d97706', background: '#fef3c7', padding: '0.15rem 0.55rem', borderRadius: '4px' }}>
+                        <i className="bx bx-time-five" style={{ fontSize: '0.8rem' }}></i> Pending Acceptance
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

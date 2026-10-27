@@ -82,15 +82,26 @@ export const getAllUsers = () => {
         const invites = JSON.parse(localStorage.getItem(key) || '[]');
         if (Array.isArray(invites)) {
           invites.forEach((inv) => {
-            if (inv.email && !stored.some((u) => u.email.toLowerCase() === inv.email.toLowerCase())) {
+            const existingIdx = stored.findIndex((u) => u.email.toLowerCase() === inv.email?.toLowerCase());
+            const isAccepted = inv.status === 'Accepted' || inv.status === 'Active';
+
+            if (existingIdx >= 0) {
+              if (isAccepted && stored[existingIdx].status !== 'Active') {
+                stored[existingIdx].status = 'Active';
+                if (!stored[existingIdx].acceptedAt) {
+                  stored[existingIdx].acceptedAt = inv.acceptedAt || new Date().toISOString();
+                }
+              }
+            } else if (inv.email) {
               stored.push({
                 user_id: 'USR-INV-' + (inv.id ? String(inv.id).slice(-4) : Math.floor(Math.random() * 9000 + 1000)),
                 name: inv.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
                 email: inv.email,
                 role: inv.role || 'HR',
                 divisionAccess: isNaN(Number(divSuffix)) ? divSuffix : 'Healthcare',
-                status: inv.status || 'Pending',
+                status: isAccepted ? 'Active' : (inv.status || 'Pending'),
                 invitedAt: inv.invitedAt || new Date().toISOString().split('T')[0],
+                acceptedAt: isAccepted ? (inv.acceptedAt || new Date().toISOString()) : undefined,
                 isPrimary: false
               });
             }
@@ -104,7 +115,11 @@ export const getAllUsers = () => {
         const roles = JSON.parse(localStorage.getItem(key) || '[]');
         if (Array.isArray(roles)) {
           roles.forEach((r) => {
-            if (r.email && !stored.some((u) => u.email.toLowerCase() === r.email.toLowerCase())) {
+            const existingIdx = stored.findIndex((u) => u.email?.toLowerCase() === r.email?.toLowerCase());
+            if (existingIdx >= 0) {
+              // Any assigned team member in division roles is active
+              stored[existingIdx].status = 'Active';
+            } else if (r.email) {
               stored.push({
                 user_id: 'USR-ROL-' + (r.id ? String(r.id).slice(-4) : Math.floor(Math.random() * 9000 + 1000)),
                 name: r.name || r.email.split('@')[0],
@@ -123,6 +138,13 @@ export const getAllUsers = () => {
   } catch {}
 
   return stored;
+};
+
+export const findUserByEmail = (email) => {
+  if (!email || String(email).trim() === '') return null;
+  const q = String(email).trim().toLowerCase();
+  const all = getAllUsers();
+  return all.find((u) => u.email?.toLowerCase() === q) || null;
 };
 
 export const getUserById = (userId) => {
