@@ -1,5 +1,24 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-users',
+    date: '2026-10-27',
+    formattedDate: 'Oct 27, 2026',
+    page: 'Admin',
+    subPage: 'User Access Management',
+    summary: 'Created /user page with ?user_id URL query resolution and invitation directory',
+    details: 'Implemented http://localhost:5173/user resolving user data and division access via ?user_id URL query parameters with automatic fallback to Karan Hinduja (Admin, All). Synchronized with division role invites.',
+    plainLanguage: 'A dedicated User Access Management page is now available at /user. Appending ?user_id= to the URL automatically inspects that user profile (ID, Name, Email, Role, Division Access). If no user_id is provided, it defaults to Karan Hinduja with full Admin privileges. All users invited or assigned across corporate divisions are automatically tracked in the directory.',
+    highlights: [
+      'URL query resolution: ?user_id=XYZ fetches user data and division access immediately',
+      'Intelligent default fallback: defaults to Karan Hinduja (hinduja1988@gmail.com, Admin, All Divisions)',
+      'Central user directory synchronizing with division role assignments and pending email invites',
+      'Interactive Invite / Add User modal with role and division access selectors',
+      'One-click access link generator and shareable URLs'
+    ],
+    path: '/user',
+    linkText: 'User Management'
+  },
+  {
     id: 'cl-0',
     date: '2026-10-27',
     formattedDate: 'Oct 27, 2026',

@@ -4,8 +4,8 @@ import { useGlobal } from '../context/GlobalContext';
 import ViewOnboardingModal from '../components/ViewOnboardingModal';
 import PaymentSummaryModal from '../components/PaymentSummaryModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
-import DocumentUploadModal from '../components/DocumentUploadModal';
 import ConfirmModal from '../components/ConfirmModal';
+import { saveUser } from '../utils/userStorage';
 
 function EditDivision() {
   const location = useLocation();
@@ -199,6 +199,20 @@ function EditDivision() {
     setRoles(updated);
     localStorage.setItem('division_roles_' + (division?.id || '1'), JSON.stringify(updated));
     localStorage.setItem('division_roles_' + (formData.divisionName || division?.divisionName || 'testt'), JSON.stringify(updated));
+    
+    // Sync to central user directory (/user)
+    try {
+      saveUser({
+        user_id: editingRoleId ? 'USR-ROL-' + String(editingRoleId).slice(-4) : 'USR-ROL-' + String(Date.now()).slice(-4),
+        name: roleForm.name.trim(),
+        email: roleForm.email ? roleForm.email.trim() : `${roleForm.name.toLowerCase().replace(/\s+/g, '.')}@company.com`,
+        role: roleForm.role || 'Customer Success',
+        divisionAccess: formData.divisionName || division?.divisionName || 'All',
+        isPrimary: Boolean(roleForm.isPrimary),
+        status: 'Active'
+      });
+    } catch {}
+
     window.dispatchEvent(new Event('storage'));
     setIsRoleModalOpen(false);
   };
@@ -236,6 +250,20 @@ function EditDivision() {
     const updated = [newInvite, ...invites];
     setInvites(updated);
     localStorage.setItem('division_invites_' + (division?.id || '1'), JSON.stringify(updated));
+    
+    // Sync to central user directory (/user)
+    try {
+      saveUser({
+        user_id: 'USR-INV-' + String(newInvite.id).slice(-4),
+        name: newInvite.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        email: newInvite.email,
+        role: newInvite.role === 'CS' ? 'Customer Success' : newInvite.role === 'BD' ? 'Business Development' : newInvite.role || 'HR',
+        divisionAccess: formData.divisionName || division?.divisionName || 'Healthcare',
+        status: 'Pending',
+        invitedAt: newInvite.invitedAt
+      });
+    } catch {}
+
     setIsInviteModalOpen(false);
     setInviteForm({ role: 'HR', email: '' });
     showToast(`Invitation sent to ${newInvite.email} successfully!`);

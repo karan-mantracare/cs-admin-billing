@@ -19,6 +19,7 @@ import ClientOnboardingPage from './pages/ClientOnboardingPage';
 import AddOrder from './pages/AddOrder';
 import ModuleSummaryPage from './pages/ModuleSummaryPage';
 import CsFeedback from './pages/CsFeedback';
+import UserPage from './pages/UserPage';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -170,6 +171,9 @@ function App() {
         {/* Sidebar Modules with Project Summary and Live Workspaces */}
         <Route path="/orders/*" element={<ModuleSummaryPage defaultModule="Orders" />} />
         <Route path="/providers/*" element={<ModuleSummaryPage defaultModule="Providers" />} />
+        <Route path="/user" element={<UserPage />} />
+        <Route path="/users" element={<UserPage />} />
+        <Route path="/users/all" element={<UserPage />} />
         <Route path="/users/*" element={<ModuleSummaryPage defaultModule="Users" />} />
         <Route path="/corporate/:section" element={<ModuleSummaryPage defaultModule="Corporate" />} />
         <Route path="/products/*" element={<ModuleSummaryPage defaultModule="Products" />} />
