@@ -3,8 +3,23 @@ import { useGlobal } from '../context/GlobalContext';
 import ModificationRequestModal from '../components/ModificationRequestModal';
 
 function ExpertAssignment() {
-  const { events: allEvents, assignExpert, rejectExpertRequest, acceptReschedule, requestAlternativeDate, showToast, resetEvents } = useGlobal();
+  const { events: allEvents, expenses = [], assignExpert, rejectExpertRequest, acceptReschedule, requestAlternativeDate, showToast, resetEvents } = useGlobal();
   const events = allEvents;
+
+  const getRemarks = (ev, req = null) => {
+    if (req && req.remarks) return req.remarks;
+    if (ev && ev.remarks) return ev.remarks;
+    if (req && req.id) {
+      const exp = expenses.find(x => x.expertRequestId === req.id);
+      if (exp && exp.remarks) return exp.remarks;
+    }
+    if (ev && ev.id) {
+      const expEv = expenses.find(x => x.eventId === ev.id);
+      if (expEv && expEv.remarks) return expEv.remarks;
+    }
+    return (ev && (ev.csRemarks || ev.notes)) || (req && (req.csRemarks || req.notes)) || '';
+  };
+
   const assignments = allEvents.flatMap(ev => {
     if (ev.status !== 'provider_allocation_pending' && ev.status !== 'event_scheduled') return [];
     
@@ -15,7 +30,8 @@ function ExpertAssignment() {
         eventId: ev.id,
         requestId: req.id,
         status: req.status || ev.status,
-        uniqueId: `${ev.id}-${req.id}`
+        uniqueId: `${ev.id}-${req.id}`,
+        remarks: getRemarks(ev, req)
       }));
     }
     
@@ -23,7 +39,8 @@ function ExpertAssignment() {
       ...ev,
       eventId: ev.id,
       requestId: null,
-      uniqueId: `${ev.id}`
+      uniqueId: `${ev.id}`,
+      remarks: getRemarks(ev)
     }];
   });
 
@@ -64,7 +81,7 @@ function ExpertAssignment() {
   const modificationRequests = allEvents.flatMap(ev => {
     let mods = [];
     if (ev.status === 'reschedule_requested') {
-      mods.push({ ...ev, type: 'reschedule', eventId: ev.id, requestId: null, uniqueId: `reschedule-${ev.id}` });
+      mods.push({ ...ev, type: 'reschedule', eventId: ev.id, requestId: null, uniqueId: `reschedule-${ev.id}`, remarks: getRemarks(ev) });
     }
     if (ev.expertRequests && ev.expertRequests.length > 0) {
       ev.expertRequests.forEach(req => {
@@ -75,7 +92,8 @@ function ExpertAssignment() {
             type: 'change_expert',
             eventId: ev.id,
             requestId: req.id,
-            uniqueId: `change-${ev.id}-${req.id}`
+            uniqueId: `change-${ev.id}-${req.id}`,
+            remarks: getRemarks(ev, req)
           });
         }
       });
@@ -406,6 +424,7 @@ function ExpertAssignment() {
                   <p style={{ margin: '0 0 0.5rem 0' }}><strong>Time:</strong> {activeAssignment.sessionTime || 'TBD'}</p>
                   <p style={{ margin: '0 0 0.5rem 0' }}><strong>Location:</strong> {activeAssignment.location || 'Online'}</p>
                   <p style={{ margin: '0 0 0.5rem 0' }}><strong>Duration:</strong> {activeAssignment.duration ? `${activeAssignment.duration} Mins` : 'N/A'}</p>
+                  <p style={{ margin: '0 0 0.5rem 0' }}><strong>Remarks:</strong> {activeAssignment.remarks || 'None'}</p>
                 </div>
               </div>
 
@@ -641,6 +660,10 @@ function ExpertAssignment() {
                     <div>
                       <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#64748b', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Duration</p>
                       <p style={{ margin: '0', fontWeight: '500', color: '#0f172a' }}>{activeAssignment.duration ? `${activeAssignment.duration} Mins` : 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#64748b', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Remarks</p>
+                      <p style={{ margin: '0', fontWeight: '500', color: '#0f172a' }}>{activeAssignment.remarks || 'None'}</p>
                     </div>
                     <div>
                       <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#64748b', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Location</p>

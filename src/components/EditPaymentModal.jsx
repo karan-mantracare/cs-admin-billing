@@ -48,7 +48,8 @@ function EditPaymentModal({ isOpen, onClose, payment, onSave, onDelete }) {
         dueByDate: payment.dueByDate || '',
         amountDue: payment.amountDue || '',
         currency: payment.currency || 'USD',
-        billingCompany: payment.billingCompany || ''
+        billingCompany: payment.billingCompany || '',
+        remarks: payment.remarks || ''
       });
     }
   }, [isOpen, payment]);
@@ -163,6 +164,18 @@ function EditPaymentModal({ isOpen, onClose, payment, onSave, onDelete }) {
                 ${calculatedUsd}
               </div>
             </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Remarks (on Invoice)</label>
+            <input 
+              type="text" 
+              name="remarks" 
+              value={formData.remarks || ''} 
+              onChange={handleChange} 
+              placeholder="Enter remarks for invoice..." 
+              style={inputStyle} 
+            />
           </div>
 
         </div>

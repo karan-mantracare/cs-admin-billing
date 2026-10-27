@@ -1,24 +1,51 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
 import AddDivisionModal from '../components/AddDivisionModal';
+import { getPrimaryCS } from '../utils/roleUtils';
 
 function EditCorporate() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { updateClient } = useGlobal();
-  const { client } = location.state || {};
+  const { id: paramId } = useParams();
+  const [searchParams] = useSearchParams();
+  const queryId = searchParams.get('id');
+  const targetId = paramId || queryId || location.state?.client?.id || location.state?.id;
 
-  // If accessed directly without state, fallback
-  if (!client) {
-    navigate('/corporate');
-    return null;
-  }
+  const { clients, updateClient } = useGlobal();
+
+  // Resolve client from location.state or clients list or localStorage
+  const client = useMemo(() => {
+    if (location.state?.client) return location.state.client;
+    if (targetId) {
+      const found = (clients || []).find(c => 
+        String(c.id) === String(targetId) || 
+        (c.name && c.name.toLowerCase() === String(targetId).toLowerCase())
+      );
+      if (found) return found;
+      try {
+        const saved = JSON.parse(localStorage.getItem('cs-admin-clients') || '[]');
+        const foundSaved = saved.find(c => 
+          String(c.id) === String(targetId) || 
+          (c.name && c.name.toLowerCase() === String(targetId).toLowerCase())
+        );
+        if (foundSaved) return foundSaved;
+      } catch (e) {}
+    }
+    // Return sensible fallback client if id specified or default
+    return {
+      id: targetId || '1',
+      name: targetId ? `Corporate #${targetId}` : 'Corporate Client',
+      corporateRemarks: '',
+      status: 'Active',
+      divisions: []
+    };
+  }, [location.state, targetId, clients]);
 
   const [formData, setFormData] = useState({
-    name: client.name || '',
-    corporateRemarks: client.corporateRemarks || '',
-    status: client.status || 'Active'
+    name: client?.name || '',
+    corporateRemarks: client?.corporateRemarks || '',
+    status: client?.status || 'Active'
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -213,10 +240,12 @@ function EditCorporate() {
                 <tr key={div.id}>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'center', fontSize: '0.85rem' }}>{div.divisionName}</td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'center', fontSize: '0.85rem' }}>{div.clientName}</td>
-                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'center', fontSize: '0.85rem' }}>{div.responsible}</td>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'center', fontSize: '0.85rem' }}>
+                    {getPrimaryCS(div.id, div.divisionName, client?.clientName, client)}
+                  </td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'center', fontSize: '0.85rem', color: '#64748b' }}>{div.remarks || '-'}</td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'center' }}>
-                    <button className="action-btn" title="Edit" onClick={() => navigate('/corporate/division/edit', { state: { division: div } })} style={{ background: 'transparent', border: '1px solid var(--border-color)', padding: '0.3rem', borderRadius: '4px', cursor: 'pointer' }}>
+                    <button className="action-btn" title="Edit" onClick={() => navigate(`/corporate/division/edit?id=${div.id}`, { state: { division: div } })} style={{ background: 'transparent', border: '1px solid var(--border-color)', padding: '0.3rem', borderRadius: '4px', cursor: 'pointer' }}>
                       <i className='bx bx-edit' style={{ fontSize: '1rem', color: '#64748b' }}></i>
                     </button>
                   </td>

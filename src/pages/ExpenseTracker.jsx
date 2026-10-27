@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
+import { getPrimaryCS } from '../utils/roleUtils';
 
 function ExpenseTracker() {
   const navigate = useNavigate();
@@ -80,71 +81,102 @@ function ExpenseTracker() {
   ]);
 
   useEffect(() => {
-    const savedOrders = localStorage.getItem('division_orders');
-    if (savedOrders) {
-      try {
-        const parsedOrders = JSON.parse(savedOrders);
-        const newExpenses = parsedOrders.map((o, idx) => {
-          const client = (clients || []).find(c => c.clientName === o.clientName) || {};
-          let csResponsible = 'Unassigned';
-          if (client.divisions && Array.isArray(client.divisions)) {
-            const div = client.divisions.find(d => d.divisionName === o.divisionName);
-            if (div && div.responsible) {
-              csResponsible = div.responsible;
+    const loadOrdersAndExpenses = () => {
+      const savedOrders = localStorage.getItem('division_orders');
+      if (savedOrders) {
+        try {
+          const parsedOrders = JSON.parse(savedOrders);
+          const newExpenses = parsedOrders.map((o, idx) => {
+            const client = (clients || []).find(c => c.clientName === o.clientName) || {};
+            const csResponsible = getPrimaryCS(o.divisionId, o.divisionName, o.clientName, client);
+
+            const contractAmount = Number(o.billingDetails?.amountInUSD || o.amount || 0);
+
+            const savedPayments = localStorage.getItem('client_payments');
+            let totalReceived = 0;
+            if (savedPayments) {
+              const allPayments = JSON.parse(savedPayments);
+              const orderPayments = allPayments.filter(p => String(p.orderId) === String(o.id));
+              totalReceived = orderPayments.reduce((acc, curr) => acc + (Number(curr.totalPaid) || 0), 0);
             }
-          }
-          if (csResponsible === 'Unassigned') {
-            csResponsible = client.responsible || client.csResponsible || 'Unassigned';
-          }
+            const totalDue = Math.max(0, contractAmount - totalReceived);
 
-          const contractAmount = Number(o.billingDetails?.amountInUSD || o.amount || 0);
+            return {
+              id: `order_${o.id || idx}`,
+              clientName: o.clientName || 'Unknown',
+              division: o.divisionName || 'Unknown',
+              divisionStatus: 'Active',
+              csResponsible: csResponsible,
+              orderName: `${o.divisionName || 'Unknown'} | ${o.planStart} - ${o.plan}`,
+              orderActive: o.status === 'Active' ? 'Yes' : 'No',
+              orderStatus: o.status || 'Active',
+              startDate: o.planStart || '-',
+              endDate: o.planEnd || '-',
+              employeeCovered: o.employees || 0,
+              engagements: 0,
+              contractAmount: contractAmount,
+              sessionCount: 0,
+              orderEndDate: o.planEnd || '-',
+              totalOrderAmount: contractAmount,
+              totalReceived: totalReceived,
+              totalDue: totalDue,
+              totalSessionCost: 0,
+              totalWebinarCost: 0,
+              otherCost: 0
+            };
+          });
 
-          const savedPayments = localStorage.getItem('client_payments');
-          let totalReceived = 0;
-          if (savedPayments) {
-            const allPayments = JSON.parse(savedPayments);
-            const orderPayments = allPayments.filter(p => String(p.orderId) === String(o.id));
-            totalReceived = orderPayments.reduce((acc, curr) => acc + (Number(curr.totalPaid) || 0), 0);
-          }
-          const totalDue = Math.max(0, contractAmount - totalReceived);
-
-          return {
-            id: `order_${o.id || idx}`,
-            clientName: o.clientName || 'Unknown',
-            division: o.divisionName || 'Unknown',
-            divisionStatus: 'Active',
-            csResponsible: csResponsible,
-            orderName: `${o.divisionName || 'Unknown'} | ${o.planStart} - ${o.plan}`,
-            orderActive: o.status === 'Active' ? 'Yes' : 'No',
-            orderStatus: o.status || 'Active',
-            startDate: o.planStart || '-',
-            endDate: o.planEnd || '-',
-            employeeCovered: o.employees || 0,
-            engagements: 0,
-            contractAmount: contractAmount,
-            sessionCount: 0,
-            orderEndDate: o.planEnd || '-',
-            totalOrderAmount: contractAmount,
-            totalReceived: totalReceived,
-            totalDue: totalDue,
-            totalSessionCost: 0,
-            totalWebinarCost: 0,
-            otherCost: 0
-          };
-        });
-
-        setExpenses(prev => {
-          const baseExpenses = prev.filter(p => typeof p.id === 'number');
-          return [...baseExpenses, ...newExpenses];
-        });
-      } catch (err) {
-        console.error('Failed to parse orders', err);
+          setExpenses(prev => {
+            const baseExpenses = prev.filter(p => typeof p.id === 'number');
+            return [...baseExpenses, ...newExpenses];
+          });
+        } catch (err) {
+          console.error('Failed to parse orders', err);
+        }
       }
-    }
+    };
+
+    loadOrdersAndExpenses();
+    window.addEventListener('storage', loadOrdersAndExpenses);
+    return () => window.removeEventListener('storage', loadOrdersAndExpenses);
   }, [clients]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  // Health Score state with persistence
+  const [healthScores, setHealthScores] = useState(() => {
+    const saved = localStorage.getItem('client_pl_health_scores');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { return {}; }
+    }
+    return {
+      1: 'Healthy',
+      2: 'Moderate',
+      3: 'Risky'
+    };
+  });
+
+  const handleHealthScoreChange = (id, newScore) => {
+    setHealthScores(prev => {
+      const updated = { ...prev, [id]: newScore };
+      localStorage.setItem('client_pl_health_scores', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const getHealthStyle = (score) => {
+    switch (score) {
+      case 'Healthy':
+        return { bg: '#dcfce7', color: '#15803d', border: '#86efac' };
+      case 'Moderate':
+        return { bg: '#fef3c7', color: '#b45309', border: '#fde68a' };
+      case 'Risky':
+        return { bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' };
+      default:
+        return { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' };
+    }
+  };
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -162,7 +194,10 @@ function ExpenseTracker() {
   }, [expenses, globalExpenses]);
 
   const filteredExpenses = enrichedExpenses.filter(exp =>
-    exp.clientName.toLowerCase().includes(searchQuery.toLowerCase())
+    (exp.division && exp.division.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (exp.orderName && exp.orderName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (exp.csResponsible && exp.csResponsible.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (exp.clientName && exp.clientName.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Sorting Logic
@@ -179,13 +214,22 @@ function ExpenseTracker() {
           bValue = b.totalReceived - b.totalSessionCost - b.otherCost;
         }
 
+        // Handle Health Score sorting
+        if (sortConfig.key === 'healthScore') {
+          const rank = { 'Healthy': 3, 'Moderate': 2, 'Risky': 1 };
+          const aScore = healthScores[a.id] || (a.totalReceived - a.totalSessionCost - a.otherCost > 4000 ? 'Healthy' : ((a.totalReceived - a.totalSessionCost - a.otherCost >= 1000) ? 'Moderate' : 'Risky'));
+          const bScore = healthScores[b.id] || (b.totalReceived - b.totalSessionCost - b.otherCost > 4000 ? 'Healthy' : ((b.totalReceived - b.totalSessionCost - b.otherCost >= 1000) ? 'Moderate' : 'Risky'));
+          aValue = rank[aScore] || 0;
+          bValue = rank[bScore] || 0;
+        }
+
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
       });
     }
     return sortableItems;
-  }, [filteredExpenses, sortConfig]);
+  }, [filteredExpenses, sortConfig, healthScores]);
 
   // Pagination Logic
   const totalItems = sortedExpenses.length;
@@ -315,7 +359,7 @@ function ExpenseTracker() {
           <input
             type="text"
             className="search-input"
-            placeholder="Search Client Name..."
+            placeholder="Search Division, Order or CS Responsible..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -327,27 +371,22 @@ function ExpenseTracker() {
         <table className="data-table">
           <thead>
             <tr>
-              <th className="text-right">S. NO.</th>
-              <th onClick={() => requestSort('clientName')} style={{ cursor: 'pointer' }}>CLIENT NAME {getSortIcon('clientName')}</th>
-              <th>DIVISION</th>
-              <th>DIVISION STATUS</th>
-              <th>CS RESPONSIBLE</th>
+              <th className="text-right" style={{ width: '50px' }}>S. NO.</th>
+              <th onClick={() => requestSort('division')} style={{ cursor: 'pointer' }}>DIVISION {getSortIcon('division')}</th>
+              <th onClick={() => requestSort('csResponsible')} style={{ cursor: 'pointer' }}>CS RESPONSIBLE {getSortIcon('csResponsible')}</th>
               <th onClick={() => requestSort('orderName')} style={{ cursor: 'pointer' }}>ORDER NAME {getSortIcon('orderName')}</th>
-              <th>ORDER ACTIVE</th>
-              <th>ORDER STATUS</th>
-              <th className="text-right">START DATE</th>
-              <th className="text-right">END DATE</th>
-              <th className="text-right" onClick={() => requestSort('employeeCovered')} style={{ cursor: 'pointer' }}>EMPLOYEE COVERED {getSortIcon('employeeCovered')}</th>
-              <th className="text-right">ENGAGEMENTS</th>
+              <th onClick={() => requestSort('orderStatus')} style={{ cursor: 'pointer' }}>ORDER STATUS {getSortIcon('orderStatus')}</th>
+              <th className="text-right" onClick={() => requestSort('startDate')} style={{ cursor: 'pointer' }}>START DATE {getSortIcon('startDate')}</th>
+              <th className="text-right" onClick={() => requestSort('endDate')} style={{ cursor: 'pointer' }}>END DATE {getSortIcon('endDate')}</th>
+              <th className="text-right" onClick={() => requestSort('engagements')} style={{ cursor: 'pointer' }}>ENGAGEMENTS {getSortIcon('engagements')}</th>
+              <th className="text-right" onClick={() => requestSort('sessionCount')} style={{ cursor: 'pointer' }}>SESSION COUNT {getSortIcon('sessionCount')}</th>
               <th className="text-right" onClick={() => requestSort('contractAmount')} style={{ cursor: 'pointer' }}>CONTRACT AMOUNT {getSortIcon('contractAmount')}</th>
-              <th className="text-right">SESSION COUNT</th>
-              <th className="text-right">ORDER END DATE</th>
-              <th className="text-right" onClick={() => requestSort('totalOrderAmount')} style={{ cursor: 'pointer' }}>TOTAL ORDER AMOUNT {getSortIcon('totalOrderAmount')}</th>
-              <th className="text-right" onClick={() => requestSort('totalReceived')} style={{ cursor: 'pointer' }}>TOTAL RECEIVED {getSortIcon('totalReceived')}</th>
-              <th className="text-right" onClick={() => requestSort('totalDue')} style={{ cursor: 'pointer' }}>TOTAL DUE {getSortIcon('totalDue')}</th>
-              <th className="text-right">SESSION COST</th>
+              <th className="text-right" onClick={() => requestSort('totalReceived')} style={{ cursor: 'pointer' }}>AMOUNT RECEIVED {getSortIcon('totalReceived')}</th>
+              <th className="text-right" onClick={() => requestSort('totalDue')} style={{ cursor: 'pointer' }}>AMOUNT DUE {getSortIcon('totalDue')}</th>
+              <th className="text-right" onClick={() => requestSort('totalSessionCost')} style={{ cursor: 'pointer' }}>SESSION COST {getSortIcon('totalSessionCost')}</th>
               <th className="text-right" onClick={() => requestSort('otherCost')} style={{ cursor: 'pointer' }}>OTHER COST {getSortIcon('otherCost')}</th>
               <th className="text-right" onClick={() => requestSort('netRevenue')} style={{ cursor: 'pointer' }}>NET REVENUE {getSortIcon('netRevenue')}</th>
+              <th className="text-center" onClick={() => requestSort('healthScore')} style={{ cursor: 'pointer' }}>HEALTH SCORE {getSortIcon('healthScore')}</th>
             </tr>
           </thead>
           <tbody>
@@ -358,74 +397,157 @@ function ExpenseTracker() {
               if (margin > 40) revenueColor = 'var(--green)';
               else if (margin >= 11) revenueColor = 'var(--orange)';
 
+              const currentScore = healthScores[exp.id] || (margin > 40 ? 'Healthy' : (margin >= 11 ? 'Moderate' : 'Risky'));
+              const scoreStyle = getHealthStyle(currentScore);
+
               return (
                 <tr key={exp.id}>
                   <td className="text-right">{startIndex + index + 1}</td>
 
-                  {/* Routes to /clients */}
-                  <td className="event-name" style={{ cursor: 'pointer' }} onClick={() => navigate('/clients')}>
-                    {exp.clientName}
-                  </td>
-
-                  <td>{exp.division}</td>
-
-                  <td>
-                    <span className={`badge badge-${exp.divisionStatus === 'Active' ? 'success' : 'danger'}`}>
-                      {exp.divisionStatus}
+                  {/* Division (hyperlinked) */}
+                  <td 
+                    style={{ cursor: 'pointer', color: '#0284c7', fontWeight: '600' }}
+                    onClick={() => {
+                      const divId = exp.divisionId || exp.id;
+                      navigate(`/corporate/division/edit?id=${divId}`, { 
+                        state: { 
+                          division: { 
+                            id: divId,
+                            divisionName: exp.division, 
+                            clientName: exp.clientName 
+                          } 
+                        } 
+                      });
+                    }}
+                    title={`Open Division: ${exp.division}`}
+                  >
+                    <span style={{ textDecoration: 'underline', textUnderlineOffset: '2px' }}>
+                      {exp.division}
                     </span>
                   </td>
 
-                  <td>{exp.csResponsible}</td>
-                  <td>{exp.orderName}</td>
-                  <td>{exp.orderActive}</td>
+                  {/* CS Responsible */}
+                  <td>{exp.csResponsible || 'Unassigned'}</td>
 
-                  {/* Routes to /clients */}
-                  <td style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate('/clients')}>
-                    {exp.orderStatus}
+                  {/* Order Name (hyperlinked) */}
+                  <td 
+                    style={{ cursor: 'pointer', color: '#0284c7', fontWeight: '500' }}
+                    onClick={() => {
+                      const cleanOrderId = String(exp.id).replace('order_', '');
+                      navigate(`/corporate/division/order/edit/${cleanOrderId}`, { 
+                        state: { 
+                          edit: true, 
+                          orderId: cleanOrderId, 
+                          clientName: exp.clientName, 
+                          divisionName: exp.division 
+                        } 
+                      });
+                    }}
+                    title={`Open Order: ${exp.orderName}`}
+                  >
+                    <span style={{ textDecoration: 'underline', textUnderlineOffset: '2px' }}>
+                      {exp.orderName}
+                    </span>
                   </td>
 
-                  <td className="text-right">{exp.startDate}</td>
-                  <td className="text-right">{exp.endDate}</td>
-                  <td className="text-right">{Number(exp.employeeCovered || 0).toLocaleString('en-US')}</td>
+                  {/* Order Status */}
+                  <td>
+                    <span 
+                      className={`badge badge-${exp.orderStatus === 'Completed' || exp.orderStatus === 'Active' ? 'success' : (exp.orderStatus === 'Draft' ? 'warning' : (exp.orderStatus === 'In Progress' ? 'info' : 'danger'))}`}
+                      style={exp.orderStatus === 'Draft' ? { background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' } : {}}
+                    >
+                      {exp.orderStatus === 'Draft' && <i className='bx bx-edit-alt' style={{ marginRight: '3px', fontSize: '0.8rem' }}></i>}
+                      {exp.orderStatus}
+                    </span>
+                  </td>
+
+                  {/* Start Date */}
+                  <td className="text-right">{exp.startDate || '-'}</td>
+
+                  {/* End Date */}
+                  <td className="text-right">{exp.endDate || '-'}</td>
+
+                  {/* Engagements */}
                   <td className="text-right">{Number(exp.engagements || 0).toLocaleString('en-US')}</td>
-                  <td className="text-right">{formatCurrency(exp.contractAmount)}</td>
+
+                  {/* Session Count */}
                   <td className="text-right">{Number(exp.sessionCount || 0).toLocaleString('en-US')}</td>
 
-                  {/* Routes to /clients */}
-                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--primary)', whiteSpace: 'nowrap' }} onClick={() => navigate('/clients')}>
-                    {exp.orderEndDate}
+                  {/* Contract Amount */}
+                  <td className="text-right" style={{ fontWeight: '600' }}>
+                    {formatCurrency(exp.contractAmount)}
                   </td>
 
-                  {/* Routes to /clients */}
-                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate('/clients')}>
-                    {formatCurrency(exp.totalOrderAmount)}
-                  </td>
-
-                  {/* Routes to /client-payments */}
-                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--success)', fontWeight: '500' }} onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}>
+                  {/* Amount Received (hyperlinked to client-payments) */}
+                  <td 
+                    className="text-right" 
+                    style={{ cursor: 'pointer', color: 'var(--success)', fontWeight: '600' }} 
+                    onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}
+                    title="View in Accounts Receivable"
+                  >
                     {formatCurrency(exp.totalReceived)}
                   </td>
 
-                  {/* Routes to /client-payments */}
-                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--warning)', fontWeight: '500' }} onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}>
+                  {/* Amount Due (hyperlinked to client-payments) */}
+                  <td 
+                    className="text-right" 
+                    style={{ cursor: 'pointer', color: 'var(--warning)', fontWeight: '600' }} 
+                    onClick={() => navigate(`/client-payments?client=${encodeURIComponent(exp.clientName)}`)}
+                    title="View in Accounts Receivable"
+                  >
                     {formatCurrency(exp.totalDue)}
                   </td>
 
-                  <td className="text-right">{formatCurrency(exp.totalSessionCost)}</td>
-                  {/* Routes to /expense-approval */}
-                  <td className="text-right" style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate(`/expense-approval?client=${encodeURIComponent(exp.clientName)}`)}>
+                  {/* Session Cost */}
+                  <td className="text-right" style={{ color: '#64748b' }}>
+                    {formatCurrency(exp.totalSessionCost)}
+                  </td>
+
+                  {/* Other Cost (hyperlinked to expense-approval) */}
+                  <td 
+                    className="text-right" 
+                    style={{ cursor: 'pointer', color: '#64748b' }} 
+                    onClick={() => navigate(`/expense-approval?client=${encodeURIComponent(exp.clientName)}`)}
+                    title="View in Expense Approval"
+                  >
                     {formatCurrency(exp.otherCost)}
                   </td>
 
-                  <td className="text-right" style={{ fontWeight: '600', color: revenueColor }}>
+                  {/* Net Revenue */}
+                  <td className="text-right" style={{ fontWeight: '700', color: revenueColor }}>
                     {formatCurrency(netRevenue)}
+                  </td>
+
+                  {/* Health Score Dropdown */}
+                  <td className="text-center">
+                    <select
+                      value={currentScore}
+                      onChange={(e) => handleHealthScoreChange(exp.id, e.target.value)}
+                      style={{
+                        padding: '0.25rem 0.6rem',
+                        borderRadius: '999px',
+                        fontSize: '0.78rem',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        border: `1px solid ${scoreStyle.border}`,
+                        background: scoreStyle.bg,
+                        color: scoreStyle.color,
+                        outline: 'none',
+                        appearance: 'auto',
+                        textAlign: 'center'
+                      }}
+                    >
+                      <option value="Healthy" style={{ background: '#ffffff', color: '#15803d', fontWeight: '600' }}>Healthy</option>
+                      <option value="Moderate" style={{ background: '#ffffff', color: '#b45309', fontWeight: '600' }}>Moderate</option>
+                      <option value="Risky" style={{ background: '#ffffff', color: '#b91c1c', fontWeight: '600' }}>Risky</option>
+                    </select>
                   </td>
                 </tr>
               );
             })}
             {filteredExpenses.length === 0 && (
               <tr>
-                <td colSpan="12" style={{ textAlign: 'center', padding: '2rem' }}>No expense records found</td>
+                <td colSpan="16" style={{ textAlign: 'center', padding: '2rem' }}>No expense records found</td>
               </tr>
             )}
           </tbody>

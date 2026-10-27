@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import React from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
+import { useGlobal } from '../context/GlobalContext';
 import AddScheduleModal from '../components/AddScheduleModal';
 import EditPaymentModal from '../components/EditPaymentModal';
 import BillingMessageModal, { BillingMessageContent } from '../components/BillingMessageModal';
@@ -67,9 +68,31 @@ function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
 }
 
 function ClientPayments() {
+  const navigate = useNavigate();
+  const { clients } = useGlobal();
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const initialClient = searchParams.get('client');
+
+  const getClientInfo = (clientName) => {
+    if (!clientName) return { id: '1', name: 'Corporate' };
+    const clean = String(clientName).trim().toLowerCase();
+    const found = (clients || []).find(c => 
+      (c.name && c.name.trim().toLowerCase() === clean) ||
+      (c.clientName && c.clientName.trim().toLowerCase() === clean) ||
+      (c.divisions && c.divisions.some(d => d.clientName && d.clientName.trim().toLowerCase() === clean))
+    );
+    if (found) return found;
+    try {
+      const saved = JSON.parse(localStorage.getItem('cs-admin-clients') || '[]');
+      const foundSaved = saved.find(c => 
+        (c.name && c.name.trim().toLowerCase() === clean) ||
+        (c.clientName && c.clientName.trim().toLowerCase() === clean)
+      );
+      if (foundSaved) return foundSaved;
+    } catch (e) {}
+    return { id: clientName, name: clientName };
+  };
 
   const [isAddScheduleOpen, setIsAddScheduleOpen] = useState(false);
   const [addModalMode, setAddModalMode] = useState('schedule');
@@ -328,8 +351,40 @@ function ClientPayments() {
           <tbody>
             {paginatedPayments.map((p) => (
               <tr key={p.id}>
-                <td className="event-name">{p.clientName}</td>
-                <td><strong>{p.orderId}</strong></td>
+                <td className="event-name">
+                  <span
+                    onClick={() => {
+                      const clientObj = getClientInfo(p.clientName);
+                      const clientId = clientObj?.id || p.clientId || '1';
+                      navigate(`/corporate/edit?id=${clientId}`, { state: { client: clientObj } });
+                    }}
+                    style={{ color: '#0284c7', cursor: 'pointer', fontWeight: '600' }}
+                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                    title={`Edit Corporate / Client: ${p.clientName}`}
+                  >
+                    {p.clientName}
+                  </span>
+                </td>
+                <td>
+                  <span
+                    onClick={() => {
+                      navigate(`/corporate/division/order/edit/${p.orderId}`, { 
+                        state: { 
+                          edit: true, 
+                          orderId: p.orderId, 
+                          clientName: p.clientName 
+                        } 
+                      });
+                    }}
+                    style={{ color: '#0284c7', cursor: 'pointer', fontWeight: '700' }}
+                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                    title={`Edit Order #${p.orderId}`}
+                  >
+                    {p.orderId}
+                  </span>
+                </td>
                 <td><span style={{ background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500' }}>{p.billingCompany}</span></td>
                 <td><strong className="text-blue">${Number(p.amountDueUsd || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
                 <td>{Number(p.amountDue || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
@@ -507,7 +562,24 @@ function ClientPayments() {
                 <td>{r.paymentDate}</td>
                 <td>{r.receivedBank || '-'}</td>
                 <td><span style={{ color: '#0ea5e9', fontWeight: '500' }}>{r.invoiceNumber}</span></td>
-                <td><strong>{r.orderId}</strong></td>
+                <td>
+                  <span
+                    onClick={() => {
+                      navigate(`/corporate/division/order/edit/${r.orderId}`, { 
+                        state: { 
+                          edit: true, 
+                          orderId: r.orderId 
+                        } 
+                      });
+                    }}
+                    style={{ color: '#0284c7', cursor: 'pointer', fontWeight: '700' }}
+                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                    title={`Edit Order #${r.orderId}`}
+                  >
+                    {r.orderId}
+                  </span>
+                </td>
                 <td><span style={{ background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>{r.paymentId}</span></td>
                 <td><strong>{Number(r.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
                 <td>{r.currency}</td>
@@ -526,16 +598,6 @@ function ClientPayments() {
 
       {/* Filter Right Sidebar */}
 
-      <AddScheduleModal 
-        isOpen={isAddScheduleOpen}
-        onClose={() => setIsAddScheduleOpen(false)}
-        onSave={(data) => {
-          if (data.invoices && data.invoices.length > 0) {
-            setPayments(prev => [...data.invoices, ...prev]);
-            alert(`Schedule added for ${data.formData.corporate}, Order: ${data.formData.orderName}`);
-          }
-        }}
-      />
 
       <EditPaymentModal 
         isOpen={!!editingPaymentId}
@@ -574,7 +636,7 @@ function ClientPayments() {
           const noOfEmployees       = billing.noOfEmployees || orderDetails?.employees || '—';
           const servicePeriod       = billing.paymentDueDays ? `${billing.paymentDueDays} days` : '—';
           const bankDetailsLink     = billing.bankDetailsLink || null;
-          const serviceDescription  = `EAP Service offered for ${noOfEmployees} employees`;
+          const remarks             = payment.remarks || '—';
 
           const messageText = [
             'Billing Message',
@@ -589,7 +651,7 @@ function ClientPayments() {
             `Invoice Value              : ${invoiceValue}`,
             `Invoice Date               : ${invoiceDate}`,
             `Due By Date                : ${dueByDate}`,
-            `Service Description        : ${serviceDescription}`,
+            `Remarks                    : ${remarks}`,
             `Service Period             : ${servicePeriod}`,
             bankDetailsLink ? `Bank Details Link          : ${bankDetailsLink}` : null,
           ].filter(l => l !== null).join('\n');
@@ -988,7 +1050,11 @@ function ClientPayments() {
         isOpen={isAddScheduleOpen} 
         onClose={() => setIsAddScheduleOpen(false)} 
         mode={addModalMode}
-        onSave={({ formData, selectedOrder, mode }) => {
+        onSave={({ formData, selectedOrder, mode, invoices }) => {
+          if (invoices && invoices.length > 0) {
+            setPayments(prev => [...invoices, ...prev]);
+            return;
+          }
           if (!selectedOrder) return;
           const isRowMode = mode === 'row';
           const terms = isRowMode ? 1 : (Number(formData.paymentTerms) || 1);
@@ -1041,11 +1107,12 @@ function ClientPayments() {
               totalPaid: 0,
               dueAmount: duePerTermUsd,
               overdueDays: 0,
-              status: 'To be Raised'
+              status: 'To be Raised',
+              remarks: formData.remarks || ''
             });
           }
 
-          setPayments(prev => [...prev, ...newRows]);
+          setPayments(prev => [...newRows, ...prev]);
         }} 
       />
 

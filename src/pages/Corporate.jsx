@@ -318,7 +318,7 @@ function Corporate() {
                       </span>
                     </td>
                     <td style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'center' }}>
-                      <button className="action-btn" title="Edit" onClick={() => navigate('/corporate/edit', { state: { client } })} style={{ background: 'transparent', border: '1px solid var(--border-color)', padding: '0.3rem', borderRadius: '4px', cursor: 'pointer' }}>
+                      <button className="action-btn" title="Edit" onClick={() => navigate(`/corporate/edit?id=${client.id}`, { state: { client } })} style={{ background: 'transparent', border: '1px solid var(--border-color)', padding: '0.3rem', borderRadius: '4px', cursor: 'pointer' }}>
                         <i className='bx bx-edit' style={{ fontSize: '1rem', color: '#64748b' }}></i>
                       </button>
                     </td>

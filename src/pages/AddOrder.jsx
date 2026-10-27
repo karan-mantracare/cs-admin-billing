@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
 import BillingDetailsModal from '../components/BillingDetailsModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
@@ -69,8 +69,18 @@ const Tooltip = ({ text, align = 'center' }) => {
 function AddOrder() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { orderId: paramOrderId } = useParams();
+  const [searchParams] = useSearchParams();
+  const queryOrderId = searchParams.get('orderId') || searchParams.get('id');
+  const effectiveOrderId = paramOrderId || queryOrderId || location.state?.orderId;
+  const isEditMode = Boolean(
+    location.state?.edit === true || 
+    paramOrderId || 
+    location.pathname.includes('/order/edit') || 
+    searchParams.get('edit') === 'true' ||
+    (queryOrderId && queryOrderId !== '')
+  );
   const { showToast, expenses, updateExpense, events, updateExpenseStatus } = useGlobal();
-  const isEditMode = location.state?.edit === true;
   const tempSessionId = useRef(`temp_${Date.now()}`).current;
   
   const [formData, setFormData] = useState({
@@ -118,17 +128,43 @@ function AddOrder() {
     // Force scroll to top on mount
     window.scrollTo(0, 0);
 
-    if (isEditMode && location.state?.orderId) {
+    if (isEditMode && effectiveOrderId) {
       const saved = localStorage.getItem('division_orders');
       if (saved) {
-        const orders = JSON.parse(saved);
-        const order = orders.find(o => o.id === location.state.orderId);
-        if (order && order.contractDetails) {
-          setFormData(order);
+        try {
+          const orders = JSON.parse(saved);
+          const order = orders.find(o => String(o.id) === String(effectiveOrderId));
+          if (order) {
+            setFormData(prev => ({
+              ...prev,
+              ...order,
+              divisionName: order.divisionName || prev.divisionName || location.state?.divisionName || '',
+              clientName: order.clientName || prev.clientName || location.state?.clientName || '',
+              divisionId: order.divisionId || prev.divisionId || location.state?.divisionId || '',
+              contractDetails: {
+                ...prev.contractDetails,
+                ...(order.contractDetails || {})
+              },
+              addOns: {
+                ...prev.addOns,
+                ...(order.addOns || {})
+              },
+              appConfig: {
+                ...prev.appConfig,
+                ...(order.appConfig || {})
+              },
+              access: {
+                ...prev.access,
+                ...(order.access || {})
+              }
+            }));
+          }
+        } catch (e) {
+          console.error("Error loading order:", e);
         }
       }
     }
-  }, [isEditMode, location.state]);
+  }, [isEditMode, effectiveOrderId, location.state]);
 
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
@@ -165,7 +201,7 @@ function AddOrder() {
 
   // Calculate Payment Due from stored payments filtered by this orderId
   useEffect(() => {
-    const orderId = location.state?.orderId;
+    const orderId = effectiveOrderId;
     if (!orderId) return;
     try {
       const contractVal = Number(formData.billingDetails?.amountInUSD || formData.amount) || 0;
@@ -181,7 +217,7 @@ function AddOrder() {
     } catch (e) {
       console.error('Failed to calculate payment due', e);
     }
-  }, [location.state?.orderId, formData.billingDetails, formData.amount]);
+  }, [effectiveOrderId, formData.billingDetails, formData.amount]);
   
   const addDocument = (newDoc) => {
     setFormData(prev => ({
@@ -262,7 +298,7 @@ function AddOrder() {
   });
 
   const orderExpenses = (expenses || []).filter(exp => {
-    const targetOrderId = location.state?.orderId || tempSessionId;
+    const targetOrderId = effectiveOrderId || tempSessionId;
     if (String(exp.orderId) === String(targetOrderId)) return true;
     if (exp.eventId && formData.orderName) {
       const relatedEvent = events?.find(ev => String(ev.id) === String(exp.eventId));
@@ -434,17 +470,211 @@ function AddOrder() {
   const pendingFields = getPendingFields();
   const isCreateDisabled = pendingFields.length > 0;
 
+  const handleSaveAsDraft = () => {
+    try {
+      const saved = localStorage.getItem('division_orders');
+      let orders = saved ? JSON.parse(saved) : [];
+
+      let targetOrderId;
+      if (isEditMode && effectiveOrderId) {
+        targetOrderId = effectiveOrderId;
+        orders = orders.map(o => String(o.id) === String(targetOrderId) ? { 
+          ...o, 
+          ...formData, 
+          id: targetOrderId, 
+          status: 'Draft' 
+        } : o);
+        showToast('Order saved as draft!', 4000);
+      } else {
+        targetOrderId = Date.now();
+        const newDraftOrder = { 
+          ...formData, 
+          id: targetOrderId, 
+          status: 'Draft',
+          divisionName: location.state?.divisionName || formData.divisionName || '',
+          clientName: location.state?.clientName || formData.clientName || '',
+          divisionId: location.state?.divisionId || formData.divisionId || searchParams.get('divisionId') || '',
+          sessionCount: formData.sessionCount || 0
+        };
+        orders.push(newDraftOrder);
+
+        // Link any expenses added during this session to the new draft order
+        const sessionExpenses = expenses.filter(e => e.orderId === tempSessionId);
+        sessionExpenses.forEach(exp => {
+          updateExpense(exp.id, { orderId: targetOrderId });
+        });
+
+        showToast('Order saved as draft!', 4000);
+      }
+
+      localStorage.setItem('division_orders', JSON.stringify(orders));
+
+      // Process V2 documents connecting/saving
+      if (formData.contractDetails?.v2Documents) {
+        const targetOrderName = `${location.state?.divisionName || formData.divisionName || 'Draft Order'} | ${formData.planStart || 'Draft'} - ${formData.plan || 'Draft'}`;
+        const allDivDocs = JSON.parse(localStorage.getItem('division_documents') || '[]');
+        const v2Ids = formData.contractDetails.v2Documents.map(d => d.id);
+
+        formData.contractDetails.v2Documents.forEach(doc => {
+          if (!allDivDocs.find(d => d.id === doc.id)) {
+            allDivDocs.push(doc);
+          }
+        });
+
+        const updatedDivDocs = allDivDocs.map(d => {
+          if (v2Ids.includes(d.id)) {
+            return { ...d, orderId: targetOrderId, orderName: targetOrderName };
+          }
+          if (String(d.orderId) === String(targetOrderId) && !v2Ids.includes(d.id)) {
+            if (d.isDirectlyUploaded) {
+              return null;
+            }
+            return { ...d, orderId: '', orderName: '' };
+          }
+          return d;
+        }).filter(Boolean);
+
+        localStorage.setItem('division_documents', JSON.stringify(updatedDivDocs));
+      }
+
+      navigate(-1);
+    } catch (e) {
+      console.error("Error saving draft:", e);
+      showToast('Order saved as draft!', 4000);
+      navigate(-1);
+    }
+  };
+
+  const handleCreateOrPublishOrder = () => {
+    if (isCreateDisabled) return;
+    const saved = localStorage.getItem('division_orders');
+    let orders = saved ? JSON.parse(saved) : [];
+
+    let targetOrderId;
+    if (isEditMode && effectiveOrderId) {
+      targetOrderId = effectiveOrderId;
+      const wasDraft = orders.find(o => String(o.id) === String(targetOrderId))?.status === 'Draft';
+      orders = orders.map(o => String(o.id) === String(targetOrderId) ? { 
+        ...o, 
+        ...formData, 
+        id: targetOrderId, 
+        status: 'Active' 
+      } : o);
+      showToast(wasDraft ? 'Order Published & Activated!' : 'Order Updated!', 5000);
+    } else {
+      targetOrderId = Date.now();
+      const newOrder = { 
+        ...formData, 
+        id: targetOrderId, 
+        status: 'Active',
+        divisionName: location.state?.divisionName || formData.divisionName || '',
+        clientName: location.state?.clientName || formData.clientName || '',
+        divisionId: location.state?.divisionId || formData.divisionId || searchParams.get('divisionId') || '',
+        sessionCount: 0
+      };
+      orders.push(newOrder);
+
+      // Link any expenses added during this session to the new order
+      const sessionExpenses = expenses.filter(e => e.orderId === tempSessionId);
+      sessionExpenses.forEach(exp => {
+        updateExpense(exp.id, { orderId: targetOrderId });
+      });
+
+      showToast('Order Created!', 5000);
+    }
+    
+    localStorage.setItem('division_orders', JSON.stringify(orders));
+    
+    // Process V2 documents connecting/saving
+    if (formData.contractDetails?.v2Documents) {
+      const targetOrderName = `${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart} - ${formData.plan}`;
+      
+      const allDivDocs = JSON.parse(localStorage.getItem('division_documents') || '[]');
+      const v2Ids = formData.contractDetails.v2Documents.map(d => d.id);
+      
+      formData.contractDetails.v2Documents.forEach(doc => {
+        if (!allDivDocs.find(d => d.id === doc.id)) {
+          allDivDocs.push(doc);
+        }
+      });
+      
+      const updatedDivDocs = allDivDocs.map(d => {
+        if (v2Ids.includes(d.id)) {
+          return { ...d, orderId: targetOrderId, orderName: targetOrderName };
+        }
+        if (String(d.orderId) === String(targetOrderId) && !v2Ids.includes(d.id)) {
+          if (d.isDirectlyUploaded) {
+            return null;
+          }
+          return { ...d, orderId: '', orderName: '' };
+        }
+        return d;
+      }).filter(Boolean);
+      
+      localStorage.setItem('division_documents', JSON.stringify(updatedDivDocs));
+    }
+
+    navigate(-1);
+  };
+
   return (
     <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', background: '#f1f5f9', minHeight: '100vh' }}>
       
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem' }}>
-        <button 
-          onClick={() => navigate(-1)} 
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: '#64748b', marginRight: '1rem' }}
-        >
-          <i className='bx bx-arrow-back'></i>
-        </button>
-        <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a' }}>{isEditMode ? 'Edit Order' : 'Add Order'}</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <button 
+            type="button"
+            onClick={() => navigate(-1)} 
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: '#64748b', marginRight: '1rem', display: 'flex', alignItems: 'center' }}
+          >
+            <i className='bx bx-arrow-back'></i>
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a' }}>{isEditMode ? 'Edit Order' : 'Add Order'}</h1>
+            {formData.status === 'Draft' && (
+              <span style={{ 
+                fontSize: '0.75rem', 
+                fontWeight: '600', 
+                background: '#fef3c7', 
+                color: '#b45309', 
+                border: '1px solid #fde68a', 
+                padding: '0.2rem 0.65rem', 
+                borderRadius: '999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <i className='bx bx-edit-alt' style={{ fontSize: '0.85rem' }}></i> Draft
+              </span>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            type="button"
+            onClick={handleSaveAsDraft}
+            style={{
+              padding: '0.55rem 1.25rem',
+              background: '#fef3c7',
+              color: '#92400e',
+              border: '1px solid #fde68a',
+              borderRadius: '6px',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 1px 2px rgba(245, 158, 11, 0.1)',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#fde68a'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#fef3c7'}
+          >
+            <i className='bx bx-file-blank' style={{ fontSize: '1.1rem' }}></i>
+            Save As Draft
+          </button>
+        </div>
       </div>
 
       {/* Contract Details (CSM) */}
@@ -981,76 +1211,57 @@ function AddOrder() {
       </div>
 
       {/* Action Footer */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '1rem', marginBottom: '2rem', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '1.5rem', marginBottom: '2.5rem', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto' }}>
           <button 
-            title={isCreateDisabled ? `Pending: ${pendingFields.join(', ')}` : ''}
-            onClick={() => {
-              if (isCreateDisabled) return;
-              const saved = localStorage.getItem('division_orders');
-              let orders = saved ? JSON.parse(saved) : [];
-
-              if (isEditMode) {
-                orders = orders.map(o => o.id === location.state.orderId ? { ...o, ...formData, id: location.state.orderId, status: o.status || 'Active' } : o);
-                showToast('Order Updated!', 5000);
-              } else {
-                const newOrderId = Date.now();
-                const newOrder = { 
-                  ...formData, 
-                  id: newOrderId, 
-                  status: 'Active',
-                  divisionName: location.state?.divisionName || '',
-                  clientName: location.state?.clientName || '',
-                  divisionId: location.state?.divisionId || '',
-                  sessionCount: 0
-                };
-                orders.push(newOrder);
-
-                // Link any expenses added during this session to the new order
-                const sessionExpenses = expenses.filter(e => e.orderId === tempSessionId);
-                sessionExpenses.forEach(exp => {
-                  updateExpense(exp.id, { orderId: newOrderId });
-                });
-
-                showToast('Order Created!', 5000);
-              }
-              
-              localStorage.setItem('division_orders', JSON.stringify(orders));
-              
-              // Process V2 documents connecting/saving
-              if (formData.contractDetails.v2Documents) {
-                const targetOrderId = isEditMode ? location.state.orderId : orders[orders.length - 1].id;
-                const targetOrderName = `${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart} - ${formData.plan}`;
-                
-                const allDivDocs = JSON.parse(localStorage.getItem('division_documents') || '[]');
-                const v2Ids = formData.contractDetails.v2Documents.map(d => d.id);
-                
-                // Add any newly uploaded docs that aren't in localStorage yet
-                formData.contractDetails.v2Documents.forEach(doc => {
-                  if (!allDivDocs.find(d => d.id === doc.id)) {
-                    allDivDocs.push(doc);
-                  }
-                });
-                
-                // Update their orderId and orderName
-                const updatedDivDocs = allDivDocs.map(d => {
-                  if (v2Ids.includes(d.id)) {
-                    return { ...d, orderId: targetOrderId, orderName: targetOrderName };
-                  }
-                  if (String(d.orderId) === String(targetOrderId) && !v2Ids.includes(d.id)) {
-                    if (d.isDirectlyUploaded) {
-                      return null; // Remove it completely if it was uploaded directly for this order
-                    }
-                    return { ...d, orderId: '', orderName: '' }; // Just disconnect it
-                  }
-                  return d;
-                }).filter(Boolean);
-                
-                localStorage.setItem('division_documents', JSON.stringify(updatedDivDocs));
-              }
-
-              navigate(-1);
+            type="button"
+            onClick={() => navigate(-1)}
+            style={{
+              padding: '0.6rem 1.25rem',
+              background: '#fff',
+              border: '1px solid #cbd5e1',
+              color: '#64748b',
+              borderRadius: '6px',
+              fontSize: '0.95rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSaveAsDraft}
+            style={{
+              padding: '0.6rem 1.35rem',
+              background: '#fef3c7',
+              color: '#92400e',
+              border: '1px solid #fde68a',
+              borderRadius: '6px',
+              fontSize: '0.95rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 1px 2px rgba(245, 158, 11, 0.1)',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#fde68a'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#fef3c7'}
+          >
+            <i className='bx bx-file-blank' style={{ fontSize: '1.1rem' }}></i>
+            Save As Draft
+          </button>
+
+          <button 
+            type="button"
+            title={isCreateDisabled ? `Pending: ${pendingFields.join(', ')}` : ''}
+            onClick={handleCreateOrPublishOrder}
             className="btn-primary" 
             style={{ 
               padding: '0.6rem 1.5rem', 
@@ -1061,10 +1272,11 @@ function AddOrder() {
               fontSize: '0.95rem', 
               fontWeight: '600', 
               cursor: isCreateDisabled ? 'not-allowed' : 'pointer',
-              opacity: isCreateDisabled ? 0.7 : 1
+              opacity: isCreateDisabled ? 0.7 : 1,
+              transition: 'all 0.15s ease'
             }}
           >
-            {isEditMode ? 'Save Changes' : 'Create Order'}
+            {isEditMode ? (formData.status === 'Draft' ? 'Publish Order' : 'Save Changes') : 'Create Order'}
           </button>
         </div>
       </div>
@@ -1094,7 +1306,7 @@ function AddOrder() {
         onClose={() => setIsDocModalV2Open(false)}
         onConnect={addV2Documents}
         divisionId={formData.divisionId || location.state?.divisionId || ''}
-        orderId={isEditMode ? location.state?.orderId : ''}
+        orderId={isEditMode ? effectiveOrderId : ''}
         existingV2Docs={formData.contractDetails?.v2Documents || []}
       />
 
@@ -1102,10 +1314,10 @@ function AddOrder() {
         isOpen={isPaymentSummaryOpen}
         onClose={() => setIsPaymentSummaryOpen(false)}
         contractValue={formData.billingDetails?.amountInUSD || formData.amount}
-        orderId={location.state?.orderId}
-        divisionId={location.state?.divisionId}
+        orderId={effectiveOrderId}
+        divisionId={formData.divisionId || location.state?.divisionId}
         onViewPaymentSchedule={() => {
-          if (!location.state?.orderId) {
+          if (!effectiveOrderId) {
             showToast('Please complete the order completion process first.', 5000);
             return;
           }
@@ -1113,23 +1325,23 @@ function AddOrder() {
           setIsPaymentScheduleOpen(true);
         }}
         onViewBillingSchedule={() => {
-          if (!location.state?.orderId) {
+          if (!effectiveOrderId) {
             showToast('Please complete the order completion process first.', 5000);
             return;
           }
           setIsPaymentSummaryOpen(false);
-          navigate('/client-payments', { state: { filterOrderId: location.state.orderId } });
+          navigate('/client-payments', { state: { filterOrderId: effectiveOrderId } });
         }}
       />
       <PaymentScheduleModal
         isOpen={isPaymentScheduleOpen}
         onClose={() => setIsPaymentScheduleOpen(false)}
-        orderId={location.state?.orderId}
+        orderId={effectiveOrderId}
       />
       <AddExpenseModal
         isOpen={isAddExpenseModalOpen}
         onClose={() => setIsAddExpenseModalOpen(false)}
-        orderId={location.state?.orderId || tempSessionId}
+        orderId={effectiveOrderId || tempSessionId}
         orderName={`${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart} - ${formData.plan}`}
         clientName={formData.clientName || location.state?.clientName || formData.billingDetails?.billFrom || formData.appConfig?.domain || 'Current Order'}
         editExpenseData={editExpenseData}

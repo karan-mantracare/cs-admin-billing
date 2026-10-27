@@ -32,6 +32,7 @@ function HrApproval() {
       expertExp: req.expertExp || '',
       genderPref: req.genderPref || '',
       budget: req.budget || '',
+      remarks: req.remarks || '',
       otherCosts: req.otherCosts || '',
       participantCount: req.participantCount || '',
       duration: req.duration || ''
@@ -47,6 +48,7 @@ function HrApproval() {
         expertExp: parseInt(data.expertExp) || 0,
         genderPref: data.genderPref,
         budget: parseFloat(data.budget) || 0,
+        remarks: data.remarks || '',
         otherCosts: parseFloat(data.otherCosts) || 0,
         duration: data.duration || '',
         status: 'Pending'

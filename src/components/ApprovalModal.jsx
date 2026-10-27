@@ -169,11 +169,22 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
 
             {!isHrRole && (
               <>
-                <h3 className="modal-section-title mt-4">Section Three - Budget & Cost</h3>
+                <h3 className="modal-section-title mt-4">Section Three - Budget and Remarks</h3>
                 <div className="form-grid">
                   <div className="form-group">
                     <label>Budget (in USD) *</label>
                     <input type="number" className="form-control" required min="0" name="budget" value={modalData.budget} onChange={handleChange} disabled={isLocked} />
+                  </div>
+                  <div className="form-group">
+                    <label>Remarks</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      name="remarks" 
+                      value={modalData.remarks || ''} 
+                      onChange={handleChange} 
+                      disabled={isLocked} 
+                    />
                   </div>
                   
                   {(status === 'complete' || status === 'approved') && (

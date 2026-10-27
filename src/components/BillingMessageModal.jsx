@@ -19,8 +19,8 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied })
   const servicePeriod       = billing.paymentDueDays
     ? `${billing.paymentDueDays} days`
     : '—';
+  const remarks             = payment?.remarks || '—';
   const bankDetailsLink     = billing.bankDetailsLink || null;
-  const serviceDescription  = `EAP Service offered for ${noOfEmployees} employees`;
 
   const sectionTitleStyle = {
     fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase',
@@ -79,7 +79,7 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied })
         <Row label="Invoice Value" value={invoiceValue} valueColor="#10b981" />
         <Row label="Invoice Date" value={invoiceDate} />
         <Row label="Due By Date" value={dueByDate} valueColor="#ef4444" />
-        <Row label="Service Description" value={serviceDescription} />
+        <Row label="Remarks" value={remarks} />
         <Row label="Service Period" value={servicePeriod} />
         <LastRow label="Bank Details" value={bankDetailsLink ? "View Details" : "—"} href={bankDetailsLink} />
       </div>
@@ -134,7 +134,7 @@ function BillingMessageModal({ isOpen, onClose, payment }) {
   const noOfEmployees       = billing.noOfEmployees || orderDetails?.employees || '—';
   const servicePeriod       = billing.paymentDueDays ? `${billing.paymentDueDays} days` : '—';
   const bankDetailsLink     = billing.bankDetailsLink || null;
-  const serviceDescription  = `EAP Service offered for ${noOfEmployees} employees`;
+  const remarks             = payment?.remarks || '—';
 
   const messageText = [
     'Billing Message',
@@ -149,7 +149,7 @@ function BillingMessageModal({ isOpen, onClose, payment }) {
     `Invoice Value              : ${invoiceValue}`,
     `Invoice Date               : ${invoiceDate}`,
     `Due By Date                : ${dueByDate}`,
-    `Service Description        : ${serviceDescription}`,
+    `Remarks                    : ${remarks}`,
     `Service Period             : ${servicePeriod}`,
     bankDetailsLink ? `Bank Details Link          : ${bankDetailsLink}` : null,
   ].filter(l => l !== null).join('\n');

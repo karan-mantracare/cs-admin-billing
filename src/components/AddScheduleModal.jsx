@@ -69,6 +69,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
 
   const [isPreview, setIsPreview] = useState(false);
   const [previewInvoices, setPreviewInvoices] = useState([]);
+  const [showRemarksTooltip, setShowRemarksTooltip] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -159,7 +160,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
         invoiceDate: '', // Will be set when actually raised
         totalPaid: 0,
         dueAmount: usdPerTerm,
-        overdueDays: 0
+        overdueDays: 0,
+        remarks: ''
       });
     }
     return invoices;
@@ -207,11 +209,16 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
         display: 'flex', justifyContent: 'center', alignItems: 'center'
       }}>
         <div style={{
-          background: 'white', borderRadius: '8px', width: '90%', maxWidth: '600px',
+          background: 'white', borderRadius: '8px', width: '92%', maxWidth: '820px',
           padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Invoice Schedule Preview</h2>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Invoice Schedule Preview</h2>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                Review schedule details. Remarks entered here will be added to the invoice.
+              </p>
+            </div>
             <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
               &times;
             </button>
@@ -226,16 +233,83 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule' }) {
                   <th style={{ padding: '0.5rem' }}>Due Date</th>
                   <th style={{ padding: '0.5rem' }}>Amount ({selectedOrder?.billingDetails?.clientCurrency || 'USD'})</th>
                   <th style={{ padding: '0.5rem' }}>Amount (USD)</th>
+                  <th style={{ padding: '0.5rem', minWidth: '180px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', position: 'relative' }}>
+                      <span>Remarks</span>
+                      <div 
+                        style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                        onMouseEnter={() => setShowRemarksTooltip(true)}
+                        onMouseLeave={() => setShowRemarksTooltip(false)}
+                      >
+                        <i className='bx bxs-info-circle' style={{ fontSize: '1.05rem', color: '#0ea5e9' }}></i>
+                        {showRemarksTooltip && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 'calc(100% + 6px)',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: '#0f172a',
+                            color: '#ffffff',
+                            fontSize: '0.75rem',
+                            fontWeight: '500',
+                            padding: '0.35rem 0.65rem',
+                            borderRadius: '6px',
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.18)',
+                            zIndex: 9999,
+                            pointerEvents: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            lineHeight: '1.2'
+                          }}>
+                            <div style={{
+                              position: 'absolute',
+                              bottom: '100%',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              width: 0,
+                              height: 0,
+                              borderLeft: '5px solid transparent',
+                              borderRight: '5px solid transparent',
+                              borderBottom: '5px solid #0f172a'
+                            }} />
+                            <span>These remarks will be added on Invoice</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {previewInvoices.map((inv, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '0.5rem', color: '#334155' }}>{idx + 1}</td>
-                    <td style={{ padding: '0.5rem', color: '#334155' }}>{inv.invoiceByDate}</td>
-                    <td style={{ padding: '0.5rem', color: '#334155' }}>{inv.dueByDate}</td>
-                    <td style={{ padding: '0.5rem', color: '#334155' }}>{Number(inv.amountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
-                    <td style={{ padding: '0.5rem', color: '#10b981', fontWeight: '600' }}>${Number(inv.amountDueUsd).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
+                    <td style={{ padding: '0.5rem', color: '#334155', whiteSpace: 'nowrap' }}>{inv.invoiceByDate}</td>
+                    <td style={{ padding: '0.5rem', color: '#334155', whiteSpace: 'nowrap' }}>{inv.dueByDate}</td>
+                    <td style={{ padding: '0.5rem', color: '#334155', whiteSpace: 'nowrap' }}>{Number(inv.amountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
+                    <td style={{ padding: '0.5rem', color: '#10b981', fontWeight: '600', whiteSpace: 'nowrap' }}>${Number(inv.amountDueUsd).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
+                    <td style={{ padding: '0.35rem 0.5rem' }}>
+                      <input 
+                        type="text" 
+                        value={inv.remarks || ''} 
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPreviewInvoices(prev => prev.map((item, i) => i === idx ? { ...item, remarks: val } : item));
+                        }}
+                        placeholder="Enter remarks..."
+                        style={{
+                          width: '100%',
+                          padding: '0.4rem 0.6rem',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.82rem',
+                          color: '#0f172a',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
