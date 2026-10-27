@@ -2,89 +2,147 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getPrimaryCS } from '../utils/roleUtils';
 
-const RATING_OPTIONS = [
-  'Very satisfied',
-  'Satisfied',
-  'Neutral',
-  'Dissatisfied',
-  'Very dissatisfied'
+const STANDARD_RATING_OPTIONS = [
+  { label: 'Very satisfied', value: 'Very satisfied', color: '#166534', bg: '#dcfce7', icon: 'bx-smile' },
+  { label: 'Satisfied', value: 'Satisfied', color: '#0369a1', bg: '#e0f2fe', icon: 'bx-happy' },
+  { label: 'Neutral', value: 'Neutral', color: '#854d0e', bg: '#fef3c7', icon: 'bx-meh' },
+  { label: 'Dissatisfied', value: 'Dissatisfied', color: '#c2410c', bg: '#ffedd5', icon: 'bx-sad' },
+  { label: 'Very dissatisfied', value: 'Very dissatisfied', color: '#991b1b', bg: '#fee2e2', icon: 'bx-angry' }
 ];
 
-const QUESTIONS = [
+const NOT_APPLICABLE_OPTION = {
+  label: 'Not a part of SOW / No session done',
+  value: 'Not a part of SOW / No session done',
+  color: '#475569',
+  bg: '#f1f5f9',
+  icon: 'bx-minus-circle'
+};
+
+const PILLAR_QUESTIONS = [
   {
-    id: 'appSatisfaction',
-    title: 'How satisfied are you with the MantraCare app? *',
-    shortLabel: 'App Overall Satisfaction',
-    category: 'Product Experience'
+    id: 'bdCommitment',
+    title: 'BD Commitment vs. Actual Service Delivery: *',
+    description: 'How well did actual operational execution align with the deliverables, promises, and timelines agreed upon during the Business Development / sales phase?',
+    shortLabel: 'BD Commitment vs Delivery',
+    category: 'Sales & Onboarding Alignment',
+    icon: 'bx-briefcase-alt-2',
+    allowNotApplicable: false,
+    lowRatingTags: [
+      'Scope of services mismatched',
+      'Delayed onboarding & kickoff',
+      'Deliverables promised were missing',
+      'Billing or pricing miscommunication'
+    ]
   },
   {
-    id: 'csResponsiveness',
-    title: 'Responsiveness and communication of the Customer Success Team: *',
-    shortLabel: 'CS Responsiveness & Communication',
-    category: 'Customer Success'
+    id: 'csSupport',
+    title: 'Customer Success (CS) Support & Account Management: *',
+    description: 'Responsiveness, proactiveness, and helpfulness of your dedicated Customer Success SPOC in resolving queries, managing account requests, and reviewing health metrics:',
+    shortLabel: 'CS Support & Responsiveness',
+    category: 'Customer Success Operations',
+    icon: 'bx-user-voice',
+    allowNotApplicable: false,
+    lowRatingTags: [
+      'Slow response to emails / queries',
+      'Need more proactive follow-ups',
+      'Escalations remained unresolved',
+      'Need more frequent status reviews'
+    ]
   },
   {
-    id: 'csKnowledge',
-    title: 'Knowledge and helpfulness of the Customer Success Team in addressing your queries and concerns: *',
-    shortLabel: 'CS Knowledge & Helpfulness',
-    category: 'Customer Success'
+    id: 'techSupport',
+    title: 'Tech & App Support (Platform Reliability & Usability): *',
+    description: 'Ease of use, app speed, uptime reliability, and technical assistance for the MantraCare employee mobile app and corporate portal:',
+    shortLabel: 'Tech & App Support',
+    category: 'Product & Technology',
+    icon: 'bx-laptop',
+    allowNotApplicable: false,
+    lowRatingTags: [
+      'Login / OTP verification issues',
+      'App performance / slow loading',
+      'Feature bugs or app crashes',
+      'Portal navigation was confusing'
+    ]
   },
   {
-    id: 'csTimeliness',
-    title: 'Timeliness of the resolution of your queries or concerns: *',
-    shortLabel: 'Resolution Timeliness',
-    category: 'Customer Success'
+    id: 'hotlineCalls',
+    title: 'Hotline Calls (Pickup Ratio & Call Handling Capabilities): *',
+    description: 'Helpline responsiveness, immediate pickup ratio, empathy, and problem resolution capabilities when your employees dial the corporate support hotline:',
+    shortLabel: 'Hotline Pickup & Handling',
+    category: 'Helpline & Assistance',
+    icon: 'bx-phone-call',
+    allowNotApplicable: true,
+    lowRatingTags: [
+      'High wait time before call answered',
+      'Frequent dropped / unanswered calls',
+      'Agent lacked required clinical knowledge',
+      'Resolution required multiple callbacks'
+    ]
   },
   {
-    id: 'appQuality',
-    title: 'Quality of the App and ease of use: *',
-    shortLabel: 'App Quality & Ease of Use',
-    category: 'Product Experience'
+    id: 'oneOnOneSessions',
+    title: '1-on-1 Individual Sessions (Therapy, Coaching, Doctor Consultations): *',
+    description: 'Quality, punctuality, practitioner expertise, confidentiality, and employee feedback regarding individual confidential wellness sessions:',
+    shortLabel: '1-on-1 Expert Sessions',
+    category: 'Clinical & Wellness Care',
+    icon: 'bx-user-pin',
+    allowNotApplicable: true,
+    lowRatingTags: [
+      'Limited expert slot availability',
+      'Expert rescheduled / cancelled sessions',
+      'Consultation quality was inconsistent',
+      'Feedback from employees was mixed'
+    ]
   },
   {
-    id: 'sessionsQuality',
-    title: 'Quality of the Sessions and Activities provided: *',
-    shortLabel: 'Sessions & Activities Quality',
-    category: 'Wellness & Activities'
-  },
-  {
-    id: 'overallEngagement',
-    title: 'How would you rate the overall engagement with MantraCare *',
-    shortLabel: 'Overall Engagement',
-    category: 'Program Value'
-  },
-  {
-    id: 'recommendLikelihood',
-    title: 'How likely are you to recommend MantraCare, App & Activities to others based on your experience with our services? *',
-    shortLabel: 'Likelihood to Recommend (NPS)',
-    category: 'Advocacy & NPS'
+    id: 'webinars',
+    title: 'Webinars & Corporate Group Activities: *',
+    description: 'Engagement level, speaker expertise, interactive participation, and practical value of company-wide webinars and wellness group workshops:',
+    shortLabel: 'Webinars & Group Sessions',
+    category: 'Engagement & Activities',
+    icon: 'bx-broadcast',
+    allowNotApplicable: true, // Crucial requirement: option of no session done / not a part of SOW
+    lowRatingTags: [
+      'Topic lacked relevance for our team',
+      'Speaker engagement was below expectations',
+      'Audio / video technical difficulties',
+      'Session timing was inconvenient'
+    ]
   }
 ];
 
-const SUGGESTION_TAGS = [
+const GENERAL_SUGGESTION_TAGS = [
   'More interactive wellness webinars',
   'Faster query response time',
-  'App navigation & speed enhancements',
-  'Expanded trainer & doctor specializations',
-  'Detailed employee participation reports',
-  'Customized corporate challenge activities',
-  'Simplified invoice & billing schedules'
+  'Enhanced app loading speed',
+  'Expanded specialist doctor network',
+  'Detailed monthly employee participation reports',
+  'Flexible trainer webinar scheduling',
+  'Custom corporate fitness challenges'
 ];
 
 export default function CsFeedback() {
   const [searchParams] = useSearchParams();
-  const [currentStep, setCurrentStep] = useState(0); // 0 to 7 = questions, 8 = details form, 9 = submitted
-  
-  // Answers state
+  const [currentStep, setCurrentStep] = useState(0); // 0 to 5 = questions, 6 = details & remarks, 7 = submitted
+
+  // Ratings for each pillar
   const [ratings, setRatings] = useState({
-    appSatisfaction: '',
-    csResponsiveness: '',
-    csKnowledge: '',
-    csTimeliness: '',
-    appQuality: '',
-    sessionsQuality: '',
-    overallEngagement: '',
-    recommendLikelihood: ''
+    bdCommitment: '',
+    csSupport: '',
+    techSupport: '',
+    hotlineCalls: '',
+    oneOnOneSessions: '',
+    webinars: ''
+  });
+
+  // Optional remarks on low responses
+  const [lowResponseRemarks, setLowResponseRemarks] = useState({
+    bdCommitment: '',
+    csSupport: '',
+    techSupport: '',
+    hotlineCalls: '',
+    oneOnOneSessions: '',
+    webinars: ''
   });
 
   // Client Details state
@@ -94,8 +152,7 @@ export default function CsFeedback() {
     csSpocName: 'Karan Hinduja',
     suggestions: '',
     wantsFollowUp: false,
-    selectedDivision: 'Healthcare',
-    submittedAt: null
+    selectedDivision: 'Healthcare'
   });
 
   const [validationError, setValidationError] = useState('');
@@ -150,7 +207,6 @@ export default function CsFeedback() {
         csSpocName: resolvedCS || 'Karan Hinduja'
       }));
     } catch {
-      // Fallback default
       const resolvedCS = getPrimaryCS(null, 'Healthcare', 'TechCorp Solutions', null);
       setClientDetails((prev) => ({
         ...prev,
@@ -159,7 +215,6 @@ export default function CsFeedback() {
     }
   }, [searchParams]);
 
-  // Handle Division Switch to auto-update CS SPOC Name
   const handleDivisionChange = (divName) => {
     const resolvedCS = getPrimaryCS(null, divName, clientDetails.company, null);
     setClientDetails((prev) => ({
@@ -169,15 +224,27 @@ export default function CsFeedback() {
     }));
   };
 
-  const isDetailsStep = currentStep === QUESTIONS.length;
-  const activeQuestion = QUESTIONS[currentStep];
+  const isDetailsStep = currentStep === PILLAR_QUESTIONS.length;
+  const activeQuestion = PILLAR_QUESTIONS[currentStep];
 
-  const handleSelectOption = (option) => {
+  const handleSelectOption = (optionValue) => {
     setRatings((prev) => ({
       ...prev,
-      [activeQuestion.id]: option
+      [activeQuestion.id]: optionValue
     }));
     setValidationError('');
+  };
+
+  const isLowRating = (rating) => {
+    return rating === 'Dissatisfied' || rating === 'Very dissatisfied' || rating === 'Neutral';
+  };
+
+  const handleAddLowRatingTag = (questionId, tag) => {
+    setLowResponseRemarks((prev) => {
+      const curr = prev[questionId] ? prev[questionId].trim() : '';
+      const updated = curr ? `${curr}, ${tag}` : tag;
+      return { ...prev, [questionId]: updated };
+    });
   };
 
   const handleNext = () => {
@@ -199,7 +266,7 @@ export default function CsFeedback() {
     }
   };
 
-  const handleAddSuggestionTag = (tag) => {
+  const handleAddGeneralSuggestionTag = (tag) => {
     setClientDetails((prev) => {
       const current = prev.suggestions.trim();
       const updated = current ? `${current}, ${tag}` : tag;
@@ -230,7 +297,8 @@ export default function CsFeedback() {
       timestamp: new Date().toISOString(),
       formattedDate: new Date().toLocaleString(),
       clientDetails: { ...clientDetails },
-      ratings: { ...ratings }
+      ratings: { ...ratings },
+      lowResponseRemarks: { ...lowResponseRemarks }
     };
 
     try {
@@ -239,19 +307,25 @@ export default function CsFeedback() {
     } catch {}
 
     setSubmitted(true);
-    setCurrentStep(QUESTIONS.length + 1);
+    setCurrentStep(PILLAR_QUESTIONS.length + 1);
   };
 
   const handleReset = () => {
     setRatings({
-      appSatisfaction: '',
-      csResponsiveness: '',
-      csKnowledge: '',
-      csTimeliness: '',
-      appQuality: '',
-      sessionsQuality: '',
-      overallEngagement: '',
-      recommendLikelihood: ''
+      bdCommitment: '',
+      csSupport: '',
+      techSupport: '',
+      hotlineCalls: '',
+      oneOnOneSessions: '',
+      webinars: ''
+    });
+    setLowResponseRemarks({
+      bdCommitment: '',
+      csSupport: '',
+      techSupport: '',
+      hotlineCalls: '',
+      oneOnOneSessions: '',
+      webinars: ''
     });
     setClientDetails((prev) => ({
       ...prev,
@@ -273,7 +347,7 @@ export default function CsFeedback() {
           <span>/</span>
           <Link to="/cs/home" style={{ color: '#0284c7', textDecoration: 'none' }}>Customer Success</Link>
           <span>/</span>
-          <span style={{ color: '#0f172a', fontWeight: '600' }}>Feedback</span>
+          <span style={{ color: '#0f172a', fontWeight: '600' }}>Feedback & Service Evaluation</span>
         </div>
 
         {/* Page Heading & Metadata */}
@@ -283,14 +357,14 @@ export default function CsFeedback() {
               Feedback
             </h1>
             <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
-              MantraCare Corporate Client Experience & Customer Success Evaluation
+              Corporate Health Partner Evaluation • 6 Core Delivery Pillars
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#ffffff', border: '1px solid #e2e8f0', padding: '0.35rem 0.75rem', borderRadius: '6px', fontSize: '0.82rem', color: '#475569' }}>
               <i className="bx bx-user" style={{ color: '#0284c7' }}></i>
-              <span>Logged in as: <strong style={{ color: '#0f172a' }}>{clientDetails.name}</strong></span>
+              <span>Logged in: <strong style={{ color: '#0f172a' }}>{clientDetails.name}</strong> ({clientDetails.company})</span>
             </div>
 
             <button
@@ -317,6 +391,67 @@ export default function CsFeedback() {
           </div>
         </div>
 
+        {/* Survey Progress Pills */}
+        <div style={{ maxWidth: '880px', margin: '0 auto 1.25rem auto', display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+          {PILLAR_QUESTIONS.map((q, idx) => {
+            const hasAnswer = Boolean(ratings[q.id]);
+            const isCurrent = idx === currentStep;
+            return (
+              <div
+                key={q.id}
+                onClick={() => {
+                  if (idx <= currentStep || hasAnswer) {
+                    setCurrentStep(idx);
+                  }
+                }}
+                style={{
+                  flex: '1 1 0',
+                  minWidth: '120px',
+                  padding: '0.5rem 0.65rem',
+                  borderRadius: '6px',
+                  background: isCurrent ? '#034ea2' : hasAnswer ? '#e0f2fe' : '#ffffff',
+                  color: isCurrent ? '#ffffff' : hasAnswer ? '#0369a1' : '#64748b',
+                  border: isCurrent ? '1px solid #034ea2' : hasAnswer ? '1px solid #bae6fd' : '1px solid #e2e8f0',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  cursor: idx <= currentStep || hasAnswer ? 'pointer' : 'default',
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  transition: 'all 0.15s ease'
+                }}
+                title={q.shortLabel}
+              >
+                {hasAnswer && !isCurrent ? '✓ ' : `${idx + 1}. `}
+                {q.shortLabel.split(' ')[0]}
+              </div>
+            );
+          })}
+          <div
+            onClick={() => {
+              // Allow jump if all questions answered
+              const allAnswered = PILLAR_QUESTIONS.every((q) => Boolean(ratings[q.id]));
+              if (allAnswered) setCurrentStep(PILLAR_QUESTIONS.length);
+            }}
+            style={{
+              flex: '1 1 0',
+              minWidth: '110px',
+              padding: '0.5rem 0.65rem',
+              borderRadius: '6px',
+              background: isDetailsStep ? '#034ea2' : '#ffffff',
+              color: isDetailsStep ? '#ffffff' : '#64748b',
+              border: isDetailsStep ? '1px solid #034ea2' : '1px solid #e2e8f0',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              textAlign: 'center',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            7. Submit
+          </div>
+        </div>
+
         {/* Main Survey Card Container */}
         <div
           style={{
@@ -335,11 +470,18 @@ export default function CsFeedback() {
               {/* Stepper Progress Bar */}
               <div style={{ marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#034ea2' }}>
-                    {isDetailsStep ? 'Final Step: Contact Details & Feedback' : `Question ${currentStep + 1} of ${QUESTIONS.length}`}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#034ea2' }}>
+                      {isDetailsStep ? 'Final Step: Corporate SPOC & Summary' : `Question ${currentStep + 1} of ${PILLAR_QUESTIONS.length}`}
+                    </span>
+                    {!isDetailsStep && (
+                      <span style={{ fontSize: '0.75rem', background: '#f1f5f9', color: '#475569', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
+                        {activeQuestion.category}
+                      </span>
+                    )}
+                  </div>
                   <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>
-                    {Math.round(((currentStep) / (QUESTIONS.length + 1)) * 100)}% Complete
+                    {Math.round((currentStep / (PILLAR_QUESTIONS.length + 1)) * 100)}% Complete
                   </span>
                 </div>
 
@@ -348,7 +490,7 @@ export default function CsFeedback() {
                   <div
                     style={{
                       height: '100%',
-                      width: `${((currentStep) / (QUESTIONS.length)) * 100}%`,
+                      width: `${(currentStep / PILLAR_QUESTIONS.length) * 100}%`,
                       background: 'linear-gradient(90deg, #034ea2, #0284c7)',
                       borderRadius: '3px',
                       transition: 'width 0.25s ease'
@@ -357,71 +499,251 @@ export default function CsFeedback() {
                 </div>
               </div>
 
-              {/* Step View: Questions (0 to 7) */}
+              {/* Step View: Questions (0 to 5) */}
               {!isDetailsStep ? (
                 <div>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: '1.05rem',
-                      fontWeight: '600',
-                      color: '#1e293b',
-                      marginBottom: '1.5rem',
-                      lineHeight: '1.5'
-                    }}
-                  >
-                    {activeQuestion.title.split('*')[0]}
-                    <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                    <div
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        background: '#eff6ff',
+                        color: '#034ea2',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.25rem',
+                        flexShrink: 0
+                      }}
+                    >
+                      <i className={`bx ${activeQuestion.icon}`}></i>
+                    </div>
+                    <div>
+                      <label
+                        style={{
+                          display: 'block',
+                          fontSize: '1.1rem',
+                          fontWeight: '700',
+                          color: '#1e293b',
+                          lineHeight: '1.4'
+                        }}
+                      >
+                        {activeQuestion.title.split('*')[0]}
+                        <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.88rem', color: '#64748b', lineHeight: '1.45' }}>
+                        {activeQuestion.description}
+                      </p>
+                    </div>
+                  </div>
 
-                  {/* Radio options matching exact screenshot format */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
-                    {RATING_OPTIONS.map((option) => {
-                      const isSelected = ratings[activeQuestion.id] === option;
+                  {/* Radio Options List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', margin: '1.75rem 0 1.25rem 0' }}>
+                    {STANDARD_RATING_OPTIONS.map((opt) => {
+                      const isSelected = ratings[activeQuestion.id] === opt.value;
                       return (
                         <label
-                          key={option}
-                          onClick={() => handleSelectOption(option)}
+                          key={opt.value}
+                          onClick={() => handleSelectOption(opt.value)}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.75rem',
-                            padding: '0.65rem 0.85rem',
-                            borderRadius: '6px',
+                            justifyContent: 'space-between',
+                            padding: '0.75rem 1rem',
+                            borderRadius: '8px',
                             cursor: 'pointer',
                             userSelect: 'none',
                             transition: 'all 0.15s ease',
                             backgroundColor: isSelected ? '#f0f7ff' : '#ffffff',
-                            border: isSelected ? '1px solid #bfdbfe' : '1px solid #f1f5f9'
+                            border: isSelected ? '1.5px solid #034ea2' : '1px solid #e2e8f0',
+                            boxShadow: isSelected ? '0 2px 6px rgba(3, 78, 162, 0.1)' : 'none'
                           }}
                         >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <input
+                              type="radio"
+                              name={activeQuestion.id}
+                              value={opt.value}
+                              checked={isSelected}
+                              onChange={() => handleSelectOption(opt.value)}
+                              style={{
+                                width: '18px',
+                                height: '18px',
+                                accentColor: '#034ea2',
+                                cursor: 'pointer',
+                                margin: 0
+                              }}
+                            />
+                            <span
+                              style={{
+                                fontSize: '0.95rem',
+                                color: isSelected ? '#034ea2' : '#334155',
+                                fontWeight: isSelected ? '600' : '400'
+                              }}
+                            >
+                              {opt.label}
+                            </span>
+                          </div>
+
+                          <span
+                            style={{
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              padding: '0.2rem 0.55rem',
+                              borderRadius: '4px',
+                              background: opt.bg,
+                              color: opt.color
+                            }}
+                          >
+                            <i className={`bx ${opt.icon}`} style={{ marginRight: '0.25rem' }}></i>
+                            {opt.value}
+                          </span>
+                        </label>
+                      );
+                    })}
+
+                    {/* Option: Not a part of SOW / No session done */}
+                    {activeQuestion.allowNotApplicable && (
+                      <label
+                        onClick={() => handleSelectOption(NOT_APPLICABLE_OPTION.value)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.75rem 1rem',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                          transition: 'all 0.15s ease',
+                          backgroundColor: ratings[activeQuestion.id] === NOT_APPLICABLE_OPTION.value ? '#f1f5f9' : '#ffffff',
+                          border: ratings[activeQuestion.id] === NOT_APPLICABLE_OPTION.value ? '1.5px solid #64748b' : '1px dashed #cbd5e1'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <input
                             type="radio"
                             name={activeQuestion.id}
-                            value={option}
-                            checked={isSelected}
-                            onChange={() => handleSelectOption(option)}
+                            value={NOT_APPLICABLE_OPTION.value}
+                            checked={ratings[activeQuestion.id] === NOT_APPLICABLE_OPTION.value}
+                            onChange={() => handleSelectOption(NOT_APPLICABLE_OPTION.value)}
                             style={{
                               width: '18px',
                               height: '18px',
-                              accentColor: '#034ea2',
+                              accentColor: '#64748b',
                               cursor: 'pointer',
                               margin: 0
                             }}
                           />
                           <span
                             style={{
-                              fontSize: '0.95rem',
-                              color: isSelected ? '#034ea2' : '#334155',
-                              fontWeight: isSelected ? '600' : '400'
+                              fontSize: '0.92rem',
+                              color: ratings[activeQuestion.id] === NOT_APPLICABLE_OPTION.value ? '#0f172a' : '#64748b',
+                              fontWeight: ratings[activeQuestion.id] === NOT_APPLICABLE_OPTION.value ? '600' : '500'
                             }}
                           >
-                            {option}
+                            {NOT_APPLICABLE_OPTION.label}
                           </span>
-                        </label>
-                      );
-                    })}
+                        </div>
+
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: '600',
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '4px',
+                            background: '#f1f5f9',
+                            color: '#64748b'
+                          }}
+                        >
+                          Excluded from Corporate SOW
+                        </span>
+                      </label>
+                    )}
                   </div>
+
+                  {/* OPTIONAL REMARK CARD ON LOW RESPONSE (Dissatisfied, Very dissatisfied, Neutral) */}
+                  {isLowRating(ratings[activeQuestion.id]) && (
+                    <div
+                      style={{
+                        marginTop: '1.25rem',
+                        marginBottom: '1.5rem',
+                        padding: '1.25rem',
+                        background: '#fffbeb',
+                        border: '1px solid #fde68a',
+                        borderRadius: '8px',
+                        animation: 'fadeIn 0.2s ease-in'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label style={{ fontSize: '0.88rem', fontWeight: '700', color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <i className="bx bx-message-alt-error" style={{ fontSize: '1.1rem' }}></i>
+                          <span>What could we have done better? (Optional remark)</span>
+                        </label>
+                        <span style={{ fontSize: '0.75rem', color: '#b45309', background: '#fef3c7', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
+                          Optional
+                        </span>
+                      </div>
+
+                      <p style={{ margin: '0 0 0.65rem 0', fontSize: '0.8rem', color: '#78350f' }}>
+                        We strive for excellence. Click any tag below to quickly specify the issue, or leave a brief remark so your CS SPOC can take corrective action.
+                      </p>
+
+                      {/* Pillar Quick Issue Tags */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.65rem' }}>
+                        {activeQuestion.lowRatingTags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => handleAddLowRatingTag(activeQuestion.id, tag)}
+                            style={{
+                              padding: '0.2rem 0.55rem',
+                              borderRadius: '12px',
+                              border: '1px solid #fcd34d',
+                              background: '#ffffff',
+                              color: '#92400e',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseOver={(e) => {
+                              e.currentTarget.style.backgroundColor = '#fef3c7';
+                            }}
+                            onMouseOut={(e) => {
+                              e.currentTarget.style.backgroundColor = '#ffffff';
+                            }}
+                          >
+                            + {tag}
+                          </button>
+                        ))}
+                      </div>
+
+                      <textarea
+                        rows={3}
+                        value={lowResponseRemarks[activeQuestion.id]}
+                        onChange={(e) =>
+                          setLowResponseRemarks({
+                            ...lowResponseRemarks,
+                            [activeQuestion.id]: e.target.value
+                          })
+                        }
+                        placeholder="Share any specifics about delays, missing commitments, or issues experienced (optional)..."
+                        style={{
+                          width: '100%',
+                          padding: '0.65rem 0.85rem',
+                          borderRadius: '6px',
+                          border: '1px solid #fcd34d',
+                          background: '#ffffff',
+                          fontSize: '0.88rem',
+                          color: '#1e293b',
+                          boxSizing: 'border-box',
+                          fontFamily: 'inherit',
+                          lineHeight: '1.45',
+                          resize: 'vertical'
+                        }}
+                      />
+                    </div>
+                  )}
 
                   {/* Validation Error banner */}
                   {validationError && (
@@ -445,7 +767,7 @@ export default function CsFeedback() {
                   )}
 
                   {/* Navigation Buttons */}
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '1.5rem' }}>
                     {currentStep > 0 && (
                       <button
                         type="button"
@@ -490,7 +812,7 @@ export default function CsFeedback() {
                   </div>
                 </div>
               ) : (
-                /* Step 9 / Final Details & Suggestions Form (Screenshot 5) */
+                /* Step 7 / Final Details & Suggestions Form */
                 <form onSubmit={handleSubmit}>
                   {/* Pre-fill Intelligence Notification */}
                   <div
@@ -509,7 +831,7 @@ export default function CsFeedback() {
                   >
                     <i className="bx bx-info-circle" style={{ fontSize: '1.25rem', color: '#0284c7' }}></i>
                     <div>
-                      <strong>Auto-Populated Details:</strong> Your name is prefilled from your active HR session, and the Customer Success SPOC is fetched directly from division information.
+                      <strong>Pre-Populated Identity:</strong> Your details are prefilled based on your HR session, and your Customer Success SPOC is linked from your division configuration.
                     </div>
                   </div>
 
@@ -548,7 +870,7 @@ export default function CsFeedback() {
                         Name <span style={{ color: '#ef4444' }}>*</span>
                       </label>
                       <span style={{ fontSize: '0.75rem', color: '#0284c7', background: '#e0f2fe', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
-                        Prefilled from HR Login
+                        Prefilled from HR Login ID
                       </span>
                     </div>
                     <input
@@ -580,7 +902,7 @@ export default function CsFeedback() {
                         Company <span style={{ color: '#ef4444' }}>*</span>
                       </label>
                       <span style={{ fontSize: '0.75rem', color: '#059669', background: '#dcfce7', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
-                        Client Account
+                        Corporate Account
                       </span>
                     </div>
                     <input
@@ -588,7 +910,7 @@ export default function CsFeedback() {
                       required
                       value={clientDetails.company}
                       onChange={(e) => setClientDetails({ ...clientDetails, company: e.target.value })}
-                      placeholder="Enter client company name"
+                      placeholder="Enter corporate company name"
                       style={{
                         width: '100%',
                         padding: '0.7rem 0.9rem',
@@ -612,7 +934,7 @@ export default function CsFeedback() {
                         Customer Success SPOC Name <span style={{ color: '#ef4444' }}>*</span>
                       </label>
                       <span style={{ fontSize: '0.75rem', color: '#034ea2', background: '#e0f2fe', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
-                        Prefilled from Division CS
+                        Prefilled from Division Roles
                       </span>
                     </div>
                     <input
@@ -643,14 +965,14 @@ export default function CsFeedback() {
                       Do you have any suggestions or feedback for us to improve our services?
                     </label>
 
-                    {/* Quick Suggestions Chips to capture maximum information */}
+                    {/* Quick Suggestions Chips */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.65rem' }}>
                       <span style={{ fontSize: '0.75rem', color: '#64748b', alignSelf: 'center' }}>Quick insert:</span>
-                      {SUGGESTION_TAGS.map((tag) => (
+                      {GENERAL_SUGGESTION_TAGS.map((tag) => (
                         <button
                           key={tag}
                           type="button"
-                          onClick={() => handleAddSuggestionTag(tag)}
+                          onClick={() => handleAddGeneralSuggestionTag(tag)}
                           style={{
                             padding: '0.25rem 0.6rem',
                             borderRadius: '12px',
@@ -681,7 +1003,7 @@ export default function CsFeedback() {
                       rows={4}
                       value={clientDetails.suggestions}
                       onChange={(e) => setClientDetails({ ...clientDetails, suggestions: e.target.value })}
-                      placeholder="Share your thoughts on session topics, app experience, trainer interactions, or any other areas where we can improve..."
+                      placeholder="Share your overall experience regarding webinar variety, response times, session quality, or any new features you would like to see..."
                       style={{
                         width: '100%',
                         padding: '0.75rem 0.9rem',
@@ -772,7 +1094,7 @@ export default function CsFeedback() {
                       onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#023c7d')}
                       onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#034ea2')}
                     >
-                      Submit
+                      Submit Feedback
                     </button>
                   </div>
                 </form>
@@ -802,7 +1124,7 @@ export default function CsFeedback() {
                 Thank You for Your Feedback!
               </h2>
               <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '520px', margin: '0 auto 1.75rem auto', lineHeight: '1.5' }}>
-                Your responses have been successfully submitted for <strong>{clientDetails.company}</strong>. They have been routed directly to Customer Success SPOC <strong>{clientDetails.csSpocName}</strong> and leadership.
+                Your responses have been successfully submitted for <strong>{clientDetails.company}</strong>. They have been routed directly to Customer Success SPOC <strong>{clientDetails.csSpocName}</strong> and executive management.
               </p>
 
               {/* Recorded Feedback Details Card */}
@@ -814,11 +1136,11 @@ export default function CsFeedback() {
                   borderRadius: '10px',
                   padding: '1.5rem',
                   marginBottom: '2rem',
-                  maxWidth: '640px',
+                  maxWidth: '680px',
                   margin: '0 auto 2rem auto'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <div>
                     <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Respondent (HR)</span>
                     <div style={{ fontWeight: '600', color: '#0f172a' }}>{clientDetails.name}</div>
@@ -833,61 +1155,77 @@ export default function CsFeedback() {
                   </div>
                 </div>
 
-                {/* Quantitative Ratings */}
+                {/* 6 Core Pillars Summary */}
                 <div style={{ fontSize: '0.78rem', fontWeight: '700', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.6rem' }}>
-                  Ratings Summary ({QUESTIONS.length} Questions):
+                  6 Service Pillars Evaluation:
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                  {QUESTIONS.map((q) => (
-                    <div
-                      key={q.id}
-                      style={{
-                        padding: '0.45rem 0.65rem',
-                        background: '#ffffff',
-                        border: '1px solid #f1f5f9',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: '500' }}>{q.shortLabel}</span>
-                      <span
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                  {PILLAR_QUESTIONS.map((q) => {
+                    const ans = ratings[q.id];
+                    const remark = lowResponseRemarks[q.id];
+                    return (
+                      <div
+                        key={q.id}
                         style={{
-                          fontSize: '0.72rem',
-                          fontWeight: '700',
-                          padding: '0.15rem 0.45rem',
-                          borderRadius: '4px',
-                          backgroundColor:
-                            ratings[q.id]?.includes('Very satisfied')
-                              ? '#dcfce7'
-                              : ratings[q.id]?.includes('Satisfied')
-                              ? '#e0f2fe'
-                              : ratings[q.id]?.includes('Neutral')
-                              ? '#fef3c7'
-                              : '#fee2e2',
-                          color:
-                            ratings[q.id]?.includes('Very satisfied')
-                              ? '#166534'
-                              : ratings[q.id]?.includes('Satisfied')
-                              ? '#0369a1'
-                              : ratings[q.id]?.includes('Neutral')
-                              ? '#92400e'
-                              : '#991b1b'
+                          padding: '0.65rem 0.85rem',
+                          background: '#ffffff',
+                          border: '1px solid #f1f5f9',
+                          borderRadius: '6px'
                         }}
                       >
-                        {ratings[q.id] || 'Not answered'}
-                      </span>
-                    </div>
-                  ))}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.82rem', color: '#1e293b', fontWeight: '600' }}>
+                            {q.shortLabel}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '0.75rem',
+                              fontWeight: '700',
+                              padding: '0.15rem 0.5rem',
+                              borderRadius: '4px',
+                              backgroundColor:
+                                ans === 'Very satisfied'
+                                  ? '#dcfce7'
+                                  : ans === 'Satisfied'
+                                  ? '#e0f2fe'
+                                  : ans === 'Neutral'
+                                  ? '#fef3c7'
+                                  : ans?.includes('Not a part')
+                                  ? '#f1f5f9'
+                                  : '#fee2e2',
+                              color:
+                                ans === 'Very satisfied'
+                                  ? '#166534'
+                                  : ans === 'Satisfied'
+                                  ? '#0369a1'
+                                  : ans === 'Neutral'
+                                  ? '#92400e'
+                                  : ans?.includes('Not a part')
+                                  ? '#475569'
+                                  : '#991b1b'
+                            }}
+                          >
+                            {ans || 'Not answered'}
+                          </span>
+                        </div>
+
+                        {/* Low rating remark if provided */}
+                        {remark && (
+                          <div style={{ marginTop: '0.35rem', fontSize: '0.78rem', color: '#b45309', background: '#fffbeb', padding: '0.3rem 0.5rem', borderRadius: '4px' }}>
+                            <strong>Remark:</strong> {remark}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Qualitative Suggestions if provided */}
                 {clientDetails.suggestions && (
                   <div style={{ background: '#ffffff', border: '1px solid #f1f5f9', borderRadius: '6px', padding: '0.75rem' }}>
                     <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
-                      Suggestions & Feedback:
+                      Overall Suggestions & Feedback:
                     </div>
                     <p style={{ margin: 0, fontSize: '0.85rem', color: '#1e293b', fontStyle: 'italic', lineHeight: '1.5' }}>
                       "{clientDetails.suggestions}"
