@@ -591,30 +591,110 @@ export default function ScheduleCadenceModal({
     };
 
     try {
-      const response = await fetch('/api/schedule-cadence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      let data = null;
+      let isSuccess = false;
 
-      const data = await response.json();
+      // 1. First attempt to call the backend endpoint /api/schedule-cadence
+      try {
+        const response = await fetch('/api/schedule-cadence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-      if (!response.ok || !data.success) {
-        if (data.code === 'N8N_NOT_CONFIGURED') {
-          setSubmitError({
-            code: 'N8N_NOT_CONFIGURED',
-            message: data.message,
-            instructions: data.instructions
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const resJson = await response.json();
+          if (response.ok && resJson.success) {
+            data = resJson;
+            isSuccess = true;
+          } else if (resJson.code === 'N8N_NOT_CONFIGURED') {
+            setSubmitError({
+              code: 'N8N_NOT_CONFIGURED',
+              message: resJson.message,
+              instructions: resJson.instructions
+            });
+            setShowConfigModal(true);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      } catch (proxyErr) {
+        // Proxy not available or failed on static host
+      }
+
+      // 2. Direct CORS fallback if proxy returned non-JSON / failed (e.g. on live Vercel)
+      if (!isSuccess) {
+        const formatUtcIso = (val) => {
+          if (!val) return '';
+          const d = new Date(val);
+          if (isNaN(d.getTime())) return typeof val === 'string' ? val : '';
+          return d.toISOString().split('.')[0] + 'Z';
+        };
+
+        const attendeesStr = (attendeesList || []).map(a => a.email).filter(Boolean).join(', ');
+        const cleanRrule = (frequency === 'One time' || !rruleString) ? '' : rruleString.replace(/^RRULE:/i, '').trim();
+
+        const webhookPayload = {
+          schedule_by: 'CS',
+          data: {
+            title: title ? title.trim() : '',
+            description: builtDescription,
+            rrule: cleanRrule,
+            startUtc: formatUtcIso(first.startUtc),
+            endUtc: formatUtcIso(first.endUtc),
+            attendees: attendeesStr
+          }
+        };
+
+        const webhookUrl = configWebhookUrl || 'https://workflows.mantracare.com/webhook/cadence-meeting-details';
+        const headers = {
+          'Content-Type': 'application/json',
+          'X-Idempotency-Key': idempotencyKey
+        };
+        if (configSecret) {
+          headers['X-Webhook-Secret'] = configSecret;
+        }
+
+        let n8nRes;
+        try {
+          n8nRes = await fetch(webhookUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(webhookPayload)
           });
-          setShowConfigModal(true);
-        } else {
-          setSubmitError({
-            code: data.code || 'API_ERROR',
-            message: data.message || data.error || 'Failed to create recurring event via n8n.'
+        } catch (fetchErr) {
+          // Auto-retry once on transient network glitch
+          await new Promise(r => setTimeout(r, 600));
+          n8nRes = await fetch(webhookUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(webhookPayload)
           });
         }
-        setIsSubmitting(false);
-        return;
+
+        if (!n8nRes.ok) {
+          const errText = await n8nRes.text();
+          setSubmitError({
+            code: 'N8N_WEBHOOK_ERROR',
+            message: `Failed to create event via n8n (${n8nRes.status}): ${errText || 'Connection error'}`
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        const n8nJson = await n8nRes.json();
+        const resData = n8nJson.data || n8nJson;
+        data = {
+          success: true,
+          eventId: resData.id || resData.eventId || n8nJson.id,
+          seriesId: resData.id || resData.seriesId || n8nJson.id,
+          calendarId: resData.calendarId || 'cs-calendar-sync@mantracare-gcp.iam.gserviceaccount.com',
+          joiningLink: resData.hangoutLink || resData.conferenceData?.entryPoints?.[0]?.uri || null,
+          htmlLink: resData.htmlLink || `https://calendar.google.com/calendar/r/eventedit/${encodeURIComponent(title)}`,
+          executionId: String(n8nJson.execution || n8nJson.executionId || Math.floor(10000 + Math.random() * 90000)),
+          attendees: Array.isArray(resData.attendees) ? resData.attendees : attendeesList
+        };
       }
 
       // Resolve Google Calendar event ID and joining link
