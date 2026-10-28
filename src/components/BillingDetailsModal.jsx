@@ -211,11 +211,17 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
         setBillingSplits([]);
       }
 
+      if (initialData?.linkedContract?.id) {
+        setSelectedContractId(String(initialData.linkedContract.id));
+      }
+
       setFormData(prev => ({
         ...prev,
         ...initialData,
         billingEntity: initialData?.billingEntity || hrEntity,
-        taxDetails: initialData?.taxDetails || hrTax
+        taxDetails: initialData?.taxDetails || hrTax,
+        billingAddress: initialData?.billingAddress || initialData?.linkedContract?.address || '',
+        isLinkedFromContract: !!initialData?.linkedContract
       }));
       setErrors({});
     }
@@ -434,31 +440,48 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
                     setSelectedContractId(cId);
                     const found = divisionContracts.find(c => String(c.id) === String(cId));
                     if (found) {
+                      // 1. Populate multi-entity split allocation
                       if (found.companyEntities && found.companyEntities.length > 0) {
                         setBillingSplits(found.companyEntities.map((ent, idx) => ({
                           id: ent.id || idx + 1,
                           companyName: ent.companyName,
-                          gstNumber: ent.taxDetails || '',
+                          gstNumber: ent.taxDetails || ent.gstNumber || '',
                           address: ent.address || '',
                           percentage: Number(ent.percentage) || 0,
                           selected: true
                         })));
+                        setIsSplitCollapsed(false); // Auto-expand multi-entity split view
+                      } else if (found.billingSplits && found.billingSplits.length > 0) {
+                        setBillingSplits(found.billingSplits.map((ent, idx) => ({
+                          id: ent.id || idx + 1,
+                          companyName: ent.companyName,
+                          gstNumber: ent.taxDetails || ent.gstNumber || '',
+                          address: ent.address || '',
+                          percentage: Number(ent.percentage) || 0,
+                          selected: true
+                        })));
+                        setIsSplitCollapsed(false);
                       }
+
+                      // 2. Populate all billing entity, tax, address and commercial terms
                       setFormData(prev => ({
                         ...prev,
                         billingEntity: found.companyName,
-                        taxDetails: found.taxDetails,
+                        taxDetails: found.taxDetails || '',
+                        billingAddress: found.address || '',
                         companyName: found.companyName,
-                        contractValue: found.contractValue,
-                        clientCurrency: found.contractCurrency,
-                        currencyExchangeValue: found.currencyExchangeValue,
-                        paymentDueDays: found.paymentDueDays,
-                        billFrom: found.billFrom,
-                        receivingBankName: found.receivingBankName,
-                        billingDate: found.billingDate,
-                        bankDetailsLink: found.bankDetailsLink,
-                        linkedContract: found
+                        contractValue: found.contractValue !== undefined ? String(found.contractValue) : '',
+                        clientCurrency: found.contractCurrency || '',
+                        currencyExchangeValue: found.currencyExchangeValue !== undefined ? String(found.currencyExchangeValue) : '1',
+                        paymentDueDays: found.paymentDueDays !== undefined ? String(found.paymentDueDays) : '',
+                        billFrom: found.billFrom || '',
+                        receivingBankName: found.receivingBankName || '',
+                        billingDate: found.billingDate || '',
+                        bankDetailsLink: found.bankDetailsLink || '',
+                        linkedContract: found,
+                        isLinkedFromContract: true
                       }));
+                      setErrors({});
                     }
                   }}
                   style={{
@@ -474,23 +497,27 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
                   }}
                 >
                   <option value="">-- Choose a Division Contract to auto-fill --</option>
-                  {divisionContracts.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.companyName} • {c.contractValue?.toLocaleString()} {c.contractCurrency} (${c.amountInUSD?.toLocaleString()} USD) • {c.billFrom} / {c.receivingBankName}
-                    </option>
-                  ))}
+                  {divisionContracts.map(c => {
+                    const taxSnippet = c.taxDetails ? ` • Tax: ${c.taxDetails}` : '';
+                    const splitsSnippet = c.companyEntities?.length > 1 ? ` (${c.companyEntities.length} entities)` : '';
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {c.companyName}{splitsSnippet}{taxSnippet} • {c.contractValue?.toLocaleString()} {c.contractCurrency} (${c.amountInUSD?.toLocaleString()} USD) • {c.billFrom} / {c.receivingBankName}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             )}
 
-            {/* Row 1 */}
+            {/* Row 1: Billing Entity & Tax Details */}
             {(!formData.billingEntity && !formData.taxDetails) ? (
               <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '1rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                   <i className='bx bx-error-circle' style={{ color: '#ef4444', fontSize: '1.5rem' }}></i>
                   <div>
                     <h4 style={{ margin: 0, color: '#991b1b', fontSize: '0.9rem', fontWeight: '600' }}>Onboarding form is pending</h4>
-                    <p style={{ margin: '0.25rem 0 0 0', color: '#b91c1c', fontSize: '0.8rem' }}>Client's Entity and Tax Details are unavailable.</p>
+                    <p style={{ margin: '0.25rem 0 0 0', color: '#b91c1c', fontSize: '0.8rem' }}>Client's Entity and Tax Details are unavailable. You can link a Division Contract above.</p>
                   </div>
                 </div>
                 <button 
@@ -513,13 +540,37 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div>
-                  <label style={labelStyle}>Billing Entity (from HR)</label>
-                  <input type="text" style={{...inputStyle, backgroundColor: '#f1f5f9'}} value={formData.billingEntity} readOnly />
+                  <label style={labelStyle}>
+                    Billing Entity
+                    {formData.isLinkedFromContract ? (
+                      <span style={{ fontSize: '0.68rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: '700', marginLeft: '0.4rem' }}>
+                        <i className='bx bx-link' style={{ marginRight: '0.15rem' }}></i>Linked from Contract
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.68rem', background: '#f1f5f9', color: '#475569', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: '500', marginLeft: '0.4rem' }}>
+                        from Onboarding
+                      </span>
+                    )}
+                  </label>
+                  <input type="text" style={{...inputStyle, backgroundColor: '#f1f5f9'}} value={formData.billingEntity || ''} readOnly />
                 </div>
                 <div>
-                  <label style={labelStyle}>Tax Details (from HR)</label>
-                  <input type="text" style={{...inputStyle, backgroundColor: '#f1f5f9'}} value={formData.taxDetails} readOnly />
+                  <label style={labelStyle}>
+                    Tax Details
+                    {formData.isLinkedFromContract && (
+                      <span style={{ fontSize: '0.68rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: '700', marginLeft: '0.4rem' }}>
+                        Contract Tax/GST
+                      </span>
+                    )}
+                  </label>
+                  <input type="text" style={{...inputStyle, backgroundColor: '#f1f5f9'}} value={formData.taxDetails || 'N/A'} readOnly />
                 </div>
+                {formData.billingAddress && (
+                  <div style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: '#475569', background: '#f8fafc', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <i className='bx bx-map-pin' style={{ color: '#0284c7', fontSize: '0.9rem' }}></i>
+                    <strong style={{ color: '#1e293b' }}>Billing Address:</strong> {formData.billingAddress}
+                  </div>
+                )}
               </div>
             )}
 
