@@ -46,6 +46,16 @@ function saveStoredConfig(newConfig) {
 }
 
 /**
+ * Format UTC date to ISO string without milliseconds: YYYY-MM-DDTHH:mm:ssZ
+ */
+function formatUtcIso(val) {
+  if (!val) return '';
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return typeof val === 'string' ? val : '';
+  return d.toISOString().split('.')[0] + 'Z';
+}
+
+/**
  * Vite plugin providing server-side API endpoints for n8n Google Calendar integration
  */
 export function cadenceApiPlugin() {
@@ -239,37 +249,44 @@ export function cadenceApiPlugin() {
 
             // Deduplicate attendee emails (case-insensitive & trimmed, plain string without mailto)
             const attendeeEmailSet = new Set();
-            const cleanAttendees = [];
+            const cleanAttendeesList = [];
 
-            (attendees || []).forEach(att => {
-              const rawEmail = typeof att === 'string' ? att : att?.email;
-              if (!rawEmail) return;
-              // Strip mailto: prefix if present, trim whitespace
-              const cleanEmail = rawEmail.replace(/^mailto:/i, '').trim();
-              const lower = cleanEmail.toLowerCase();
-              if (lower && !attendeeEmailSet.has(lower)) {
-                attendeeEmailSet.add(lower);
-                cleanAttendees.push({ email: cleanEmail });
-              }
-            });
-
-            // Construct only the exact required fields for the webhook payload
-            const webhookData = {
-              title: title ? title.trim() : '',
-              description: description ? description.trim() : '',
-              startUtc: startUtc || '',
-              endUtc: endUtc || '',
-              attendees: cleanAttendees
-            };
-
-            // For One time cadence: do not send the RRULE
-            if (frequency !== 'One time' && rrule) {
-              webhookData.rrule = rrule;
+            if (typeof attendees === 'string') {
+              attendees.split(',').forEach(raw => {
+                const clean = raw.replace(/^mailto:/i, '').trim();
+                const lower = clean.toLowerCase();
+                if (lower && !attendeeEmailSet.has(lower)) {
+                  attendeeEmailSet.add(lower);
+                  cleanAttendeesList.push(clean);
+                }
+              });
+            } else if (Array.isArray(attendees)) {
+              attendees.forEach(att => {
+                const rawEmail = typeof att === 'string' ? att : att?.email;
+                if (!rawEmail) return;
+                const cleanEmail = rawEmail.replace(/^mailto:/i, '').trim();
+                const lower = cleanEmail.toLowerCase();
+                if (lower && !attendeeEmailSet.has(lower)) {
+                  attendeeEmailSet.add(lower);
+                  cleanAttendeesList.push(cleanEmail);
+                }
+              });
             }
 
+            const attendeesStr = cleanAttendeesList.join(', ');
+            const cleanAttendees = cleanAttendeesList.map(email => ({ email }));
+
+            // Construct exact required fields for webhook payload
             const webhookPayload = {
               schedule_by: 'CS',
-              data: webhookData
+              data: {
+                title: title ? title.trim() : '',
+                description: description ? description.trim() : '',
+                rrule: (frequency === 'One time' || !rrule) ? '' : rrule.trim(),
+                startUtc: formatUtcIso(startUtc),
+                endUtc: formatUtcIso(endUtc),
+                attendees: attendeesStr
+              }
             };
 
             // Dispatch to webhook via fetch
