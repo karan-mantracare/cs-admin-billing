@@ -1544,11 +1544,33 @@ function EditDivision() {
                             {divisionContracts.map((cnt, idx) => (
                               <tr key={cnt.id || idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
                                 <td style={{ padding: '0.75rem 1rem', color: '#0f172a', fontWeight: '500' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <i className='bx bx-buildings' style={{ color: '#0284c7', fontSize: '1.1rem' }}></i>
+                                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                    <i className='bx bx-buildings' style={{ color: '#0284c7', fontSize: '1.15rem', marginTop: '2px' }}></i>
                                     <div>
-                                      <div>{cnt.companyName}</div>
-                                      {cnt.taxDetails && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Tax/GST: {cnt.taxDetails}</div>}
+                                      {cnt.companyEntities && cnt.companyEntities.length > 1 ? (
+                                        <div>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.3rem' }}>
+                                            <span style={{ fontWeight: '600', color: '#0f172a' }}>Multi-Company Split</span>
+                                            <span style={{ fontSize: '0.68rem', background: '#e0f2fe', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: '700' }}>
+                                              {cnt.companyEntities.length} entities
+                                            </span>
+                                          </div>
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                            {cnt.companyEntities.map((ent, eIdx) => (
+                                              <div key={ent.id || eIdx} style={{ fontSize: '0.75rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                <span style={{ fontWeight: '600', color: '#1e293b' }}>{ent.companyName}</span>
+                                                <span style={{ color: '#0284c7', fontWeight: '700', fontSize: '0.72rem' }}>({ent.percentage}%)</span>
+                                                {ent.taxDetails && <span style={{ color: '#94a3b8' }}>• Tax: {ent.taxDetails}</span>}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <div style={{ fontWeight: '600' }}>{cnt.companyName}</div>
+                                          {cnt.taxDetails && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Tax/GST: {cnt.taxDetails}</div>}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 </td>

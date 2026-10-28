@@ -67,15 +67,17 @@ export default function ContractConnectModal({
   const [availableContracts, setAvailableContracts] = useState([]);
   const [selectedContractIds, setSelectedContractIds] = useState([]);
 
-  // Create form state
-  const [onboardingCompanies, setOnboardingCompanies] = useState([]);
-  const [companyMode, setCompanyMode] = useState('onboarding');
-  const [selectedOnboardingIndex, setSelectedOnboardingIndex] = useState(0);
+  // Create form state - Multi-select company pool and splits
+  const [allCompanies, setAllCompanies] = useState([]);
+  const [companySplits, setCompanySplits] = useState([]);
+  const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
+  const [companySearch, setCompanySearch] = useState('');
+  const [isAddingCustom, setIsAddingCustom] = useState(false);
+  const [customForm, setCustomForm] = useState({ companyName: '', taxDetails: '', address: '' });
+  const [customError, setCustomError] = useState('');
+  const companyDropdownRef = useRef(null);
 
   const [formData, setFormData] = useState({
-    companyName: '',
-    taxDetails: '',
-    address: '',
     contractValue: '1500',
     contractCurrency: 'EUR',
     currencyExchangeValue: '0.86',
@@ -98,6 +100,9 @@ export default function ContractConnectModal({
       if (currencyDropdownRef.current && !currencyDropdownRef.current.contains(e.target)) {
         setIsCurrencyDropdownOpen(false);
       }
+      if (companyDropdownRef.current && !companyDropdownRef.current.contains(e.target)) {
+        setIsCompanyDropdownOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -106,10 +111,13 @@ export default function ContractConnectModal({
   useEffect(() => {
     if (isOpen) {
       loadAvailableContracts();
-      loadOnboardingCompanies();
+      loadCompanies();
       setSelectedContractIds([]);
       setActiveTab('connect');
       setErrors({});
+      setIsAddingCustom(false);
+      setCustomForm({ companyName: '', taxDetails: '', address: '' });
+      setCustomError('');
     }
   }, [isOpen, divisionId, orderId, existingContracts]);
 
@@ -134,7 +142,7 @@ export default function ContractConnectModal({
     }
   };
 
-  const loadOnboardingCompanies = () => {
+  const loadCompanies = () => {
     const companies = [];
     try {
       const targetId = divisionId || '1';
@@ -146,19 +154,21 @@ export default function ContractConnectModal({
             parsed.billingDetails.companies.forEach((comp, idx) => {
               if (comp.companyName && comp.companyName.trim()) {
                 companies.push({
-                  id: comp.id || idx + 1,
+                  id: 'onb_' + (comp.id || idx + 1),
                   companyName: comp.companyName,
                   taxDetails: comp.gstNumber || '',
-                  address: comp.address || ''
+                  address: comp.address || '',
+                  source: 'onboarding'
                 });
               }
             });
           } else if (parsed.billingDetails.companyName) {
             companies.push({
-              id: 1,
+              id: 'onb_1',
               companyName: parsed.billingDetails.companyName,
               taxDetails: parsed.billingDetails.gstNumber || '',
-              address: parsed.billingDetails.address || ''
+              address: parsed.billingDetails.address || '',
+              source: 'onboarding'
             });
           }
         }
@@ -166,19 +176,11 @@ export default function ContractConnectModal({
     } catch (err) {
       console.error('Error loading onboarding companies:', err);
     }
-    setOnboardingCompanies(companies);
+    setAllCompanies(companies);
     if (companies.length > 0) {
-      const first = companies[0];
-      setFormData(prev => ({
-        ...prev,
-        companyName: first.companyName,
-        taxDetails: first.taxDetails,
-        address: first.address
-      }));
-      setCompanyMode('onboarding');
-      setSelectedOnboardingIndex(0);
+      setCompanySplits([{ ...companies[0], percentage: 100 }]);
     } else {
-      setCompanyMode('custom');
+      setCompanySplits([]);
     }
   };
 
@@ -213,24 +215,84 @@ export default function ContractConnectModal({
     }
   };
 
-  const handleSelectOnboardingCompany = (idx) => {
-    setSelectedOnboardingIndex(idx);
-    const comp = onboardingCompanies[idx];
-    if (comp) {
-      setFormData(prev => ({
-        ...prev,
-        companyName: comp.companyName,
-        taxDetails: comp.taxDetails,
-        address: comp.address
+  const toggleCompanySelection = (comp) => {
+    const isSelected = companySplits.some(s => s.id === comp.id);
+    let updated;
+    if (isSelected) {
+      updated = companySplits.filter(s => s.id !== comp.id);
+    } else {
+      updated = [...companySplits, { ...comp, percentage: 0 }];
+    }
+
+    if (updated.length > 0) {
+      const count = updated.length;
+      const base = Math.floor(100 / count);
+      const remainder = 100 - (base * count);
+      updated = updated.map((item, idx) => ({
+        ...item,
+        percentage: idx === count - 1 ? (base + remainder) : base
       }));
     }
+
+    setCompanySplits(updated);
+    if (errors.companies) setErrors(prev => ({ ...prev, companies: null }));
   };
 
+  const handlePercentageChange = (id, newPercentage) => {
+    const num = parseFloat(newPercentage) || 0;
+    setCompanySplits(prev => prev.map(s => s.id === id ? { ...s, percentage: num } : s));
+  };
 
+  const applyEqualSplit = () => {
+    const count = companySplits.length;
+    if (count === 0) return;
+    const base = Math.floor(100 / count);
+    const remainder = 100 - (base * count);
+    setCompanySplits(prev => prev.map((s, idx) => ({
+      ...s,
+      percentage: idx === count - 1 ? (base + remainder) : base
+    })));
+  };
+
+  const handleAddCustomCompany = (e) => {
+    e.preventDefault();
+    if (!customForm.companyName.trim()) {
+      setCustomError('Company Name is required');
+      return;
+    }
+    const newComp = {
+      id: 'custom_' + Date.now(),
+      companyName: customForm.companyName.trim(),
+      taxDetails: customForm.taxDetails.trim(),
+      address: customForm.address.trim(),
+      source: 'custom'
+    };
+
+    setAllCompanies(prev => [...prev, newComp]);
+    const updated = [...companySplits, { ...newComp, percentage: 0 }];
+    const count = updated.length;
+    const base = Math.floor(100 / count);
+    const remainder = 100 - (base * count);
+    setCompanySplits(updated.map((item, idx) => ({
+      ...item,
+      percentage: idx === count - 1 ? (base + remainder) : base
+    })));
+
+    setCustomForm({ companyName: '', taxDetails: '', address: '' });
+    setCustomError('');
+    setIsAddingCustom(false);
+  };
+
+  const totalPercentage = companySplits.reduce((acc, s) => acc + (parseFloat(s.percentage) || 0), 0);
 
   const validate = () => {
     const newErrors = {};
-    if (!formData.companyName.trim()) newErrors.companyName = 'Company Name is required';
+    if (companySplits.length === 0) {
+      newErrors.companies = 'Please select at least one company / entity';
+    } else if (Math.round(totalPercentage) !== 100) {
+      newErrors.companies = `Total percentage must equal 100% (currently ${totalPercentage}%)`;
+    }
+
     if (!formData.contractCurrency) newErrors.contractCurrency = 'Currency is required';
     if (!formData.paymentDueDays) newErrors.paymentDueDays = 'Payment Due Days is required';
     if (!formData.billFrom) newErrors.billFrom = 'Bill From is required';
@@ -252,15 +314,23 @@ export default function ContractConnectModal({
       onConnect(connected, 'connect');
     } else {
       if (!validate()) return;
+      const primaryName = companySplits.length === 1 
+        ? companySplits[0].companyName
+        : companySplits.map(s => `${s.companyName} (${s.percentage}%)`).join(', ');
+
+      const primaryTax = companySplits.map(s => s.taxDetails).filter(Boolean).join(', ');
+      const primaryAddress = companySplits.map(s => s.address).filter(Boolean).join(' | ');
+
       const newContract = {
         id: Date.now() + Math.random(),
         divisionId: divisionId || '',
         orderId: orderId || '',
         orderName: '',
-        companySource: companyMode,
-        companyName: formData.companyName.trim(),
-        taxDetails: formData.taxDetails.trim(),
-        address: formData.address.trim(),
+        companyEntities: companySplits,
+        billingSplits: companySplits.map(s => ({ ...s, selected: true })),
+        companyName: primaryName,
+        taxDetails: primaryTax,
+        address: primaryAddress,
         contractValue: parseFloat(formData.contractValue) || 0,
         contractCurrency: formData.contractCurrency,
         currencyExchangeValue: parseFloat(formData.currencyExchangeValue) || 1,
@@ -277,6 +347,11 @@ export default function ContractConnectModal({
       onConnect([newContract], 'create');
     }
   };
+
+  const filteredCompanies = allCompanies.filter(c => 
+    c.companyName.toLowerCase().includes(companySearch.toLowerCase()) ||
+    (c.taxDetails && c.taxDetails.toLowerCase().includes(companySearch.toLowerCase()))
+  );
 
   const inputStyle = {
     width: '100%',
@@ -477,117 +552,321 @@ export default function ContractConnectModal({
             /* Create Form Tab */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
-              {/* Company Selection */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              {/* Multi-Select Companies with Dropdown & Percentage Option */}
+              <div style={{ background: '#f8fafc', border: errors.companies ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>
                     <i className="bx bx-buildings" style={{ color: '#0284c7' }}></i>
-                    Client Company / Entity <Tooltip text="Select from Onboarding form or enter custom company details." align="left" />
-                  </span>
-                  
-                  <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: '6px', padding: '2px' }}>
+                    Select Companies / Entities (Multi-Select) <span style={{ color: '#ef4444' }}>*</span>
+                    <Tooltip text="Select one or more companies from Onboarding or add custom entities. Then specify the percentage split." align="left" />
+                  </label>
+
+                  {!isAddingCustom && (
                     <button
                       type="button"
-                      onClick={() => {
-                        setCompanyMode('onboarding');
-                        if (onboardingCompanies.length > 0) handleSelectOnboardingCompany(0);
-                      }}
+                      onClick={() => setIsAddingCustom(true)}
                       style={{
-                        border: 'none',
-                        background: companyMode === 'onboarding' ? '#ffffff' : 'transparent',
-                        color: companyMode === 'onboarding' ? '#0f172a' : '#64748b',
+                        background: '#eff6ff',
+                        color: '#0284c7',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '5px',
                         fontSize: '0.75rem',
                         fontWeight: '600',
-                        padding: '0.3rem 0.65rem',
-                        borderRadius: '5px',
-                        cursor: 'pointer'
+                        padding: '0.3rem 0.6rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
                       }}
                     >
-                      Onboarding ({onboardingCompanies.length})
+                      <i className="bx bx-plus"></i> Add Custom Company
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setCompanyMode('custom')}
-                      style={{
-                        border: 'none',
-                        background: companyMode === 'custom' ? '#ffffff' : 'transparent',
-                        color: companyMode === 'custom' ? '#0f172a' : '#64748b',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        padding: '0.3rem 0.65rem',
-                        borderRadius: '5px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Custom Company
-                    </button>
-                  </div>
+                  )}
                 </div>
 
-                {companyMode === 'onboarding' ? (
-                  onboardingCompanies.length > 0 ? (
-                    <div>
-                      <select
-                        value={selectedOnboardingIndex}
-                        onChange={(e) => handleSelectOnboardingCompany(parseInt(e.target.value, 10))}
-                        style={inputStyle}
+                {/* Inline Add Custom Company Form */}
+                {isAddingCustom && (
+                  <div style={{ background: '#ffffff', border: '1px solid #93c5fd', borderRadius: '6px', padding: '0.85rem', marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#1e40af' }}>
+                        <i className="bx bx-building-house" style={{ marginRight: '0.25rem' }}></i> New Custom Company
+                      </span>
+                      <button 
+                        type="button" 
+                        onClick={() => { setIsAddingCustom(false); setCustomError(''); }} 
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
                       >
-                        {onboardingCompanies.map((c, idx) => (
-                          <option key={idx} value={idx}>
-                            {c.companyName} {c.taxDetails ? `(GST: ${c.taxDetails})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      {formData.companyName && (
-                        <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: '#ffffff', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#475569' }}>
-                          <div style={{ fontWeight: '600', color: '#0f172a' }}>{formData.companyName}</div>
-                          {formData.taxDetails && <div>Tax/GST: {formData.taxDetails}</div>}
-                          {formData.address && <div>Address: {formData.address}</div>}
-                        </div>
-                      )}
+                        <i className="bx bx-x"></i>
+                      </button>
                     </div>
-                  ) : (
-                    <div style={{ padding: '0.75rem', background: '#fffbeb', border: '1px dashed #f59e0b', borderRadius: '6px', color: '#b45309', fontSize: '0.8rem' }}>
-                      No company details found in onboarding form. Use Custom Company.
-                    </div>
-                  )
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div>
-                      <label style={labelStyle}>Company Name <span style={{ color: '#ef4444' }}>*</span></label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       <input
                         type="text"
-                        name="companyName"
-                        placeholder="Enter Company Name"
-                        value={formData.companyName}
-                        onChange={handleInputChange}
-                        style={{ ...inputStyle, borderColor: errors.companyName ? '#ef4444' : '#cbd5e1' }}
+                        placeholder="Company Name *"
+                        value={customForm.companyName}
+                        onChange={(e) => setCustomForm({ ...customForm, companyName: e.target.value })}
+                        style={{ ...inputStyle, padding: '0.45rem 0.65rem', fontSize: '0.85rem' }}
                       />
-                      {errors.companyName && <span style={{ color: '#ef4444', fontSize: '0.75rem' }}>{errors.companyName}</span>}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                        <input
+                          type="text"
+                          placeholder="Tax / GST Number"
+                          value={customForm.taxDetails}
+                          onChange={(e) => setCustomForm({ ...customForm, taxDetails: e.target.value })}
+                          style={{ ...inputStyle, padding: '0.45rem 0.65rem', fontSize: '0.85rem' }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Address"
+                          value={customForm.address}
+                          onChange={(e) => setCustomForm({ ...customForm, address: e.target.value })}
+                          style={{ ...inputStyle, padding: '0.45rem 0.65rem', fontSize: '0.85rem' }}
+                        />
+                      </div>
+                      {customError && <span style={{ color: '#ef4444', fontSize: '0.75rem' }}>{customError}</span>}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.25rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingCustom(false)}
+                          style={{ padding: '0.35rem 0.75rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer', color: '#475569' }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddCustomCompany}
+                          style={{ padding: '0.35rem 0.75rem', background: '#0284c7', border: 'none', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer', color: '#ffffff', fontWeight: '600' }}
+                        >
+                          Add & Select
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                      <div>
-                        <label style={labelStyle}>Tax / GST Number</label>
+                  </div>
+                )}
+
+                {/* Dropdown Input */}
+                <div style={{ position: 'relative' }} ref={companyDropdownRef}>
+                  <div
+                    onClick={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
+                    style={{
+                      ...inputStyle,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      backgroundColor: '#ffffff'
+                    }}
+                  >
+                    <span style={{ color: companySplits.length > 0 ? '#0f172a' : '#94a3b8', fontSize: '0.85rem' }}>
+                      {companySplits.length > 0 
+                        ? `${companySplits.map(s => s.companyName).join(', ')} (${companySplits.length} selected)`
+                        : '-- Click to select companies from Onboarding or Custom --'}
+                    </span>
+                    <i className={`bx bx-chevron-${isCompanyDropdownOpen ? 'up' : 'down'}`} style={{ color: '#64748b' }}></i>
+                  </div>
+
+                  {/* Dropdown Menu */}
+                  {isCompanyDropdownOpen && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      marginTop: '4px',
+                      zIndex: 30,
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      maxHeight: '200px',
+                      display: 'flex',
+                      flexDirection: 'column'
+                    }}>
+                      <div style={{ padding: '0.5rem', borderBottom: '1px solid #e2e8f0' }}>
                         <input
                           type="text"
-                          name="taxDetails"
-                          placeholder="e.g. 29ABCDE1234F1Z5"
-                          value={formData.taxDetails}
-                          onChange={handleInputChange}
-                          style={inputStyle}
+                          autoFocus
+                          placeholder="Search company or tax ID..."
+                          value={companySearch}
+                          onChange={(e) => setCompanySearch(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '0.35rem 0.5rem',
+                            borderRadius: '4px',
+                            border: '1px solid #cbd5e1',
+                            outline: 'none',
+                            fontSize: '0.8rem',
+                            boxSizing: 'border-box'
+                          }}
                         />
                       </div>
-                      <div>
-                        <label style={labelStyle}>Company Address</label>
-                        <input
-                          type="text"
-                          name="address"
-                          placeholder="Registered address"
-                          value={formData.address}
-                          onChange={handleInputChange}
-                          style={inputStyle}
-                        />
+
+                      <div style={{ overflowY: 'auto' }}>
+                        {filteredCompanies.length === 0 ? (
+                          <div style={{ padding: '0.75rem', textAlign: 'center', color: '#64748b', fontSize: '0.8rem' }}>
+                            No companies found. Add a custom company above.
+                          </div>
+                        ) : (
+                          filteredCompanies.map(c => {
+                            const isChecked = companySplits.some(s => s.id === c.id);
+                            return (
+                              <div
+                                key={c.id}
+                                onClick={() => toggleCompanySelection(c)}
+                                style={{
+                                  padding: '0.5rem 0.75rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  cursor: 'pointer',
+                                  background: isChecked ? '#f0f9ff' : '#ffffff',
+                                  borderBottom: '1px solid #f8fafc'
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  readOnly
+                                  style={{ accentColor: '#0284c7', width: '16px', height: '16px', cursor: 'pointer' }}
+                                />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontWeight: '600', fontSize: '0.85rem', color: '#0f172a' }}>{c.companyName}</span>
+                                    <span style={{
+                                      fontSize: '0.65rem',
+                                      padding: '0.1rem 0.35rem',
+                                      borderRadius: '3px',
+                                      background: c.source === 'custom' ? '#f5f3ff' : '#eff6ff',
+                                      color: c.source === 'custom' ? '#6d28d9' : '#1d4ed8',
+                                      fontWeight: '600'
+                                    }}>
+                                      {c.source === 'custom' ? 'Custom' : 'Onboarding'}
+                                    </span>
+                                  </div>
+                                  {c.taxDetails && <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Tax: {c.taxDetails}</div>}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                {errors.companies && (
+                  <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.35rem' }}>
+                    <i className="bx bx-error-circle" style={{ marginRight: '0.25rem' }}></i>
+                    {errors.companies}
+                  </div>
+                )}
+
+                {/* Percentage Option Section */}
+                {companySplits.length > 0 && (
+                  <div style={{ marginTop: '0.85rem', borderTop: '1px solid #e2e8f0', paddingTop: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <i className="bx bx-pie-chart-alt-2" style={{ color: '#0284c7' }}></i>
+                        Percentage Allocation ({companySplits.length} selected)
+                      </span>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{
+                          fontSize: '0.75rem',
+                          fontWeight: '700',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '4px',
+                          background: Math.round(totalPercentage) === 100 ? '#dcfce7' : '#fee2e2',
+                          color: Math.round(totalPercentage) === 100 ? '#166534' : '#991b1b',
+                          border: Math.round(totalPercentage) === 100 ? '1px solid #bbf7d0' : '1px solid #fecaca'
+                        }}>
+                          {Math.round(totalPercentage) === 100 ? '100% Split' : `${totalPercentage}% / 100%`}
+                        </span>
+
+                        {companySplits.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={applyEqualSplit}
+                            style={{
+                              background: '#0284c7',
+                              color: '#ffffff',
+                              border: 'none',
+                              padding: '0.25rem 0.55rem',
+                              borderRadius: '4px',
+                              fontSize: '0.72rem',
+                              fontWeight: '600',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Equal Split
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      {companySplits.map((split) => {
+                        const share = ((val * (parseFloat(split.percentage) || 0)) / 100).toFixed(2);
+                        return (
+                          <div
+                            key={split.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '0.5rem 0.75rem',
+                              background: '#ffffff',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                              gap: '0.5rem'
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: '600', fontSize: '0.82rem', color: '#0f172a' }}>{split.companyName}</div>
+                              {split.taxDetails && <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Tax/GST: {split.taxDetails}</div>}
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  value={split.percentage}
+                                  onChange={(e) => handlePercentageChange(split.id, e.target.value)}
+                                  style={{
+                                    width: '55px',
+                                    padding: '0.3rem 0.4rem',
+                                    borderRadius: '4px',
+                                    border: '1px solid #cbd5e1',
+                                    textAlign: 'right',
+                                    fontSize: '0.85rem',
+                                    fontWeight: '600',
+                                    color: '#0f172a'
+                                  }}
+                                />
+                                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>%</span>
+                              </div>
+
+                              <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#0284c7', minWidth: '85px', textAlign: 'right' }}>
+                                {share} {formData.contractCurrency}
+                              </div>
+
+                              {companySplits.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleCompanySelection(split)}
+                                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                  title="Remove company"
+                                >
+                                  <i className="bx bx-trash" style={{ fontSize: '1rem' }}></i>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

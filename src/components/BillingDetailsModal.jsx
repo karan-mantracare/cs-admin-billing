@@ -434,6 +434,16 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
                     setSelectedContractId(cId);
                     const found = divisionContracts.find(c => String(c.id) === String(cId));
                     if (found) {
+                      if (found.companyEntities && found.companyEntities.length > 0) {
+                        setBillingSplits(found.companyEntities.map((ent, idx) => ({
+                          id: ent.id || idx + 1,
+                          companyName: ent.companyName,
+                          gstNumber: ent.taxDetails || '',
+                          address: ent.address || '',
+                          percentage: Number(ent.percentage) || 0,
+                          selected: true
+                        })));
+                      }
                       setFormData(prev => ({
                         ...prev,
                         billingEntity: found.companyName,
