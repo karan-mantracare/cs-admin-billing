@@ -4,6 +4,7 @@ import { useGlobal } from '../context/GlobalContext';
 import BillingDetailsModal from '../components/BillingDetailsModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
 import DocumentConnectModalV2 from '../components/DocumentConnectModalV2';
+import ContractConnectModal from '../components/ContractConnectModal';
 import PaymentSummaryModal from '../components/PaymentSummaryModal';
 import ConfirmModal from '../components/ConfirmModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
@@ -88,6 +89,8 @@ function AddOrder() {
       sessionLimits: '',
       checkSessions: false,
       documents: [],
+      v2Documents: [],
+      contracts: [],
       remarks: ''
     },
     plan: 'Select Plan',
@@ -143,7 +146,15 @@ function AddOrder() {
               divisionId: order.divisionId || prev.divisionId || location.state?.divisionId || '',
               contractDetails: {
                 ...prev.contractDetails,
-                ...(order.contractDetails || {})
+                ...(order.contractDetails || {}),
+                contracts: order.contractDetails?.contracts || (() => {
+                  try {
+                    const allContracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+                    return allContracts.filter(c => String(c.orderId) === String(effectiveOrderId));
+                  } catch (e) {
+                    return [];
+                  }
+                })()
               },
               addOns: {
                 ...prev.addOns,
@@ -223,6 +234,7 @@ function AddOrder() {
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [isDocModalV2Open, setIsDocModalV2Open] = useState(false);
+  const [isContractConnectModalOpen, setIsContractConnectModalOpen] = useState(false);
   const [isPaymentSummaryOpen, setIsPaymentSummaryOpen] = useState(false);
   const [isPaymentScheduleOpen, setIsPaymentScheduleOpen] = useState(false);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
@@ -297,6 +309,45 @@ function AddOrder() {
       };
     });
     setIsDocModalV2Open(false);
+  };
+
+  const addOrderContracts = (contracts) => {
+    setFormData(prev => {
+      const existing = prev.contractDetails.contracts || [];
+      const newContracts = contracts.filter(c => !existing.find(ec => ec.id === c.id));
+      return {
+        ...prev,
+        contractDetails: {
+          ...prev.contractDetails,
+          contracts: [...existing, ...newContracts]
+        }
+      };
+    });
+    setIsContractConnectModalOpen(false);
+  };
+
+  const removeOrderContract = (contract) => {
+    const isDirect = contract.isDirectlyUploaded;
+    const title = isDirect ? 'Delete Contract' : 'Disconnect Contract';
+    const message = isDirect 
+      ? 'Are you sure you want to delete this contract? It will be removed from both the Division and this Order.' 
+      : 'Are you sure you want to disconnect this contract from this order?';
+    
+    setConfirmConfig({
+      isOpen: true,
+      title,
+      message,
+      confirmText: isDirect ? 'Delete' : 'Disconnect',
+      onConfirm: () => {
+        setFormData(prev => ({
+          ...prev,
+          contractDetails: {
+            ...prev.contractDetails,
+            contracts: (prev.contractDetails.contracts || []).filter(c => c.id !== contract.id)
+          }
+        }));
+      }
+    });
   };
   
   const removeDocument = (id) => {
@@ -595,6 +646,33 @@ function AddOrder() {
         localStorage.setItem('division_documents', JSON.stringify(updatedDivDocs));
       }
 
+      // Process contracts connecting/saving
+      if (formData.contractDetails?.contracts) {
+        const allDivContracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+        const contractIds = formData.contractDetails.contracts.map(c => c.id);
+
+        formData.contractDetails.contracts.forEach(cnt => {
+          if (!allDivContracts.find(c => c.id === cnt.id)) {
+            allDivContracts.push(cnt);
+          }
+        });
+
+        const updatedDivContracts = allDivContracts.map(c => {
+          if (contractIds.includes(c.id)) {
+            return { ...c, orderId: targetOrderId, orderName: targetOrderName };
+          }
+          if (String(c.orderId) === String(targetOrderId) && !contractIds.includes(c.id)) {
+            if (c.isDirectlyUploaded) {
+              return null;
+            }
+            return { ...c, orderId: '', orderName: '' };
+          }
+          return c;
+        }).filter(Boolean);
+
+        localStorage.setItem('division_contracts', JSON.stringify(updatedDivContracts));
+      }
+
       return { targetOrderId, targetOrderName, clientName: resolvedClientName, divisionName: resolvedDivisionName };
     } catch (e) {
       console.error("Error saving draft:", e);
@@ -689,6 +767,34 @@ function AddOrder() {
       }).filter(Boolean);
       
       localStorage.setItem('division_documents', JSON.stringify(updatedDivDocs));
+    }
+
+    // Process contracts connecting/saving
+    if (formData.contractDetails?.contracts) {
+      const targetOrderName = `${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart} - ${formData.plan}`;
+      const allDivContracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+      const contractIds = formData.contractDetails.contracts.map(c => c.id);
+
+      formData.contractDetails.contracts.forEach(cnt => {
+        if (!allDivContracts.find(c => c.id === cnt.id)) {
+          allDivContracts.push(cnt);
+        }
+      });
+
+      const updatedDivContracts = allDivContracts.map(c => {
+        if (contractIds.includes(c.id)) {
+          return { ...c, orderId: targetOrderId, orderName: targetOrderName };
+        }
+        if (String(c.orderId) === String(targetOrderId) && !contractIds.includes(c.id)) {
+          if (c.isDirectlyUploaded) {
+            return null;
+          }
+          return { ...c, orderId: '', orderName: '' };
+        }
+        return c;
+      }).filter(Boolean);
+
+      localStorage.setItem('division_contracts', JSON.stringify(updatedDivContracts));
     }
 
     navigate(-1);
@@ -1023,6 +1129,67 @@ function AddOrder() {
                 </button>
               </div>
             ))}
+          </div>
+
+          {/* Contracts Section */}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label style={{ ...labelStyle, marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <i className='bx bx-file-blank' style={{ color: '#0284c7', fontSize: '1.1rem' }}></i>
+                Contracts
+                <Tooltip text="Attach or create commercial contracts for this order." align="left" />
+              </label>
+              <button 
+                type="button"
+                onClick={() => setIsContractConnectModalOpen(true)}
+                style={{ padding: '0.4rem 0.8rem', background: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+              >
+                <i className='bx bx-plus'></i> Attach Contract
+              </button>
+            </div>
+
+            {(!formData.contractDetails.contracts || formData.contractDetails.contracts.length === 0) ? (
+              <div style={{ width: '100%', padding: '1.5rem', border: '1px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', color: '#94a3b8', fontSize: '0.85rem' }}>
+                No contracts attached yet. Click "+ Attach Contract" to connect or create one.
+              </div>
+            ) : (
+              (formData.contractDetails.contracts || []).map((cnt) => (
+                <div key={cnt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '1px solid #bae6fd', borderRadius: '8px', marginBottom: '0.5rem', background: '#f0f9ff' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                    <i className='bx bx-buildings' style={{ color: '#0284c7', fontSize: '1.35rem' }}></i>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                        <span style={{ fontWeight: '600', color: '#0f172a' }}>{cnt.companyName}</span>
+                        {cnt.taxDetails && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({cnt.taxDetails})</span>}
+                        <span style={{ color: '#cbd5e1' }}>|</span>
+                        <span style={{ color: '#0284c7', fontWeight: '700' }}>
+                          {cnt.contractValue?.toLocaleString()} {cnt.contractCurrency} (${cnt.amountInUSD?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD)
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
+                        <span><strong>Bill From:</strong> {cnt.billFrom}</span>
+                        <span><strong>Bank:</strong> {cnt.receivingBankName}</span>
+                        <span><strong>Billing Date:</strong> {cnt.billingDate}</span>
+                        <span><strong>Due:</strong> {cnt.paymentDueDays}d</span>
+                        {cnt.fileName && (
+                          <span style={{ color: '#0284c7', fontWeight: '500' }}>
+                            <i className="bx bx-paperclip" style={{ marginRight: '2px' }}></i>{cnt.fileName}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => removeOrderContract(cnt)} 
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                    title="Disconnect / Remove Contract"
+                  >
+                    <i className='bx bx-trash' style={{ fontSize: '1.1rem' }}></i>
+                  </button>
+                </div>
+              ))
+            )}
           </div>
 
           <div style={{ gridColumn: '1 / -1' }}>
@@ -1513,6 +1680,15 @@ function AddOrder() {
         divisionId={formData.divisionId || location.state?.divisionId || ''}
         orderId={isEditMode ? effectiveOrderId : ''}
         existingV2Docs={formData.contractDetails?.v2Documents || []}
+      />
+
+      <ContractConnectModal 
+        isOpen={isContractConnectModalOpen}
+        onClose={() => setIsContractConnectModalOpen(false)}
+        onConnect={addOrderContracts}
+        divisionId={formData.divisionId || location.state?.divisionId || ''}
+        orderId={isEditMode ? effectiveOrderId : ''}
+        existingContracts={formData.contractDetails?.contracts || []}
       />
 
       <PaymentSummaryModal

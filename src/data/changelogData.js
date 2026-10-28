@@ -1,5 +1,26 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-admin-division-order-contracts',
+    date: '2026-10-28',
+    formattedDate: 'Oct 28, 2026',
+    page: 'Admin',
+    subPage: 'Division & Orders / Contract Option',
+    summary: 'Created Contract Option in Division & Orders with Onboarding entity selection, live USD calculation, and auto bank links',
+    details: 'Introduced contract options connected between Admin Division and Orders. Supports selecting company from Onboarding form or entering custom company, tax, and address details, along with contract value, currency exchange rate, live Amount in USD, Bill From, Receiving Bank Name, Billing Date, and auto-populated bank details link.',
+    plainLanguage: 'Teams can now configure and manage commercial contracts directly within Admin Division and connect them to Orders (mirroring the Document workflow). The new Contract modal enables picking client entities from the Onboarding form or adding custom company details with Tax/GST and registered addresses. Financial terms including Contract Value, Currency, Exchange Rate, live USD Amount conversion, Payment Due days, Bill From entity, Receiving Bank, Billing Date, and verified Bank Details Drive links with 1-click copy are seamlessly maintained and linked to Orders.',
+    highlights: [
+      'Entity Selection: Pick from Onboarding form companies or add custom company name, tax/GST, and registered address',
+      'Financial Fields matching specification: Contract Value, Currency, Exchange Rate, and Payment Due days with descriptive tooltips',
+      'Dynamic Amount in USD calculation box updating in real-time as values or currencies change',
+      'Auto-populated Google Drive Bank Details link based on selected Bill From entity, Receiving Bank, and Currency with 1-click copy',
+      'Division Contracts section in Edit Division with create, edit, view, and delete capabilities',
+      'Contract Connect modal in Add / Edit Order allowing 1-click attachment of existing division contracts or immediate creation of new contracts',
+      'Bidirectional order linking with division_contracts synchronization in localStorage'
+    ],
+    path: '/edit-division',
+    linkText: 'Edit Division'
+  },
+  {
     id: 'cl-cadence-onetime-option',
     date: '2026-10-28',
     formattedDate: 'Oct 28, 2026',

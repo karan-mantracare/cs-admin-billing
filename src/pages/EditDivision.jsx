@@ -6,6 +6,7 @@ import PaymentSummaryModal from '../components/PaymentSummaryModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
 import ConfirmModal from '../components/ConfirmModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
+import ContractModal from '../components/ContractModal';
 import { saveUser, getAllUsers, getUserById } from '../utils/userStorage';
 
 function EditDivision() {
@@ -102,6 +103,9 @@ function EditDivision() {
 
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [divisionDocs, setDivisionDocs] = useState([]);
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [selectedContractForEdit, setSelectedContractForEdit] = useState(null);
+  const [divisionContracts, setDivisionContracts] = useState([]);
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
     title: '',
@@ -414,6 +418,57 @@ function EditDivision() {
     
     setDivisionDocs(prev => [...prev, newDoc]);
     setIsDocModalOpen(false);
+  };
+
+  useEffect(() => {
+    const fetchContracts = () => {
+      const saved = localStorage.getItem('division_contracts');
+      if (saved) {
+        try {
+          const allContracts = JSON.parse(saved);
+          setDivisionContracts(allContracts.filter(c => String(c.divisionId) === String(division.id)));
+        } catch (e) {
+          setDivisionContracts([]);
+        }
+      } else {
+        setDivisionContracts([]);
+      }
+    };
+    fetchContracts();
+    window.addEventListener('storage', fetchContracts);
+    return () => window.removeEventListener('storage', fetchContracts);
+  }, [division.id]);
+
+  const handleSaveContract = (contractData) => {
+    const all = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+    const existingIndex = all.findIndex(c => c.id === contractData.id);
+    let updated;
+    if (existingIndex >= 0) {
+      updated = all.map(c => c.id === contractData.id ? { ...c, ...contractData, divisionId: division.id } : c);
+    } else {
+      updated = [...all, { ...contractData, divisionId: division.id, orderId: contractData.orderId || '', orderName: contractData.orderName || '' }];
+    }
+    localStorage.setItem('division_contracts', JSON.stringify(updated));
+    setDivisionContracts(updated.filter(c => String(c.divisionId) === String(division.id)));
+    setIsContractModalOpen(false);
+    setSelectedContractForEdit(null);
+    if (showToast) showToast('Contract saved successfully!', 3000);
+  };
+
+  const deleteDivisionContract = (id) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Contract',
+      message: 'Are you sure you want to delete this contract from the division?',
+      confirmText: 'Delete',
+      onConfirm: () => {
+        const all = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+        const updated = all.filter(c => c.id !== id);
+        localStorage.setItem('division_contracts', JSON.stringify(updated));
+        setDivisionContracts(prev => prev.filter(c => c.id !== id));
+        if (showToast) showToast('Contract removed', 3000);
+      }
+    });
   };
 
   const deleteDivisionDocument = (id) => {
@@ -1445,6 +1500,116 @@ function EditDivision() {
                     )}
                   </div>
 
+                  <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9', margin: 0 }} />
+
+                  {/* Division Contracts */}
+                  <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 0.25rem 0', color: '#1e293b', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <i className='bx bx-file-blank' style={{ color: '#0284c7' }}></i>
+                          Division Contracts
+                        </h4>
+                        <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>
+                          Manage contract options with onboarding company details, exchange rate, and bank info. Can be attached to orders.
+                        </p>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setSelectedContractForEdit(null);
+                          setIsContractModalOpen(true);
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}
+                      >
+                        <i className='bx bx-plus'></i> Add Contract
+                      </button>
+                    </div>
+
+                    {divisionContracts.length > 0 ? (
+                      <div style={{ overflowX: 'auto', background: 'white', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                          <thead>
+                            <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Company / Entity</th>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Contract Value</th>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Amount in USD</th>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Bill From / Bank</th>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Billing Date</th>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Order Name</th>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600', width: '80px', textAlign: 'center' }}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {divisionContracts.map((cnt, idx) => (
+                              <tr key={cnt.id || idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                <td style={{ padding: '0.75rem 1rem', color: '#0f172a', fontWeight: '500' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <i className='bx bx-buildings' style={{ color: '#0284c7', fontSize: '1.1rem' }}></i>
+                                    <div>
+                                      <div>{cnt.companyName}</div>
+                                      {cnt.taxDetails && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Tax/GST: {cnt.taxDetails}</div>}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', color: '#0f172a', fontWeight: '600' }}>
+                                  {cnt.contractValue?.toLocaleString()} {cnt.contractCurrency}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', color: '#0284c7', fontWeight: '700' }}>
+                                  ${cnt.amountInUSD?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', color: '#334155' }}>
+                                  <div>{cnt.billFrom}</div>
+                                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{cnt.receivingBankName}</div>
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>
+                                  <div>{cnt.billingDate}</div>
+                                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Due: {cnt.paymentDueDays}d</div>
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', color: cnt.orderName ? '#0f172a' : '#94a3b8' }}>
+                                  {cnt.orderName ? (
+                                    <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500' }}>
+                                      {cnt.orderName}
+                                    </span>
+                                  ) : (
+                                    '— Unlinked —'
+                                  )}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                    <button 
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedContractForEdit(cnt);
+                                        setIsContractModalOpen(true);
+                                      }}
+                                      style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', padding: '2px' }}
+                                      title="Edit Contract"
+                                    >
+                                      <i className='bx bx-edit-alt' style={{ fontSize: '1.1rem' }}></i>
+                                    </button>
+                                    <button 
+                                      type="button"
+                                      onClick={() => deleteDivisionContract(cnt.id)} 
+                                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }} 
+                                      title="Delete Contract"
+                                    >
+                                      <i className='bx bx-trash' style={{ fontSize: '1.1rem' }}></i>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '1.5rem', textAlign: 'center', background: 'white', border: '1px dashed #cbd5e1', borderRadius: '6px', color: '#94a3b8', fontSize: '0.85rem' }}>
+                        No contracts created for this division yet. Click "+ Add Contract" to create one.
+                      </div>
+                    )}
+                  </div>
+
                 </div>
               )}
             </div>
@@ -2156,6 +2321,17 @@ function EditDivision() {
         isOpen={isDocModalOpen}
         onClose={() => setIsDocModalOpen(false)}
         onSave={handleSaveDocument}
+      />
+
+      <ContractModal
+        isOpen={isContractModalOpen}
+        onClose={() => {
+          setIsContractModalOpen(false);
+          setSelectedContractForEdit(null);
+        }}
+        onSave={handleSaveContract}
+        divisionId={division.id}
+        initialData={selectedContractForEdit}
       />
 
       <ConfirmModal 
