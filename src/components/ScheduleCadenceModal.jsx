@@ -206,10 +206,22 @@ export default function ScheduleCadenceModal({
   const [monthlyOrdinal, setMonthlyOrdinal] = useState('-1'); // Last
   const [monthlyDate, setMonthlyDate] = useState('15');
 
-  // Date, Time, Duration, Timezone
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [startDate, setStartDate] = useState(todayStr);
-  const [startTime, setStartTime] = useState('11:00');
+  // Date, Time, Duration, Timezone (default to 15 minutes ahead of current time)
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + 15);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+  const [startTime, setStartTime] = useState(() => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + 15);
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  });
   const [timeZone, setTimeZone] = useState('Asia/Kolkata');
   const [tzSearch, setTzSearch] = useState('');
   const [isTzDropdownOpen, setIsTzDropdownOpen] = useState(false);
