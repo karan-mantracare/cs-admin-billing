@@ -108,6 +108,25 @@ export default function ContractModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Close on Escape key press
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        if (isCompanyDropdownOpen) {
+          setIsCompanyDropdownOpen(false);
+        } else if (isCurrencyDropdownOpen) {
+          setIsCurrencyDropdownOpen(false);
+        } else {
+          onClose();
+        }
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isCompanyDropdownOpen, isCurrencyDropdownOpen, onClose]);
+
   // Load companies for division
   useEffect(() => {
     if (isOpen) {
@@ -426,28 +445,34 @@ export default function ContractModal({
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      backgroundColor: 'rgba(15, 23, 42, 0.65)',
-      backdropFilter: 'blur(3px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '1rem'
-    }}>
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '12px',
-        width: '100%',
-        maxWidth: '680px',
-        maxHeight: '92vh',
-        overflowY: 'auto',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(3px)',
         display: 'flex',
-        flexDirection: 'column'
-      }}>
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '1rem'
+      }}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '12px',
+          width: '100%',
+          maxWidth: '680px',
+          maxHeight: '92vh',
+          overflowY: 'auto',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
         {/* Modal Header */}
         <div style={{
           padding: '1.25rem 1.5rem',

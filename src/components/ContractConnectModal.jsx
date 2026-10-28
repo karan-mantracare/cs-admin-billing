@@ -108,6 +108,25 @@ export default function ContractConnectModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Close on Escape key press
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        if (isCompanyDropdownOpen) {
+          setIsCompanyDropdownOpen(false);
+        } else if (isCurrencyDropdownOpen) {
+          setIsCurrencyDropdownOpen(false);
+        } else {
+          onClose();
+        }
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isCompanyDropdownOpen, isCurrencyDropdownOpen, onClose]);
+
   useEffect(() => {
     if (isOpen) {
       loadAvailableContracts();

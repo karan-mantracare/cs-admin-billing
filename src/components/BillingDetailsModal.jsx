@@ -138,6 +138,27 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId,
     };
   }, []);
 
+  // Handle Escape key to close open dropdown or the modal popup
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        if (isCompanyDropdownOpen) {
+          setIsCompanyDropdownOpen(false);
+        } else if (isDropdownOpen) {
+          setIsDropdownOpen(false);
+        } else {
+          onClose();
+        }
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, isCompanyDropdownOpen, isDropdownOpen, onClose]);
+
   const currencies = [
     { code: 'USD', name: 'US Dollar' },
     { code: 'EUR', name: 'Euro' },
@@ -660,15 +681,21 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId,
   };
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
-      display: 'flex', justifyContent: 'center', alignItems: 'center'
-    }}>
-      <div style={{
-        background: 'white', borderRadius: '12px', width: '90%', maxWidth: '560px', maxHeight: '90vh',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column'
-      }}>
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+        display: 'flex', justifyContent: 'center', alignItems: 'center'
+      }}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'white', borderRadius: '12px', width: '90%', maxWidth: '560px', maxHeight: '90vh',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column'
+        }}
+      >
         {/* Header */}
         <div style={{ background: 'linear-gradient(135deg, #0369a1, #0ea5e9)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
