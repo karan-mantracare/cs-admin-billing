@@ -79,18 +79,14 @@ export default function ContractModal({
     receivingBankName: 'AirWallex',
     billingDate: '',
     bankDetailsLink: '',
-    remarks: '',
-    fileName: '',
-    fileSize: ''
+    remarks: ''
   });
 
-  const [uploadedFile, setUploadedFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const currencyDropdownRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -152,9 +148,7 @@ export default function ContractModal({
           receivingBankName: initialData.receivingBankName || 'AirWallex',
           billingDate: initialData.billingDate || '',
           bankDetailsLink: initialData.bankDetailsLink || '',
-          remarks: initialData.remarks || '',
-          fileName: initialData.fileName || '',
-          fileSize: initialData.fileSize || ''
+          remarks: initialData.remarks || ''
         });
         setCompanyMode(initialData.companySource === 'custom' ? 'custom' : (companies.length > 0 ? 'onboarding' : 'custom'));
       } else {
@@ -173,15 +167,12 @@ export default function ContractModal({
           receivingBankName: 'AirWallex',
           billingDate: defaultDate,
           bankDetailsLink: getBankDetailsLink('MCHI', 'AirWallex', 'EUR'),
-          remarks: '',
-          fileName: '',
-          fileSize: ''
+          remarks: ''
         });
         setCompanyMode(companies.length > 0 ? 'onboarding' : 'custom');
         setSelectedOnboardingIndex(0);
       }
       setErrors({});
-      setUploadedFile(null);
     }
   }, [isOpen, divisionId, initialData]);
 
@@ -229,17 +220,7 @@ export default function ContractModal({
     }
   };
 
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setUploadedFile(file);
-      setFormData(prev => ({
-        ...prev,
-        fileName: file.name,
-        fileSize: (file.size / 1024).toFixed(1) + ' KB'
-      }));
-    }
-  };
+
 
   const handleCopyBankLink = () => {
     if (formData.bankDetailsLink) {
@@ -289,8 +270,6 @@ export default function ContractModal({
       billingDate: formData.billingDate,
       bankDetailsLink: formData.bankDetailsLink,
       remarks: formData.remarks,
-      fileName: formData.fileName,
-      fileSize: formData.fileSize,
       createdAt: initialData?.createdAt || new Date().toISOString().split('T')[0]
     };
 
@@ -809,69 +788,6 @@ export default function ContractModal({
                   </button>
                 </div>
                 {errors.bankDetailsLink && <span style={{ color: '#ef4444', fontSize: '0.75rem' }}>{errors.bankDetailsLink}</span>}
-              </div>
-            </div>
-
-            {/* Optional Contract Document Upload */}
-            <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '0.85rem' }}>
-              <label style={labelStyle}>
-                Contract Agreement File (Optional) <Tooltip text="Attach signed contract PDF or document." align="left" />
-              </label>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                {!isReadOnly && (
-                  <>
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      onChange={handleFileChange} 
-                      style={{ display: 'none' }} 
-                      accept=".pdf,.doc,.docx,image/*" 
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                      style={{
-                        padding: '0.5rem 0.85rem',
-                        background: '#ffffff',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        color: '#334155',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        fontWeight: '500'
-                      }}
-                    >
-                      <i className="bx bx-upload" style={{ color: '#0284c7' }}></i>
-                      {formData.fileName ? 'Change File' : 'Upload Agreement'}
-                    </button>
-                  </>
-                )}
-
-                {formData.fileName ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f1f5f9', padding: '0.4rem 0.75rem', borderRadius: '6px', fontSize: '0.8rem', color: '#1e293b' }}>
-                    <i className="bx bxs-file-pdf" style={{ color: '#ef4444', fontSize: '1.1rem' }}></i>
-                    <span style={{ fontWeight: '500' }}>{formData.fileName}</span>
-                    {formData.fileSize && <span style={{ color: '#64748b' }}>({formData.fileSize})</span>}
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUploadedFile(null);
-                          setFormData(prev => ({ ...prev, fileName: '', fileSize: '' }));
-                        }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0, marginLeft: '0.25rem' }}
-                      >
-                        <i className="bx bx-x"></i>
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>No file attached yet</span>
-                )}
               </div>
             </div>
 

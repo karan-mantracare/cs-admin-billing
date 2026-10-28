@@ -1171,11 +1171,6 @@ function AddOrder() {
                         <span><strong>Bank:</strong> {cnt.receivingBankName}</span>
                         <span><strong>Billing Date:</strong> {cnt.billingDate}</span>
                         <span><strong>Due:</strong> {cnt.paymentDueDays}d</span>
-                        {cnt.fileName && (
-                          <span style={{ color: '#0284c7', fontWeight: '500' }}>
-                            <i className="bx bx-paperclip" style={{ marginRight: '2px' }}></i>{cnt.fileName}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>

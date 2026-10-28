@@ -84,9 +84,7 @@ export default function ContractConnectModal({
     receivingBankName: 'AirWallex',
     billingDate: new Date().toISOString().split('T')[0],
     bankDetailsLink: getBankDetailsLink('MCHI', 'AirWallex', 'EUR'),
-    remarks: '',
-    fileName: '',
-    fileSize: ''
+    remarks: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -94,7 +92,6 @@ export default function ContractConnectModal({
   const [currencySearch, setCurrencySearch] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const currencyDropdownRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -229,16 +226,7 @@ export default function ContractConnectModal({
     }
   };
 
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setFormData(prev => ({
-        ...prev,
-        fileName: file.name,
-        fileSize: (file.size / 1024).toFixed(1) + ' KB'
-      }));
-    }
-  };
+
 
   const validate = () => {
     const newErrors = {};
@@ -283,8 +271,6 @@ export default function ContractConnectModal({
         billingDate: formData.billingDate,
         bankDetailsLink: formData.bankDetailsLink,
         remarks: formData.remarks,
-        fileName: formData.fileName,
-        fileSize: formData.fileSize,
         createdAt: new Date().toISOString().split('T')[0],
         isDirectlyUploaded: true
       };
@@ -479,7 +465,6 @@ export default function ContractConnectModal({
                             <span><strong>Bank:</strong> {c.receivingBankName}</span>
                             <span><strong>Billing Date:</strong> {c.billingDate}</span>
                             <span><strong>Due:</strong> {c.paymentDueDays} days</span>
-                            {c.fileName && <span style={{ color: '#0284c7' }}><i className="bx bx-paperclip"></i> {c.fileName}</span>}
                           </div>
                         </div>
                       </div>
@@ -771,27 +756,6 @@ export default function ContractConnectModal({
                       <i className={copiedLink ? "bx bx-check" : "bx bx-copy"}></i>
                     </button>
                   </div>
-                </div>
-              </div>
-
-              {/* Document upload */}
-              <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '0.75rem' }}>
-                <label style={labelStyle}>Contract Agreement File (Optional)</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept=".pdf,.doc,.docx,image/*" />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                    style={{ padding: '0.45rem 0.8rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' }}
-                  >
-                    <i className="bx bx-upload" style={{ marginRight: '0.35rem', color: '#0284c7' }}></i>
-                    {formData.fileName ? 'Change File' : 'Upload Agreement'}
-                  </button>
-                  {formData.fileName && (
-                    <span style={{ fontSize: '0.8rem', color: '#0f172a', fontWeight: '500' }}>
-                      {formData.fileName} ({formData.fileSize})
-                    </span>
-                  )}
                 </div>
               </div>
 
