@@ -545,102 +545,6 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId,
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
           
-            {/* Division Contracts Quick-Link */}
-            {divisionContracts.length > 0 && (
-              <div style={{
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                borderRadius: '8px',
-                padding: '0.75rem 1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.4rem'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <i className='bx bx-file-blank' style={{ fontSize: '1.1rem' }}></i> Link from Division Contract
-                  </span>
-                  <span style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: '500' }}>
-                    {divisionContracts.length} available
-                  </span>
-                </div>
-                <select
-                  value={selectedContractId}
-                  onChange={(e) => {
-                    const cId = e.target.value;
-                    setSelectedContractId(cId);
-                    const found = divisionContracts.find(c => String(c.id) === String(cId));
-                    if (found) {
-                      // 1. Populate multi-entity split allocation
-                      if (found.companyEntities && found.companyEntities.length > 0) {
-                        setBillingSplits(found.companyEntities.map((ent, idx) => ({
-                          id: ent.id || idx + 1,
-                          companyName: ent.companyName,
-                          gstNumber: ent.taxDetails || ent.gstNumber || '',
-                          address: ent.address || '',
-                          percentage: Number(ent.percentage) || 0,
-                          selected: true
-                        })));
-                        setIsSplitCollapsed(false); // Auto-expand multi-entity split view
-                      } else if (found.billingSplits && found.billingSplits.length > 0) {
-                        setBillingSplits(found.billingSplits.map((ent, idx) => ({
-                          id: ent.id || idx + 1,
-                          companyName: ent.companyName,
-                          gstNumber: ent.taxDetails || ent.gstNumber || '',
-                          address: ent.address || '',
-                          percentage: Number(ent.percentage) || 0,
-                          selected: true
-                        })));
-                        setIsSplitCollapsed(false);
-                      }
-
-                      // 2. Populate all billing entity, tax, address and commercial terms
-                      setFormData(prev => ({
-                        ...prev,
-                        billingEntity: found.companyName,
-                        taxDetails: found.taxDetails || '',
-                        billingAddress: found.address || '',
-                        companyName: found.companyName,
-                        contractValue: found.contractValue !== undefined ? String(found.contractValue) : '',
-                        clientCurrency: found.contractCurrency || '',
-                        currencyExchangeValue: found.currencyExchangeValue !== undefined ? String(found.currencyExchangeValue) : '1',
-                        paymentDueDays: found.paymentDueDays !== undefined ? String(found.paymentDueDays) : '',
-                        billFrom: found.billFrom || '',
-                        receivingBankName: found.receivingBankName || '',
-                        billingDate: found.billingDate || '',
-                        bankDetailsLink: found.bankDetailsLink || '',
-                        linkedContract: found,
-                        isLinkedFromContract: true
-                      }));
-                      setErrors({});
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '6px',
-                    border: '1px solid #93c5fd',
-                    fontSize: '0.85rem',
-                    color: '#0f172a',
-                    background: '#ffffff',
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="">-- Choose a Division Contract to auto-fill --</option>
-                  {divisionContracts.map(c => {
-                    const taxSnippet = c.taxDetails ? ` • Tax: ${c.taxDetails}` : '';
-                    const splitsSnippet = c.companyEntities?.length > 1 ? ` (${c.companyEntities.length} entities)` : '';
-                    return (
-                      <option key={c.id} value={c.id}>
-                        {c.companyName}{splitsSnippet}{taxSnippet} • {c.contractValue?.toLocaleString()} {c.contractCurrency} (${c.amountInUSD?.toLocaleString()} USD) • {c.billFrom} / {c.receivingBankName}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-            )}
-
             {/* Add Company Inline Form */}
             {isAddingCompany && (
               <div style={{
@@ -728,7 +632,7 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId,
               </div>
             )}
 
-            {/* Row 1: Company Selection, Tax & Address */}
+            {/* Unified Company & Contract Selection (One Dropdown) */}
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label style={{ ...labelStyle, marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -772,12 +676,70 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId,
                 )}
               </div>
 
-              {availableCompanies.length > 0 ? (
-                <select
-                  value={formData.billingEntity || ''}
-                  onChange={(e) => {
-                    const selectedName = e.target.value;
-                    const foundComp = availableCompanies.find(c => c.companyName === selectedName);
+              {/* ONE Single Dropdown */}
+              <select
+                value={
+                  formData.isLinkedFromContract && selectedContractId 
+                    ? `contract_${selectedContractId}` 
+                    : (formData.billingEntity ? `company_${formData.billingEntity}` : '')
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!val) return;
+
+                  if (val.startsWith('contract_')) {
+                    const cId = val.replace('contract_', '');
+                    setSelectedContractId(cId);
+                    const found = divisionContracts.find(c => String(c.id) === String(cId));
+                    if (found) {
+                      if (found.companyEntities && found.companyEntities.length > 0) {
+                        setBillingSplits(found.companyEntities.map((ent, idx) => ({
+                          id: ent.id || idx + 1,
+                          companyName: ent.companyName,
+                          gstNumber: ent.taxDetails || ent.gstNumber || '',
+                          address: ent.address || '',
+                          percentage: Number(ent.percentage) || 0,
+                          selected: true
+                        })));
+                        setIsSplitCollapsed(false);
+                      } else if (found.billingSplits && found.billingSplits.length > 0) {
+                        setBillingSplits(found.billingSplits.map((ent, idx) => ({
+                          id: ent.id || idx + 1,
+                          companyName: ent.companyName,
+                          gstNumber: ent.taxDetails || ent.gstNumber || '',
+                          address: ent.address || '',
+                          percentage: Number(ent.percentage) || 0,
+                          selected: true
+                        })));
+                        setIsSplitCollapsed(false);
+                      } else {
+                        setBillingSplits([]);
+                      }
+
+                      setFormData(prev => ({
+                        ...prev,
+                        billingEntity: found.companyName,
+                        taxDetails: found.taxDetails || '',
+                        billingAddress: found.address || '',
+                        companyName: found.companyName,
+                        contractValue: found.contractValue !== undefined ? String(found.contractValue) : '',
+                        clientCurrency: found.contractCurrency || '',
+                        currencyExchangeValue: found.currencyExchangeValue !== undefined ? String(found.currencyExchangeValue) : '1',
+                        paymentDueDays: found.paymentDueDays !== undefined ? String(found.paymentDueDays) : '',
+                        billFrom: found.billFrom || '',
+                        receivingBankName: found.receivingBankName || '',
+                        billingDate: found.billingDate || '',
+                        bankDetailsLink: found.bankDetailsLink || '',
+                        linkedContract: found,
+                        isLinkedFromContract: true,
+                        isCustomCompany: false
+                      }));
+                      setErrors({});
+                    }
+                  } else if (val.startsWith('company_')) {
+                    const compName = val.replace('company_', '');
+                    setSelectedContractId('');
+                    const foundComp = availableCompanies.find(c => c.companyName === compName);
                     if (foundComp) {
                       setFormData(prev => ({
                         ...prev,
@@ -785,34 +747,48 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId,
                         taxDetails: foundComp.taxDetails || '',
                         billingAddress: foundComp.address || '',
                         companyName: foundComp.companyName,
+                        linkedContract: null,
                         isLinkedFromContract: false,
                         isCustomCompany: foundComp.source === 'custom'
                       }));
                     } else {
-                      setFormData(prev => ({ ...prev, billingEntity: selectedName }));
+                      setFormData(prev => ({
+                        ...prev,
+                        billingEntity: compName,
+                        linkedContract: null,
+                        isLinkedFromContract: false
+                      }));
                     }
-                  }}
-                  style={{ ...inputStyle, background: 'white', borderColor: '#cbd5e1', fontWeight: '500' }}
-                >
-                  <option value="" disabled hidden>-- Select Company / Billing Entity --</option>
-                  {availableCompanies.map((c, idx) => (
-                    <option key={c.id || idx} value={c.companyName}>
-                      {c.companyName} {c.taxDetails ? `(Tax: ${c.taxDetails})` : ''} [{c.source === 'custom' ? 'Custom' : 'Onboarding'}]
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input
-                    type="text"
-                    name="billingEntity"
-                    style={{ ...inputStyle, flex: 1 }}
-                    value={formData.billingEntity || ''}
-                    onChange={handleChange}
-                    placeholder="Enter company name..."
-                  />
-                </div>
-              )}
+                  }
+                }}
+                style={{ ...inputStyle, background: 'white', borderColor: '#cbd5e1', fontWeight: '500' }}
+              >
+                <option value="" disabled hidden>-- Select Company or Linked Contract --</option>
+                
+                {divisionContracts.length > 0 && (
+                  <optgroup label="📋 Division Contracts (Auto-fills contract & banking details)">
+                    {divisionContracts.map(c => {
+                      const taxSnippet = c.taxDetails ? ` • Tax: ${c.taxDetails}` : '';
+                      const splitsSnippet = c.companyEntities?.length > 1 ? ` (${c.companyEntities.length} entities)` : '';
+                      return (
+                        <option key={`contract_${c.id}`} value={`contract_${c.id}`}>
+                          {c.companyName}{splitsSnippet}{taxSnippet} • {c.contractValue?.toLocaleString()} {c.contractCurrency} ({c.billFrom} / {c.receivingBankName})
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                )}
+
+                {availableCompanies.length > 0 && (
+                  <optgroup label="🏢 Companies (From Onboarding & Custom)">
+                    {availableCompanies.map((c, idx) => (
+                      <option key={`company_${c.id || idx}`} value={`company_${c.companyName}`}>
+                        {c.companyName} {c.taxDetails ? `(Tax: ${c.taxDetails})` : ''} [{c.source === 'custom' ? 'Custom' : 'Onboarding'}]
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
 
               {/* Tax Details and Billing Address (Editable so user can complete missing info) */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
