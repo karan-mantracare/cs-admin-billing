@@ -177,7 +177,7 @@ export function buildRRuleString({
   }
   // Never combine COUNT and UNTIL. If endMode is 'never', neither is added.
 
-  return `RRULE:${ruleBody}`;
+  return ruleBody;
 }
 
 /**

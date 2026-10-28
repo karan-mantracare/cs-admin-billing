@@ -213,7 +213,7 @@ export function cadenceApiPlugin() {
 
             // Validate RRULE using rrule library only for recurring cadences
             if (frequency !== 'One time') {
-              if (!rrule || !rrule.startsWith('RRULE:')) {
+              if (!rrule || (!rrule.startsWith('RRULE:') && !rrule.startsWith('FREQ='))) {
                 res.statusCode = 400;
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({ success: false, error: 'Invalid RRULE format' }));
@@ -221,8 +221,9 @@ export function cadenceApiPlugin() {
               }
 
               try {
-                // Parse rule using rrule parser
-                rrulestr(rrule);
+                // Parse rule using rrule parser (rrulestr expects RRULE: prefix)
+                const ruleWithPrefix = rrule.startsWith('RRULE:') ? rrule : `RRULE:${rrule}`;
+                rrulestr(ruleWithPrefix);
               } catch (rruleErr) {
                 res.statusCode = 400;
                 res.setHeader('Content-Type', 'application/json');
@@ -276,13 +277,16 @@ export function cadenceApiPlugin() {
             const attendeesStr = cleanAttendeesList.join(', ');
             const cleanAttendees = cleanAttendeesList.map(email => ({ email }));
 
+            // Strip leading RRULE: if present so we send clean format, e.g. FREQ=WEEKLY;BYDAY=MO,WE;COUNT=2
+            const cleanRrule = (frequency === 'One time' || !rrule) ? '' : rrule.replace(/^RRULE:/i, '').trim();
+
             // Construct exact required fields for webhook payload
             const webhookPayload = {
               schedule_by: 'CS',
               data: {
                 title: title ? title.trim() : '',
                 description: description ? description.trim() : '',
-                rrule: (frequency === 'One time' || !rrule) ? '' : rrule.trim(),
+                rrule: cleanRrule,
                 startUtc: formatUtcIso(startUtc),
                 endUtc: formatUtcIso(endUtc),
                 attendees: attendeesStr
