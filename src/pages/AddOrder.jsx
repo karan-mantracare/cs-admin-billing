@@ -232,6 +232,7 @@ function AddOrder() {
   }, [isEditMode, effectiveOrderId, location.state, searchParams]);
 
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+  const [openAddCompanyDirectly, setOpenAddCompanyDirectly] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [isDocModalV2Open, setIsDocModalV2Open] = useState(false);
   const [isContractConnectModalOpen, setIsContractConnectModalOpen] = useState(false);
@@ -985,15 +986,32 @@ function AddOrder() {
           <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <label style={{...labelStyle, marginBottom: 0}}>Billing Details</label>
-              <button 
-                onClick={() => setIsBillingModalOpen(true)}
-                style={{ padding: '0.4rem 0.8rem', background: 'transparent', color: '#0ea5e9', border: '1px solid #0ea5e9', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#f0f9ff'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-              >
-                <i className={`bx bx-${formData.billingDetails ? 'edit' : 'plus'}`} style={{ marginRight: '0.25rem', fontSize: '1rem' }}></i>
-                {formData.billingDetails ? 'Edit' : 'Add'} Billing Details
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenAddCompanyDirectly(true);
+                    setIsBillingModalOpen(true);
+                  }}
+                  style={{ padding: '0.4rem 0.8rem', background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#dcfce7'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#f0fdf4'; }}
+                >
+                  <i className="bx bx-plus-circle"></i> Add Company
+                </button>
+                <button 
+                  onClick={() => {
+                    setOpenAddCompanyDirectly(false);
+                    setIsBillingModalOpen(true);
+                  }}
+                  style={{ padding: '0.4rem 0.8rem', background: 'transparent', color: '#0ea5e9', border: '1px solid #0ea5e9', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#f0f9ff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <i className={`bx bx-${formData.billingDetails ? 'edit' : 'plus'}`} style={{ marginRight: '0.25rem', fontSize: '1rem' }}></i>
+                  {formData.billingDetails ? 'Edit' : 'Add'} Billing Details
+                </button>
+              </div>
             </div>
             
             {formData.billingDetails ? (
@@ -1041,6 +1059,12 @@ function AddOrder() {
                     <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Billing Entity From</span>
                     <strong style={{ color: '#1e293b' }}>{formData.billingDetails.billFrom || 'Mantracare'}</strong>
                   </div>
+                  {formData.billingDetails.billingAddress && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Billing Address</span>
+                      <strong style={{ color: '#1e293b' }}>{formData.billingDetails.billingAddress}</strong>
+                    </div>
+                  )}
                 </div>
 
                 {/* Multi-Entity Split Allocation Preview */}
@@ -1676,7 +1700,11 @@ function AddOrder() {
       {/* Modals */}
       <BillingDetailsModal 
         isOpen={isBillingModalOpen} 
-        onClose={() => setIsBillingModalOpen(false)} 
+        openAddCompany={openAddCompanyDirectly}
+        onClose={() => {
+          setIsBillingModalOpen(false);
+          setOpenAddCompanyDirectly(false);
+        }} 
         initialData={formData.billingDetails || {}}
         divisionId={formData.divisionId || location.state?.divisionId}
         onSave={(data) => {

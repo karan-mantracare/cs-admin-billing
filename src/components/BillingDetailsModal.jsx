@@ -93,10 +93,11 @@ const Tooltip = ({ text, align = 'center' }) => {
   );
 };
 
-function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId }) {
+function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId, openAddCompany }) {
   const [formData, setFormData] = useState({
     billingEntity: 'HR Provided Entity', // Mock default or pass from props
     taxDetails: 'GST-1234', // Mock default
+    billingAddress: '',
     contractValue: '',
     clientCurrency: '',
     currencyExchangeValue: '1',
@@ -106,6 +107,11 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
     bankDetailsLink: '',
     billingDate: ''
   });
+
+  const [availableCompanies, setAvailableCompanies] = useState([]);
+  const [isAddingCompany, setIsAddingCompany] = useState(false);
+  const [newCompanyForm, setNewCompanyForm] = useState({ companyName: '', taxDetails: '', address: '' });
+  const [companyError, setCompanyError] = useState('');
 
   const [billingSplits, setBillingSplits] = useState([]);
   const [isSplitCollapsed, setIsSplitCollapsed] = useState(false);
@@ -150,25 +156,33 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
     if (isOpen) {
       let hrEntity = '';
       let hrTax = '';
+      let hrAddress = '';
       let companiesFromOnboarding = [];
+      const targetId = divisionId || initialData?.id || '1';
       
       try {
-        const targetId = divisionId || initialData?.id || '1';
         const savedData = localStorage.getItem('onboardingFiled_' + targetId);
         if (savedData) {
           const parsedData = JSON.parse(savedData);
           if (parsedData.billingDetails) {
             hrEntity = parsedData.billingDetails.companyName || hrEntity;
             hrTax = parsedData.billingDetails.gstNumber || hrTax;
+            hrAddress = parsedData.billingDetails.address || hrAddress;
             if (parsedData.billingDetails.companies?.length) {
-              companiesFromOnboarding = parsedData.billingDetails.companies.filter(c => c.companyName && c.companyName.trim());
+              companiesFromOnboarding = parsedData.billingDetails.companies.filter(c => c.companyName && c.companyName.trim()).map(c => ({
+                id: c.id || ('onb_' + Math.random()),
+                companyName: c.companyName,
+                taxDetails: c.gstNumber || '',
+                address: c.address || '',
+                source: 'onboarding'
+              }));
             } else if (parsedData.billingDetails.companyName) {
               companiesFromOnboarding = [{
-                id: 1,
+                id: 'onb_1',
                 companyName: parsedData.billingDetails.companyName,
-                gstNumber: parsedData.billingDetails.gstNumber || '',
+                taxDetails: parsedData.billingDetails.gstNumber || '',
                 address: parsedData.billingDetails.address || '',
-                isPrimary: true
+                source: 'onboarding'
               }];
             }
           }
@@ -177,19 +191,64 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
         console.error("Could not parse onboarding data", e);
       }
 
+      // Load custom companies
+      let customCompaniesList = [];
+      try {
+        const savedCustom = localStorage.getItem('custom_companies_' + targetId);
+        if (savedCustom) {
+          customCompaniesList = JSON.parse(savedCustom);
+        }
+      } catch (e) {
+        console.error("Could not parse custom companies", e);
+      }
+
+      // Merge pool of companies
+      const mergedPool = [...companiesFromOnboarding];
+      customCompaniesList.forEach(cc => {
+        if (!mergedPool.find(m => m.companyName?.toLowerCase() === cc.companyName?.toLowerCase())) {
+          mergedPool.push(cc);
+        }
+      });
+
       // Load division contracts
       try {
-        const targetId = divisionId || initialData?.id || '1';
         const contractsStr = localStorage.getItem('division_contracts');
         if (contractsStr) {
           const allC = JSON.parse(contractsStr);
-          setDivisionContracts(allC.filter(c => String(c.divisionId) === String(targetId)));
+          const divContracts = allC.filter(c => String(c.divisionId) === String(targetId));
+          setDivisionContracts(divContracts);
+          
+          divContracts.forEach(dc => {
+            if (dc.companyEntities && dc.companyEntities.length > 0) {
+              dc.companyEntities.forEach(ce => {
+                if (!mergedPool.find(m => m.companyName?.toLowerCase() === ce.companyName?.toLowerCase())) {
+                  mergedPool.push({
+                    id: ce.id || ('custom_' + Math.random()),
+                    companyName: ce.companyName,
+                    taxDetails: ce.taxDetails || '',
+                    address: ce.address || '',
+                    source: 'custom'
+                  });
+                }
+              });
+            } else if (dc.companyName && !mergedPool.find(m => m.companyName?.toLowerCase() === dc.companyName?.toLowerCase())) {
+              mergedPool.push({
+                id: 'custom_' + dc.id,
+                companyName: dc.companyName,
+                taxDetails: dc.taxDetails || '',
+                address: dc.address || '',
+                source: 'custom'
+              });
+            }
+          });
         } else {
           setDivisionContracts([]);
         }
       } catch (e) {
         setDivisionContracts([]);
       }
+
+      setAvailableCompanies(mergedPool);
 
       // Initialize billingSplits
       if (initialData?.billingSplits?.length) {
@@ -201,7 +260,7 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
         const generated = companiesFromOnboarding.map((comp, idx) => ({
           id: comp.id || idx + 1,
           companyName: comp.companyName,
-          gstNumber: comp.gstNumber || '',
+          gstNumber: comp.taxDetails || comp.gstNumber || '',
           address: comp.address || '',
           selected: true,
           percentage: idx === count - 1 ? (base + remainder) : base
@@ -220,12 +279,20 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
         ...initialData,
         billingEntity: initialData?.billingEntity || hrEntity,
         taxDetails: initialData?.taxDetails || hrTax,
-        billingAddress: initialData?.billingAddress || initialData?.linkedContract?.address || '',
+        billingAddress: initialData?.billingAddress || initialData?.linkedContract?.address || hrAddress || '',
         isLinkedFromContract: !!initialData?.linkedContract
       }));
       setErrors({});
+
+      if (openAddCompany) {
+        setIsAddingCompany(true);
+      } else {
+        setIsAddingCompany(false);
+      }
+      setCompanyError('');
+      setNewCompanyForm({ companyName: '', taxDetails: '', address: '' });
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, openAddCompany]);
 
   // Compute Bank Details Link
   useEffect(() => {
@@ -313,6 +380,70 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
+  };
+
+  const handleSaveNewCompany = () => {
+    if (!newCompanyForm.companyName.trim()) {
+      setCompanyError('Company Name is required.');
+      return;
+    }
+
+    const targetId = divisionId || initialData?.id || '1';
+    const newComp = {
+      id: 'custom_' + Date.now(),
+      companyName: newCompanyForm.companyName.trim(),
+      taxDetails: newCompanyForm.taxDetails.trim(),
+      address: newCompanyForm.address.trim(),
+      source: 'custom'
+    };
+
+    // Save to custom_companies
+    let currentCustom = [];
+    try {
+      const saved = localStorage.getItem('custom_companies_' + targetId);
+      if (saved) currentCustom = JSON.parse(saved);
+    } catch (e) {}
+
+    const updatedCustom = [...currentCustom, newComp];
+    localStorage.setItem('custom_companies_' + targetId, JSON.stringify(updatedCustom));
+
+    setAvailableCompanies(prev => [...prev, newComp]);
+    
+    // Auto-select this company as billing entity
+    setFormData(prev => ({
+      ...prev,
+      billingEntity: newComp.companyName,
+      taxDetails: newComp.taxDetails,
+      billingAddress: newComp.address,
+      companyName: newComp.companyName,
+      isLinkedFromContract: false,
+      isCustomCompany: true
+    }));
+
+    // Update billing splits if applicable
+    if (billingSplits.length > 0) {
+      setBillingSplits(prev => [...prev, {
+        id: newComp.id,
+        companyName: newComp.companyName,
+        gstNumber: newComp.taxDetails,
+        address: newComp.address,
+        percentage: 0,
+        selected: true
+      }]);
+    } else {
+      setBillingSplits([{
+        id: newComp.id,
+        companyName: newComp.companyName,
+        gstNumber: newComp.taxDetails,
+        address: newComp.address,
+        percentage: 100,
+        selected: true
+      }]);
+    }
+
+    setNewCompanyForm({ companyName: '', taxDetails: '', address: '' });
+    setCompanyError('');
+    setIsAddingCompany(false);
   };
 
   const handleSave = () => {
@@ -510,67 +641,223 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
               </div>
             )}
 
-            {/* Row 1: Billing Entity & Tax Details */}
-            {(!formData.billingEntity && !formData.taxDetails) ? (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '1rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                  <i className='bx bx-error-circle' style={{ color: '#ef4444', fontSize: '1.5rem' }}></i>
+            {/* Add Company Inline Form */}
+            {isAddingCompany && (
+              <div style={{
+                background: '#f8fafc',
+                border: '1.5px solid #0284c7',
+                borderRadius: '8px',
+                padding: '0.85rem',
+                marginBottom: '0.75rem',
+                boxShadow: '0 2px 4px rgba(2, 132, 199, 0.08)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <i className='bx bx-plus-circle'></i> Add Company to Order
+                  </span>
+                  <button 
+                    type="button" 
+                    onClick={() => { setIsAddingCompany(false); setCompanyError(''); }}
+                    style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '1.2rem', lineHeight: '1' }}
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.6rem' }}>
                   <div>
-                    <h4 style={{ margin: 0, color: '#991b1b', fontSize: '0.9rem', fontWeight: '600' }}>Onboarding form is pending</h4>
-                    <p style={{ margin: '0.25rem 0 0 0', color: '#b91c1c', fontSize: '0.8rem' }}>Client's Entity and Tax Details are unavailable. You can link a Division Contract above.</p>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: '#334155', display: 'block', marginBottom: '0.2rem' }}>
+                      Company Name <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      value={newCompanyForm.companyName}
+                      onChange={e => setNewCompanyForm({ ...newCompanyForm, companyName: e.target.value })}
+                      placeholder="e.g. Acme Health Corp"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: '#334155', display: 'block', marginBottom: '0.2rem' }}>
+                      Tax / GST Number
+                    </label>
+                    <input 
+                      type="text" 
+                      value={newCompanyForm.taxDetails}
+                      onChange={e => setNewCompanyForm({ ...newCompanyForm, taxDetails: e.target.value })}
+                      placeholder="e.g. GSTIN987654321"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: '#334155', display: 'block', marginBottom: '0.2rem' }}>
+                      Billing Address
+                    </label>
+                    <input 
+                      type="text" 
+                      value={newCompanyForm.address}
+                      onChange={e => setNewCompanyForm({ ...newCompanyForm, address: e.target.value })}
+                      placeholder="e.g. Registered office address, city, country"
+                      style={inputStyle}
+                    />
                   </div>
                 </div>
-                <button 
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const targetId = divisionId || initialData?.id || '1';
-                    const url = `${window.location.origin}/client-onboarding/${targetId}`;
-                    navigator.clipboard.writeText(url);
-                    const btn = e.currentTarget;
-                    const originalText = btn.innerHTML;
-                    btn.innerHTML = `<i class='bx bx-check'></i> Copied`;
-                    setTimeout(() => { btn.innerHTML = originalText; }, 2000);
-                  }}
-                  style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}
-                >
-                  <i className='bx bx-copy'></i> Form Link
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div>
-                  <label style={labelStyle}>
-                    Billing Entity
-                    {formData.isLinkedFromContract ? (
-                      <span style={{ fontSize: '0.68rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: '700', marginLeft: '0.4rem' }}>
-                        <i className='bx bx-link' style={{ marginRight: '0.15rem' }}></i>Linked from Contract
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '0.68rem', background: '#f1f5f9', color: '#475569', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: '500', marginLeft: '0.4rem' }}>
-                        from Onboarding
-                      </span>
-                    )}
-                  </label>
-                  <input type="text" style={{...inputStyle, backgroundColor: '#f1f5f9'}} value={formData.billingEntity || ''} readOnly />
-                </div>
-                <div>
-                  <label style={labelStyle}>
-                    Tax Details
-                    {formData.isLinkedFromContract && (
-                      <span style={{ fontSize: '0.68rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: '700', marginLeft: '0.4rem' }}>
-                        Contract Tax/GST
-                      </span>
-                    )}
-                  </label>
-                  <input type="text" style={{...inputStyle, backgroundColor: '#f1f5f9'}} value={formData.taxDetails || 'N/A'} readOnly />
-                </div>
-                {formData.billingAddress && (
-                  <div style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: '#475569', background: '#f8fafc', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <i className='bx bx-map-pin' style={{ color: '#0284c7', fontSize: '0.9rem' }}></i>
-                    <strong style={{ color: '#1e293b' }}>Billing Address:</strong> {formData.billingAddress}
+
+                {companyError && (
+                  <div style={{ color: '#ef4444', fontSize: '0.75rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <i className='bx bx-error-circle'></i> {companyError}
                   </div>
                 )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => { setIsAddingCompany(false); setCompanyError(''); }}
+                    style={{ padding: '0.35rem 0.75rem', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: '500' }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={handleSaveNewCompany}
+                    style={{ padding: '0.35rem 0.85rem', background: '#0284c7', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                  >
+                    <i className='bx bx-check'></i> Save & Select Company
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Row 1: Company Selection, Tax & Address */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ ...labelStyle, marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <i className='bx bx-buildings' style={{ color: '#0284c7', fontSize: '1rem' }}></i>
+                  Billing Entity / Company
+                  {formData.isLinkedFromContract ? (
+                    <span style={{ fontSize: '0.68rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: '700' }}>
+                      <i className='bx bx-link' style={{ marginRight: '0.15rem' }}></i>Linked from Contract
+                    </span>
+                  ) : formData.isCustomCompany ? (
+                    <span style={{ fontSize: '0.68rem', background: '#f5f3ff', color: '#6d28d9', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: '700' }}>
+                      Custom Entity
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.68rem', background: '#f1f5f9', color: '#475569', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: '500' }}>
+                      from Onboarding
+                    </span>
+                  )}
+                </label>
+
+                {!isAddingCompany && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsAddingCompany(true); setCompanyError(''); }}
+                    style={{
+                      background: 'none',
+                      border: '1px solid #0284c7',
+                      color: '#0284c7',
+                      padding: '0.2rem 0.55rem',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem'
+                    }}
+                  >
+                    <i className='bx bx-plus'></i> Add Company
+                  </button>
+                )}
+              </div>
+
+              {availableCompanies.length > 0 ? (
+                <select
+                  value={formData.billingEntity || ''}
+                  onChange={(e) => {
+                    const selectedName = e.target.value;
+                    const foundComp = availableCompanies.find(c => c.companyName === selectedName);
+                    if (foundComp) {
+                      setFormData(prev => ({
+                        ...prev,
+                        billingEntity: foundComp.companyName,
+                        taxDetails: foundComp.taxDetails || '',
+                        billingAddress: foundComp.address || '',
+                        companyName: foundComp.companyName,
+                        isLinkedFromContract: false,
+                        isCustomCompany: foundComp.source === 'custom'
+                      }));
+                    } else {
+                      setFormData(prev => ({ ...prev, billingEntity: selectedName }));
+                    }
+                  }}
+                  style={{ ...inputStyle, background: 'white', borderColor: '#cbd5e1', fontWeight: '500' }}
+                >
+                  <option value="" disabled hidden>-- Select Company / Billing Entity --</option>
+                  {availableCompanies.map((c, idx) => (
+                    <option key={c.id || idx} value={c.companyName}>
+                      {c.companyName} {c.taxDetails ? `(Tax: ${c.taxDetails})` : ''} [{c.source === 'custom' ? 'Custom' : 'Onboarding'}]
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    name="billingEntity"
+                    style={{ ...inputStyle, flex: 1 }}
+                    value={formData.billingEntity || ''}
+                    onChange={handleChange}
+                    placeholder="Enter company name..."
+                  />
+                </div>
+              )}
+
+              {/* Tax Details and Billing Address (Editable so user can complete missing info) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Tax / GST Details</label>
+                  <input 
+                    type="text" 
+                    name="taxDetails"
+                    style={inputStyle} 
+                    value={formData.taxDetails || ''} 
+                    onChange={handleChange}
+                    placeholder="e.g. GSTIN / Tax ID" 
+                  />
+                </div>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Billing Address</label>
+                  <input 
+                    type="text" 
+                    name="billingAddress"
+                    style={inputStyle} 
+                    value={formData.billingAddress || ''} 
+                    onChange={handleChange}
+                    placeholder="e.g. Street address, city, country" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Note banner when remaining financial / bank details need completion */}
+            {(!formData.contractValue || !formData.billFrom || !formData.receivingBankName) && (
+              <div style={{
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
+                borderRadius: '6px',
+                padding: '0.55rem 0.75rem',
+                fontSize: '0.76rem',
+                color: '#92400e',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem'
+              }}>
+                <i className='bx bx-info-circle' style={{ fontSize: '1rem', color: '#f59e0b', flexShrink: 0 }}></i>
+                <span>
+                  <strong>Tip:</strong> If bank details or financial terms are not set, please update the remaining information below (Contract Value, Currency, Payment Due Days, Bill From, and Receiving Bank) to complete billing.
+                </span>
               </div>
             )}
 
