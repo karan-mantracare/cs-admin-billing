@@ -315,8 +315,33 @@ function AddOrder() {
     setFormData(prev => {
       const existing = prev.contractDetails.contracts || [];
       const newContracts = contracts.filter(c => !existing.find(ec => ec.id === c.id));
+      const firstNew = newContracts[0] || contracts[0];
+
+      let updatedBilling = prev.billingDetails;
+      let updatedAmount = prev.amount;
+      if (firstNew && (!prev.billingDetails || !prev.billingDetails.contractValue || prev.billingDetails.contractValue === '0' || prev.billingDetails.contractValue === 0)) {
+        updatedBilling = {
+          ...prev.billingDetails,
+          billingEntity: firstNew.companyName,
+          taxDetails: firstNew.taxDetails,
+          companyName: firstNew.companyName,
+          contractValue: firstNew.contractValue,
+          clientCurrency: firstNew.contractCurrency,
+          currencyExchangeValue: firstNew.currencyExchangeValue,
+          paymentDue: firstNew.paymentDueDays,
+          amountInUSD: firstNew.amountInUSD,
+          billFrom: firstNew.billFrom,
+          receivingBankName: firstNew.receivingBankName,
+          billingDate: firstNew.billingDate,
+          bankDetailsLink: firstNew.bankDetailsLink
+        };
+        updatedAmount = firstNew.amountInUSD;
+      }
+
       return {
         ...prev,
+        billingDetails: updatedBilling,
+        amount: updatedAmount,
         contractDetails: {
           ...prev.contractDetails,
           contracts: [...existing, ...newContracts]
@@ -1653,13 +1678,25 @@ function AddOrder() {
         isOpen={isBillingModalOpen} 
         onClose={() => setIsBillingModalOpen(false)} 
         initialData={formData.billingDetails || {}}
-        divisionId={location.state?.divisionId}
+        divisionId={formData.divisionId || location.state?.divisionId}
         onSave={(data) => {
-          setFormData(prev => ({
-            ...prev, 
-            billingDetails: data,
-            amount: data.amountInUSD // sync amount
-          }));
+          setFormData(prev => {
+            const updated = {
+              ...prev, 
+              billingDetails: data,
+              amount: data.amountInUSD // sync amount
+            };
+            if (data.linkedContract) {
+              const existingContracts = prev.contractDetails.contracts || [];
+              if (!existingContracts.find(c => c.id === data.linkedContract.id)) {
+                updated.contractDetails = {
+                  ...prev.contractDetails,
+                  contracts: [...existingContracts, data.linkedContract]
+                };
+              }
+            }
+            return updated;
+          });
         }} 
       />
       <DocumentUploadModal 

@@ -143,6 +143,8 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
   );
 
   const [errors, setErrors] = useState({});
+  const [divisionContracts, setDivisionContracts] = useState([]);
+  const [selectedContractId, setSelectedContractId] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -173,6 +175,20 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
         }
       } catch (e) {
         console.error("Could not parse onboarding data", e);
+      }
+
+      // Load division contracts
+      try {
+        const targetId = divisionId || initialData?.id || '1';
+        const contractsStr = localStorage.getItem('division_contracts');
+        if (contractsStr) {
+          const allC = JSON.parse(contractsStr);
+          setDivisionContracts(allC.filter(c => String(c.divisionId) === String(targetId)));
+        } else {
+          setDivisionContracts([]);
+        }
+      } catch (e) {
+        setDivisionContracts([]);
       }
 
       // Initialize billingSplits
@@ -392,6 +408,71 @@ function BillingDetailsModal({ isOpen, onClose, onSave, initialData, divisionId 
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
           
+            {/* Division Contracts Quick-Link */}
+            {divisionContracts.length > 0 && (
+              <div style={{
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '8px',
+                padding: '0.75rem 1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.4rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <i className='bx bx-file-blank' style={{ fontSize: '1.1rem' }}></i> Link from Division Contract
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: '500' }}>
+                    {divisionContracts.length} available
+                  </span>
+                </div>
+                <select
+                  value={selectedContractId}
+                  onChange={(e) => {
+                    const cId = e.target.value;
+                    setSelectedContractId(cId);
+                    const found = divisionContracts.find(c => String(c.id) === String(cId));
+                    if (found) {
+                      setFormData(prev => ({
+                        ...prev,
+                        billingEntity: found.companyName,
+                        taxDetails: found.taxDetails,
+                        companyName: found.companyName,
+                        contractValue: found.contractValue,
+                        clientCurrency: found.contractCurrency,
+                        currencyExchangeValue: found.currencyExchangeValue,
+                        paymentDueDays: found.paymentDueDays,
+                        billFrom: found.billFrom,
+                        receivingBankName: found.receivingBankName,
+                        billingDate: found.billingDate,
+                        bankDetailsLink: found.bankDetailsLink,
+                        linkedContract: found
+                      }));
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '6px',
+                    border: '1px solid #93c5fd',
+                    fontSize: '0.85rem',
+                    color: '#0f172a',
+                    background: '#ffffff',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="">-- Choose a Division Contract to auto-fill --</option>
+                  {divisionContracts.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.companyName} • {c.contractValue?.toLocaleString()} {c.contractCurrency} (${c.amountInUSD?.toLocaleString()} USD) • {c.billFrom} / {c.receivingBankName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Row 1 */}
             {(!formData.billingEntity && !formData.taxDetails) ? (
               <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '1rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
