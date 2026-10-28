@@ -301,11 +301,22 @@ export function cadenceApiPlugin() {
                 headers['X-Webhook-Secret'] = config.webhookSecret;
               }
 
-              const n8nResponse = await fetch(config.webhookUrl, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(webhookPayload)
-              });
+              let n8nResponse;
+              try {
+                n8nResponse = await fetch(config.webhookUrl, {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify(webhookPayload)
+                });
+              } catch (firstErr) {
+                // Auto-retry once after 600ms if initial connection failed due to transient network reset
+                await new Promise(resolve => setTimeout(resolve, 600));
+                n8nResponse = await fetch(config.webhookUrl, {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify(webhookPayload)
+                });
+              }
 
               if (!n8nResponse.ok) {
                 const errorText = await n8nResponse.text();
