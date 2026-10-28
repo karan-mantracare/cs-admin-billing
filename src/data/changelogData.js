@@ -1,5 +1,79 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-cadence-onetime-option',
+    date: '2026-10-28',
+    formattedDate: 'Oct 28, 2026',
+    page: 'CS',
+    subPage: 'Client Cadence / One-Time Scheduling',
+    summary: 'Added "One time" cadence option without RRULE recurrence or end conditions',
+    details: 'Added a "One time" frequency option to the Cadence Scheduler. Directly configures start date, start time, and duration without generating or sending RRULE, and omits the recurrence ending condition.',
+    plainLanguage: 'Customer Success managers can now schedule single, non-recurring meetings via the Schedule Cadence modal. By selecting "One time", users simply choose the start date, start time, timezone, and duration. The system automatically omits the RRULE parameter and hides the recurrence ending condition section, creating a single calendar event with Google Meet / conference link and attendee synchronization.',
+    highlights: [
+      'Added "One time" button in Frequency & Recurrence Pattern section',
+      'Start Date, Start Time, Timezone, and Duration controls fully preserved for single event booking',
+      'Recurrence Ending Condition (Section 4) is hidden and not required for One-time meetings',
+      'Payload excludes RRULE and creates a single calendar occurrence without recurring rules',
+      'Preview and confirmation states clearly identify one-time meetings'
+    ],
+    path: '/cs/cadence',
+    linkText: 'Client Cadence'
+  },
+  {
+    id: 'cl-cadence-mom-workflow',
+    date: '2026-10-28',
+    formattedDate: 'Oct 28, 2026',
+    page: 'CS',
+    subPage: 'Client Cadence / Minutes of Meeting (MOM)',
+    summary: 'Minutes of Meeting (MOM) capture on completion with Skip, View, and Edit options',
+    details: 'Clicking "Mark Done" opens a dedicated MOM modal to capture summary, action items, decisions, and attendees. Supports skipping to add later, with "View MOM" and "Edit" badges on completed meetings.',
+    plainLanguage: 'Customer Success teams can now document meeting outcomes seamlessly. When clicking "Mark Done", an interactive Minutes of Meeting modal prompts for key discussions, action items, and decisions. If you need to complete the meeting quickly, click "Skip for now & Complete"—a "MOM Pending" badge with "+ Add MOM" button appears so you can add it later. Completed meetings with MOM feature a "View MOM" modal with 1-click editing.',
+    highlights: [
+      'Interactive Minutes of Meeting (MOM) modal triggered on clicking "Mark Done"',
+      'Fields for Meeting Summary, Action Items & Follow-ups, Key Decisions, and Attendees Present',
+      '"Skip for now & Complete" option allowing CS SPOCs to complete meetings immediately and add MOM later',
+      '"View MOM" modal with structured cards and 1-click toggle to edit saved details',
+      'Dynamic "MOM Added" (blue) and "MOM Pending" (amber) status chips on completed meeting cards'
+    ],
+    path: '/cs/cadence',
+    linkText: 'Client Cadence'
+  },
+  {
+    id: 'cl-cadence-filters-next-7-days',
+    date: '2026-10-28',
+    formattedDate: 'Oct 28, 2026',
+    page: 'CS',
+    subPage: 'Client Cadence / Metric Filters & Next 7 Days',
+    summary: 'Interactive top metric card filtering, Next 7 Days scope, and Reminder Email dispatch',
+    details: 'Top metric cards now filter timeline and cadence data with active indicators. Replaced Google Meet branding on Upcoming Meetings with "Next 7 days" scope, and added "Send Reminder Email" button.',
+    plainLanguage: 'Clicking any of the top 4 metric cards (Active Cadences, Upcoming Meetings, Weekly Recurring, Calendar API Status) instantly filters the timeline and master logs with an active filter bar. The Upcoming Meetings card now focuses on the "Next 7 days", filtering occurrences to the next 7 days. Added a dedicated "Send Reminder Email" button alongside "Send Acceptance Email" to notify attendees with date, time, and video meeting links.',
+    highlights: [
+      'Clickable top metric cards to filter Active Cadences, Next 7 Days, Weekly Recurring, or Activity Logs',
+      'Replaced Google Meet card subtitle with "Next 7 days", scoping timeline occurrences to today through next 7 days',
+      'Platform-agnostic conference link labels and tooltips in preparation for upcoming Microsoft Teams integration',
+      'Dedicated "Send Reminder Email" button to notify all participants about upcoming meetings with joining links',
+      'Active filter badge with single-click "Clear Filter" reset'
+    ],
+    path: '/cs/cadence',
+    linkText: 'Client Cadence'
+  },
+  {
+    id: 'cl-cs-cadence-routing-fix',
+    date: '2026-10-28',
+    formattedDate: 'Oct 28, 2026',
+    page: 'CS',
+    subPage: 'CS Portal / Client Cadence Workspace Routing',
+    summary: 'Standardized Client Cadence route to /cs/cadence and restored CS Sidebar context',
+    details: 'Updated workspace links to /cs/cadence and added automatic redirection from /cadence, ensuring the CS Portal navigation sidebar is always displayed instead of the Admin menu.',
+    plainLanguage: 'Previously, opening the Client Cadence workspace routed to /cadence, which caused the left sidebar to show the Admin navigation menu. The workspace path is now standardized to /cs/cadence across the CS Portal, Sidebar, and Live Workspaces, with automatic redirection and proper CS Portal sidebar rendering.',
+    highlights: [
+      'Updated Client Cadence path to /cs/cadence in CS Portal, Sidebar, and Live Workspaces',
+      'Automatic redirect from /cadence to /cs/cadence',
+      'Fixed sidebar context detection so CS Portal navigation menu (Summary, Engagement, ROI) is properly shown'
+    ],
+    path: '/cs/cadence',
+    linkText: 'Client Cadence'
+  },
+  {
     id: 'cl-dynamic-schedule',
     date: '2026-10-27',
     formattedDate: 'Oct 27, 2026',

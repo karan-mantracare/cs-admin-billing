@@ -85,6 +85,26 @@ function ModuleSummaryPage({ defaultModule = 'Admin Portal', defaultSubmodule = 
       color: '#6366f1',
       bg: '#e0e7ff',
       desc: 'Create and configure webinar events, define budget and remarks, set trainers, and manage client attendees.'
+    },
+    {
+      title: 'Client Cadence',
+      category: 'Customer Success',
+      path: '/cs/cadence',
+      icon: 'bx-time-five',
+      badge: 'Live & Active',
+      color: '#034ea2',
+      bg: '#e0f2fe',
+      desc: 'Take client sync schedules (One-time, Weekly, Monthly), integrate with Google Calendar API, and provision video meeting links date-wise.'
+    },
+    {
+      title: 'CS Feedback & Escalation',
+      category: 'Customer Success',
+      path: '/cs/feedback',
+      icon: 'bx-message-square-detail',
+      badge: 'Live & Active',
+      color: '#0284c7',
+      bg: '#eff6ff',
+      desc: 'Client satisfaction surveys, CS service ratings, and standard customer support escalation matrix protocol.'
     }
   ];
 

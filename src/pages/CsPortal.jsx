@@ -33,11 +33,21 @@ function CsPortal() {
       desc: 'Configure webinar dates, budget and remarks, trainer allocations, attendee limits, and meeting link dispatches.'
     },
     {
+      title: 'Client Cadence',
+      icon: 'bx-time-five',
+      path: '/cs/cadence',
+      status: 'Active',
+      badge: 'CS Only',
+      color: '#034ea2',
+      bg: '#e0f2fe',
+      desc: 'Take client sync schedules (One-time, Weekly, Monthly), integrate with Google Calendar API, and provision video meeting links date-wise.'
+    },
+    {
       title: 'CS Feedback & Escalation',
       icon: 'bx-message-square-detail',
       path: '/cs/feedback',
       status: 'Active',
-      color: '#034ea2',
+      color: '#0284c7',
       bg: '#eff6ff',
       desc: 'Client satisfaction surveys, CS service ratings, and the standard 8-tier customer support escalation matrix protocol.'
     }

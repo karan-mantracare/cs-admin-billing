@@ -21,6 +21,7 @@ import ModuleSummaryPage from './pages/ModuleSummaryPage';
 import CsFeedback from './pages/CsFeedback';
 import UserPage from './pages/UserPage';
 import AcceptInvite from './pages/AcceptInvite';
+import ClientCadence from './pages/ClientCadence';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -30,7 +31,9 @@ function App() {
   const isCsRoute = location.pathname.startsWith('/cs') || 
                     location.pathname.startsWith('/calendar') || 
                     location.pathname.startsWith('/hr-dash') || 
-                    location.pathname.startsWith('/edit');
+                    location.pathname.startsWith('/edit') ||
+                    location.pathname.startsWith('/cadence') ||
+                    location.pathname.startsWith('/feedback');
 
   const isAdminRoute = location.pathname.startsWith('/admin') ||
                       location.pathname.startsWith('/orders') || 
@@ -142,8 +145,10 @@ function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/cs" element={<Navigate to="/cs/home" replace />} />
         <Route path="/cs/home" element={<CsPortal />} />
+        <Route path="/cs/cadence" element={<ClientCadence />} />
+        <Route path="/cadence" element={<Navigate to="/cs/cadence" replace />} />
         <Route path="/cs/feedback" element={<CsFeedback />} />
-        <Route path="/feedback" element={<CsFeedback />} />
+        <Route path="/feedback" element={<Navigate to="/cs/feedback" replace />} />
         <Route path="/cs/*" element={<ModuleSummaryPage defaultModule="Customer Success" />} />
         <Route path="/admin" element={<Navigate to="/orders/all" replace />} />
         <Route path="/calendar" element={<Dashboard />} />

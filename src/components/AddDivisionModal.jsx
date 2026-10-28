@@ -45,7 +45,7 @@ function AddDivisionModal({ isOpen, onClose, onAdd }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label style={{ fontSize: '0.85rem', color: '#334155', fontWeight: '500' }}>Division Name</label>
-            <input type="text" className="form-control" name="divisionName" value={formData.divisionName} onChange={handleInputChange} placeholder="e.g. Head Office" style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #0ea5e9' }} />
+            <input type="text" className="form-control" name="divisionName" value={formData.divisionName} onChange={handleInputChange} placeholder="e.g. Corp 1 Div 1" style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #0ea5e9' }} />
           </div>
 
           <div style={{ display: 'flex', gap: '1rem' }}>

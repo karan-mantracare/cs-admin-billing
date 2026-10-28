@@ -33,7 +33,9 @@ function Sidebar({ isOpen, onClose }) {
     location.pathname.startsWith('/cs') || 
     location.pathname.startsWith('/calendar') || 
     location.pathname.startsWith('/hr-dash') || 
-    location.pathname.startsWith('/edit')
+    location.pathname.startsWith('/edit') ||
+    location.pathname.startsWith('/cadence') ||
+    location.pathname.startsWith('/feedback')
   );
 
   // Home Hub Menu Structure (for /home)
@@ -92,6 +94,7 @@ function Sidebar({ isOpen, onClose }) {
       icon: 'bx-calendar',
       isProjectCategory: true,
       subItems: [
+        { label: 'Client Cadence', path: '/cs/cadence', icon: 'bx-time-five', isProjectModule: true, badge: 'CS Only' },
         { label: 'CS Calendar', path: '/calendar', icon: 'bx-calendar-event', isProjectModule: true },
         { label: 'HR Approval', path: '/hr-dash', icon: 'bx-user-circle', isProjectModule: true },
         { label: 'Webinar Editor', path: '/edit', icon: 'bx-edit', isProjectModule: true },
@@ -498,7 +501,9 @@ function Sidebar({ isOpen, onClose }) {
                       gap: '0.2rem'
                     }}>
                       {section.subItems?.map(item => {
-                        const isActive = location.pathname === item.path;
+                        const isActive = location.pathname === item.path || 
+                          (item.path === '/cs/cadence' && location.pathname === '/cadence') ||
+                          (item.path === '/cs/feedback' && location.pathname === '/feedback');
                         const isProject = item.isProjectModule;
 
                         return (
@@ -557,7 +562,7 @@ function Sidebar({ isOpen, onClose }) {
                                 letterSpacing: '0.02em',
                                 textTransform: 'uppercase'
                               }}>
-                                Active
+                                {item.badge || 'Active'}
                               </span>
                             )}
                           </Link>

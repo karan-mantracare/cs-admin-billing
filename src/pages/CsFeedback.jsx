@@ -191,8 +191,138 @@ const GENERAL_SUGGESTION_TAGS = [
   'Custom corporate fitness challenges'
 ];
 
+const SEED_FEEDBACK_SUBMISSIONS = [
+  {
+    id: 'FB-984210',
+    timestamp: '2026-10-27T10:15:00Z',
+    formattedDate: 'Oct 27, 2026, 3:45 PM',
+    clientDetails: {
+      name: 'Sarah Jenkins',
+      company: 'TechVision Global Inc.',
+      csSpocName: 'Karan Hinduja',
+      selectedDivision: 'Healthcare',
+      suggestions: 'Trainer for ergonomic webinar was exceptional! Hotline response has also been super quick.',
+      wantsFollowUp: false
+    },
+    ratings: {
+      bdCommitment: 'Very satisfied',
+      csSupport: 'Very satisfied',
+      techSupport: 'Satisfied',
+      hotlineCallQuality: 'Very satisfied',
+      hotlineCallSupport: 'Very satisfied',
+      hotlineOpsResponse: 'Satisfied',
+      oneOnOneSessions: 'Very satisfied',
+      webinarTopic: 'Very satisfied',
+      webinarContent: 'Very satisfied',
+      webinarExpert: 'Very satisfied'
+    },
+    lowResponseRemarks: {}
+  },
+  {
+    id: 'FB-983192',
+    timestamp: '2026-10-26T14:30:00Z',
+    formattedDate: 'Oct 26, 2026, 8:00 PM',
+    clientDetails: {
+      name: 'Rajesh Sharma',
+      company: 'Apex Health Corp',
+      csSpocName: 'Priya Mehta',
+      selectedDivision: 'Corporate Wellness',
+      suggestions: 'Would appreciate monthly health analytics deck earlier before the 5th of every month.',
+      wantsFollowUp: true
+    },
+    ratings: {
+      bdCommitment: 'Satisfied',
+      csSupport: 'Very satisfied',
+      techSupport: 'Neutral',
+      hotlineCallQuality: 'Satisfied',
+      hotlineCallSupport: 'Satisfied',
+      hotlineOpsResponse: 'Satisfied',
+      oneOnOneSessions: 'Satisfied',
+      webinarTopic: 'Satisfied',
+      webinarContent: 'Satisfied',
+      webinarExpert: 'Satisfied'
+    },
+    lowResponseRemarks: {
+      techSupport: 'Some employees had OTP login lag during initial app rollout.'
+    }
+  },
+  {
+    id: 'FB-982054',
+    timestamp: '2026-10-25T09:20:00Z',
+    formattedDate: 'Oct 25, 2026, 2:50 PM',
+    clientDetails: {
+      name: 'David Miller',
+      company: 'Nova FinTech Solutions',
+      csSpocName: 'Karan Hinduja',
+      selectedDivision: 'Operations',
+      suggestions: 'Mental health counseling sessions have received outstanding praise from our engineering team.',
+      wantsFollowUp: false
+    },
+    ratings: {
+      bdCommitment: 'Very satisfied',
+      csSupport: 'Very satisfied',
+      techSupport: 'Very satisfied',
+      hotlineCallQuality: 'Very satisfied',
+      hotlineCallSupport: 'Very satisfied',
+      hotlineOpsResponse: 'Very satisfied',
+      oneOnOneSessions: 'Very satisfied',
+      webinarTopic: 'Very satisfied',
+      webinarContent: 'Very satisfied',
+      webinarExpert: 'Very satisfied'
+    },
+    lowResponseRemarks: {}
+  },
+  {
+    id: 'FB-981108',
+    timestamp: '2026-10-24T11:00:00Z',
+    formattedDate: 'Oct 24, 2026, 4:30 PM',
+    clientDetails: {
+      name: 'Ananya Roy',
+      company: 'Zenith Retail Network',
+      csSpocName: 'Aman Verma',
+      selectedDivision: 'Supply Chain',
+      suggestions: 'Need faster email response for trainer rescheduling on weekend shifts.',
+      wantsFollowUp: true
+    },
+    ratings: {
+      bdCommitment: 'Neutral',
+      csSupport: 'Dissatisfied',
+      techSupport: 'Satisfied',
+      hotlineCallQuality: 'Satisfied',
+      hotlineCallSupport: 'Satisfied',
+      hotlineOpsResponse: 'Neutral',
+      oneOnOneSessions: 'Satisfied',
+      webinarTopic: 'Satisfied',
+      webinarContent: 'Neutral',
+      webinarExpert: 'Satisfied'
+    },
+    lowResponseRemarks: {
+      csSupport: 'Slow response to emails / queries; Need more proactive follow-ups'
+    }
+  }
+];
+
 export default function CsFeedback() {
   const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'submissions' ? 'submissions' : 'survey');
+  const [submissionsList, setSubmissionsList] = useState(() => {
+    try {
+      const stored = localStorage.getItem('mc_cs_feedback_submissions');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    try {
+      localStorage.setItem('mc_cs_feedback_submissions', JSON.stringify(SEED_FEEDBACK_SUBMISSIONS));
+    } catch {}
+    return SEED_FEEDBACK_SUBMISSIONS;
+  });
+  const [selectedInspectItem, setSelectedInspectItem] = useState(null);
+  const [submissionsSearch, setSubmissionsSearch] = useState('');
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState('All');
+  const [selectedSentimentFilter, setSelectedSentimentFilter] = useState('All');
+
   const [currentStep, setCurrentStep] = useState(0); // 0 to 9 = questions, 10 = details & remarks, 11 = submitted
 
   // Ratings for all 10 questions
@@ -382,7 +512,9 @@ export default function CsFeedback() {
 
     try {
       const existing = JSON.parse(localStorage.getItem('mc_cs_feedback_submissions') || '[]');
-      localStorage.setItem('mc_cs_feedback_submissions', JSON.stringify([newSubmission, ...existing]));
+      const updated = [newSubmission, ...existing];
+      localStorage.setItem('mc_cs_feedback_submissions', JSON.stringify(updated));
+      setSubmissionsList(updated);
     } catch { }
 
     setSubmitted(true);
@@ -424,6 +556,99 @@ export default function CsFeedback() {
     setValidationError('');
   };
 
+  const calculateFeedbackScore = (ratingsMap) => {
+    if (!ratingsMap) return { score: 0, text: 'N/A', color: '#64748b', bg: '#f1f5f9' };
+    const scoreMap = { 'Very satisfied': 5, 'Satisfied': 4, 'Neutral': 3, 'Dissatisfied': 2, 'Very dissatisfied': 1 };
+    let total = 0;
+    let count = 0;
+    Object.values(ratingsMap).forEach(v => {
+      if (scoreMap[v]) {
+        total += scoreMap[v];
+        count++;
+      }
+    });
+    if (count === 0) return { score: 0, text: 'N/A', color: '#64748b', bg: '#f1f5f9' };
+    const avg = Number((total / count).toFixed(1));
+    if (avg >= 4.5) return { score: avg, text: 'Very Satisfied', color: '#166534', bg: '#dcfce7' };
+    if (avg >= 3.8) return { score: avg, text: 'Satisfied', color: '#0369a1', bg: '#e0f2fe' };
+    if (avg >= 3.0) return { score: avg, text: 'Neutral', color: '#854d0e', bg: '#fef3c7' };
+    return { score: avg, text: 'Low / Escalation', color: '#991b1b', bg: '#fee2e2' };
+  };
+
+  const handleDeleteSubmission = (id) => {
+    if (!window.confirm('Are you sure you want to delete this feedback submission?')) return;
+    const updated = submissionsList.filter(s => s.id !== id);
+    setSubmissionsList(updated);
+    try {
+      localStorage.setItem('mc_cs_feedback_submissions', JSON.stringify(updated));
+    } catch {}
+  };
+
+  const handleExportCsv = () => {
+    const headers = ['ID', 'Date', 'Client Name', 'Company', 'CS SPOC', 'Overall Rating', 'Score', 'Suggestions'];
+    const rows = filteredSubmissions.map(s => {
+      const { score, text } = calculateFeedbackScore(s.ratings);
+      return [
+        s.id,
+        s.formattedDate,
+        `"${s.clientDetails?.name || ''}"`,
+        `"${s.clientDetails?.company || ''}"`,
+        `"${s.clientDetails?.csSpocName || ''}"`,
+        text,
+        score,
+        `"${(s.clientDetails?.suggestions || '').replace(/"/g, '""')}"`
+      ];
+    });
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `feedback_submissions_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const uniqueSubmissionCompanies = Array.from(new Set(submissionsList.map(s => s.clientDetails?.company).filter(Boolean)));
+
+  const filteredSubmissions = submissionsList.filter(s => {
+    if (selectedCompanyFilter !== 'All' && s.clientDetails?.company !== selectedCompanyFilter) return false;
+    const { text } = calculateFeedbackScore(s.ratings);
+    if (selectedSentimentFilter === 'Positive' && text !== 'Very Satisfied' && text !== 'Satisfied') return false;
+    if (selectedSentimentFilter === 'Neutral' && text !== 'Neutral') return false;
+    if (selectedSentimentFilter === 'Low' && text !== 'Low / Escalation') return false;
+    if (submissionsSearch.trim()) {
+      const q = submissionsSearch.toLowerCase();
+      const matchName = s.clientDetails?.name?.toLowerCase().includes(q);
+      const matchComp = s.clientDetails?.company?.toLowerCase().includes(q);
+      const matchSpoc = s.clientDetails?.csSpocName?.toLowerCase().includes(q);
+      const matchId = s.id?.toLowerCase().includes(q);
+      const matchRemarks = s.clientDetails?.suggestions?.toLowerCase().includes(q);
+      if (!matchName && !matchComp && !matchSpoc && !matchId && !matchRemarks) return false;
+    }
+    return true;
+  });
+
+  // Calculate metrics
+  const totalSubmissionsCount = submissionsList.length;
+  let totalScoreSum = 0;
+  let scoredCount = 0;
+  let positiveCount = 0;
+  let lowCount = 0;
+
+  submissionsList.forEach(s => {
+    const { score, text } = calculateFeedbackScore(s.ratings);
+    if (score > 0) {
+      totalScoreSum += score;
+      scoredCount++;
+    }
+    if (text === 'Very Satisfied' || text === 'Satisfied') positiveCount++;
+    if (text === 'Low / Escalation') lowCount++;
+  });
+
+  const avgSatisfaction = scoredCount > 0 ? (totalScoreSum / scoredCount).toFixed(1) : '5.0';
+  const positiveRatio = totalSubmissionsCount > 0 ? Math.round((positiveCount / totalSubmissionsCount) * 100) : 100;
+
   return (
     <div style={{ minHeight: 'calc(100vh - 65px)', backgroundColor: '#f8fafc', padding: '1.25rem 1.25rem 2.5rem' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -453,32 +678,68 @@ export default function CsFeedback() {
               <i className="bx bx-user" style={{ color: '#0284c7' }}></i>
               <span>Logged in: <strong style={{ color: '#0f172a' }}>{clientDetails.name}</strong> ({clientDetails.company})</span>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setShowHistory(!showHistory)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.35rem 0.75rem',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                background: showHistory ? '#e0f2fe' : '#ffffff',
-                color: showHistory ? '#0284c7' : '#475569',
-                fontSize: '0.8rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <i className="bx bx-history"></i>
-              <span>{showHistory ? 'Hide Submissions' : 'Submissions Log'}</span>
-            </button>
           </div>
         </div>
 
-        {/* Question Selector Quick-Bar */}
+        {/* Navigation Tabs */}
+        <div style={{ display: 'flex', gap: '0.65rem', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+          <button
+            onClick={() => setActiveTab('survey')}
+            style={{
+              padding: '0.55rem 1.15rem',
+              borderRadius: '8px',
+              border: 'none',
+              background: activeTab === 'survey' ? '#034ea2' : '#ffffff',
+              color: activeTab === 'survey' ? '#ffffff' : '#475569',
+              fontWeight: '700',
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              boxShadow: activeTab === 'survey' ? '0 2px 6px rgba(3, 78, 162, 0.25)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <i className="bx bx-edit-alt"></i>
+            <span>Submit Feedback Survey</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('submissions')}
+            style={{
+              padding: '0.55rem 1.15rem',
+              borderRadius: '8px',
+              border: 'none',
+              background: activeTab === 'submissions' ? '#034ea2' : '#ffffff',
+              color: activeTab === 'submissions' ? '#ffffff' : '#475569',
+              fontWeight: '700',
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              boxShadow: activeTab === 'submissions' ? '0 2px 6px rgba(3, 78, 162, 0.25)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <i className="bx bx-folder-open"></i>
+            <span>Submissions Directory & Insights</span>
+            <span style={{
+              background: activeTab === 'submissions' ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+              color: activeTab === 'submissions' ? '#ffffff' : '#475569',
+              padding: '0.1rem 0.5rem',
+              borderRadius: '999px',
+              fontSize: '0.75rem'
+            }}>
+              {submissionsList.length}
+            </span>
+          </button>
+        </div>
+
+        {activeTab === 'survey' && (
+          <>
+            {/* Question Selector Quick-Bar */}
         <div style={{ maxWidth: '860px', margin: '0 auto 0.75rem auto', display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
           {PILLAR_QUESTIONS.map((q, idx) => {
             const hasAnswer = Boolean(ratings[q.id]);
@@ -1331,6 +1592,30 @@ export default function CsFeedback() {
                   Submit Another Response
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('submissions');
+                    setSubmitted(false);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    padding: '0.65rem 1.25rem',
+                    borderRadius: '6px',
+                    border: '1px solid #0284c7',
+                    background: '#e0f2fe',
+                    color: '#0369a1',
+                    fontSize: '0.9rem',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <i className="bx bx-folder-open"></i>
+                  <span>View in Submissions Directory ({submissionsList.length})</span>
+                </button>
+
                 <Link
                   to="/cs/home"
                   style={{
@@ -1779,8 +2064,488 @@ export default function CsFeedback() {
             </div>
           )}
         </div>
+      </>
+    )}
 
+    {/* SUBMISSIONS DIRECTORY & INSIGHTS TAB */}
+    {activeTab === 'submissions' && (
+      <div>
+        {/* Metric KPI Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Feedbacks</span>
+              <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#eff6ff', color: '#034ea2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>
+                <i className='bx bx-message-square-detail'></i>
+              </div>
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0f172a' }}>
+              {totalSubmissionsCount}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.3rem' }}>
+              Across {uniqueSubmissionCompanies.length} client organizations
+            </div>
+          </div>
+
+          <div style={{ background: 'white', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>CS Satisfaction Index</span>
+              <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>
+                <i className='bx bx-star'></i>
+              </div>
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#15803d', display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+              <span>{avgSatisfaction}</span>
+              <span style={{ fontSize: '0.95rem', color: '#64748b', fontWeight: '600' }}>/ 5.0</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+              <i className='bx bx-trending-up'></i> High Service Quality Benchmark
+            </div>
+          </div>
+
+          <div style={{ background: 'white', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Positive Sentiment</span>
+              <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>
+                <i className='bx bx-smile'></i>
+              </div>
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0369a1' }}>
+              {positiveRatio}%
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.3rem' }}>
+              Rated Very Satisfied or Satisfied
+            </div>
+          </div>
+
+          <div style={{ background: 'white', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Escalation Alerts</span>
+              <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>
+                <i className='bx bx-error-circle'></i>
+              </div>
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '800', color: lowCount > 0 ? '#b91c1c' : '#0f172a' }}>
+              {lowCount}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: lowCount > 0 ? '#b91c1c' : '#64748b', marginTop: '0.3rem' }}>
+              {lowCount > 0 ? 'Requires CS SPOC follow-up' : 'Zero active escalations'}
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Controls Bar */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0',
+          padding: '1.25rem',
+          marginBottom: '1.25rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+        }}>
+          {/* Search */}
+          <div style={{ position: 'relative', minWidth: '280px', flex: '1 1 300px' }}>
+            <i className='bx bx-search' style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '1.1rem' }}></i>
+            <input
+              type="text"
+              placeholder="Search by client name, company, SPOC, remarks, ID..."
+              value={submissionsSearch}
+              onChange={e => setSubmissionsSearch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.55rem 0.75rem 0.55rem 2.25rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                fontSize: '0.85rem',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          {/* Dropdown Filters & Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {/* Company Filter */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: '#64748b' }}>Company:</label>
+              <select
+                value={selectedCompanyFilter}
+                onChange={e => setSelectedCompanyFilter(e.target.value)}
+                style={{
+                  padding: '0.45rem 0.65rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.82rem',
+                  background: 'white',
+                  color: '#0f172a'
+                }}
+              >
+                <option value="All">All Companies ({uniqueSubmissionCompanies.length})</option>
+                {uniqueSubmissionCompanies.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sentiment Filter */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: '#64748b' }}>Sentiment:</label>
+              <select
+                value={selectedSentimentFilter}
+                onChange={e => setSelectedSentimentFilter(e.target.value)}
+                style={{
+                  padding: '0.45rem 0.65rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.82rem',
+                  background: 'white',
+                  color: '#0f172a'
+                }}
+              >
+                <option value="All">All Sentiments</option>
+                <option value="Positive">Positive (Satisfied+)</option>
+                <option value="Neutral">Neutral</option>
+                <option value="Low">Low / Escalations</option>
+              </select>
+            </div>
+
+            {/* Export CSV */}
+            <button
+              onClick={handleExportCsv}
+              style={{
+                padding: '0.5rem 0.85rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: '#f8fafc',
+                color: '#334155',
+                fontSize: '0.82rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem'
+              }}
+            >
+              <i className='bx bx-download'></i>
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Submissions Directory Table */}
+        <div style={{
+          background: 'white',
+          borderRadius: '14px',
+          border: '1px solid #e2e8f0',
+          overflow: 'hidden',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+        }}>
+          {filteredSubmissions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3.5rem 1rem', color: '#64748b' }}>
+              <i className='bx bx-message-rounded-x' style={{ fontSize: '2.5rem', color: '#cbd5e1', marginBottom: '0.5rem' }}></i>
+              <p style={{ margin: 0, fontWeight: '600' }}>No feedback submissions match your filter.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '2px solid #e2e8f0', textTransform: 'uppercase', fontSize: '0.74rem', letterSpacing: '0.04em' }}>
+                    <th style={{ padding: '0.75rem 1rem' }}>Feedback ID</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>Date & Time</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>Client Respondent</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>CS SPOC</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>Overall Satisfaction</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>Key Remarks / Issues</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSubmissions.map((item) => {
+                    const { score, text, color, bg } = calculateFeedbackScore(item.ratings);
+                    const hasRemarks = Boolean(item.clientDetails?.suggestions);
+                    const hasLowTags = Object.values(item.lowResponseRemarks || {}).some(Boolean);
+
+                    return (
+                      <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
+                        <td style={{ padding: '0.75rem 1rem', fontWeight: '800', color: '#034ea2', whiteSpace: 'nowrap' }}>
+                          {item.id}
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', color: '#64748b', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
+                          {item.formattedDate || new Date(item.timestamp).toLocaleString()}
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <div style={{ fontWeight: '700', color: '#0f172a' }}>
+                            {item.clientDetails?.name || 'HR Contact'}
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#0284c7', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <i className='bx bx-buildings'></i>
+                            {item.clientDetails?.company || 'Company'}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', color: '#334155' }}>
+                          <div style={{ fontWeight: '600' }}>
+                            {item.clientDetails?.csSpocName || 'CS SPOC'}
+                          </div>
+                          {item.clientDetails?.selectedDivision && (
+                            <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                              Div: {item.clientDetails.selectedDivision}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.65rem', borderRadius: '6px', background: bg, color: color, fontWeight: '700', fontSize: '0.8rem' }}>
+                            <i className={score >= 4.0 ? 'bx bx-smile' : score >= 3.0 ? 'bx bx-meh' : 'bx bx-sad'}></i>
+                            <span>{text} ({score} / 5)</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', maxWidth: '300px' }}>
+                          {hasRemarks ? (
+                            <div style={{ fontStyle: 'italic', color: '#334155', fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              "{item.clientDetails.suggestions}"
+                            </div>
+                          ) : (
+                            <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>No remarks left</span>
+                          )}
+                          {hasLowTags && (
+                            <div style={{ marginTop: '0.25rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#fee2e2', color: '#b91c1c', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '700' }}>
+                              <i className='bx bx-error-circle'></i>
+                              <span>Issue Tags Logged</span>
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', gap: '0.45rem', alignItems: 'center' }}>
+                            <button
+                              onClick={() => setSelectedInspectItem(item)}
+                              title="Inspect Full Evaluation"
+                              style={{
+                                padding: '0.4rem 0.75rem',
+                                borderRadius: '6px',
+                                border: '1px solid #0284c7',
+                                background: '#eff6ff',
+                                color: '#034ea2',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem',
+                                fontWeight: '700',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem'
+                              }}
+                            >
+                              <i className='bx bx-show'></i>
+                              <span>Inspect</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteSubmission(item.id)}
+                              title="Delete Feedback"
+                              style={{
+                                padding: '0.4rem 0.55rem',
+                                borderRadius: '6px',
+                                border: '1px solid #fecaca',
+                                background: '#fee2e2',
+                                color: '#dc2626',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem'
+                              }}
+                            >
+                              <i className='bx bx-trash'></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* FULL FEEDBACK INSPECTION MODAL */}
+    {selectedInspectItem && (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: '1.5rem'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          width: '100%',
+          maxWidth: '820px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          padding: '2rem',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+          border: '1px solid #e2e8f0'
+        }}>
+          {/* Modal Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#eff6ff', color: '#034ea2', padding: '0.25rem 0.65rem', borderRadius: '4px', fontSize: '0.78rem', fontWeight: '800', marginBottom: '0.4rem' }}>
+                <i className='bx bx-detail'></i>
+                <span>EVALUATION REPORT #{selectedInspectItem.id}</span>
+              </div>
+              <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '800', color: '#0f172a' }}>
+                {selectedInspectItem.clientDetails?.company}
+              </h2>
+              <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.84rem', color: '#64748b' }}>
+                Submitted by <strong>{selectedInspectItem.clientDetails?.name}</strong> • CS SPOC: <strong style={{ color: '#034ea2' }}>{selectedInspectItem.clientDetails?.csSpocName}</strong> • {selectedInspectItem.formattedDate}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setSelectedInspectItem(null)}
+              style={{ background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
+            >
+              <i className='bx bx-x' style={{ fontSize: '1.3rem' }}></i>
+            </button>
+          </div>
+
+          {/* Respondent & Follow-up banner */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Division</span>
+              <div style={{ fontWeight: '700', color: '#0f172a' }}>{selectedInspectItem.clientDetails?.selectedDivision || 'Default'}</div>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Follow-up Request</span>
+              <div>
+                {selectedInspectItem.clientDetails?.wantsFollowUp ? (
+                  <span style={{ background: '#fee2e2', color: '#b91c1c', padding: '0.15rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '700' }}>
+                    Requested Meeting
+                  </span>
+                ) : (
+                  <span style={{ color: '#64748b', fontSize: '0.82rem' }}>No meeting requested</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Overall Assessment</span>
+              <div>
+                {(() => {
+                  const { score, text, color, bg } = calculateFeedbackScore(selectedInspectItem.ratings);
+                  return (
+                    <span style={{ background: bg, color: color, padding: '0.15rem 0.55rem', borderRadius: '4px', fontSize: '0.78rem', fontWeight: '800' }}>
+                      {text} ({score}/5)
+                    </span>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+
+          {/* All 10 Dimension Questions Breakdown */}
+          <div style={{ fontSize: '0.82rem', fontWeight: '800', textTransform: 'uppercase', color: '#475569', letterSpacing: '0.04em', marginBottom: '0.75rem' }}>
+            Granular Ratings Breakdown ({PILLAR_QUESTIONS.length} Dimensions)
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginBottom: '1.5rem' }}>
+            {PILLAR_QUESTIONS.map((q, idx) => {
+              const ans = selectedInspectItem.ratings[q.id];
+              const remark = selectedInspectItem.lowResponseRemarks?.[q.id];
+
+              return (
+                <div
+                  key={q.id}
+                  style={{
+                    padding: '0.85rem 1rem',
+                    background: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+                      <span style={{ width: '22px', height: '22px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b', fontSize: '0.72rem', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {idx + 1}
+                      </span>
+                      <div>
+                        <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
+                          {q.shortLabel}
+                        </div>
+                        <div style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                          {q.category}
+                        </div>
+                      </div>
+                    </div>
+
+                    <span style={{
+                      padding: '0.2rem 0.65rem',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      fontWeight: '700',
+                      background: ans === 'Very satisfied' ? '#dcfce7' : ans === 'Satisfied' ? '#e0f2fe' : ans === 'Neutral' ? '#fef3c7' : '#fee2e2',
+                      color: ans === 'Very satisfied' ? '#166534' : ans === 'Satisfied' ? '#0369a1' : ans === 'Neutral' ? '#92400e' : '#991b1b',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {ans || 'Not answered'}
+                    </span>
+                  </div>
+
+                  {remark && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.45rem 0.75rem', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', fontSize: '0.78rem', color: '#991b1b' }}>
+                      <i className='bx bx-error' style={{ marginRight: '0.35rem' }}></i>
+                      <strong>Reported Issue:</strong> {remark}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Respondent Suggestions */}
+          {selectedInspectItem.clientDetails?.suggestions && (
+            <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                Client's Written Suggestions & Comments
+              </div>
+              <div style={{ fontSize: '0.92rem', color: '#0f172a', fontStyle: 'italic', lineHeight: '1.5' }}>
+                "{selectedInspectItem.clientDetails.suggestions}"
+              </div>
+            </div>
+          )}
+
+          {/* Close Button */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
+            <button
+              onClick={() => setSelectedInspectItem(null)}
+              style={{
+                padding: '0.6rem 1.4rem',
+                background: '#034ea2',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.88rem',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              Close Evaluation
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
       </div>
     </div>
   );
 }
+

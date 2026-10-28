@@ -112,7 +112,7 @@ function Corporate() {
             <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
               <div className="form-group">
                 <label style={{ fontSize: '0.85rem', color: '#64748b' }}>Division Name</label>
-                <input type="text" className="form-control" name="divisionName" value={formData.divisionName} onChange={handleInputChange} placeholder="e.g. Head Office" />
+                <input type="text" className="form-control" name="divisionName" value={formData.divisionName} onChange={handleInputChange} placeholder="e.g. Corp 1 Div 1" />
               </div>
               <div className="form-group">
                 <label style={{ fontSize: '0.85rem', color: '#64748b' }}>Client Name</label>
