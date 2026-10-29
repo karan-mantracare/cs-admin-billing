@@ -186,6 +186,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   // Dynamic % distribution & live schedule states
   const [pinnedPercentages, setPinnedPercentages] = useState({});
   const [tempPercentageInputs, setTempPercentageInputs] = useState({});
+  const [tempAmountInputs, setTempAmountInputs] = useState({});
+  const [pinnedPreviewRows, setPinnedPreviewRows] = useState({});
+  const [autoCascadeDates, setAutoCascadeDates] = useState(true);
   const [customDates, setCustomDates] = useState({});
   const [customRemarks, setCustomRemarks] = useState({});
 
@@ -200,6 +203,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       setHoveredSplitRow(null);
       setPinnedPercentages({});
       setTempPercentageInputs({});
+      setTempAmountInputs({});
+      setPinnedPreviewRows({});
+      setAutoCascadeDates(true);
       setCustomDates({});
       setCustomRemarks({});
       setContractScope('all_separate');
@@ -211,6 +217,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     // When terms or order change, reset any pinned percentages
     setPinnedPercentages({});
     setTempPercentageInputs({});
+    setTempAmountInputs({});
+    setPinnedPreviewRows({});
     setCustomDates({});
   }, [formData.paymentTerms, formData.orderName, formData.orderId]);
 
@@ -742,6 +750,210 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     return invoices;
   };
 
+  // --- Preview Schedule Customization Handlers (Scenario 1 & 2 support) ---
+  const handlePreviewPercentageChange = (idx, newPctVal) => {
+    const targetInv = previewInvoices[idx];
+    if (!targetInv) return;
+
+    const numPct = parseFloat(newPctVal);
+    if (isNaN(numPct) || numPct <= 0) return;
+
+    const targetContractId = targetInv.contractId;
+    const sameContractIndices = previewInvoices
+      .map((inv, i) => (String(inv.contractId) === String(targetContractId) ? i : -1))
+      .filter(i => i !== -1);
+
+    if (sameContractIndices.length <= 1) return; // single invoice is always 100%
+
+    const contractObj = availableContracts.find(c => String(c.id) === String(targetContractId));
+    const totalContractVal = contractObj 
+      ? (Number(contractObj.contractValue) || Number(contractObj.amountInUSD) || 0)
+      : sameContractIndices.reduce((sum, i) => sum + (Number(previewInvoices[i].amountDue) || 0), 0);
+    const totalContractUsd = contractObj
+      ? (Number(contractObj.amountInUSD) || totalContractVal || 0)
+      : sameContractIndices.reduce((sum, i) => sum + (Number(previewInvoices[i].amountDueUsd) || 0), 0);
+
+    const updatedPinned = { ...pinnedPreviewRows, [idx]: { isPinned: true, percentage: numPct } };
+    setPinnedPreviewRows(updatedPinned);
+
+    let pinnedPctSum = 0;
+    const unpinnedIndices = [];
+    sameContractIndices.forEach(i => {
+      if (updatedPinned[i]?.isPinned) {
+        pinnedPctSum += Number(updatedPinned[i].percentage);
+      } else {
+        unpinnedIndices.push(i);
+      }
+    });
+
+    const remainingPct = Math.max(0, 100 - pinnedPctSum);
+    const splitPerUnpinned = unpinnedIndices.length > 0 
+      ? Number((remainingPct / unpinnedIndices.length).toFixed(2)) 
+      : 0;
+
+    setPreviewInvoices(prev => {
+      return prev.map((item, i) => {
+        if (!sameContractIndices.includes(i)) return item;
+
+        let pct = 0;
+        if (updatedPinned[i]?.isPinned) {
+          pct = Number(updatedPinned[i].percentage);
+        } else {
+          const isLastUnpinned = unpinnedIndices[unpinnedIndices.length - 1] === i;
+          if (isLastUnpinned) {
+            pct = Number((remainingPct - (splitPerUnpinned * (unpinnedIndices.length - 1))).toFixed(2));
+          } else {
+            pct = splitPerUnpinned;
+          }
+        }
+
+        const amtDue = Number(((totalContractVal * pct) / 100).toFixed(2));
+        const amtDueUsd = Number(((totalContractUsd * pct) / 100).toFixed(2));
+
+        return {
+          ...item,
+          termPercentage: pct,
+          amountDue: amtDue,
+          amountDueUsd: amtDueUsd,
+          dueAmount: amtDueUsd
+        };
+      });
+    });
+  };
+
+  const handlePreviewAmountChange = (idx, newAmtVal) => {
+    const targetInv = previewInvoices[idx];
+    if (!targetInv) return;
+
+    const numAmt = parseFloat(newAmtVal);
+    if (isNaN(numAmt) || numAmt <= 0) return;
+
+    const targetContractId = targetInv.contractId;
+    const sameContractIndices = previewInvoices
+      .map((inv, i) => (String(inv.contractId) === String(targetContractId) ? i : -1))
+      .filter(i => i !== -1);
+
+    const contractObj = availableContracts.find(c => String(c.id) === String(targetContractId));
+    const totalContractVal = contractObj 
+      ? (Number(contractObj.contractValue) || Number(contractObj.amountInUSD) || 0)
+      : sameContractIndices.reduce((sum, i) => sum + (Number(previewInvoices[i].amountDue) || 0), 0);
+
+    if (totalContractVal <= 0) return;
+
+    const calculatedPct = Number(((numAmt / totalContractVal) * 100).toFixed(2));
+    handlePreviewPercentageChange(idx, calculatedPct);
+  };
+
+  const unpinPreviewRow = (idx) => {
+    const updatedPinned = { ...pinnedPreviewRows };
+    delete updatedPinned[idx];
+    setPinnedPreviewRows(updatedPinned);
+
+    const targetInv = previewInvoices[idx];
+    if (!targetInv) return;
+    const targetContractId = targetInv.contractId;
+    const sameContractIndices = previewInvoices
+      .map((inv, i) => (String(inv.contractId) === String(targetContractId) ? i : -1))
+      .filter(i => i !== -1);
+
+    const contractObj = availableContracts.find(c => String(c.id) === String(targetContractId));
+    const totalContractVal = contractObj 
+      ? (Number(contractObj.contractValue) || Number(contractObj.amountInUSD) || 0)
+      : sameContractIndices.reduce((sum, i) => sum + (Number(previewInvoices[i].amountDue) || 0), 0);
+    const totalContractUsd = contractObj
+      ? (Number(contractObj.amountInUSD) || totalContractVal || 0)
+      : sameContractIndices.reduce((sum, i) => sum + (Number(previewInvoices[i].amountDueUsd) || 0), 0);
+
+    let pinnedPctSum = 0;
+    const unpinnedIndices = [];
+    sameContractIndices.forEach(i => {
+      if (updatedPinned[i]?.isPinned) {
+        pinnedPctSum += Number(updatedPinned[i].percentage);
+      } else {
+        unpinnedIndices.push(i);
+      }
+    });
+
+    const remainingPct = Math.max(0, 100 - pinnedPctSum);
+    const splitPerUnpinned = unpinnedIndices.length > 0 
+      ? Number((remainingPct / unpinnedIndices.length).toFixed(2)) 
+      : 0;
+
+    setPreviewInvoices(prev => {
+      return prev.map((item, i) => {
+        if (!sameContractIndices.includes(i)) return item;
+        let pct = 0;
+        if (updatedPinned[i]?.isPinned) {
+          pct = Number(updatedPinned[i].percentage);
+        } else {
+          const isLastUnpinned = unpinnedIndices[unpinnedIndices.length - 1] === i;
+          if (isLastUnpinned) {
+            pct = Number((remainingPct - (splitPerUnpinned * (unpinnedIndices.length - 1))).toFixed(2));
+          } else {
+            pct = splitPerUnpinned;
+          }
+        }
+        const amtDue = Number(((totalContractVal * pct) / 100).toFixed(2));
+        const amtDueUsd = Number(((totalContractUsd * pct) / 100).toFixed(2));
+        return {
+          ...item,
+          termPercentage: pct,
+          amountDue: amtDue,
+          amountDueUsd: amtDueUsd,
+          dueAmount: amtDueUsd
+        };
+      });
+    });
+  };
+
+  const resetPreviewSplits = () => {
+    setPinnedPreviewRows({});
+    setTempPercentageInputs({});
+    setTempAmountInputs({});
+    const fresh = generateInvoices();
+    if (fresh && fresh.length > 0) {
+      setPreviewInvoices(prev => {
+        return fresh.map((freshItem, i) => {
+          const existing = prev[i];
+          if (!existing) return freshItem;
+          return {
+            ...freshItem,
+            invoiceByDate: existing.invoiceByDate,
+            dueByDate: existing.dueByDate,
+            remarks: existing.remarks
+          };
+        });
+      });
+    }
+  };
+
+  const handleInvoiceDateChange = (idx, val) => {
+    const paymentDueDays = Number(selectedOrder?.billingDetails?.paymentDue) || 30;
+    const newDue = getDueDate(val, paymentDueDays);
+
+    setPreviewInvoices(prev => {
+      if (!autoCascadeDates) {
+        return prev.map((item, i) => i === idx ? { ...item, invoiceByDate: val, dueByDate: newDue } : item);
+      }
+      const targetContractId = prev[idx]?.contractId;
+      const baseTermIndex = prev[idx]?.installmentNumber || (idx + 1);
+
+      return prev.map((item, i) => {
+        if (i === idx) {
+          return { ...item, invoiceByDate: val, dueByDate: newDue };
+        }
+        if (i > idx && String(item.contractId) === String(targetContractId)) {
+          const itemTermIndex = item.installmentNumber || (i + 1);
+          const monthOffset = itemTermIndex - baseTermIndex;
+          const cascadedDate = getMonthlyDate(val, monthOffset);
+          const cascadedDue = getDueDate(cascadedDate, paymentDueDays);
+          return { ...item, invoiceByDate: cascadedDate, dueByDate: cascadedDue };
+        }
+        return item;
+      });
+    });
+  };
+
   const handlePreview = () => {
     if (mode === 'schedule') {
       if (!selectedOrder) {
@@ -776,6 +988,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         alert("Unable to generate schedule preview. Please check that order value and payment terms are valid.");
         return;
       }
+      setPinnedPreviewRows({});
+      setTempPercentageInputs({});
+      setTempAmountInputs({});
+      setAutoCascadeDates(true);
       setPreviewInvoices(invoices);
       setIsPreview(true);
     } else {
@@ -1128,20 +1344,45 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         <div 
           onClick={(e) => e.stopPropagation()}
           style={{
-            background: 'white', borderRadius: '8px', width: '94%', maxWidth: '880px',
+            background: 'white', borderRadius: '8px', width: '95%', maxWidth: '980px',
             padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Invoice Schedule Preview</h2>
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                Review schedule details. Remarks entered here will be added to the invoice.
+                Review and customize schedule. You can edit invoice dates, amounts, percentages, and remarks. Remaining balances auto-balance.
               </p>
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
-              &times;
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <label style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontSize: '0.78rem',
+                color: '#334155',
+                cursor: 'pointer',
+                userSelect: 'none',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                padding: '0.3rem 0.65rem',
+                borderRadius: '6px'
+              }}
+              title="When checked, changing any invoice date will automatically roll all subsequent invoice dates forward (+1 month each)"
+              >
+                <input 
+                  type="checkbox" 
+                  checked={autoCascadeDates} 
+                  onChange={(e) => setAutoCascadeDates(e.target.checked)} 
+                  style={{ accentColor: '#0ea5e9', cursor: 'pointer' }}
+                />
+                <span style={{ fontWeight: '600' }}>Auto-roll following dates (+1 mo)</span>
+              </label>
+              <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
+                &times;
+              </button>
+            </div>
           </div>
 
           {/* Multi-Entity / Company Header Banner on top of schedule */}
@@ -1285,17 +1526,18 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             return null;
           })()}
           
-          <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '1.5rem' }}>
+          <div style={{ maxHeight: '420px', overflowY: 'auto', marginBottom: '1rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
-                <tr style={{ background: '#f1f5f9', color: '#475569', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem' }}>S.No</th>
-                  <th style={{ padding: '0.5rem' }}>Billed Entity</th>
-                  <th style={{ padding: '0.5rem' }}>Invoice By Date</th>
-                  <th style={{ padding: '0.5rem' }}>Due Date</th>
-                  <th style={{ padding: '0.5rem' }}>Amount ({activeSingleContract ? (activeSingleContract.contractCurrency || 'USD') : 'Contract Currency'})</th>
-                  <th style={{ padding: '0.5rem' }}>Amount (USD)</th>
-                  <th style={{ padding: '0.5rem', minWidth: '180px' }}>
+                <tr style={{ background: '#f1f5f9', color: '#475569', textAlign: 'left', position: 'sticky', top: 0, zIndex: 10 }}>
+                  <th style={{ padding: '0.55rem 0.5rem' }}>S.No</th>
+                  <th style={{ padding: '0.55rem 0.5rem' }}>Billed Entity</th>
+                  <th style={{ padding: '0.55rem 0.5rem' }}>Invoice By Date</th>
+                  <th style={{ padding: '0.55rem 0.5rem' }}>Due Date</th>
+                  <th style={{ padding: '0.55rem 0.5rem', minWidth: '95px' }}>Split %</th>
+                  <th style={{ padding: '0.55rem 0.5rem', minWidth: '125px' }}>Amount ({activeSingleContract ? (activeSingleContract.contractCurrency || 'USD') : 'Contract Currency'})</th>
+                  <th style={{ padding: '0.55rem 0.5rem' }}>Amount (USD)</th>
+                  <th style={{ padding: '0.55rem 0.5rem', minWidth: '160px' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', position: 'relative' }}>
                       <span>Remarks</span>
                       <div 
@@ -1348,15 +1590,17 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                 {previewInvoices.map((inv, idx) => {
                   const isLastSplitInTerm = !inv.totalSplits || inv.splitIndex === inv.totalSplits;
                   const rowBg = (inv.installmentNumber % 2 === 0) ? '#f8fafc' : '#ffffff';
+                  const isPinned = Boolean(pinnedPreviewRows[idx]?.isPinned);
 
                   return (
                     <tr 
                       key={inv.id || idx} 
                       style={{ 
-                        background: rowBg,
+                        background: isPinned ? '#f0f9ff' : rowBg,
                         borderBottom: isLastSplitInTerm ? '2px solid #cbd5e1' : '1px solid #f1f5f9' 
                       }}
                     >
+                      {/* S.No & Term # */}
                       <td style={{ padding: '0.6rem 0.5rem', color: '#334155', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                           <span style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.85rem' }}>{idx + 1}</span>
@@ -1374,6 +1618,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                           )}
                         </div>
                       </td>
+
+                      {/* Billed Entity */}
                       <td style={{ padding: '0.6rem 0.5rem', color: '#0f172a', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                           <span style={{
@@ -1410,19 +1656,19 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                           </div>
                         )}
                       </td>
+
+                      {/* Invoice By Date */}
                       <td style={{ padding: '0.45rem 0.5rem' }}>
                         <input 
                           type="date"
                           value={inv.invoiceByDate}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            const paymentDueDays = Number(selectedOrder?.billingDetails?.paymentDue) || 30;
-                            const newDue = getDueDate(val, paymentDueDays);
-                            setPreviewInvoices(prev => prev.map((item, i) => i === idx ? { ...item, invoiceByDate: val, dueByDate: newDue } : item));
-                          }}
+                          onChange={(e) => handleInvoiceDateChange(idx, e.target.value)}
                           style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
+                          title={autoCascadeDates ? "Changing this date rolls forward subsequent dates automatically" : "Date for this invoice"}
                         />
                       </td>
+
+                      {/* Due Date */}
                       <td style={{ padding: '0.45rem 0.5rem' }}>
                         <input 
                           type="date"
@@ -1434,12 +1680,128 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                           style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
                         />
                       </td>
-                      <td style={{ padding: '0.6rem 0.5rem', color: '#0f172a', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                        {inv.currency} {Number(inv.amountDue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+
+                      {/* Split % Input */}
+                      <td style={{ padding: '0.45rem 0.5rem', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            min="0.1"
+                            max="100"
+                            value={tempPercentageInputs[idx] !== undefined ? tempPercentageInputs[idx] : (inv.termPercentage ? Number(inv.termPercentage).toFixed(2) : '')}
+                            onFocus={() => {
+                              setTempPercentageInputs(prev => ({ ...prev, [idx]: inv.termPercentage ? String(inv.termPercentage) : '' }));
+                            }}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setTempPercentageInputs(prev => ({ ...prev, [idx]: v }));
+                            }}
+                            onBlur={(e) => {
+                              const v = e.target.value;
+                              if (v !== '' && !isNaN(Number(v))) {
+                                handlePreviewPercentageChange(idx, Number(v));
+                              }
+                              setTempPercentageInputs(prev => {
+                                const copy = { ...prev };
+                                delete copy[idx];
+                                return copy;
+                              });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.target.blur();
+                              }
+                            }}
+                            style={{
+                              width: '62px',
+                              padding: '0.3rem 0.35rem',
+                              borderRadius: '5px',
+                              border: isPinned ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                              background: isPinned ? '#eff6ff' : '#ffffff',
+                              fontWeight: isPinned ? '700' : '600',
+                              color: isPinned ? '#1d4ed8' : '#0f172a',
+                              fontSize: '0.82rem',
+                              boxSizing: 'border-box'
+                            }}
+                            title={isPinned ? "Custom pinned % (click unlock to reset)" : "Edit % to auto-balance remaining"}
+                          />
+                          <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '700' }}>%</span>
+                          {isPinned && (
+                            <button
+                              type="button"
+                              onClick={() => unpinPreviewRow(idx)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#2563eb',
+                                padding: '0 0.15rem',
+                                display: 'inline-flex',
+                                alignItems: 'center'
+                              }}
+                              title="Unlock custom split for this invoice"
+                            >
+                              <i className='bx bx-lock-alt' style={{ fontSize: '0.9rem' }}></i>
+                            </button>
+                          )}
+                        </div>
                       </td>
+
+                      {/* Amount ({Currency}) Input */}
+                      <td style={{ padding: '0.45rem 0.5rem', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '700' }}>{inv.currency}</span>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={tempAmountInputs[idx] !== undefined ? tempAmountInputs[idx] : (inv.amountDue !== undefined ? Number(inv.amountDue).toFixed(2) : '')}
+                            onFocus={() => {
+                              setTempAmountInputs(prev => ({ ...prev, [idx]: inv.amountDue !== undefined ? String(inv.amountDue) : '' }));
+                            }}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setTempAmountInputs(prev => ({ ...prev, [idx]: v }));
+                            }}
+                            onBlur={(e) => {
+                              const v = e.target.value;
+                              if (v !== '' && !isNaN(Number(v))) {
+                                handlePreviewAmountChange(idx, Number(v));
+                              }
+                              setTempAmountInputs(prev => {
+                                const copy = { ...prev };
+                                delete copy[idx];
+                                return copy;
+                              });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.target.blur();
+                              }
+                            }}
+                            style={{
+                              width: '88px',
+                              padding: '0.3rem 0.4rem',
+                              borderRadius: '5px',
+                              border: isPinned ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                              background: isPinned ? '#eff6ff' : '#ffffff',
+                              fontWeight: isPinned ? '700' : '600',
+                              color: isPinned ? '#1d4ed8' : '#0f172a',
+                              fontSize: '0.82rem',
+                              boxSizing: 'border-box'
+                            }}
+                            title={isPinned ? "Custom pinned amount" : "Edit amount to auto-balance remaining"}
+                          />
+                        </div>
+                      </td>
+
+                      {/* Amount (USD) */}
                       <td style={{ padding: '0.6rem 0.5rem', color: '#059669', fontWeight: '700', whiteSpace: 'nowrap' }}>
                         ${Number(inv.amountDueUsd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
+
+                      {/* Remarks */}
                       <td style={{ padding: '0.4rem 0.5rem' }}>
                         <input 
                           type="text" 
@@ -1466,6 +1828,77 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               </tbody>
             </table>
           </div>
+
+          {/* Balanced Summary Footer Bar */}
+          {(() => {
+            const totalScheduledUsd = previewInvoices.reduce((sum, inv) => sum + (Number(inv.amountDueUsd) || 0), 0);
+            const isCustomized = Object.keys(pinnedPreviewRows).length > 0;
+            return (
+              <div style={{
+                marginBottom: '1.25rem',
+                padding: '0.65rem 0.85rem',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '6px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: '0.8rem',
+                flexWrap: 'wrap',
+                gap: '0.5rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#475569', flexWrap: 'wrap' }}>
+                  <span>Total Invoices: <strong style={{ color: '#0f172a' }}>{previewInvoices.length}</strong></span>
+                  <span>
+                    Scheduled USD Total: <strong style={{ color: '#059669' }}>${totalScheduledUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                  </span>
+                  {isCustomized && (
+                    <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '700' }}>
+                      {Object.keys(pinnedPreviewRows).length} Custom Split(s)
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{
+                    background: '#ecfdf5',
+                    color: '#059669',
+                    border: '1px solid #a7f3d0',
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '4px',
+                    fontSize: '0.74rem',
+                    fontWeight: '700',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem'
+                  }}>
+                    <i className='bx bx-check-circle'></i> 100% Balanced
+                  </span>
+                  {isCustomized && (
+                    <button
+                      type="button"
+                      onClick={resetPreviewSplits}
+                      style={{
+                        background: '#ffffff',
+                        color: '#475569',
+                        border: '1px solid #cbd5e1',
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem'
+                      }}
+                      title="Reset all rows back to equal splits"
+                    >
+                      <i className='bx bx-undo'></i> Reset Splits
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
             <button onClick={() => setIsPreview(false)} style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
