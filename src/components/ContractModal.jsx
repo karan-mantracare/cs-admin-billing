@@ -167,6 +167,7 @@ export default function ContractModal({
 
       // Add any custom entities from initialData if editing
       if (initialData?.companyEntities && initialData.companyEntities.length > 0) {
+        const ceFirst = initialData.companyEntities[0] || {};
         initialData.companyEntities.forEach(ce => {
           if (!companies.find(c => c.id === ce.id || c.companyName === ce.companyName)) {
             companies.push({
