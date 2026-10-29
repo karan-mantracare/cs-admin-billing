@@ -10,7 +10,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     corporate: '',
     division: '',
     orderName: '',
-    paymentTerms: '',
+    orderId: '',
+    paymentTerms: '1',
     amount: ''
   });
   const [paymentTermError, setPaymentTermError] = useState('');
@@ -63,8 +64,36 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       // 3. Pre-fill if initialSelection is passed
       if (initialSelection) {
         let selCorp = initialSelection.corporate || initialSelection.clientName || '';
-        const selDiv = initialSelection.division || initialSelection.divisionName || '';
+        let selDiv = initialSelection.division || initialSelection.divisionName || '';
         let selOrderName = initialSelection.orderName || '';
+        let selOrderId = initialSelection.orderId ? String(initialSelection.orderId) : '';
+
+        // Match order by ID first
+        let matchedOrder = null;
+        if (selOrderId) {
+          matchedOrder = loadedOrders.find(o => String(o.id) === selOrderId);
+        }
+        if (!matchedOrder && selOrderName) {
+          matchedOrder = loadedOrders.find(o => {
+            const ps = o.planStart || 'Unknown Date';
+            const pn = o.plan || o.planName || o.product || `Order #${o.id}`;
+            const nameKey = `${ps} & ${pn}`;
+            return nameKey === selOrderName || o.orderName === selOrderName || String(o.id) === selOrderName;
+          });
+        }
+
+        if (matchedOrder) {
+          selOrderId = String(matchedOrder.id);
+          const ps = matchedOrder.planStart || 'Unknown Date';
+          const pn = matchedOrder.plan || matchedOrder.planName || matchedOrder.product || `Order #${matchedOrder.id}`;
+          selOrderName = `${ps} & ${pn}`;
+          if (!selCorp || selCorp === 'N/A') {
+            selCorp = matchedOrder.corporate || matchedOrder.clientName || '';
+          }
+          if (!selDiv) {
+            selDiv = matchedOrder.division || matchedOrder.divisionName || '';
+          }
+        }
 
         // If selCorp is 'N/A' or empty, resolve from client list or orders using division
         if (!selCorp || selCorp === 'N/A') {
@@ -78,22 +107,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             }
           }
           if (!selCorp || selCorp === 'N/A') {
-            const matchedOrder = loadedOrders.find(o => (o.division || o.divisionName) === selDiv && o.corporate && o.corporate !== 'N/A');
-            if (matchedOrder) {
-              selCorp = matchedOrder.corporate || matchedOrder.clientName || '';
-            }
-          }
-        }
-
-        // If orderId is passed but not orderName, find matching order
-        if (initialSelection.orderId && !selOrderName) {
-          const matched = loadedOrders.find(o => String(o.id) === String(initialSelection.orderId));
-          if (matched) {
-            const ps = matched.planStart || 'Unknown Date';
-            const pn = matched.plan || matched.planName || matched.product || `Order #${matched.id}`;
-            selOrderName = `${ps} & ${pn}`;
-            if (!selCorp || selCorp === 'N/A') {
-              selCorp = matched.corporate || matched.clientName || selCorp;
+            const matchedOrderFromDiv = loadedOrders.find(o => (o.division || o.divisionName) === selDiv && o.corporate && o.corporate !== 'N/A');
+            if (matchedOrderFromDiv) {
+              selCorp = matchedOrderFromDiv.corporate || matchedOrderFromDiv.clientName || '';
             }
           }
         }
@@ -103,8 +119,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           corporate: (selCorp && selCorp !== 'N/A' ? selCorp : prev.corporate),
           division: selDiv || prev.division,
           orderName: selOrderName || prev.orderName,
+          orderId: selOrderId || prev.orderId,
           paymentTerms: initialSelection.paymentTerms || prev.paymentTerms || '1',
-          amount: initialSelection.amount || prev.amount || ''
+          amount: initialSelection.amount || matchedOrder?.billingDetails?.contractValue || matchedOrder?.amount || prev.amount || ''
         }));
       }
     }
@@ -153,6 +170,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   const [customDates, setCustomDates] = useState({});
   const [customRemarks, setCustomRemarks] = useState({});
 
+  // Multiple contract scheduling scope: 'all_combined', 'all_separate', or specific contract.id
+  const [contractScope, setContractScope] = useState('all_combined');
+  const [separateTerms, setSeparateTerms] = useState({});
+
   useEffect(() => {
     if (!isOpen) {
       setIsPreview(false);
@@ -162,6 +183,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       setTempPercentageInputs({});
       setCustomDates({});
       setCustomRemarks({});
+      setContractScope('all_combined');
+      setSeparateTerms({});
     }
   }, [isOpen]);
 
@@ -170,7 +193,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     setPinnedPercentages({});
     setTempPercentageInputs({});
     setCustomDates({});
-  }, [formData.paymentTerms, formData.orderName]);
+  }, [formData.paymentTerms, formData.orderName, formData.orderId]);
 
   if (!isOpen) return null;
 
@@ -187,12 +210,67 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   });
 
   // Calculate currently selected order details for validation
-  const selectedOrder = formData.orderName ? safeOrders.find(o => {
-    const ps = o.planStart || 'Unknown Date';
-    const pn = o.plan || o.planName || o.product || `Order #${o.id}`;
-    const nameKey = `${ps} & ${pn}`;
-    return nameKey === formData.orderName || String(o.id) === formData.orderName;
-  }) : null;
+  const selectedOrder = safeOrders.find(o => {
+    if (formData.orderId && String(o.id) === String(formData.orderId)) return true;
+    if (formData.orderName) {
+      const ps = o.planStart || 'Unknown Date';
+      const pn = o.plan || o.planName || o.product || `Order #${o.id}`;
+      const nameKey = `${ps} & ${pn}`;
+      return nameKey === formData.orderName || String(o.id) === formData.orderName || o.orderName === formData.orderName;
+    }
+    return false;
+  }) || null;
+
+  const availableContracts = React.useMemo(() => {
+    if (!selectedOrder) return [];
+    const splits = (selectedOrder.billingDetails?.billingSplits || []).filter(s => s && s.selected !== false);
+    if (splits.length > 0) return splits;
+    const directContracts = selectedOrder.contractDetails?.contracts || selectedOrder.contracts || [];
+    if (directContracts.length > 0) {
+      return directContracts.map((c, i) => ({
+        id: c.id || String(i + 1),
+        companyName: c.companyName || c.clientName || `Contract #${i + 1}`,
+        taxDetails: c.taxDetails || c.taxId || '',
+        contractValue: c.contractValue || c.amount || 0,
+        contractCurrency: c.contractCurrency || selectedOrder.billingDetails?.clientCurrency || 'USD',
+        amountInUSD: c.amountInUSD || c.amount || 0,
+        percentage: c.percentage || 0,
+        billFrom: c.billFrom || 'MCC',
+        receivingBankName: c.receivingBankName || '',
+        bankDetailsLink: c.bankDetailsLink || '',
+        selected: true
+      }));
+    }
+    // Also check division_contracts stored in localStorage linked to this order
+    try {
+      const allDivContracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+      const orderLinkedContracts = allDivContracts.filter(c => 
+        (selectedOrder.id && String(c.orderId) === String(selectedOrder.id)) ||
+        (selectedOrder.orderName && c.orderName === selectedOrder.orderName)
+      );
+      if (orderLinkedContracts.length > 0) {
+        return orderLinkedContracts.map((c, i) => ({
+          id: c.id || String(i + 1),
+          companyName: c.companyName || c.clientName || `Contract #${i + 1}`,
+          taxDetails: c.taxDetails || c.taxId || '',
+          contractValue: c.contractValue || c.amount || 0,
+          contractCurrency: c.contractCurrency || selectedOrder.billingDetails?.clientCurrency || 'USD',
+          amountInUSD: c.amountInUSD || c.amount || 0,
+          percentage: c.percentage || 0,
+          billFrom: c.billFrom || 'MCC',
+          receivingBankName: c.receivingBankName || '',
+          bankDetailsLink: c.bankDetailsLink || '',
+          selected: true
+        }));
+      }
+    } catch (e) {}
+
+    return [];
+  }, [selectedOrder]);
+
+  const activeSingleContract = (contractScope !== 'all_combined' && contractScope !== 'all_separate')
+    ? availableContracts.find(c => String(c.id) === String(contractScope))
+    : null;
 
   let maxPaymentTerms = 12; // Default flexible payment terms
   if (selectedOrder) {
@@ -330,25 +408,151 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   const generateInvoices = (activeSplitsOverride = null) => {
     if (!selectedOrder) return [];
     
-    const terms = Number(formData.paymentTerms);
-    if (!terms || terms <= 0) return [];
-
-    const amountInUSD = Number(selectedOrder.billingDetails?.amountInUSD) || Number(selectedOrder.amount) || 0;
-    const contractValue = Number(selectedOrder.billingDetails?.contractValue) || Number(selectedOrder.amount) || 0;
-    const currency = selectedOrder.billingDetails?.clientCurrency || 'USD';
+    const defaultTerms = Number(formData.paymentTerms) || 1;
     const planStart = selectedOrder.planStart || '';
     const paymentDueDays = Number(selectedOrder.billingDetails?.paymentDue) || 30;
+    const orderTotalUsd = Number(selectedOrder.billingDetails?.amountInUSD) || Number(selectedOrder.amount) || 0;
+    const orderContractVal = Number(selectedOrder.billingDetails?.contractValue) || Number(selectedOrder.amount) || 0;
+    const defaultCurrency = selectedOrder.billingDetails?.clientCurrency || 'USD';
 
-    const activeSplits = activeSplitsOverride || selectedOrder.billingDetails?.billingSplits?.filter(s => s.selected) || [];
-    const hasMultiSplits = activeSplits.length > 1;
+    let activeSplits = activeSplitsOverride || availableContracts;
+    if (activeSplits.length === 0) {
+      activeSplits = [{
+        id: '1',
+        companyName: selectedOrder.billingDetails?.billingEntity || selectedOrder.billingDetails?.companyName || selectedOrder.clientName || 'Entity',
+        taxDetails: selectedOrder.billingDetails?.taxDetails || '',
+        contractValue: orderContractVal,
+        contractCurrency: defaultCurrency,
+        amountInUSD: orderTotalUsd,
+        percentage: 100,
+        billFrom: selectedOrder.billingDetails?.billFrom || 'MCC',
+        selected: true
+      }];
+    }
 
-    const termSplits = recalculateSplits(terms, pinnedPercentages);
     const invoices = [];
+
+    // CASE 1: Individual Single Contract Selected
+    if (contractScope !== 'all_combined' && contractScope !== 'all_separate') {
+      const targetContract = activeSplits.find(c => String(c.id) === String(contractScope));
+      if (!targetContract) return [];
+
+      const terms = defaultTerms;
+      const contractVal = Number(targetContract.contractValue) || Number(targetContract.amountInUSD) || 0;
+      const contractUsd = Number(targetContract.amountInUSD) || contractVal || 0;
+      const curr = targetContract.contractCurrency || defaultCurrency;
+      const entityName = targetContract.companyName || 'Entity';
+      const taxId = targetContract.taxId || targetContract.taxDetails || '';
+      const billFrom = targetContract.billFrom || selectedOrder.billingDetails?.billFrom || 'Unknown';
+
+      const termSplits = recalculateSplits(terms, pinnedPercentages);
+      termSplits.forEach((termSplit, i) => {
+        const termPct = termSplit.percentage;
+        const termValue = Number(((contractVal * termPct) / 100).toFixed(2));
+        const termUsd = Number(((contractUsd * termPct) / 100).toFixed(2));
+        const invoiceByDateStr = customDates[i]?.invoiceDate || getMonthlyDate(planStart, i);
+        const dueByDateStr = customDates[i]?.dueByDate || getDueDate(invoiceByDateStr, paymentDueDays);
+        const remarkVal = customRemarks[i] || '';
+
+        invoices.push({
+          id: `INV-${Date.now()}-${targetContract.id}-${i}`,
+          installmentNumber: i + 1,
+          termIndex: i + 1,
+          totalTerms: terms,
+          splitIndex: 1,
+          totalSplits: 1,
+          clientName: formData.corporate || selectedOrder.corporate || selectedOrder.clientName || 'Unknown',
+          orderId: String(selectedOrder.id),
+          contractId: String(targetContract.id),
+          billingCompany: entityName,
+          clientBillingEntity: entityName,
+          taxId: taxId,
+          billFrom: billFrom,
+          splitPercentage: 100,
+          termPercentage: termPct,
+          amountDueUsd: termUsd,
+          amountDue: termValue,
+          currency: curr,
+          status: 'To be Raised',
+          invoiceByDate: invoiceByDateStr,
+          dueByDate: dueByDateStr,
+          invoiceDate: '-',
+          invoiceLink: '',
+          totalPaid: 0,
+          dueAmount: termUsd,
+          overdueDays: 0,
+          remarks: remarkVal
+        });
+      });
+
+      return invoices;
+    }
+
+    // CASE 2: All Separate (Each contract gets its own schedule with its own installments)
+    if (contractScope === 'all_separate') {
+      activeSplits.forEach((contract, cIdx) => {
+        const terms = Number(separateTerms[contract.id]) || defaultTerms;
+        const contractVal = Number(contract.contractValue) || Number(contract.amountInUSD) || 0;
+        const contractUsd = Number(contract.amountInUSD) || contractVal || 0;
+        const curr = contract.contractCurrency || defaultCurrency;
+        const entityName = contract.companyName || `Entity #${cIdx + 1}`;
+        const taxId = contract.taxId || contract.taxDetails || '';
+        const billFrom = contract.billFrom || selectedOrder.billingDetails?.billFrom || 'Unknown';
+
+        const termSplits = recalculateSplits(terms, {});
+        termSplits.forEach((termSplit, i) => {
+          const termPct = termSplit.percentage;
+          const termValue = Number(((contractVal * termPct) / 100).toFixed(2));
+          const termUsd = Number(((contractUsd * termPct) / 100).toFixed(2));
+          const invoiceByDateStr = customDates[`${contract.id}-${i}`]?.invoiceDate || getMonthlyDate(planStart, i);
+          const dueByDateStr = customDates[`${contract.id}-${i}`]?.dueByDate || getDueDate(invoiceByDateStr, paymentDueDays);
+          const remarkVal = customRemarks[`${contract.id}-${i}`] || customRemarks[i] || '';
+
+          invoices.push({
+            id: `INV-${Date.now()}-${contract.id}-${i}`,
+            installmentNumber: i + 1,
+            termIndex: i + 1,
+            totalTerms: terms,
+            splitIndex: cIdx + 1,
+            totalSplits: activeSplits.length,
+            clientName: formData.corporate || selectedOrder.corporate || selectedOrder.clientName || 'Unknown',
+            orderId: String(selectedOrder.id),
+            contractId: String(contract.id),
+            billingCompany: entityName,
+            clientBillingEntity: entityName,
+            taxId: taxId,
+            billFrom: billFrom,
+            splitPercentage: 100,
+            termPercentage: termPct,
+            amountDueUsd: termUsd,
+            amountDue: termValue,
+            currency: curr,
+            status: 'To be Raised',
+            invoiceByDate: invoiceByDateStr,
+            dueByDate: dueByDateStr,
+            invoiceDate: '-',
+            invoiceLink: '',
+            totalPaid: 0,
+            dueAmount: termUsd,
+            overdueDays: 0,
+            remarks: remarkVal
+          });
+        });
+      });
+
+      return invoices;
+    }
+
+    // CASE 3: All Combined (Unified schedule proportional to split percentages)
+    const terms = defaultTerms;
+    const hasMultiSplits = activeSplits.length > 1;
+    const termSplits = recalculateSplits(terms, pinnedPercentages);
+    const totalSplitsUSD = activeSplits.reduce((acc, s) => acc + (Number(s.amountInUSD) || Number(s.contractValue) || 0), 0) || orderTotalUsd || 1;
 
     termSplits.forEach((termSplit, i) => {
       const termPct = termSplit.percentage;
-      const termValue = Number(((contractValue * termPct) / 100).toFixed(2));
-      const termUsd = Number(((amountInUSD * termPct) / 100).toFixed(2));
+      const termValue = Number(((orderContractVal * termPct) / 100).toFixed(2));
+      const termUsd = Number(((orderTotalUsd * termPct) / 100).toFixed(2));
 
       const invoiceByDateStr = customDates[i]?.invoiceDate || getMonthlyDate(planStart, i);
       const dueByDateStr = customDates[i]?.dueByDate || getDueDate(invoiceByDateStr, paymentDueDays);
@@ -358,7 +562,12 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         let runningUsdSum = 0;
 
         activeSplits.forEach((split, sIdx) => {
-          const compPct = Number(split.percentage) || 0;
+          let compPct = Number(split.percentage);
+          if (isNaN(compPct) || compPct <= 0) {
+            const sVal = Number(split.amountInUSD) || Number(split.contractValue) || 0;
+            compPct = totalSplitsUSD > 0 ? Number(((sVal / totalSplitsUSD) * 100).toFixed(2)) : Number((100 / activeSplits.length).toFixed(2));
+          }
+
           let splitVal, splitUsd;
 
           if (sIdx === activeSplits.length - 1) {
@@ -371,6 +580,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             runningUsdSum += splitUsd;
           }
 
+          const splitCurrency = split.contractCurrency || defaultCurrency;
           const remarkKey = `${i}-${split.companyName}`;
           const remarkVal = customRemarks[remarkKey] || customRemarks[i] || '';
 
@@ -381,17 +591,18 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             totalTerms: terms,
             splitIndex: sIdx + 1,
             totalSplits: activeSplits.length,
-            clientName: formData.corporate || 'Unknown',
+            clientName: formData.corporate || selectedOrder.corporate || selectedOrder.clientName || 'Unknown',
             orderId: String(selectedOrder.id),
+            contractId: String(split.id || ''),
             billingCompany: split.companyName,
             clientBillingEntity: split.companyName,
-            taxId: split.taxId || '',
+            taxId: split.taxId || split.taxDetails || '',
             splitPercentage: compPct,
             termPercentage: termPct,
-            billFrom: selectedOrder.billingDetails?.billFrom || 'Unknown',
+            billFrom: split.billFrom || selectedOrder.billingDetails?.billFrom || 'Unknown',
             amountDueUsd: splitUsd,
             amountDue: splitVal,
-            currency: currency,
+            currency: splitCurrency,
             status: 'To be Raised',
             invoiceByDate: invoiceByDateStr,
             dueByDate: dueByDateStr,
@@ -422,8 +633,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           totalTerms: terms,
           totalSplits: 1,
           splitIndex: 1,
-          clientName: formData.corporate || 'Unknown',
+          clientName: formData.corporate || selectedOrder.corporate || selectedOrder.clientName || 'Unknown',
           orderId: String(selectedOrder.id),
+          contractId: String(activeSplits[0]?.id || ''),
           billingCompany: entityName,
           clientBillingEntity: entityName,
           taxId: taxId,
@@ -432,7 +644,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           termPercentage: termPct,
           amountDueUsd: termUsd,
           amountDue: termValue,
-          currency: currency,
+          currency: defaultCurrency,
           status: 'To be Raised',
           invoiceByDate: invoiceByDateStr,
           dueByDate: dueByDateStr,
@@ -451,15 +663,34 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
   const handlePreview = () => {
     if (mode === 'schedule') {
-      if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
-        setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+      if (!selectedOrder) {
+        alert("Please select an Order to schedule billing.");
         return;
       }
-      if (!formData.paymentTerms) {
-        setPaymentTermError('Payment terms are required');
-        return;
+      if (contractScope === 'all_separate') {
+        const invalidContract = availableContracts.find(c => {
+          const t = separateTerms[c.id] || formData.paymentTerms;
+          return !t || Number(t) <= 0;
+        });
+        if (invalidContract) {
+          alert(`Please specify valid installments for ${invalidContract.companyName}`);
+          return;
+        }
+      } else {
+        if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
+          setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+          return;
+        }
+        if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
+          setPaymentTermError('Payment terms (installments) are required');
+          return;
+        }
       }
       const invoices = generateInvoices();
+      if (!invoices || invoices.length === 0) {
+        alert("Unable to generate schedule preview. Please check that order value and payment terms are valid.");
+        return;
+      }
       setPreviewInvoices(invoices);
       setIsPreview(true);
     } else {
@@ -474,15 +705,34 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
   const handleSaveDirect = () => {
     if (mode === 'schedule') {
-      if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
-        setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+      if (!selectedOrder) {
+        alert("Please select an Order to schedule billing.");
         return;
       }
-      if (!formData.paymentTerms) {
-        setPaymentTermError('Payment terms are required');
-        return;
+      if (contractScope === 'all_separate') {
+        const invalidContract = availableContracts.find(c => {
+          const t = separateTerms[c.id] || formData.paymentTerms;
+          return !t || Number(t) <= 0;
+        });
+        if (invalidContract) {
+          alert(`Please specify valid installments for ${invalidContract.companyName}`);
+          return;
+        }
+      } else {
+        if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
+          setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+          return;
+        }
+        if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
+          setPaymentTermError('Payment terms (installments) are required');
+          return;
+        }
       }
       const invoices = generateInvoices();
+      if (!invoices || invoices.length === 0) {
+        alert("Unable to generate schedule. Please check that order value and payment terms are valid.");
+        return;
+      }
       onSave({ formData, selectedOrder, mode, invoices });
       onClose();
     }
@@ -524,7 +774,65 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
           {/* Multi-Entity / Company Header Banner on top of schedule */}
           {(() => {
-            const activeSplits = selectedOrder?.billingDetails?.billingSplits?.filter(s => s.selected) || [];
+            if (contractScope === 'all_separate' && availableContracts.length > 1) {
+              const totalUsd = availableContracts.reduce((acc, c) => acc + (Number(c.amountInUSD) || Number(c.contractValue) || 0), 0);
+              return (
+                <div style={{
+                  marginBottom: '1.25rem',
+                  padding: '0.75rem 1rem',
+                  background: 'linear-gradient(to right, #f0f9ff, #f8fafc)',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <i className='bx bx-git-branch' style={{ color: '#0284c7', fontSize: '1.15rem' }}></i>
+                      <strong style={{ fontSize: '0.8rem', color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Independent Multi-Contract Schedules ({availableContracts.length} Contracts)
+                      </strong>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      Combined USD Value: <strong style={{ color: '#059669' }}>${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {availableContracts.map((c, i) => {
+                      const terms = separateTerms[c.id] || formData.paymentTerms || 1;
+                      const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
+                      const cCurr = c.contractCurrency || 'USD';
+                      return (
+                        <div key={c.id || i} style={{
+                          background: 'white',
+                          padding: '0.35rem 0.65rem',
+                          borderRadius: '6px',
+                          border: '1px solid #bfdbfe',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.45rem',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                        }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#0f172a' }}>
+                            {c.companyName}
+                          </span>
+                          <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.1rem 0.35rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700' }}>
+                            {terms} Installments
+                          </span>
+                          <span style={{ color: '#0284c7', fontSize: '0.78rem', fontWeight: '700' }}>
+                            {cCurr} {Number(cVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+
+            const activeSplits = availableContracts.length > 0
+              ? availableContracts
+              : (selectedOrder?.billingDetails?.billingSplits?.filter(s => s.selected) || []);
+
             if (activeSplits.length > 1) {
               const totalVal = Number(selectedOrder?.billingDetails?.contractValue || selectedOrder?.amount || 0);
               const curr = selectedOrder?.billingDetails?.clientCurrency || '$';
@@ -579,7 +887,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               );
             }
 
-            if (selectedOrder?.billingDetails?.billingEntity) {
+            if (selectedOrder?.billingDetails?.billingEntity || activeSingleContract) {
+              const entityName = activeSingleContract?.companyName || selectedOrder.billingDetails?.billingEntity;
+              const taxDetails = activeSingleContract?.taxDetails || selectedOrder.billingDetails?.taxDetails;
               return (
                 <div style={{
                   marginBottom: '1rem',
@@ -593,9 +903,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                   fontSize: '0.82rem'
                 }}>
                   <span style={{ color: '#64748b' }}>Billing Entity:</span>
-                  <strong style={{ color: '#0f172a' }}>{selectedOrder.billingDetails.billingEntity}</strong>
-                  {selectedOrder.billingDetails.taxDetails && (
-                    <span style={{ color: '#64748b', marginLeft: '0.4rem' }}>({selectedOrder.billingDetails.taxDetails})</span>
+                  <strong style={{ color: '#0f172a' }}>{entityName}</strong>
+                  {taxDetails && (
+                    <span style={{ color: '#64748b', marginLeft: '0.4rem' }}>({taxDetails})</span>
                   )}
                 </div>
               );
@@ -611,7 +921,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                   <th style={{ padding: '0.5rem' }}>Billed Entity</th>
                   <th style={{ padding: '0.5rem' }}>Invoice By Date</th>
                   <th style={{ padding: '0.5rem' }}>Due Date</th>
-                  <th style={{ padding: '0.5rem' }}>Amount ({selectedOrder?.billingDetails?.clientCurrency || 'USD'})</th>
+                  <th style={{ padding: '0.5rem' }}>Amount ({activeSingleContract ? (activeSingleContract.contractCurrency || 'USD') : 'Contract Currency'})</th>
                   <th style={{ padding: '0.5rem' }}>Amount (USD)</th>
                   <th style={{ padding: '0.5rem', minWidth: '180px' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', position: 'relative' }}>
@@ -735,7 +1045,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                         {inv.dueByDate}
                       </td>
                       <td style={{ padding: '0.6rem 0.5rem', color: '#0f172a', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                        {Number(inv.amountDue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {inv.currency} {Number(inv.amountDue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td style={{ padding: '0.6rem 0.5rem', color: '#059669', fontWeight: '700', whiteSpace: 'nowrap' }}>
                         ${Number(inv.amountDueUsd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -790,7 +1100,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         background: 'white', 
         borderRadius: '12px', 
         width: '95%', 
-        maxWidth: (selectedOrder && Number(formData.paymentTerms) > 0) ? '960px' : '520px',
+        maxWidth: (selectedOrder && (Number(formData.paymentTerms) > 0 || contractScope === 'all_separate')) ? '960px' : '520px',
         maxHeight: '90vh',
         overflowY: 'auto',
         padding: '1.5rem', 
@@ -802,7 +1112,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: '700' }}>
               {mode === 'row' ? 'Add Row' : 'Add Invoice Schedule'}
             </h2>
-            {selectedOrder && Number(formData.paymentTerms) > 0 && (
+            {selectedOrder && (Number(formData.paymentTerms) > 0 || contractScope === 'all_separate') && (
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
                 Configure installments, dates, and split percentages with live auto-preview.
               </p>
@@ -840,11 +1150,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                   />
                 </div>
                 <div style={{ overflowY: 'auto' }}>
-                  {filteredCorps.map((corp, idx) => (
+                    {filteredCorps.map((corp, idx) => (
                     <div 
                       key={idx}
                       onClick={() => {
-                        setFormData(prev => ({ ...prev, corporate: corp, division: '', orderName: '', paymentTerms: '', amount: '' })); 
+                        setFormData(prev => ({ ...prev, corporate: corp, division: '', orderName: '', orderId: '', paymentTerms: '1', amount: '' })); 
                         setIsCorpDropdownOpen(false);
                         setCorpSearch('');
                       }}
@@ -892,7 +1202,24 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                     <div 
                       key={idx}
                       onClick={() => {
-                        setFormData(prev => ({ ...prev, division: div, orderName: '', paymentTerms: '', amount: '' })); 
+                        const divOrders = safeOrders.filter(o => {
+                          const oDiv = o.division || o.divisionName;
+                          return oDiv === div;
+                        });
+                        let autoOrder = null;
+                        if (divOrders.length === 1) {
+                          autoOrder = divOrders[0];
+                        }
+                        const autoPs = autoOrder ? (autoOrder.planStart || 'Unknown Date') : '';
+                        const autoPn = autoOrder ? (autoOrder.plan || autoOrder.planName || autoOrder.product || `Order #${autoOrder.id}`) : '';
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          division: div, 
+                          orderId: autoOrder ? String(autoOrder.id) : '', 
+                          orderName: autoOrder ? `${autoPs} & ${autoPn}` : '', 
+                          paymentTerms: prev.paymentTerms || '1', 
+                          amount: autoOrder?.billingDetails?.contractValue || autoOrder?.amount || '' 
+                        })); 
                         setIsDivDropdownOpen(false);
                         setDivSearch('');
                       }}
@@ -930,9 +1257,24 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               )}
             </div>
             <select 
-              style={{ ...inputStyle, color: formData.orderName ? '#0f172a' : '#64748b', background: formData.division ? 'white' : '#f1f5f9' }}
-              value={formData.orderName}
-              onChange={(e) => setFormData(prev => ({ ...prev, orderName: e.target.value }))}
+              style={{ ...inputStyle, color: (formData.orderId || formData.orderName) ? '#0f172a' : '#64748b', background: formData.division ? 'white' : '#f1f5f9' }}
+              value={formData.orderId || (selectedOrder ? String(selectedOrder.id) : '')}
+              onChange={(e) => {
+                const val = e.target.value;
+                const matched = filteredOrders.find(o => String(o.id) === val);
+                if (matched) {
+                  const ps = matched.planStart || 'Unknown Date';
+                  const pn = matched.plan || matched.planName || matched.product || `Order #${matched.id}`;
+                  setFormData(prev => ({
+                    ...prev,
+                    orderId: String(matched.id),
+                    orderName: `${ps} & ${pn}`,
+                    amount: matched.billingDetails?.contractValue || matched.amount || prev.amount
+                  }));
+                } else {
+                  setFormData(prev => ({ ...prev, orderId: '', orderName: '' }));
+                }
+              }}
               disabled={!formData.division}
             >
               <option value="" disabled hidden>Select Order</option>
@@ -942,7 +1284,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                 const isDraft = o.status === 'Draft';
                 const statusTag = isDraft ? ' — [Draft: Ready to Bill]' : '';
                 return (
-                  <option key={o.id} value={`${planStart} & ${planName}`}>
+                  <option key={o.id} value={String(o.id)}>
                     {planStart} & {planName}{statusTag}
                   </option>
                 );
@@ -971,10 +1313,112 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             )}
           </div>
 
+          {selectedOrder && availableContracts.length > 1 && (
+            <div style={{
+              background: '#f8fafc',
+              padding: '0.85rem 1rem',
+              borderRadius: '8px',
+              border: '1.5px solid #bfdbfe'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.35rem' }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#1e3a8a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <i className='bx bx-layer' style={{ color: '#0284c7', fontSize: '1.05rem' }}></i> Contract Scheduling Option ({availableContracts.length} Contracts)
+                </label>
+                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                  Schedule together or manage each contract separately
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                {/* 1. All Combined */}
+                <button
+                  type="button"
+                  onClick={() => setContractScope('all_combined')}
+                  style={{
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '6px',
+                    border: contractScope === 'all_combined' ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
+                    background: contractScope === 'all_combined' ? '#0284c7' : '#ffffff',
+                    color: contractScope === 'all_combined' ? '#ffffff' : '#334155',
+                    fontWeight: '600',
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    boxShadow: contractScope === 'all_combined' ? '0 2px 4px rgba(2, 132, 199, 0.25)' : 'none'
+                  }}
+                >
+                  <i className='bx bx-git-merge'></i> All Combined (${Number(selectedOrder.billingDetails?.amountInUSD || selectedOrder.amount || 0).toFixed(2)})
+                </button>
+
+                {/* 2. Schedule All Separately */}
+                <button
+                  type="button"
+                  onClick={() => setContractScope('all_separate')}
+                  style={{
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '6px',
+                    border: contractScope === 'all_separate' ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
+                    background: contractScope === 'all_separate' ? '#0284c7' : '#ffffff',
+                    color: contractScope === 'all_separate' ? '#ffffff' : '#334155',
+                    fontWeight: '600',
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    boxShadow: contractScope === 'all_separate' ? '0 2px 4px rgba(2, 132, 199, 0.25)' : 'none'
+                  }}
+                >
+                  <i className='bx bx-git-branch'></i> Schedule Each Separately
+                </button>
+
+                {/* 3..N. Individual Contract buttons */}
+                {availableContracts.map((c, idx) => {
+                  const isSelected = String(contractScope) === String(c.id);
+                  const cCurr = c.contractCurrency || 'USD';
+                  const cVal = c.contractValue || c.amount || 0;
+                  const cUsd = c.amountInUSD ? ` (~$${Number(c.amountInUSD).toFixed(2)})` : '';
+                  return (
+                    <button
+                      key={c.id || idx}
+                      type="button"
+                      onClick={() => setContractScope(String(c.id))}
+                      style={{
+                        padding: '0.4rem 0.75rem',
+                        borderRadius: '6px',
+                        border: isSelected ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
+                        background: isSelected ? '#0284c7' : '#ffffff',
+                        color: isSelected ? '#ffffff' : '#334155',
+                        fontWeight: '600',
+                        fontSize: '0.78rem',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        boxShadow: isSelected ? '0 2px 4px rgba(2, 132, 199, 0.25)' : 'none'
+                      }}
+                    >
+                      <i className='bx bx-file-blank'></i> {c.companyName} ({cCurr} {cVal}{cUsd})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {selectedOrder && (() => {
-            const contractValue = Number(selectedOrder.billingDetails?.contractValue) || Number(selectedOrder.amount) || 0;
-            const currency = selectedOrder.billingDetails?.clientCurrency || 'USD';
-            const amountInUSD = Number(selectedOrder.billingDetails?.amountInUSD) || Number(selectedOrder.amount) || 0;
+            const isSingleContract = Boolean(activeSingleContract);
+            const contractValue = isSingleContract 
+              ? (Number(activeSingleContract.contractValue) || Number(activeSingleContract.amountInUSD) || 0)
+              : (Number(selectedOrder.billingDetails?.contractValue) || Number(selectedOrder.amount) || 0);
+            const currency = isSingleContract
+              ? (activeSingleContract.contractCurrency || 'USD')
+              : (selectedOrder.billingDetails?.clientCurrency || 'USD');
+            const amountInUSD = isSingleContract
+              ? (Number(activeSingleContract.amountInUSD) || contractValue || 0)
+              : (Number(selectedOrder.billingDetails?.amountInUSD) || Number(selectedOrder.amount) || 0);
             const planStart = selectedOrder.planStart || '';
             const planEnd = selectedOrder.planEnd || '';
             
@@ -985,15 +1429,24 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             return (
               <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                 
-                {selectedOrder.status === 'Draft' && (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '700', width: 'fit-content' }}>
-                    <i className='bx bx-edit-alt'></i> Draft Order • Billing Details Configured
-                  </div>
-                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {selectedOrder.status === 'Draft' && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '700', width: 'fit-content' }}>
+                      <i className='bx bx-edit-alt'></i> Draft Order • Billing Details Configured
+                    </div>
+                  )}
+                  {isSingleContract && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '700' }}>
+                      <i className='bx bx-check-circle'></i> Single Contract Scope: {activeSingleContract.companyName}
+                    </div>
+                  )}
+                </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Contract Value</label>
+                    <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>
+                      {isSingleContract ? 'Contract Value' : 'Total Order Value'}
+                    </label>
                     <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>{Number(contractValue).toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
                   </div>
                   <div>
@@ -1001,7 +1454,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                     <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>{currency}</div>
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Contract Value (USD)</label>
+                    <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Value in USD</label>
                     <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#10b981' }}>${Number(amountInUSD).toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
                   </div>
                 </div>
@@ -1011,10 +1464,16 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                     <label style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.1rem' }}>Plan Term</label>
                     <div style={{ fontSize: '0.82rem', color: '#334155' }}>{termDisplay}</div>
                   </div>
-                  {selectedOrder.billingDetails?.billingSplits?.filter(s => s.selected)?.length > 1 && (
-                    <div style={{ fontSize: '0.75rem', background: '#eff6ff', color: '#1e40af', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
-                      Multi-Company: {selectedOrder.billingDetails.billingSplits.filter(s => s.selected).length} Entities
+                  {isSingleContract ? (
+                    <div style={{ fontSize: '0.75rem', background: '#f1f5f9', color: '#475569', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
+                      Billing Entity: {activeSingleContract.companyName} {activeSingleContract.taxDetails ? `(${activeSingleContract.taxDetails})` : ''}
                     </div>
+                  ) : (
+                    availableContracts.length > 1 && (
+                      <div style={{ fontSize: '0.75rem', background: '#eff6ff', color: '#1e40af', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
+                        Multi-Company: {availableContracts.length} Entities
+                      </div>
+                    )
                   )}
                 </div>
                 
@@ -1023,37 +1482,100 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           })()}
 
           {mode === 'schedule' ? (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0 }}>
-                  Payment Terms (Installments) <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                {formData.paymentTerms && Number(formData.paymentTerms) > 0 && (
-                  <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: '600' }}>
-                    Monthly Back-to-Back Billing
+            contractScope === 'all_separate' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#1e293b', margin: 0 }}>
+                    Installments per Contract <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <span style={{ fontSize: '0.73rem', color: '#0284c7', fontWeight: '600' }}>
+                    Each contract gets independent monthly installments
                   </span>
-                )}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: availableContracts.length > 2 ? 'repeat(auto-fit, minmax(260px, 1fr))' : '1fr 1fr', gap: '0.75rem' }}>
+                  {availableContracts.map(c => {
+                    const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
+                    const cCurr = c.contractCurrency || 'USD';
+                    const cTerms = separateTerms[c.id] || formData.paymentTerms || '1';
+                    const perInstVal = Number((cVal / (Number(cTerms) || 1)).toFixed(2));
+                    return (
+                      <div key={c.id} style={{
+                        background: '#ffffff',
+                        border: '1.5px solid #bfdbfe',
+                        borderRadius: '8px',
+                        padding: '0.75rem 0.85rem',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                          <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>{c.companyName}</strong>
+                          <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#0284c7' }}>
+                            {cCurr} {Number(cVal).toLocaleString()}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem' }}>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>
+                              Installments
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max={maxPaymentTerms || 12}
+                              value={cTerms}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
+                              }}
+                              style={{ ...inputStyle, padding: '0.45rem 0.6rem', fontSize: '0.85rem' }}
+                            />
+                          </div>
+                          <div style={{ textAlign: 'right', minWidth: '95px' }}>
+                            <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Per Month</div>
+                            <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#059669' }}>
+                              {cCurr} {Number(perInstVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <input 
-                type="number"
-                style={{ ...inputStyle, borderColor: paymentTermError ? '#ef4444' : '#cbd5e1' }}
-                placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms} installments (e.g. 6)` : "e.g. 6"}
-                min="1"
-                max={maxPaymentTerms || undefined}
-                value={formData.paymentTerms}
-                onChange={(e) => {
-                  setPaymentTermError('');
-                  const val = e.target.value;
-                  if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
-                    setFormData(prev => ({ ...prev, paymentTerms: maxPaymentTerms }));
-                    setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
-                  } else {
-                    setFormData(prev => ({ ...prev, paymentTerms: val }));
-                  }
-                }}
-              />
-              {paymentTermError && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{paymentTermError}</div>}
-            </div>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0 }}>
+                    {activeSingleContract 
+                      ? `Payment Terms for ${activeSingleContract.companyName} (Installments)`
+                      : 'Payment Terms (Installments)'} <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  {formData.paymentTerms && Number(formData.paymentTerms) > 0 && (
+                    <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: '600' }}>
+                      Monthly Back-to-Back Billing
+                    </span>
+                  )}
+                </div>
+                <input 
+                  type="number"
+                  style={{ ...inputStyle, borderColor: paymentTermError ? '#ef4444' : '#cbd5e1' }}
+                  placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms} installments (e.g. 6)` : "e.g. 6"}
+                  min="1"
+                  max={maxPaymentTerms || undefined}
+                  value={formData.paymentTerms}
+                  onChange={(e) => {
+                    setPaymentTermError('');
+                    const val = e.target.value;
+                    if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
+                      setFormData(prev => ({ ...prev, paymentTerms: maxPaymentTerms }));
+                      setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+                    } else {
+                      setFormData(prev => ({ ...prev, paymentTerms: val }));
+                    }
+                  }}
+                />
+                {paymentTermError && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{paymentTermError}</div>}
+              </div>
+            )
           ) : (
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
@@ -1071,15 +1593,172 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           )}
 
           {/* --- LIVE AUTO PREVIEW SCHEDULE TABLE WITH DYNAMIC PERCENTAGE REBALANCING --- */}
-          {mode === 'schedule' && selectedOrder && Number(formData.paymentTerms) > 0 && (() => {
+          {mode === 'schedule' && selectedOrder && (Number(formData.paymentTerms) > 0 || contractScope === 'all_separate') && (() => {
+            if (contractScope === 'all_separate') {
+              const separateInvoices = generateInvoices();
+              if (separateInvoices.length === 0) return null;
+              const totalSeparatesUSD = separateInvoices.reduce((sum, inv) => sum + (Number(inv.amountDueUsd) || 0), 0);
+
+              return (
+                <div style={{
+                  marginTop: '0.5rem',
+                  background: '#ffffff',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 12px rgba(2, 132, 199, 0.08)'
+                }}>
+                  {/* Auto Preview Header Bar */}
+                  <div style={{
+                    padding: '0.75rem 1rem',
+                    background: 'linear-gradient(to right, #f0f9ff, #f8fafc)',
+                    borderBottom: '1px solid #e0f2fe',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <i className='bx bx-calendar-star' style={{ fontSize: '1.2rem', color: '#0284c7' }}></i>
+                      <div>
+                        <strong style={{ fontSize: '0.85rem', color: '#0369a1' }}>
+                          Per-Contract Independent Schedule ({separateInvoices.length} Invoices Across {availableContracts.length} Contracts)
+                        </strong>
+                        <span style={{ fontSize: '0.73rem', color: '#64748b', marginLeft: '0.5rem' }}>
+                          Each contract billed separately on its own terms
+                        </span>
+                      </div>
+                    </div>
+
+                    <span style={{
+                      background: '#dcfce7',
+                      color: '#15803d',
+                      padding: '0.25rem 0.65rem',
+                      borderRadius: '5px',
+                      fontSize: '0.75rem',
+                      fontWeight: '700',
+                      border: '1px solid #bbf7d0'
+                    }}>
+                      Total: ${totalSeparatesUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                    </span>
+                  </div>
+
+                  <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          <th style={{ padding: '0.55rem 0.65rem' }}>Contract / Entity</th>
+                          <th style={{ padding: '0.55rem 0.65rem' }}>Invoice #</th>
+                          <th style={{ padding: '0.55rem 0.65rem' }}>Invoice By Date</th>
+                          <th style={{ padding: '0.55rem 0.65rem' }}>Due Date</th>
+                          <th style={{ padding: '0.55rem 0.65rem' }}>Amount (Contract Cur)</th>
+                          <th style={{ padding: '0.55rem 0.65rem' }}>Amount (USD)</th>
+                          <th style={{ padding: '0.55rem 0.65rem', minWidth: '160px' }}>Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {separateInvoices.map((inv, idx) => (
+                          <tr key={inv.id || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                            <td style={{ padding: '0.55rem 0.65rem', whiteSpace: 'nowrap' }}>
+                              <span style={{
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                border: '1px solid #bfdbfe',
+                                padding: '0.15rem 0.45rem',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                fontWeight: '700',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem'
+                              }}>
+                                <i className='bx bx-buildings'></i>
+                                {inv.clientBillingEntity || inv.billingCompany}
+                              </span>
+                            </td>
+                            <td style={{ padding: '0.55rem 0.65rem', fontWeight: '700', color: '#0f172a' }}>
+                              Term #{inv.installmentNumber} of {inv.totalTerms}
+                            </td>
+                            <td style={{ padding: '0.45rem 0.65rem' }}>
+                              <input 
+                                type="date"
+                                value={inv.invoiceByDate}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const newDue = getDueDate(val, paymentDueDays);
+                                  setCustomDates(prev => ({
+                                    ...prev,
+                                    [`${inv.contractId}-${inv.installmentNumber - 1}`]: { invoiceDate: val, dueByDate: newDue }
+                                  }));
+                                }}
+                                style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.45rem 0.65rem' }}>
+                              <input 
+                                type="date"
+                                value={inv.dueByDate}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCustomDates(prev => ({
+                                    ...prev,
+                                    [`${inv.contractId}-${inv.installmentNumber - 1}`]: { ...(prev[`${inv.contractId}-${inv.installmentNumber - 1}`] || {}), dueByDate: val }
+                                  }));
+                                }}
+                                style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.55rem 0.65rem', fontWeight: '700', color: '#0f172a', whiteSpace: 'nowrap' }}>
+                              {inv.currency} {Number(inv.amountDue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td style={{ padding: '0.55rem 0.65rem', color: '#059669', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                              ${Number(inv.amountDueUsd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td style={{ padding: '0.45rem 0.65rem' }}>
+                              <input 
+                                type="text"
+                                placeholder={`Remarks for ${inv.clientBillingEntity}...`}
+                                value={customRemarks[`${inv.contractId}-${inv.installmentNumber - 1}`] || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCustomRemarks(prev => ({ ...prev, [`${inv.contractId}-${inv.installmentNumber - 1}`]: val }));
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.35rem 0.55rem',
+                                  borderRadius: '5px',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '0.8rem',
+                                  color: '#0f172a',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            }
+
+            const isSingleContract = Boolean(activeSingleContract);
             const termsCount = Number(formData.paymentTerms);
             const splits = recalculateSplits(termsCount, pinnedPercentages);
-            const contractValue = Number(selectedOrder.billingDetails?.contractValue) || Number(selectedOrder.amount) || 0;
-            const amountInUSD = Number(selectedOrder.billingDetails?.amountInUSD) || Number(selectedOrder.amount) || 0;
-            const currency = selectedOrder.billingDetails?.clientCurrency || 'USD';
+            const contractValue = isSingleContract 
+              ? (Number(activeSingleContract.contractValue) || Number(activeSingleContract.amountInUSD) || 0)
+              : (Number(selectedOrder.billingDetails?.contractValue) || Number(selectedOrder.amount) || 0);
+            const amountInUSD = isSingleContract
+              ? (Number(activeSingleContract.amountInUSD) || contractValue || 0)
+              : (Number(selectedOrder.billingDetails?.amountInUSD) || Number(selectedOrder.amount) || 0);
+            const currency = isSingleContract
+              ? (activeSingleContract.contractCurrency || 'USD')
+              : (selectedOrder.billingDetails?.clientCurrency || 'USD');
             const planStart = selectedOrder.planStart || '';
             const paymentDueDays = Number(selectedOrder.billingDetails?.paymentDue) || 30;
-            const activeSplits = selectedOrder.billingDetails?.billingSplits?.filter(s => s.selected) || [];
+            const activeSplits = isSingleContract ? [activeSingleContract] : (availableContracts || []);
             const hasMultiSplits = activeSplits.length > 1;
 
             const hasPinned = Object.keys(pinnedPercentages).length > 0;

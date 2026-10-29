@@ -328,18 +328,23 @@ function AddOrder() {
         receivingBankName: selected.map(c => c.receivingBankName).filter(Boolean).join(', ') || '',
         bankDetailsLink: primary?.bankDetailsLink || '',
         billingDate: primary?.billingDate || new Date().toISOString().split('T')[0],
-        billingSplits: selected.map(c => ({
-          id: c.id,
-          companyName: c.companyName,
-          taxDetails: c.taxDetails,
-          contractValue: c.contractValue,
-          contractCurrency: c.contractCurrency,
-          amountInUSD: c.amountInUSD,
-          billFrom: c.billFrom,
-          receivingBankName: c.receivingBankName,
-          bankDetailsLink: c.bankDetailsLink,
-          selected: true
-        }))
+        billingSplits: selected.map(c => {
+          const cUsd = Number(c.amountInUSD) || Number(c.contractValue) || 0;
+          const pct = totalUSD > 0 ? Number(((cUsd / totalUSD) * 100).toFixed(2)) : Number((100 / selected.length).toFixed(2));
+          return {
+            id: c.id,
+            companyName: c.companyName,
+            taxDetails: c.taxDetails,
+            contractValue: c.contractValue,
+            contractCurrency: c.contractCurrency,
+            amountInUSD: c.amountInUSD,
+            percentage: pct,
+            billFrom: c.billFrom,
+            receivingBankName: c.receivingBankName,
+            bankDetailsLink: c.bankDetailsLink,
+            selected: true
+          };
+        })
       } : null
     }));
   };
@@ -749,13 +754,18 @@ function AddOrder() {
         } catch (e) {}
       }
 
+      const planStart = formData.planStart || new Date().toISOString().split('T')[0];
+      const planName = (formData.plan && formData.plan !== 'Select Plan') ? formData.plan : (formData.planName || formData.product || 'Order');
+      const standardOrderKey = `${planStart} & ${planName}`;
+
       if (isEditMode && effectiveOrderId) {
         targetOrderId = effectiveOrderId;
-        targetOrderName = formData.orderName || `${resolvedDivisionName || 'Draft Order'} | ${formData.planStart || 'Draft'} - ${formData.plan || 'Draft'}`;
+        targetOrderName = formData.orderName || standardOrderKey;
         orders = orders.map(o => String(o.id) === String(targetOrderId) ? { 
           ...o, 
           ...formData, 
           id: targetOrderId, 
+          orderName: targetOrderName,
           status: 'Draft',
           clientName: resolvedClientName,
           corporate: resolvedClientName,
@@ -764,10 +774,11 @@ function AddOrder() {
         } : o);
       } else {
         targetOrderId = Date.now();
-        targetOrderName = `${resolvedDivisionName || 'Draft Order'} | ${formData.planStart || 'Draft'} - ${formData.plan || 'Draft'}`;
+        targetOrderName = standardOrderKey;
         const newDraftOrder = { 
           ...formData, 
           id: targetOrderId, 
+          orderName: targetOrderName,
           status: 'Draft',
           divisionName: resolvedDivisionName,
           division: resolvedDivisionName,
