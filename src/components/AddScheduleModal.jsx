@@ -816,7 +816,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                             {c.companyName}
                           </span>
                           <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.1rem 0.35rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700' }}>
-                            {terms} Installments
+                            {terms} Billing Months
                           </span>
                           <span style={{ color: '#0284c7', fontSize: '0.78rem', fontWeight: '700' }}>
                             {cCurr} {Number(cVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1413,10 +1413,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#1e293b', margin: 0 }}>
-                    Installments per Contract <span style={{ color: '#ef4444' }}>*</span>
+                    Billing Month per Contract <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <span style={{ fontSize: '0.73rem', color: '#0284c7', fontWeight: '600' }}>
-                    Each contract gets independent monthly installments
+                    Each contract gets independent billing months
                   </span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: availableContracts.length > 2 ? 'repeat(auto-fit, minmax(260px, 1fr))' : '1fr 1fr', gap: '0.75rem' }}>
@@ -1442,7 +1442,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem' }}>
                           <div style={{ flex: 1 }}>
                             <label style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>
-                              Installments
+                              Billing Month
                             </label>
                             <input
                               type="number"
@@ -1473,8 +1473,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                   <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0 }}>
                     {activeSingleContract 
-                      ? `Payment Terms for ${activeSingleContract.companyName} (Installments)`
-                      : 'Payment Terms (Installments)'} <span style={{ color: '#ef4444' }}>*</span>
+                      ? `Billing Month for ${activeSingleContract.companyName}`
+                      : 'Billing Month'} <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   {formData.paymentTerms && Number(formData.paymentTerms) > 0 && (
                     <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: '600' }}>
@@ -1485,7 +1485,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                 <input 
                   type="number"
                   style={{ ...inputStyle, borderColor: paymentTermError ? '#ef4444' : '#cbd5e1' }}
-                  placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms} installments (e.g. 6)` : "e.g. 6"}
+                  placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms} months (e.g. 6)` : "e.g. 6"}
                   min="1"
                   max={maxPaymentTerms || undefined}
                   value={formData.paymentTerms}
