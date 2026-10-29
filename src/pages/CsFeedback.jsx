@@ -739,67 +739,7 @@ export default function CsFeedback() {
 
         {activeTab === 'survey' && (
           <>
-            {/* Question Selector Quick-Bar */}
-        <div style={{ maxWidth: '860px', margin: '0 auto 0.75rem auto', display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
-          {PILLAR_QUESTIONS.map((q, idx) => {
-            const hasAnswer = Boolean(ratings[q.id]);
-            const isCurrent = idx === currentStep;
-            return (
-              <div
-                key={q.id}
-                onClick={() => {
-                  if (idx <= currentStep || hasAnswer) {
-                    setCurrentStep(idx);
-                  }
-                }}
-                style={{
-                  flex: '1 1 0',
-                  minWidth: '95px',
-                  padding: '0.35rem 0.45rem',
-                  borderRadius: '5px',
-                  background: isCurrent ? '#034ea2' : hasAnswer ? '#e0f2fe' : '#ffffff',
-                  color: isCurrent ? '#ffffff' : hasAnswer ? '#0369a1' : '#64748b',
-                  border: isCurrent ? '1px solid #034ea2' : hasAnswer ? '1px solid #bae6fd' : '1px solid #e2e8f0',
-                  fontSize: '0.7rem',
-                  fontWeight: '600',
-                  cursor: idx <= currentStep || hasAnswer ? 'pointer' : 'default',
-                  textAlign: 'center',
-                  whiteSpace: 'nowrap',
-                  textOverflow: 'ellipsis',
-                  overflow: 'hidden',
-                  transition: 'all 0.15s ease'
-                }}
-                title={q.shortLabel}
-              >
-                {hasAnswer && !isCurrent ? '✓ ' : `${idx + 1}. `}
-                {q.shortLabel.replace('Hotline: ', '').replace('Webinars: ', '')}
-              </div>
-            );
-          })}
-          <div
-            onClick={() => {
-              const allAnswered = PILLAR_QUESTIONS.every((q) => Boolean(ratings[q.id]));
-              if (allAnswered) setCurrentStep(PILLAR_QUESTIONS.length);
-            }}
-            style={{
-              flex: '1 1 0',
-              minWidth: '75px',
-              padding: '0.35rem 0.45rem',
-              borderRadius: '5px',
-              background: isDetailsStep ? '#034ea2' : '#ffffff',
-              color: isDetailsStep ? '#ffffff' : '#64748b',
-              border: isDetailsStep ? '1px solid #034ea2' : '1px solid #e2e8f0',
-              fontSize: '0.7rem',
-              fontWeight: '600',
-              textAlign: 'center',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            Submit
-          </div>
-        </div>
-
-        {/* Main Survey Card Container */}
+            {/* Main Survey Card Container */}
         <div
           style={{
             maxWidth: '860px',
