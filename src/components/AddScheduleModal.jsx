@@ -189,22 +189,6 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen && availableContracts.length > 1) {
-      setSeparateTerms(prev => {
-        let changed = false;
-        const next = { ...prev };
-        availableContracts.forEach(c => {
-          if (next[c.id] === undefined) {
-            next[c.id] = formData.paymentTerms || '1';
-            changed = true;
-          }
-        });
-        return changed ? next : prev;
-      });
-    }
-  }, [isOpen, availableContracts, formData.paymentTerms]);
-
-  useEffect(() => {
     // When terms or order change, reset any pinned percentages
     setPinnedPercentages({});
     setTempPercentageInputs({});
@@ -281,6 +265,23 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
     return [];
   }, [selectedOrder]);
+
+  // Initialize separate terms for each available contract
+  useEffect(() => {
+    if (isOpen && availableContracts.length > 1) {
+      setSeparateTerms(prev => {
+        let changed = false;
+        const next = { ...prev };
+        availableContracts.forEach(c => {
+          if (next[c.id] === undefined) {
+            next[c.id] = formData.paymentTerms || '1';
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [isOpen, availableContracts, formData.paymentTerms]);
 
   const activeSingleContract = (contractScope !== 'all_combined' && contractScope !== 'all_separate')
     ? availableContracts.find(c => String(c.id) === String(contractScope))
