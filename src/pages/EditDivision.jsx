@@ -478,12 +478,17 @@ function EditDivision() {
               orderId: targetOrder,
               orderName: contractData.orderName !== undefined ? contractData.orderName : p.orderName,
               clientBillingEntity: contractData.companyName || p.clientBillingEntity,
+              clientTaxDetails: contractData.taxDetails || (contractData.companyEntities?.[0]?.taxDetails) || p.clientTaxDetails,
+              clientAddress: contractData.address || (contractData.companyEntities?.[0]?.address) || p.clientAddress,
+              contractValue: Number(contractData.contractValue) || p.contractValue,
+              paymentDueDays: contractData.paymentDueDays || p.paymentDueDays,
               billingCompany: contractData.billFrom || p.billingCompany,
               receivingBankName: contractData.receivingBankName || p.receivingBankName,
               bankDetailsLink: contractData.bankDetailsLink || p.bankDetailsLink,
               amountDueUsd: Number(contractData.amountInUSD) || p.amountDueUsd,
               amountDue: Number(contractData.contractValue) || p.amountDue,
-              currency: contractData.contractCurrency || p.currency
+              currency: contractData.contractCurrency || p.currency,
+              remarks: contractData.remarks || p.remarks
             };
           }
           return p;
@@ -521,6 +526,10 @@ function EditDivision() {
       const divisionName = formData.divisionName || division.divisionName || 'Division Name';
       const orderIdVal = cnt.orderId ? cnt.orderId : 'Null';
       const orderNameVal = cnt.orderName || '';
+      const entityName = cnt.companyName || (cnt.companyEntities?.[0]?.companyName) || 'Primary Entity';
+      const taxDetailsVal = cnt.taxDetails || (cnt.companyEntities?.[0]?.taxDetails) || '';
+      const addressVal = cnt.address || (cnt.companyEntities?.[0]?.address) || '';
+      const remarksVal = cnt.remarks || `Invoice for ${entityName} - ${cnt.contractCurrency || 'EUR'} ${cnt.contractValue || 0}`;
 
       // Check if this contract is already scheduled in client_payments
       const existingIndex = existingPayments.findIndex(p => p.contractId === cnt.id);
@@ -532,10 +541,14 @@ function EditDivision() {
         divisionName: divisionName,
         orderId: orderIdVal,
         orderName: orderNameVal,
-        clientBillingEntity: cnt.companyName || (cnt.companyEntities?.[0]?.companyName) || 'Primary Entity',
+        clientBillingEntity: entityName,
+        clientTaxDetails: taxDetailsVal,
+        clientAddress: addressVal,
         billingCompany: cnt.billFrom || 'MCHI',
         receivingBankName: cnt.receivingBankName || 'AirWallex',
         bankDetailsLink: cnt.bankDetailsLink || '',
+        paymentDueDays: cnt.paymentDueDays || 15,
+        contractValue: Number(cnt.contractValue) || 0,
         amountDueUsd: Number(cnt.amountInUSD) || 0,
         amountDue: Number(cnt.contractValue) || 0,
         currency: cnt.contractCurrency || 'EUR',
@@ -546,7 +559,7 @@ function EditDivision() {
         totalPaid: 0,
         dueAmount: Number(cnt.contractValue) || 0,
         status: 'To be Raised',
-        remarks: cnt.remarks || '',
+        remarks: remarksVal,
         createdAt: new Date().toISOString()
       };
 

@@ -811,19 +811,29 @@ function ClientPayments() {
           } catch (e) {}
         }
 
+        let contract = null;
+        if (payment.contractId) {
+          try {
+            const contracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+            contract = contracts.find(c => String(c.id) === String(payment.contractId)) || null;
+          } catch (e) {}
+        }
+
         const handleCopy = () => {
           const billing = orderDetails?.billingDetails || {};
-          const clientBillingEntity = billing.billingEntity || payment.billingCompany || '—';
-          const clientTaxDetails    = billing.taxDetails || '—';
-          const contractCurrency    = billing.clientCurrency || payment.currency || '—';
-          const contractValue       = billing.contractValue ? `${contractCurrency} ${Number(billing.contractValue).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
+          const clientBillingEntity = payment.clientBillingEntity || contract?.companyName || billing.billingEntity || payment.billingCompany || '—';
+          const clientTaxDetails    = payment.clientTaxDetails || contract?.taxDetails || (contract?.companyEntities?.[0]?.taxDetails) || billing.taxDetails || '—';
+          const contractCurrency    = contract?.contractCurrency || billing.clientCurrency || payment.currency || 'EUR';
+          const rawContractVal      = contract?.contractValue ?? billing.contractValue ?? payment.contractValue ?? payment.amountDue;
+          const contractValue       = rawContractVal ? `${contractCurrency} ${Number(rawContractVal).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
           const invoiceValue        = payment.amountDue ? `${payment.currency || contractCurrency} ${Number(payment.amountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
-          const invoiceDate         = payment.invoiceByDate || '—';
+          const invoiceDate         = payment.invoiceByDate || contract?.billingDate || '—';
           const dueByDate           = payment.dueByDate || '—';
-          const noOfEmployees       = billing.noOfEmployees || orderDetails?.employees || '—';
-          const servicePeriod       = billing.paymentDueDays ? `${billing.paymentDueDays} days` : '—';
-          const bankDetailsLink     = billing.bankDetailsLink || null;
-          const remarks             = payment.remarks || '—';
+          const servicePeriod       = `${contract?.paymentDueDays ?? billing.paymentDueDays ?? payment.paymentDueDays ?? 15} days`;
+          const billFrom            = payment.billingCompany || contract?.billFrom || billing.billingCompany || 'MCHI';
+          const receivingBank       = payment.receivingBankName || contract?.receivingBankName || billing.receivingBank || 'AirWallex';
+          const bankDetailsLink     = payment.bankDetailsLink || contract?.bankDetailsLink || billing.bankDetailsLink || null;
+          const remarks             = payment.remarks || contract?.remarks || `Invoice for ${clientBillingEntity} - ${contractCurrency} ${Number(payment.amountDue || rawContractVal || 0).toLocaleString()}`;
 
           const messageText = [
             'Billing Message',
@@ -840,6 +850,7 @@ function ClientPayments() {
             `Due By Date                : ${dueByDate}`,
             `Remarks                    : ${remarks}`,
             `Service Period             : ${servicePeriod}`,
+            `Bill From / Bank           : ${billFrom} (${receivingBank})`,
             bankDetailsLink ? `Bank Details Link          : ${bankDetailsLink}` : null,
           ].filter(l => l !== null).join('\n');
 
@@ -971,7 +982,21 @@ function ClientPayments() {
                   </div>
                 </>
               ) : (
-                <BillingMessageContent payment={payment} orderDetails={orderDetails} onCopy={handleCopy} copied={copied} />
+                <BillingMessageContent 
+                  payment={payment} 
+                  orderDetails={orderDetails} 
+                  onCopy={handleCopy} 
+                  copied={copied} 
+                  onUpdateRemarks={(newRemarks) => {
+                    setPayments(prev => prev.map(p => p.id === payment.id ? { ...p, remarks: newRemarks } : p));
+                    try {
+                      const all = JSON.parse(localStorage.getItem('client_payments') || '[]');
+                      const updated = all.map(p => p.id === payment.id ? { ...p, remarks: newRemarks } : p);
+                      localStorage.setItem('client_payments', JSON.stringify(updated));
+                      window.dispatchEvent(new Event('storage'));
+                    } catch (e) {}
+                  }}
+                />
               )}
             </div>
           </div>

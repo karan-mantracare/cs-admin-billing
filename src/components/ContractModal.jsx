@@ -179,13 +179,13 @@ export default function ContractModal({
           }
         });
         setAllCompanies(companies);
-        const ceFirst = initialData.companyEntities[0];
-        if (ceFirst.source === 'custom') {
+        const isCustom = ceFirst.source === 'custom' || (!companies.find(c => c.source === 'onboarding' && c.companyName === ceFirst.companyName));
+        if (isCustom) {
           setEntityMode('custom');
           setCustomForm({
-            companyName: ceFirst.companyName || '',
-            taxDetails: ceFirst.taxDetails || '',
-            address: ceFirst.address || ''
+            companyName: ceFirst.companyName || initialData.companyName || '',
+            taxDetails: ceFirst.taxDetails || initialData.taxDetails || '',
+            address: ceFirst.address || initialData.address || ''
           });
           setSelectedCompany(ceFirst);
         } else {
@@ -253,9 +253,9 @@ export default function ContractModal({
           bankDetailsLink: getBankDetailsLink('MCHI', 'AirWallex', 'EUR'),
           remarks: ''
         });
+        setCustomForm({ companyName: '', taxDetails: '', address: '' });
       }
       setErrors({});
-      setCustomForm({ companyName: '', taxDetails: '', address: '' });
     }
   }, [isOpen, divisionId, initialData]);
 
@@ -1036,6 +1036,22 @@ export default function ContractModal({
                 </div>
                 {errors.bankDetailsLink && <span style={{ color: '#ef4444', fontSize: '0.75rem' }}>{errors.bankDetailsLink}</span>}
               </div>
+            </div>
+
+            {/* Remarks (Invoice Notes) */}
+            <div style={{ marginTop: '0.85rem' }}>
+              <label style={labelStyle}>
+                Remarks <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: '400' }}>(Appears on invoice & billing details)</span>
+              </label>
+              <textarea
+                name="remarks"
+                disabled={isReadOnly}
+                rows="2"
+                placeholder="e.g. Monthly subscription fee, Milestone 1, etc."
+                value={formData.remarks || ''}
+                onChange={handleInputChange}
+                style={{ ...inputStyle, resize: 'vertical', minHeight: '52px' }}
+              />
             </div>
 
           </div>

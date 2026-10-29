@@ -1,26 +1,66 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
-export function BillingMessageContent({ payment, orderDetails, onCopy, copied }) {
+export function BillingMessageContent({ payment, orderDetails, onCopy, copied, onUpdateRemarks }) {
+  // Resolve associated contract from division_contracts
+  const contract = useMemo(() => {
+    if (!payment?.contractId) return null;
+    try {
+      const contracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+      return contracts.find(c => String(c.id) === String(payment.contractId)) || null;
+    } catch (e) {
+      return null;
+    }
+  }, [payment?.contractId]);
+
   const billing = orderDetails?.billingDetails || {};
 
-  // --- Fields ---
-  const clientBillingEntity = payment?.clientBillingEntity || payment?.billingCompany || billing.billingEntity || '—';
-  const clientTaxDetails    = billing.taxDetails || '—';
-  const contractCurrency    = billing.clientCurrency || payment?.currency || '—';
-  const contractValue       = billing.contractValue
-    ? `${contractCurrency} ${Number(billing.contractValue).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
+  // --- Client Billing Details ---
+  const clientBillingEntity = payment?.clientBillingEntity 
+    || contract?.companyName 
+    || payment?.billingCompany 
+    || billing.billingEntity 
+    || '—';
+
+  const clientTaxDetails = payment?.clientTaxDetails 
+    || contract?.taxDetails 
+    || (contract?.companyEntities?.[0]?.taxDetails) 
+    || billing.taxDetails 
+    || '—';
+
+  const contractCurrency = contract?.contractCurrency 
+    || billing.clientCurrency 
+    || payment?.currency 
+    || 'EUR';
+
+  const rawContractVal = contract?.contractValue ?? billing.contractValue ?? payment?.contractValue ?? payment?.amountDue;
+  const contractValue = rawContractVal
+    ? `${contractCurrency} ${Number(rawContractVal).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
     : '—';
-  const invoiceValue        = payment?.amountDue
-    ? `${payment.currency || contractCurrency} ${Number(payment.amountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
-    : '—';
-  const invoiceDate         = payment?.invoiceByDate || '—';
-  const dueByDate           = payment?.dueByDate || '—';
-  const noOfEmployees       = billing.noOfEmployees || orderDetails?.employees || '—';
-  const servicePeriod       = billing.paymentDueDays
-    ? `${billing.paymentDueDays} days`
-    : '—';
-  const remarks             = payment?.remarks || '—';
-  const bankDetailsLink     = billing.bankDetailsLink || null;
+
+  // --- Current Invoice Details ---
+  const rawInvoiceVal = payment?.amountDue ?? contract?.contractValue ?? 0;
+  const invoiceCurrency = payment?.currency || contractCurrency || 'EUR';
+  const invoiceValue = `${invoiceCurrency} ${Number(rawInvoiceVal).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+
+  const invoiceDate = payment?.invoiceByDate || contract?.billingDate || '—';
+  const dueByDate   = payment?.dueByDate || '—';
+
+  const rawDueDays = contract?.paymentDueDays ?? billing.paymentDueDays ?? payment?.paymentDueDays ?? 15;
+  const servicePeriod = `${rawDueDays} days`;
+
+  const billFrom = payment?.billingCompany || contract?.billFrom || billing.billingCompany || 'MCHI';
+  const receivingBank = payment?.receivingBankName || contract?.receivingBankName || billing.receivingBank || 'AirWallex';
+  const bankDetailsLink = payment?.bankDetailsLink || contract?.bankDetailsLink || billing.bankDetailsLink || null;
+
+  // Remarks handling: payment.remarks -> contract.remarks -> default meaningful remark
+  const defaultRemark = `Invoice for ${clientBillingEntity !== '—' ? clientBillingEntity : 'Contract'} - ${invoiceCurrency} ${Number(rawInvoiceVal).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  const [remarks, setRemarks] = useState(payment?.remarks || contract?.remarks || defaultRemark);
+  const [isEditingRemarks, setIsEditingRemarks] = useState(false);
+  const [localCopied, setLocalCopied] = useState(false);
+
+  useEffect(() => {
+    setRemarks(payment?.remarks || contract?.remarks || defaultRemark);
+  }, [payment?.remarks, contract?.remarks, defaultRemark]);
 
   const sectionTitleStyle = {
     fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase',
@@ -33,7 +73,7 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied })
     paddingBottom: '0.6rem', marginBottom: '0.6rem', borderBottom: '1px solid #f1f5f9'
   };
 
-  const labelStyle = { color: '#64748b', fontSize: '0.82rem', flexShrink: 0, width: '50%' };
+  const labelStyle = { color: '#64748b', fontSize: '0.82rem', flexShrink: 0, width: '45%' };
   const valueStyle = { color: '#0f172a', fontSize: '0.85rem', fontWeight: '600', textAlign: 'right', wordBreak: 'break-word' };
 
   const Row = ({ label, value, valueColor }) => (
@@ -55,6 +95,33 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied })
       }
     </div>
   );
+
+  const handleCopyMessage = () => {
+    const text = [
+      'Billing Message',
+      '─────────────────────────────',
+      `Client Billing Entity Name : ${clientBillingEntity}`,
+      `Client Tax Details         : ${clientTaxDetails}`,
+      `Contract Billing Currency  : ${contractCurrency}`,
+      `Contract Value             : ${contractValue}`,
+      '',
+      'Current Invoice',
+      '─────────────────────────────',
+      `Invoice Value              : ${invoiceValue}`,
+      `Invoice Date               : ${invoiceDate}`,
+      `Due By Date                : ${dueByDate}`,
+      `Remarks                    : ${remarks || '—'}`,
+      `Service Period             : ${servicePeriod}`,
+      `Bill From / Bank           : ${billFrom} (${receivingBank})`,
+      bankDetailsLink ? `Bank Details Link          : ${bankDetailsLink}` : null,
+    ].filter(l => l !== null).join('\n');
+
+    navigator.clipboard.writeText(text).then(() => {
+      setLocalCopied(true);
+      if (onCopy) onCopy();
+      setTimeout(() => setLocalCopied(false), 2000);
+    });
+  };
 
   return (
     <div style={{ padding: '1.25rem 1.5rem', maxHeight: '62vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -79,23 +146,81 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied })
         <Row label="Invoice Value" value={invoiceValue} valueColor="#10b981" />
         <Row label="Invoice Date" value={invoiceDate} />
         <Row label="Due By Date" value={dueByDate} valueColor="#ef4444" />
-        <Row label="Remarks" value={remarks} />
+        
+        {/* Remarks Row with Inline Edit */}
+        <div style={rowStyle}>
+          <span style={labelStyle}>Remarks</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end', flex: 1 }}>
+            {isEditingRemarks ? (
+              <div style={{ display: 'flex', gap: '0.35rem', width: '100%', justifyContent: 'flex-end' }}>
+                <input
+                  type="text"
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  style={{
+                    padding: '0.3rem 0.5rem',
+                    fontSize: '0.82rem',
+                    borderRadius: '5px',
+                    border: '1px solid #0ea5e9',
+                    outline: 'none',
+                    width: '75%',
+                    color: '#0f172a'
+                  }}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingRemarks(false);
+                    if (onUpdateRemarks) onUpdateRemarks(remarks);
+                  }}
+                  style={{
+                    background: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '0.3rem 0.6rem',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ ...valueStyle, maxWidth: '240px' }}>{remarks || '—'}</span>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingRemarks(true)}
+                  style={{ background: 'none', border: 'none', color: '#0ea5e9', cursor: 'pointer', padding: '2px', display: 'flex' }}
+                  title="Edit Remarks"
+                >
+                  <i className='bx bx-edit-alt' style={{ fontSize: '1rem' }}></i>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         <Row label="Service Period" value={servicePeriod} />
+        <Row label="Bill From / Bank" value={`${billFrom} • ${receivingBank}`} />
         <LastRow label="Bank Details" value={bankDetailsLink ? "View Details" : "—"} href={bankDetailsLink} />
       </div>
 
       {/* Buttons inside content for copying */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
         <button
-          onClick={onCopy}
+          onClick={handleCopyMessage}
           style={{
-            background: copied ? '#10b981' : '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px',
+            background: (copied || localCopied) ? '#10b981' : '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px',
             padding: '0.6rem 1.25rem', fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s ease'
           }}
         >
-          <i className={`bx ${copied ? 'bx-check' : 'bx-copy'}`}></i>
-          {copied ? 'Copied to Clipboard!' : 'Copy Message'}
+          <i className={`bx ${(copied || localCopied) ? 'bx-check' : 'bx-copy'}`}></i>
+          {(copied || localCopied) ? 'Copied to Clipboard!' : 'Copy Message'}
         </button>
       </div>
     </div>
