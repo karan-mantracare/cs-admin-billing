@@ -171,7 +171,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   const [customRemarks, setCustomRemarks] = useState({});
 
   // Multiple contract scheduling scope: 'all_combined', 'all_separate', or specific contract.id
-  const [contractScope, setContractScope] = useState('all_combined');
+  const [contractScope, setContractScope] = useState('all_separate');
   const [separateTerms, setSeparateTerms] = useState({});
 
   useEffect(() => {
@@ -183,10 +183,26 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       setTempPercentageInputs({});
       setCustomDates({});
       setCustomRemarks({});
-      setContractScope('all_combined');
+      setContractScope('all_separate');
       setSeparateTerms({});
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && availableContracts.length > 1) {
+      setSeparateTerms(prev => {
+        let changed = false;
+        const next = { ...prev };
+        availableContracts.forEach(c => {
+          if (next[c.id] === undefined) {
+            next[c.id] = formData.paymentTerms || '1';
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [isOpen, availableContracts, formData.paymentTerms]);
 
   useEffect(() => {
     // When terms or order change, reset any pinned percentages
@@ -489,7 +505,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     // CASE 2: All Separate (Each contract gets its own schedule with its own installments)
     if (contractScope === 'all_separate') {
       activeSplits.forEach((contract, cIdx) => {
-        const terms = Number(separateTerms[contract.id]) || defaultTerms;
+        const terms = Number(separateTerms[contract.id] !== undefined ? separateTerms[contract.id] : defaultTerms) || 1;
         const contractVal = Number(contract.contractValue) || Number(contract.amountInUSD) || 0;
         const contractUsd = Number(contract.amountInUSD) || contractVal || 0;
         const curr = contract.contractCurrency || defaultCurrency;
@@ -665,13 +681,28 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         alert("Please select an Order to schedule billing.");
         return;
       }
-      if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
-        setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
-        return;
-      }
-      if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
-        setPaymentTermError('Billing month is required');
-        return;
+      setPaymentTermError('');
+      if (contractScope === 'all_separate' && availableContracts.length > 1) {
+        for (const c of availableContracts) {
+          const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : formData.paymentTerms);
+          if (!t || t <= 0) {
+            setPaymentTermError(`Billing month for "${c.companyName}" is required`);
+            return;
+          }
+          if (maxPaymentTerms > 0 && t > maxPaymentTerms) {
+            setPaymentTermError(`Billing month for "${c.companyName}" cannot exceed Plan Term (${maxPaymentTerms} months)`);
+            return;
+          }
+        }
+      } else {
+        if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
+          setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+          return;
+        }
+        if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
+          setPaymentTermError('Billing month is required');
+          return;
+        }
       }
       const invoices = generateInvoices();
       if (!invoices || invoices.length === 0) {
@@ -696,13 +727,28 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         alert("Please select an Order to schedule billing.");
         return;
       }
-      if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
-        setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
-        return;
-      }
-      if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
-        setPaymentTermError('Billing month is required');
-        return;
+      setPaymentTermError('');
+      if (contractScope === 'all_separate' && availableContracts.length > 1) {
+        for (const c of availableContracts) {
+          const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : formData.paymentTerms);
+          if (!t || t <= 0) {
+            setPaymentTermError(`Billing month for "${c.companyName}" is required`);
+            return;
+          }
+          if (maxPaymentTerms > 0 && t > maxPaymentTerms) {
+            setPaymentTermError(`Billing month for "${c.companyName}" cannot exceed Plan Term (${maxPaymentTerms} months)`);
+            return;
+          }
+        }
+      } else {
+        if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
+          setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+          return;
+        }
+        if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
+          setPaymentTermError('Billing month is required');
+          return;
+        }
       }
       const invoices = generateInvoices();
       if (!invoices || invoices.length === 0) {
@@ -1412,64 +1458,155 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
           {mode === 'schedule' ? (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0 }}>
-                  {availableContracts.length > 1 
-                    ? 'Billing month for all the contracts' 
-                    : (activeSingleContract 
-                        ? `Billing Month for ${activeSingleContract.companyName}` 
-                        : 'Billing Month')} <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                {formData.paymentTerms && Number(formData.paymentTerms) > 0 && (
-                  <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: '600' }}>
-                    Monthly Back-to-Back Billing
-                  </span>
-                )}
-              </div>
-              <input 
-                type="number"
-                style={{ ...inputStyle, borderColor: paymentTermError ? '#ef4444' : '#cbd5e1' }}
-                placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms} months (e.g. 6)` : "e.g. 6"}
-                min="1"
-                max={maxPaymentTerms || undefined}
-                value={formData.paymentTerms}
-                onChange={(e) => {
-                  setPaymentTermError('');
-                  const val = e.target.value;
-                  if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
-                    setFormData(prev => ({ ...prev, paymentTerms: maxPaymentTerms }));
-                    setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
-                  } else {
-                    setFormData(prev => ({ ...prev, paymentTerms: val }));
-                  }
-                }}
-              />
-              {paymentTermError && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{paymentTermError}</div>}
-
-              {/* Per-contract Monthly Breakdown */}
+              {/* Multi-Contract Schedule Mode Switcher */}
               {availableContracts.length > 1 && (
-                <div style={{ marginTop: '0.85rem' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '0.75rem',
+                  padding: '0.45rem 0.75rem',
+                  background: '#f8fafc',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem'
+                }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <i className='bx bx-git-branch' style={{ color: '#0284c7' }}></i>
+                    Contract Schedule:
+                  </span>
+                  <div style={{ display: 'inline-flex', background: '#e2e8f0', padding: '2px', borderRadius: '6px', gap: '2px' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaymentTermError('');
+                        setContractScope('all_separate');
+                        setSeparateTerms(prev => {
+                          const next = { ...prev };
+                          availableContracts.forEach(c => {
+                            if (next[c.id] === undefined) {
+                              next[c.id] = formData.paymentTerms || '1';
+                            }
+                          });
+                          return next;
+                        });
+                      }}
+                      style={{
+                        padding: '0.3rem 0.75rem',
+                        borderRadius: '5px',
+                        border: 'none',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        background: contractScope === 'all_separate' ? '#ffffff' : 'transparent',
+                        color: contractScope === 'all_separate' ? '#0284c7' : '#64748b',
+                        boxShadow: contractScope === 'all_separate' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                      }}
+                    >
+                      Different Schedule for each Contract
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaymentTermError('');
+                        setContractScope('all_combined');
+                      }}
+                      style={{
+                        padding: '0.3rem 0.75rem',
+                        borderRadius: '5px',
+                        border: 'none',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        background: contractScope === 'all_combined' ? '#ffffff' : 'transparent',
+                        color: contractScope === 'all_combined' ? '#0284c7' : '#64748b',
+                        boxShadow: contractScope === 'all_combined' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                      }}
+                    >
+                      Same for all Contracts
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* VIEW 1: Different Schedule per Contract */}
+              {availableContracts.length > 1 && contractScope === 'all_separate' ? (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0 }}>
+                      Billing Month per Contract <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: '600' }}>
+                      Independent installments per contract
+                    </span>
+                  </div>
+
                   <div style={{ display: 'grid', gridTemplateColumns: availableContracts.length > 2 ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr 1fr', gap: '0.65rem' }}>
                     {availableContracts.map(c => {
                       const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
                       const cCurr = c.contractCurrency || 'USD';
-                      const months = Number(formData.paymentTerms) || 1;
+                      const termsVal = separateTerms[c.id] !== undefined ? separateTerms[c.id] : (formData.paymentTerms || '1');
+                      const months = Number(termsVal) || 1;
                       const perMonthVal = Number((cVal / months).toFixed(2));
+
                       return (
                         <div key={c.id} style={{
                           background: '#ffffff',
-                          border: '1.5px solid #bfdbfe',
+                          border: '1.5px solid #bae6fd',
                           borderRadius: '8px',
-                          padding: '0.65rem 0.85rem',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                          padding: '0.75rem 0.9rem',
+                          boxShadow: '0 2px 4px rgba(2, 132, 199, 0.05)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem'
                         }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                            <strong style={{ fontSize: '0.82rem', color: '#0f172a' }}>{c.companyName}</strong>
-                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#0284c7' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <strong style={{ fontSize: '0.83rem', color: '#0f172a', display: 'block' }}>{c.companyName}</strong>
+                              {c.taxDetails && <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{c.taxDetails}</span>}
+                            </div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#0284c7', background: '#f0f9ff', padding: '0.15rem 0.4rem', borderRadius: '4px', whiteSpace: 'nowrap' }}>
                               {cCurr} {Number(cVal).toLocaleString()}
                             </span>
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '0.35rem', borderTop: '1px dashed #e2e8f0' }}>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.2rem' }}>
+                            <label style={{ fontSize: '0.78rem', fontWeight: '600', color: '#475569', whiteSpace: 'nowrap' }}>
+                              Billing Month <span style={{ color: '#ef4444' }}>*</span>
+                            </label>
+                            <input 
+                              type="number"
+                              min="1"
+                              max={maxPaymentTerms || undefined}
+                              value={termsVal}
+                              onChange={(e) => {
+                                setPaymentTermError('');
+                                const val = e.target.value;
+                                if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
+                                  setSeparateTerms(prev => ({ ...prev, [c.id]: maxPaymentTerms }));
+                                  setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+                                } else {
+                                  setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
+                                }
+                              }}
+                              placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms}` : "e.g. 6"}
+                              style={{
+                                width: '90px',
+                                padding: '0.35rem 0.5rem',
+                                borderRadius: '6px',
+                                border: '1px solid #cbd5e1',
+                                fontSize: '0.85rem',
+                                color: '#0f172a',
+                                textAlign: 'right',
+                                boxSizing: 'border-box'
+                              }}
+                            />
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '0.4rem', borderTop: '1px dashed #e2e8f0' }}>
                             <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Per Month:</span>
                             <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#059669' }}>
                               {cCurr} {Number(perMonthVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1479,6 +1616,102 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                       );
                     })}
                   </div>
+
+                  {paymentTermError && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.35rem' }}>{paymentTermError}</div>}
+
+                  <div style={{
+                    marginTop: '0.75rem',
+                    padding: '0.6rem 0.85rem',
+                    background: '#f0f9ff',
+                    border: '1px solid #bae6fd',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: '0.78rem',
+                    color: '#0369a1'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <i className='bx bx-check-double' style={{ fontSize: '1rem', color: '#0284c7' }}></i>
+                      <span>Different billing schedules configured for {availableContracts.length} contracts</span>
+                    </div>
+                    <span style={{ fontWeight: '700', background: '#ffffff', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid #bae6fd' }}>
+                      {availableContracts.reduce((sum, c) => sum + (Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : (formData.paymentTerms || 1)) || 1), 0)} Total Invoices
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                /* VIEW 2: Same Billing Month for All Contracts or Single Contract */
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0 }}>
+                      {availableContracts.length > 1 
+                        ? 'Billing month for all the contracts' 
+                        : (activeSingleContract 
+                            ? `Billing Month for ${activeSingleContract.companyName}` 
+                            : 'Billing Month')} <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    {formData.paymentTerms && Number(formData.paymentTerms) > 0 && (
+                      <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: '600' }}>
+                        Monthly Back-to-Back Billing
+                      </span>
+                    )}
+                  </div>
+                  <input 
+                    type="number"
+                    style={{ ...inputStyle, borderColor: paymentTermError ? '#ef4444' : '#cbd5e1' }}
+                    placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms} months (e.g. 6)` : "e.g. 6"}
+                    min="1"
+                    max={maxPaymentTerms || undefined}
+                    value={formData.paymentTerms}
+                    onChange={(e) => {
+                      setPaymentTermError('');
+                      const val = e.target.value;
+                      if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
+                        setFormData(prev => ({ ...prev, paymentTerms: maxPaymentTerms }));
+                        setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+                      } else {
+                        setFormData(prev => ({ ...prev, paymentTerms: val }));
+                      }
+                    }}
+                  />
+                  {paymentTermError && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{paymentTermError}</div>}
+
+                  {/* Per-contract Monthly Breakdown */}
+                  {availableContracts.length > 1 && (
+                    <div style={{ marginTop: '0.85rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: availableContracts.length > 2 ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr 1fr', gap: '0.65rem' }}>
+                        {availableContracts.map(c => {
+                          const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
+                          const cCurr = c.contractCurrency || 'USD';
+                          const months = Number(formData.paymentTerms) || 1;
+                          const perMonthVal = Number((cVal / months).toFixed(2));
+                          return (
+                            <div key={c.id} style={{
+                              background: '#ffffff',
+                              border: '1.5px solid #bfdbfe',
+                              borderRadius: '8px',
+                              padding: '0.65rem 0.85rem',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                <strong style={{ fontSize: '0.82rem', color: '#0f172a' }}>{c.companyName}</strong>
+                                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#0284c7' }}>
+                                  {cCurr} {Number(cVal).toLocaleString()}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '0.35rem', borderTop: '1px dashed #e2e8f0' }}>
+                                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Per Month:</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#059669' }}>
+                                  {cCurr} {Number(perMonthVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
