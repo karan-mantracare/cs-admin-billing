@@ -719,6 +719,18 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     onClose();
   };
 
+  // Close modal on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const inputStyle = {
     width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px',
     border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box',
@@ -729,15 +741,21 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
   if (isPreview) {
     return (
-      <div style={{
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
-        display: 'flex', justifyContent: 'center', alignItems: 'center'
-      }}>
-        <div style={{
-          background: 'white', borderRadius: '8px', width: '94%', maxWidth: '880px',
-          padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-        }}>
+      <div 
+        onClick={onClose}
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', justifyContent: 'center', alignItems: 'center'
+        }}
+      >
+        <div 
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: 'white', borderRadius: '8px', width: '94%', maxWidth: '880px',
+            padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Invoice Schedule Preview</h2>
@@ -1087,22 +1105,28 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   }
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
-      display: 'flex', justifyContent: 'center', alignItems: 'center'
-    }}>
-      <div style={{
-        background: 'white', 
-        borderRadius: '12px', 
-        width: '95%', 
-        maxWidth: (selectedOrder && availableContracts.length > 1) ? '760px' : ((selectedOrder && Number(formData.paymentTerms) > 0) ? '920px' : '520px'),
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        padding: '1.5rem', 
-        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
-        transition: 'max-width 0.25s ease'
-      }}>
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+        display: 'flex', justifyContent: 'center', alignItems: 'center'
+      }}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'white', 
+          borderRadius: '12px', 
+          width: '95%', 
+          maxWidth: (selectedOrder && availableContracts.length > 1) ? '760px' : ((selectedOrder && Number(formData.paymentTerms) > 0) ? '920px' : '520px'),
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          padding: '1.5rem', 
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+          transition: 'max-width 0.25s ease'
+        }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: '700' }}>

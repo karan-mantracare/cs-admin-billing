@@ -246,6 +246,18 @@ function BillingMessageModal({ isOpen, onClose, payment }) {
     }
   }, [isOpen, payment]);
 
+  // Close on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !payment) return null;
 
   const billing = orderDetails?.billingDetails || {};

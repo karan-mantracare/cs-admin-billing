@@ -36,6 +36,22 @@ function EditPaymentModal({ isOpen, onClose, payment, onSave, onDelete }) {
     }
   }, [isOpen]);
 
+  // Close modal on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        if (!showDeleteConfirm) {
+          onClose();
+        } else {
+          setShowDeleteConfirm(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, showDeleteConfirm, onClose]);
+
   const isOriginalOrderNull = !payment?.orderId || payment.orderId === 'Null' || payment.orderId === 'null';
 
   useEffect(() => {

@@ -216,10 +216,29 @@ function ClientPayments() {
   });
   const [showPastPayments, setShowPastPayments] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState(null);
-
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15);
+
+  // Close active modals on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        if (activeUploadId !== null) {
+          setActiveUploadId(null);
+          setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null });
+          setInvoiceErrors({});
+          setActiveUploadTab('upload');
+        } else if (activePaymentId !== null) {
+          setActivePaymentId(null);
+          setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' });
+          setEditingRecordId(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeUploadId, activePaymentId]);
 
   // Filtering Logic
   const filteredPayments = payments.filter(p => {
