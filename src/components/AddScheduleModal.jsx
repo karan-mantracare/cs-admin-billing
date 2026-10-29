@@ -1038,11 +1038,29 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '0.6rem 0.5rem', color: '#334155', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
-                        {inv.invoiceByDate}
+                      <td style={{ padding: '0.45rem 0.5rem' }}>
+                        <input 
+                          type="date"
+                          value={inv.invoiceByDate}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const paymentDueDays = Number(selectedOrder?.billingDetails?.paymentDue) || 30;
+                            const newDue = getDueDate(val, paymentDueDays);
+                            setPreviewInvoices(prev => prev.map((item, i) => i === idx ? { ...item, invoiceByDate: val, dueByDate: newDue } : item));
+                          }}
+                          style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
+                        />
                       </td>
-                      <td style={{ padding: '0.6rem 0.5rem', color: '#334155', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
-                        {inv.dueByDate}
+                      <td style={{ padding: '0.45rem 0.5rem' }}>
+                        <input 
+                          type="date"
+                          value={inv.dueByDate}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPreviewInvoices(prev => prev.map((item, i) => i === idx ? { ...item, dueByDate: val } : item));
+                          }}
+                          style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
+                        />
                       </td>
                       <td style={{ padding: '0.6rem 0.5rem', color: '#0f172a', fontWeight: '700', whiteSpace: 'nowrap' }}>
                         {inv.currency} {Number(inv.amountDue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1100,7 +1118,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         background: 'white', 
         borderRadius: '12px', 
         width: '95%', 
-        maxWidth: (selectedOrder && (Number(formData.paymentTerms) > 0 || contractScope === 'all_separate')) ? '960px' : '520px',
+        maxWidth: (selectedOrder && availableContracts.length > 1) ? '760px' : ((selectedOrder && Number(formData.paymentTerms) > 0) ? '920px' : '520px'),
         maxHeight: '90vh',
         overflowY: 'auto',
         padding: '1.5rem', 
@@ -1112,11 +1130,15 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: '700' }}>
               {mode === 'row' ? 'Add Row' : 'Add Invoice Schedule'}
             </h2>
-            {selectedOrder && (Number(formData.paymentTerms) > 0 || contractScope === 'all_separate') && (
+            {selectedOrder && availableContracts.length > 1 ? (
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                Set independent installments per contract. Click Preview Schedule to review dates & remarks.
+              </p>
+            ) : (selectedOrder && Number(formData.paymentTerms) > 0 && (
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
                 Configure installments, dates, and split percentages with live auto-preview.
               </p>
-            )}
+            ))}
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
             &times;
@@ -1313,101 +1335,6 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             )}
           </div>
 
-          {selectedOrder && availableContracts.length > 1 && (
-            <div style={{
-              background: '#f8fafc',
-              padding: '0.85rem 1rem',
-              borderRadius: '8px',
-              border: '1.5px solid #bfdbfe'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.35rem' }}>
-                <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#1e3a8a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <i className='bx bx-layer' style={{ color: '#0284c7', fontSize: '1.05rem' }}></i> Contract Scheduling Option ({availableContracts.length} Contracts)
-                </label>
-                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                  Schedule together or manage each contract separately
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
-                {/* 1. All Combined */}
-                <button
-                  type="button"
-                  onClick={() => setContractScope('all_combined')}
-                  style={{
-                    padding: '0.4rem 0.75rem',
-                    borderRadius: '6px',
-                    border: contractScope === 'all_combined' ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
-                    background: contractScope === 'all_combined' ? '#0284c7' : '#ffffff',
-                    color: contractScope === 'all_combined' ? '#ffffff' : '#334155',
-                    fontWeight: '600',
-                    fontSize: '0.78rem',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    boxShadow: contractScope === 'all_combined' ? '0 2px 4px rgba(2, 132, 199, 0.25)' : 'none'
-                  }}
-                >
-                  <i className='bx bx-git-merge'></i> All Combined (${Number(selectedOrder.billingDetails?.amountInUSD || selectedOrder.amount || 0).toFixed(2)})
-                </button>
-
-                {/* 2. Schedule All Separately */}
-                <button
-                  type="button"
-                  onClick={() => setContractScope('all_separate')}
-                  style={{
-                    padding: '0.4rem 0.75rem',
-                    borderRadius: '6px',
-                    border: contractScope === 'all_separate' ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
-                    background: contractScope === 'all_separate' ? '#0284c7' : '#ffffff',
-                    color: contractScope === 'all_separate' ? '#ffffff' : '#334155',
-                    fontWeight: '600',
-                    fontSize: '0.78rem',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    boxShadow: contractScope === 'all_separate' ? '0 2px 4px rgba(2, 132, 199, 0.25)' : 'none'
-                  }}
-                >
-                  <i className='bx bx-git-branch'></i> Schedule Each Separately
-                </button>
-
-                {/* 3..N. Individual Contract buttons */}
-                {availableContracts.map((c, idx) => {
-                  const isSelected = String(contractScope) === String(c.id);
-                  const cCurr = c.contractCurrency || 'USD';
-                  const cVal = c.contractValue || c.amount || 0;
-                  const cUsd = c.amountInUSD ? ` (~$${Number(c.amountInUSD).toFixed(2)})` : '';
-                  return (
-                    <button
-                      key={c.id || idx}
-                      type="button"
-                      onClick={() => setContractScope(String(c.id))}
-                      style={{
-                        padding: '0.4rem 0.75rem',
-                        borderRadius: '6px',
-                        border: isSelected ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
-                        background: isSelected ? '#0284c7' : '#ffffff',
-                        color: isSelected ? '#ffffff' : '#334155',
-                        fontWeight: '600',
-                        fontSize: '0.78rem',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        boxShadow: isSelected ? '0 2px 4px rgba(2, 132, 199, 0.25)' : 'none'
-                      }}
-                    >
-                      <i className='bx bx-file-blank'></i> {c.companyName} ({cCurr} {cVal}{cUsd})
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {selectedOrder && (() => {
             const isSingleContract = Boolean(activeSingleContract);
             const contractValue = isSingleContract 
@@ -1592,158 +1519,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             </div>
           )}
 
-          {/* --- LIVE AUTO PREVIEW SCHEDULE TABLE WITH DYNAMIC PERCENTAGE REBALANCING --- */}
-          {mode === 'schedule' && selectedOrder && (Number(formData.paymentTerms) > 0 || contractScope === 'all_separate') && (() => {
-            if (contractScope === 'all_separate') {
-              const separateInvoices = generateInvoices();
-              if (separateInvoices.length === 0) return null;
-              const totalSeparatesUSD = separateInvoices.reduce((sum, inv) => sum + (Number(inv.amountDueUsd) || 0), 0);
-
-              return (
-                <div style={{
-                  marginTop: '0.5rem',
-                  background: '#ffffff',
-                  border: '1px solid #bae6fd',
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  boxShadow: '0 4px 12px rgba(2, 132, 199, 0.08)'
-                }}>
-                  {/* Auto Preview Header Bar */}
-                  <div style={{
-                    padding: '0.75rem 1rem',
-                    background: 'linear-gradient(to right, #f0f9ff, #f8fafc)',
-                    borderBottom: '1px solid #e0f2fe',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '0.5rem'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                      <i className='bx bx-calendar-star' style={{ fontSize: '1.2rem', color: '#0284c7' }}></i>
-                      <div>
-                        <strong style={{ fontSize: '0.85rem', color: '#0369a1' }}>
-                          Per-Contract Independent Schedule ({separateInvoices.length} Invoices Across {availableContracts.length} Contracts)
-                        </strong>
-                        <span style={{ fontSize: '0.73rem', color: '#64748b', marginLeft: '0.5rem' }}>
-                          Each contract billed separately on its own terms
-                        </span>
-                      </div>
-                    </div>
-
-                    <span style={{
-                      background: '#dcfce7',
-                      color: '#15803d',
-                      padding: '0.25rem 0.65rem',
-                      borderRadius: '5px',
-                      fontSize: '0.75rem',
-                      fontWeight: '700',
-                      border: '1px solid #bbf7d0'
-                    }}>
-                      Total: ${totalSeparatesUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
-                    </span>
-                  </div>
-
-                  <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                      <thead>
-                        <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          <th style={{ padding: '0.55rem 0.65rem' }}>Contract / Entity</th>
-                          <th style={{ padding: '0.55rem 0.65rem' }}>Invoice #</th>
-                          <th style={{ padding: '0.55rem 0.65rem' }}>Invoice By Date</th>
-                          <th style={{ padding: '0.55rem 0.65rem' }}>Due Date</th>
-                          <th style={{ padding: '0.55rem 0.65rem' }}>Amount (Contract Cur)</th>
-                          <th style={{ padding: '0.55rem 0.65rem' }}>Amount (USD)</th>
-                          <th style={{ padding: '0.55rem 0.65rem', minWidth: '160px' }}>Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {separateInvoices.map((inv, idx) => (
-                          <tr key={inv.id || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
-                            <td style={{ padding: '0.55rem 0.65rem', whiteSpace: 'nowrap' }}>
-                              <span style={{
-                                background: '#eff6ff',
-                                color: '#1d4ed8',
-                                border: '1px solid #bfdbfe',
-                                padding: '0.15rem 0.45rem',
-                                borderRadius: '4px',
-                                fontSize: '0.75rem',
-                                fontWeight: '700',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.25rem'
-                              }}>
-                                <i className='bx bx-buildings'></i>
-                                {inv.clientBillingEntity || inv.billingCompany}
-                              </span>
-                            </td>
-                            <td style={{ padding: '0.55rem 0.65rem', fontWeight: '700', color: '#0f172a' }}>
-                              Term #{inv.installmentNumber} of {inv.totalTerms}
-                            </td>
-                            <td style={{ padding: '0.45rem 0.65rem' }}>
-                              <input 
-                                type="date"
-                                value={inv.invoiceByDate}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  const newDue = getDueDate(val, paymentDueDays);
-                                  setCustomDates(prev => ({
-                                    ...prev,
-                                    [`${inv.contractId}-${inv.installmentNumber - 1}`]: { invoiceDate: val, dueByDate: newDue }
-                                  }));
-                                }}
-                                style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
-                              />
-                            </td>
-                            <td style={{ padding: '0.45rem 0.65rem' }}>
-                              <input 
-                                type="date"
-                                value={inv.dueByDate}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setCustomDates(prev => ({
-                                    ...prev,
-                                    [`${inv.contractId}-${inv.installmentNumber - 1}`]: { ...(prev[`${inv.contractId}-${inv.installmentNumber - 1}`] || {}), dueByDate: val }
-                                  }));
-                                }}
-                                style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
-                              />
-                            </td>
-                            <td style={{ padding: '0.55rem 0.65rem', fontWeight: '700', color: '#0f172a', whiteSpace: 'nowrap' }}>
-                              {inv.currency} {Number(inv.amountDue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                            <td style={{ padding: '0.55rem 0.65rem', color: '#059669', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                              ${Number(inv.amountDueUsd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                            <td style={{ padding: '0.45rem 0.65rem' }}>
-                              <input 
-                                type="text"
-                                placeholder={`Remarks for ${inv.clientBillingEntity}...`}
-                                value={customRemarks[`${inv.contractId}-${inv.installmentNumber - 1}`] || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setCustomRemarks(prev => ({ ...prev, [`${inv.contractId}-${inv.installmentNumber - 1}`]: val }));
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '0.35rem 0.55rem',
-                                  borderRadius: '5px',
-                                  border: '1px solid #cbd5e1',
-                                  fontSize: '0.8rem',
-                                  color: '#0f172a',
-                                  boxSizing: 'border-box'
-                                }}
-                              />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              );
-            }
-
+          {/* --- LIVE AUTO PREVIEW SCHEDULE TABLE FOR SINGLE CONTRACT --- */}
+          {mode === 'schedule' && selectedOrder && contractScope !== 'all_separate' && Number(formData.paymentTerms) > 0 && (() => {
             const isSingleContract = Boolean(activeSingleContract);
             const termsCount = Number(formData.paymentTerms);
             const splits = recalculateSplits(termsCount, pinnedPercentages);
