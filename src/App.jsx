@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import Home from './pages/Home';
 import CsPortal from './pages/CsPortal';
@@ -27,6 +27,29 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('logged_in_user');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return { name: 'Priya Sharma', company: 'Nova FinTech Solutions' };
+  });
+
+  useEffect(() => {
+    const handleUserUpdate = () => {
+      try {
+        const stored = localStorage.getItem('logged_in_user');
+        if (stored) setCurrentUser(JSON.parse(stored));
+      } catch {}
+    };
+    window.addEventListener('storage', handleUserUpdate);
+    window.addEventListener('user-profile-updated', handleUserUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUserUpdate);
+      window.removeEventListener('user-profile-updated', handleUserUpdate);
+    };
+  }, []);
 
   const isCsRoute = location.pathname.startsWith('/cs') || 
                     location.pathname.startsWith('/calendar') || 
@@ -135,8 +158,25 @@ function App() {
           </NavLink>
         </nav>
 
-        <div className="user-profile">
-          <div className="avatar">U</div>
+        <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            padding: '0.3rem 0.65rem',
+            borderRadius: '6px',
+            fontSize: '0.8rem',
+            color: '#475569',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+          }}>
+            <i className="bx bx-user" style={{ color: '#0284c7' }}></i>
+            <span>Logged in: <strong style={{ color: '#0f172a' }}>{currentUser.name || 'Priya Sharma'}</strong> ({currentUser.company || 'Nova FinTech Solutions'})</span>
+          </div>
+          <div className="avatar" title={currentUser.name || 'User'}>
+            {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+          </div>
         </div>
       </header>
 

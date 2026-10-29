@@ -403,10 +403,23 @@ export default function CsFeedback() {
         }
       }
 
-      setAvailableDivisions(divisionsList);
+      const corporateIdParam = searchParams.get('corporateId') || searchParams.get('corpId');
+      const companyParam = searchParams.get('company');
+      const tabParam = searchParams.get('tab');
+      if (tabParam === 'survey' || tabParam === 'submissions') {
+        setActiveTab(tabParam);
+      }
+
+      let targetCompany = companyParam;
+      if (!targetCompany && corporateIdParam) {
+        const matched = (Array.isArray(allClients) ? allClients : []).find(
+          (c) => String(c.id) === String(corporateIdParam) || String(c.corporateId) === String(corporateIdParam)
+        );
+        if (matched) targetCompany = matched.companyName || matched.clientName;
+      }
+      if (!targetCompany) targetCompany = defaultCompany;
 
       const targetDiv = searchParams.get('division') || defaultDivName;
-      const targetCompany = searchParams.get('company') || defaultCompany;
       const resolvedCS = getPrimaryCS(null, targetDiv, targetCompany, null);
 
       setClientDetails((prev) => ({
@@ -415,6 +428,7 @@ export default function CsFeedback() {
         selectedDivision: targetDiv,
         csSpocName: resolvedCS || 'Karan Hinduja'
       }));
+      setSelectedCompanyFilter(targetCompany);
     } catch {
       const resolvedCS = getPrimaryCS(null, 'Healthcare', 'TechCorp Solutions', null);
       setClientDetails((prev) => ({
@@ -500,6 +514,51 @@ export default function CsFeedback() {
     }));
 
     setSelectedCompanyFilter(newCompany);
+
+    // Sync with topbar logged_in_user in localStorage
+    try {
+      const currentStored = JSON.parse(localStorage.getItem('logged_in_user') || '{}');
+      const updatedUser = { ...currentStored, name: clientDetails.name || 'Priya Sharma', company: newCompany };
+      localStorage.setItem('logged_in_user', JSON.stringify(updatedUser));
+      window.dispatchEvent(new Event('user-profile-updated'));
+    } catch {}
+  };
+
+  // State and helpers for HR Feedback Form link sharing
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  const resolvedCorporateId = useMemo(() => {
+    try {
+      const allClients = JSON.parse(localStorage.getItem('cs-admin-clients') || '[]');
+      const matched = Array.isArray(allClients)
+        ? allClients.find((c) => (c.companyName || c.clientName || '').toLowerCase() === (selectedCompanyFilter || '').toLowerCase())
+        : null;
+      if (matched && matched.id) return String(matched.id);
+    } catch {}
+
+    return `CORP-${(selectedCompanyFilter || '1').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase()}`;
+  }, [selectedCompanyFilter]);
+
+  const hrFeedbackShareUrl = useMemo(() => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${origin}/cs/feedback?tab=survey&corporateId=${encodeURIComponent(resolvedCorporateId)}&company=${encodeURIComponent(selectedCompanyFilter)}`;
+  }, [resolvedCorporateId, selectedCompanyFilter]);
+
+  const handleCopyFeedbackLink = async () => {
+    try {
+      await navigator.clipboard.writeText(hrFeedbackShareUrl);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 3000);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = hrFeedbackShareUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 3000);
+    }
   };
 
   const handleDivisionChange = (divName) => {
@@ -741,53 +800,13 @@ export default function CsFeedback() {
         </div>
 
         {/* Page Heading & Metadata */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div>
-            <h1 style={{ fontSize: '1.65rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.2rem 0' }}>
-              Feedback
-            </h1>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
-              Corporate Health Partner Evaluation • Granular Delivery Analysis ({PILLAR_QUESTIONS.length} Dimensions)
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.45rem' }}>
-            {/* Company Filter above Logged In Name */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                <i className="bx bx-buildings" style={{ color: '#0284c7', fontSize: '1.05rem' }}></i>
-                Company:
-              </label>
-              <select
-                value={clientDetails.company}
-                onChange={(e) => handleCompanyChange(e.target.value)}
-                style={{
-                  padding: '0.35rem 0.65rem',
-                  borderRadius: '6px',
-                  border: '1.5px solid #cbd5e1',
-                  fontSize: '0.82rem',
-                  fontWeight: '600',
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  cursor: 'pointer',
-                  minWidth: '180px',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-                }}
-              >
-                {allCompanyOptions.map((comp) => (
-                  <option key={comp} value={comp}>
-                    {comp}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Logged in User Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#ffffff', border: '1px solid #e2e8f0', padding: '0.3rem 0.65rem', borderRadius: '6px', fontSize: '0.8rem', color: '#475569' }}>
-              <i className="bx bx-user" style={{ color: '#0284c7' }}></i>
-              <span>Logged in: <strong style={{ color: '#0f172a' }}>{clientDetails.name}</strong> ({clientDetails.company})</span>
-            </div>
-          </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <h1 style={{ fontSize: '1.65rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.2rem 0' }}>
+            Feedback
+          </h1>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+            Corporate Health Partner Evaluation • Granular Delivery Analysis ({PILLAR_QUESTIONS.length} Dimensions)
+          </p>
         </div>
 
         {/* Navigation Tabs */}
@@ -2285,6 +2304,83 @@ export default function CsFeedback() {
               <i className='bx bx-download'></i>
               <span>Export CSV</span>
             </button>
+          </div>
+
+          {/* Shareable HR Feedback Form Link mapped to Corporate ID */}
+          <div style={{
+            width: '100%',
+            marginTop: '0.85rem',
+            paddingTop: '0.85rem',
+            borderTop: '1px solid #f1f5f9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            flexWrap: 'wrap',
+            background: '#f8fafc',
+            padding: '0.65rem 0.85rem',
+            borderRadius: '8px',
+            border: '1px dashed #cbd5e1'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: '#334155', flexWrap: 'wrap' }}>
+              <i className='bx bx-share-alt' style={{ color: '#0284c7', fontSize: '1.15rem' }}></i>
+              <span>
+                Feedback Form Link for <strong>{selectedCompanyFilter}</strong>
+              </span>
+              <span style={{
+                background: '#e0f2fe',
+                color: '#0369a1',
+                padding: '0.15rem 0.45rem',
+                borderRadius: '4px',
+                fontSize: '0.72rem',
+                fontWeight: '700'
+              }}>
+                Corporate ID: {resolvedCorporateId}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <input 
+                type="text" 
+                readOnly 
+                value={hrFeedbackShareUrl}
+                style={{
+                  width: '320px',
+                  maxWidth: '100%',
+                  padding: '0.38rem 0.55rem',
+                  fontSize: '0.76rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  outline: 'none',
+                  textOverflow: 'ellipsis'
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleCopyFeedbackLink}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  background: copySuccess ? '#10b981' : '#034ea2',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                }}
+                title="Copy shareable evaluation form link with Corporate ID mapped for the HR partner"
+              >
+                <i className={`bx ${copySuccess ? 'bx-check' : 'bx-copy'}`}></i>
+                <span>{copySuccess ? 'Copied Link!' : 'Copy Form Link for HR'}</span>
+              </button>
+            </div>
           </div>
         </div>
 
