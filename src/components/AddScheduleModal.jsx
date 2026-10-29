@@ -665,24 +665,13 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         alert("Please select an Order to schedule billing.");
         return;
       }
-      if (contractScope === 'all_separate') {
-        const invalidContract = availableContracts.find(c => {
-          const t = separateTerms[c.id] || formData.paymentTerms;
-          return !t || Number(t) <= 0;
-        });
-        if (invalidContract) {
-          alert(`Please specify valid installments for ${invalidContract.companyName}`);
-          return;
-        }
-      } else {
-        if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
-          setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
-          return;
-        }
-        if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
-          setPaymentTermError('Payment terms (installments) are required');
-          return;
-        }
+      if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
+        setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+        return;
+      }
+      if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
+        setPaymentTermError('Billing month is required');
+        return;
       }
       const invoices = generateInvoices();
       if (!invoices || invoices.length === 0) {
@@ -707,24 +696,13 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         alert("Please select an Order to schedule billing.");
         return;
       }
-      if (contractScope === 'all_separate') {
-        const invalidContract = availableContracts.find(c => {
-          const t = separateTerms[c.id] || formData.paymentTerms;
-          return !t || Number(t) <= 0;
-        });
-        if (invalidContract) {
-          alert(`Please specify valid installments for ${invalidContract.companyName}`);
-          return;
-        }
-      } else {
-        if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
-          setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
-          return;
-        }
-        if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
-          setPaymentTermError('Payment terms (installments) are required');
-          return;
-        }
+      if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
+        setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+        return;
+      }
+      if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
+        setPaymentTermError('Billing month is required');
+        return;
       }
       const invoices = generateInvoices();
       if (!invoices || invoices.length === 0) {
@@ -1409,100 +1387,77 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           })()}
 
           {mode === 'schedule' ? (
-            contractScope === 'all_separate' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#1e293b', margin: 0 }}>
-                    Billing Month per Contract <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <span style={{ fontSize: '0.73rem', color: '#0284c7', fontWeight: '600' }}>
-                    Each contract gets independent billing months
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0 }}>
+                  {availableContracts.length > 1 
+                    ? 'Billing month for all the contracts' 
+                    : (activeSingleContract 
+                        ? `Billing Month for ${activeSingleContract.companyName}` 
+                        : 'Billing Month')} <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                {formData.paymentTerms && Number(formData.paymentTerms) > 0 && (
+                  <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: '600' }}>
+                    Monthly Back-to-Back Billing
                   </span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: availableContracts.length > 2 ? 'repeat(auto-fit, minmax(260px, 1fr))' : '1fr 1fr', gap: '0.75rem' }}>
-                  {availableContracts.map(c => {
-                    const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
-                    const cCurr = c.contractCurrency || 'USD';
-                    const cTerms = separateTerms[c.id] || formData.paymentTerms || '1';
-                    const perInstVal = Number((cVal / (Number(cTerms) || 1)).toFixed(2));
-                    return (
-                      <div key={c.id} style={{
-                        background: '#ffffff',
-                        border: '1.5px solid #bfdbfe',
-                        borderRadius: '8px',
-                        padding: '0.75rem 0.85rem',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                          <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>{c.companyName}</strong>
-                          <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#0284c7' }}>
-                            {cCurr} {Number(cVal).toLocaleString()}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem' }}>
-                          <div style={{ flex: 1 }}>
-                            <label style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>
-                              Billing Month
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              max={maxPaymentTerms || 12}
-                              value={cTerms}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
-                              }}
-                              style={{ ...inputStyle, padding: '0.45rem 0.6rem', fontSize: '0.85rem' }}
-                            />
-                          </div>
-                          <div style={{ textAlign: 'right', minWidth: '95px' }}>
-                            <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Per Month</div>
-                            <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#059669' }}>
-                              {cCurr} {Number(perInstVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                )}
               </div>
-            ) : (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0 }}>
-                    {activeSingleContract 
-                      ? `Billing Month for ${activeSingleContract.companyName}`
-                      : 'Billing Month'} <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  {formData.paymentTerms && Number(formData.paymentTerms) > 0 && (
-                    <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: '600' }}>
-                      Monthly Back-to-Back Billing
-                    </span>
-                  )}
+              <input 
+                type="number"
+                style={{ ...inputStyle, borderColor: paymentTermError ? '#ef4444' : '#cbd5e1' }}
+                placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms} months (e.g. 6)` : "e.g. 6"}
+                min="1"
+                max={maxPaymentTerms || undefined}
+                value={formData.paymentTerms}
+                onChange={(e) => {
+                  setPaymentTermError('');
+                  const val = e.target.value;
+                  if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
+                    setFormData(prev => ({ ...prev, paymentTerms: maxPaymentTerms }));
+                    setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+                  } else {
+                    setFormData(prev => ({ ...prev, paymentTerms: val }));
+                  }
+                }}
+              />
+              {paymentTermError && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{paymentTermError}</div>}
+
+              {/* Per-contract Monthly Breakdown */}
+              {availableContracts.length > 1 && (
+                <div style={{ marginTop: '0.85rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: availableContracts.length > 2 ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr 1fr', gap: '0.65rem' }}>
+                    {availableContracts.map(c => {
+                      const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
+                      const cCurr = c.contractCurrency || 'USD';
+                      const months = Number(formData.paymentTerms) || 1;
+                      const perMonthVal = Number((cVal / months).toFixed(2));
+                      return (
+                        <div key={c.id} style={{
+                          background: '#ffffff',
+                          border: '1.5px solid #bfdbfe',
+                          borderRadius: '8px',
+                          padding: '0.65rem 0.85rem',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                            <strong style={{ fontSize: '0.82rem', color: '#0f172a' }}>{c.companyName}</strong>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#0284c7' }}>
+                              {cCurr} {Number(cVal).toLocaleString()}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '0.35rem', borderTop: '1px dashed #e2e8f0' }}>
+                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Per Month:</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#059669' }}>
+                              {cCurr} {Number(perMonthVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <input 
-                  type="number"
-                  style={{ ...inputStyle, borderColor: paymentTermError ? '#ef4444' : '#cbd5e1' }}
-                  placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms} months (e.g. 6)` : "e.g. 6"}
-                  min="1"
-                  max={maxPaymentTerms || undefined}
-                  value={formData.paymentTerms}
-                  onChange={(e) => {
-                    setPaymentTermError('');
-                    const val = e.target.value;
-                    if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
-                      setFormData(prev => ({ ...prev, paymentTerms: maxPaymentTerms }));
-                      setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
-                    } else {
-                      setFormData(prev => ({ ...prev, paymentTerms: val }));
-                    }
-                  }}
-                />
-                {paymentTermError && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{paymentTermError}</div>}
-              </div>
-            )
+              )}
+            </div>
           ) : (
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
