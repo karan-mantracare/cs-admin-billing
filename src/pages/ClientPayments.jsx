@@ -312,6 +312,24 @@ function ClientPayments() {
 
   const handleSaveEdit = (updatedPayment) => {
     setPayments(prev => prev.map(p => p.id === updatedPayment.id ? updatedPayment : p));
+    if (updatedPayment.contractId) {
+      try {
+        const contracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+        const updated = contracts.map(c => {
+          if (String(c.id) === String(updatedPayment.contractId)) {
+            return {
+              ...c,
+              orderId: updatedPayment.orderId && updatedPayment.orderId !== 'Null' ? updatedPayment.orderId : '',
+              orderName: updatedPayment.orderName || ''
+            };
+          }
+          return c;
+        });
+        localStorage.setItem('division_contracts', JSON.stringify(updated));
+      } catch (e) {
+        console.error("Failed to sync division_contracts on payment edit", e);
+      }
+    }
     setEditingPaymentId(null);
   };
 

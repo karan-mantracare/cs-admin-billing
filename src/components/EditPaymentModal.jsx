@@ -36,6 +36,8 @@ function EditPaymentModal({ isOpen, onClose, payment, onSave, onDelete }) {
     }
   }, [isOpen]);
 
+  const isOriginalOrderNull = !payment?.orderId || payment.orderId === 'Null' || payment.orderId === 'null';
+
   useEffect(() => {
     if (isOpen && payment) {
       let initialRate = 1;
@@ -44,9 +46,11 @@ function EditPaymentModal({ isOpen, onClose, payment, onSave, onDelete }) {
       }
       setExchangeRate(initialRate);
 
+      const isNull = !payment.orderId || payment.orderId === 'Null' || payment.orderId === 'null';
+
       setFormData({
         clientName: payment.clientName || payment.corporate || '',
-        orderId: payment.orderId || '',
+        orderId: isNull ? 'Null' : String(payment.orderId),
         invoiceByDate: payment.invoiceByDate || '',
         dueByDate: payment.dueByDate || '',
         amountDue: payment.amountDue || '',
@@ -75,10 +79,13 @@ function EditPaymentModal({ isOpen, onClose, payment, onSave, onDelete }) {
       
       // If order ID changes, fetch details from that order
       if (name === 'orderId') {
+        if (value === 'Null') {
+          return { ...updated, orderId: 'Null' };
+        }
         const selectedOrder = availableOrders.find(o => String(o.id) === String(value));
         if (selectedOrder) {
-          updated.currency = selectedOrder.billingDetails?.clientCurrency || 'USD';
-          updated.billingCompany = selectedOrder.billingDetails?.billingEntity || selectedOrder.billingDetails?.billFrom || 'MCC';
+          updated.currency = selectedOrder.billingDetails?.clientCurrency || updated.currency || 'USD';
+          updated.billingCompany = selectedOrder.billingDetails?.billingEntity || selectedOrder.billingDetails?.billFrom || updated.billingCompany || 'MCC';
           
           if (selectedOrder.billingDetails?.currencyExchangeValue) {
             setExchangeRate(Number(selectedOrder.billingDetails.currencyExchangeValue) || 1);
@@ -364,6 +371,14 @@ function EditPaymentModal({ isOpen, onClose, payment, onSave, onDelete }) {
                 disabled={!formData.clientName}
               >
                 <option value="" disabled hidden>Select Order</option>
+                {isOriginalOrderNull && (
+                  <option value="Null">Null Order ID</option>
+                )}
+                {!isOriginalOrderNull && payment?.orderId && !availableOrders.some(o => String(o.id) === String(payment.orderId)) && (
+                  <option value={payment.orderId}>
+                    #{payment.orderId} {payment.orderName ? `• ${payment.orderName}` : ''}
+                  </option>
+                )}
                 {availableOrders.map(o => (
                   <option key={o.id} value={o.id}>
                     #{o.id} {o.planName ? `• ${o.planName}` : (o.serviceType ? `• ${o.serviceType}` : '')}
@@ -552,12 +567,21 @@ function EditPaymentModal({ isOpen, onClose, payment, onSave, onDelete }) {
             </button>
             <button 
               type="button"
-              onClick={() => onSave({ 
-                ...payment, 
-                ...formData, 
-                amountDue: Number(formData.amountDue), 
-                amountDueUsd: Number(calculatedUsd) 
-              })} 
+              onClick={() => {
+                const selectedOrder = availableOrders.find(o => String(o.id) === String(formData.orderId));
+                const orderName = formData.orderId === 'Null' 
+                  ? '' 
+                  : (selectedOrder?.orderName || (selectedOrder ? (selectedOrder.planName || selectedOrder.serviceType || '') : payment.orderName || ''));
+
+                onSave({ 
+                  ...payment, 
+                  ...formData, 
+                  orderId: formData.orderId || 'Null',
+                  orderName: orderName,
+                  amountDue: Number(formData.amountDue), 
+                  amountDueUsd: Number(calculatedUsd) 
+                });
+              }} 
               style={{
                 padding: '0.55rem 1.35rem',
                 background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
