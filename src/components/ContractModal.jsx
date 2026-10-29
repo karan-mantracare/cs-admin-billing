@@ -65,8 +65,8 @@ export default function ContractModal({
 }) {
   // All available companies (from onboarding + custom)
   const [allCompanies, setAllCompanies] = useState([]);
-  // Selected company splits: [{ id, companyName, taxDetails, address, percentage }]
-  const [companySplits, setCompanySplits] = useState([]);
+  // Selected company for this contract
+  const [selectedCompany, setSelectedCompany] = useState(null);
 
   // Multi-select dropdown state
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
@@ -178,12 +178,13 @@ export default function ContractModal({
           }
         });
         setAllCompanies(companies);
-        setCompanySplits(initialData.companyEntities);
+        const match = companies.find(c => c.id === initialData.companyEntities[0].id || c.companyName === initialData.companyEntities[0].companyName);
+        setSelectedCompany(match || initialData.companyEntities[0]);
       } else if (initialData?.companyName) {
         const found = companies.find(c => c.companyName === initialData.companyName);
         if (found) {
           setAllCompanies(companies);
-          setCompanySplits([{ ...found, percentage: 100 }]);
+          setSelectedCompany(found);
         } else {
           const custom = {
             id: 'custom_1',
@@ -193,15 +194,14 @@ export default function ContractModal({
             source: 'custom'
           };
           setAllCompanies([custom, ...companies]);
-          setCompanySplits([{ ...custom, percentage: 100 }]);
+          setSelectedCompany(custom);
         }
       } else {
         setAllCompanies(companies);
         if (companies.length > 0) {
-          // Default to first onboarding company with 100%
-          setCompanySplits([{ ...companies[0], percentage: 100 }]);
+          setSelectedCompany(companies[0]);
         } else {
-          setCompanySplits([]);
+          setSelectedCompany(null);
         }
       }
 
@@ -269,45 +269,10 @@ export default function ContractModal({
     }
   };
 
-  // --- Multi-Select Company Logic ---
-  const toggleCompanySelection = (comp) => {
-    const isSelected = companySplits.some(s => s.id === comp.id);
-    let updated;
-    if (isSelected) {
-      updated = companySplits.filter(s => s.id !== comp.id);
-    } else {
-      updated = [...companySplits, { ...comp, percentage: 0 }];
-    }
-
-    // Automatically apply equal split among selected
-    if (updated.length > 0) {
-      const count = updated.length;
-      const base = Math.floor(100 / count);
-      const remainder = 100 - (base * count);
-      updated = updated.map((item, idx) => ({
-        ...item,
-        percentage: idx === count - 1 ? (base + remainder) : base
-      }));
-    }
-
-    setCompanySplits(updated);
-    if (errors.companies) setErrors(prev => ({ ...prev, companies: null }));
-  };
-
-  const handlePercentageChange = (id, newPercentage) => {
-    const num = parseFloat(newPercentage) || 0;
-    setCompanySplits(prev => prev.map(s => s.id === id ? { ...s, percentage: num } : s));
-  };
-
-  const applyEqualSplit = () => {
-    const count = companySplits.length;
-    if (count === 0) return;
-    const base = Math.floor(100 / count);
-    const remainder = 100 - (base * count);
-    setCompanySplits(prev => prev.map((s, idx) => ({
-      ...s,
-      percentage: idx === count - 1 ? (base + remainder) : base
-    })));
+  const handleSelectCompany = (comp) => {
+    setSelectedCompany(comp);
+    setIsCompanyDropdownOpen(false);
+    if (errors.company) setErrors(prev => ({ ...prev, company: null }));
   };
 
   const handleAddCustomCompany = (e) => {
@@ -325,23 +290,12 @@ export default function ContractModal({
     };
 
     setAllCompanies(prev => [...prev, newComp]);
-    
-    // Auto-select and rebalance split
-    const updated = [...companySplits, { ...newComp, percentage: 0 }];
-    const count = updated.length;
-    const base = Math.floor(100 / count);
-    const remainder = 100 - (base * count);
-    setCompanySplits(updated.map((item, idx) => ({
-      ...item,
-      percentage: idx === count - 1 ? (base + remainder) : base
-    })));
-
+    setSelectedCompany(newComp);
     setCustomForm({ companyName: '', taxDetails: '', address: '' });
     setCustomError('');
     setIsAddingCustom(false);
+    if (errors.company) setErrors(prev => ({ ...prev, company: null }));
   };
-
-  const totalPercentage = companySplits.reduce((acc, s) => acc + (parseFloat(s.percentage) || 0), 0);
 
   const handleCopyBankLink = () => {
     if (formData.bankDetailsLink) {
@@ -353,10 +307,8 @@ export default function ContractModal({
 
   const validate = () => {
     const newErrors = {};
-    if (companySplits.length === 0) {
-      newErrors.companies = 'Please select at least one company / entity';
-    } else if (Math.round(totalPercentage) !== 100) {
-      newErrors.companies = `Total percentage must equal 100% (currently ${totalPercentage}%)`;
+    if (!selectedCompany) {
+      newErrors.company = 'Please select a company / entity';
     }
 
     if (!formData.contractCurrency) newErrors.contractCurrency = 'Currency is required';
@@ -377,24 +329,16 @@ export default function ContractModal({
     }
     if (!validate()) return;
 
-    // Build consolidated company name and tax details
-    const primaryName = companySplits.length === 1 
-      ? companySplits[0].companyName
-      : companySplits.map(s => `${s.companyName} (${s.percentage}%)`).join(', ');
-
-    const primaryTax = companySplits.map(s => s.taxDetails).filter(Boolean).join(', ');
-    const primaryAddress = companySplits.map(s => s.address).filter(Boolean).join(' | ');
-
     const savedContract = {
       id: initialData?.id || (Date.now() + Math.random()),
       divisionId: divisionId || initialData?.divisionId || '',
       orderId: initialData?.orderId || '',
       orderName: initialData?.orderName || '',
-      companyEntities: companySplits,
-      billingSplits: companySplits.map(s => ({ ...s, selected: true })),
-      companyName: primaryName,
-      taxDetails: primaryTax,
-      address: primaryAddress,
+      companyEntities: selectedCompany ? [selectedCompany] : [],
+      billingSplits: selectedCompany ? [{ ...selectedCompany, selected: true }] : [],
+      companyName: selectedCompany?.companyName || '',
+      taxDetails: selectedCompany?.taxDetails || '',
+      address: selectedCompany?.address || '',
       contractValue: parseFloat(formData.contractValue) || 0,
       contractCurrency: formData.contractCurrency,
       currencyExchangeValue: parseFloat(formData.currencyExchangeValue) || 1,
@@ -490,7 +434,7 @@ export default function ContractModal({
               {isReadOnly ? 'Contract Details' : (initialData ? 'Edit Contract Option' : 'Create Contract Option')}
             </h3>
             <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-              Select Onboarding or Custom companies, specify percentage split, and set commercial terms.
+              Select Onboarding or Custom company, and set commercial terms.
             </p>
           </div>
           <button 
@@ -515,13 +459,13 @@ export default function ContractModal({
         {/* Modal Body */}
         <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-          {/* Section 1: Multi-Select Companies with Dropdown & Percentage Option */}
-          <div style={{ background: '#f8fafc', border: errors.companies ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
+          {/* Section 1: Select Company / Entity */}
+          <div style={{ background: '#f8fafc', border: errors.company ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <label style={{ ...labelStyle, marginBottom: 0 }}>
                 <i className="bx bx-buildings" style={{ color: '#0284c7' }}></i>
-                Select Companies / Entities (Multi-Select) <span style={{ color: '#ef4444' }}>*</span>
-                <Tooltip text="Select one or more companies from the Onboarding form or add your own custom entities. Once selected, allocate percentage splits." align="left" />
+                Select Company / Entity <span style={{ color: '#ef4444' }}>*</span>
+                <Tooltip text="Select the company or legal entity from Onboarding or add a custom entity for this contract." align="left" />
               </label>
 
               {!isReadOnly && !isAddingCustom && (
@@ -607,7 +551,7 @@ export default function ContractModal({
               </div>
             )}
 
-            {/* Multi-Select Dropdown Header Input */}
+            {/* Select Dropdown Header Input */}
             <div style={{ position: 'relative' }} ref={companyDropdownRef}>
               <div
                 onClick={() => !isReadOnly && setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
@@ -620,10 +564,10 @@ export default function ContractModal({
                   backgroundColor: '#ffffff'
                 }}
               >
-                <span style={{ color: companySplits.length > 0 ? '#0f172a' : '#94a3b8', fontSize: '0.85rem' }}>
-                  {companySplits.length > 0 
-                    ? `${companySplits.map(s => s.companyName).join(', ')} (${companySplits.length} selected)`
-                    : '-- Click to select companies from Onboarding or Custom --'}
+                <span style={{ color: selectedCompany ? '#0f172a' : '#94a3b8', fontSize: '0.85rem', fontWeight: selectedCompany ? '600' : 'normal' }}>
+                  {selectedCompany 
+                    ? selectedCompany.companyName
+                    : '-- Click to select company from Onboarding or Custom --'}
                 </span>
                 <i className={`bx bx-chevron-${isCompanyDropdownOpen ? 'up' : 'down'}`} style={{ color: '#64748b' }}></i>
               </div>
@@ -671,29 +615,23 @@ export default function ContractModal({
                       </div>
                     ) : (
                       filteredCompanies.map(c => {
-                        const isChecked = companySplits.some(s => s.id === c.id);
+                        const isSelected = selectedCompany && (selectedCompany.id === c.id || selectedCompany.companyName === c.companyName);
                         return (
                           <div
                             key={c.id}
-                            onClick={() => toggleCompanySelection(c)}
+                            onClick={() => handleSelectCompany(c)}
                             style={{
                               padding: '0.55rem 0.75rem',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '0.5rem',
+                              justifyContent: 'space-between',
                               cursor: 'pointer',
-                              background: isChecked ? '#f0f9ff' : '#ffffff',
+                              background: isSelected ? '#f0f9ff' : '#ffffff',
                               borderBottom: '1px solid #f8fafc'
                             }}
-                            onMouseEnter={e => e.currentTarget.style.backgroundColor = isChecked ? '#e0f2fe' : '#f8fafc'}
-                            onMouseLeave={e => e.currentTarget.style.backgroundColor = isChecked ? '#f0f9ff' : '#ffffff'}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = isSelected ? '#e0f2fe' : '#f8fafc'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = isSelected ? '#f0f9ff' : '#ffffff'}
                           >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              readOnly
-                              style={{ accentColor: '#0284c7', width: '16px', height: '16px', cursor: 'pointer' }}
-                            />
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                 <span style={{ fontWeight: '600', fontSize: '0.85rem', color: '#0f172a' }}>{c.companyName}</span>
@@ -710,6 +648,9 @@ export default function ContractModal({
                               </div>
                               {c.taxDetails && <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Tax/GST: {c.taxDetails}</div>}
                             </div>
+                            {isSelected && (
+                              <i className="bx bx-check" style={{ color: '#0284c7', fontSize: '1.25rem', fontWeight: 'bold' }}></i>
+                            )}
                           </div>
                         );
                       })
@@ -719,123 +660,54 @@ export default function ContractModal({
               )}
             </div>
 
-            {/* Error Message for Companies */}
-            {errors.companies && (
+            {/* Error Message for Company */}
+            {errors.company && (
               <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.35rem' }}>
                 <i className="bx bx-error-circle" style={{ marginRight: '0.25rem' }}></i>
-                {errors.companies}
+                {errors.company}
               </div>
             )}
 
-            {/* Once Selected: Show Percentage Option Section */}
-            {companySplits.length > 0 && (
-              <div style={{ marginTop: '0.85rem', borderTop: '1px solid #e2e8f0', paddingTop: '0.75rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <i className="bx bx-pie-chart-alt-2" style={{ color: '#0284c7' }}></i>
-                    Percentage Allocation ({companySplits.length} selected)
-                  </span>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{
-                      fontSize: '0.75rem',
-                      fontWeight: '700',
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: '4px',
-                      background: Math.round(totalPercentage) === 100 ? '#dcfce7' : '#fee2e2',
-                      color: Math.round(totalPercentage) === 100 ? '#166534' : '#991b1b',
-                      border: Math.round(totalPercentage) === 100 ? '1px solid #bbf7d0' : '1px solid #fecaca'
-                    }}>
-                      {Math.round(totalPercentage) === 100 ? '100% Split' : `${totalPercentage}% / 100%`}
-                    </span>
-
-                    {!isReadOnly && companySplits.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={applyEqualSplit}
-                        style={{
-                          background: '#0284c7',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '0.25rem 0.55rem',
-                          borderRadius: '4px',
-                          fontSize: '0.72rem',
-                          fontWeight: '600',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Equal Split
-                      </button>
+            {/* Selected Company Details (No Share %) */}
+            {selectedCompany && (
+              <div style={{
+                marginTop: '0.75rem',
+                padding: '0.65rem 0.85rem',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <i className="bx bx-check-circle" style={{ color: '#16a34a', fontSize: '1.2rem' }}></i>
+                  <div>
+                    <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#0f172a' }}>
+                      {selectedCompany.companyName}
+                    </div>
+                    {selectedCompany.taxDetails && (
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        Tax/GST: {selectedCompany.taxDetails}
+                      </div>
+                    )}
+                    {selectedCompany.address && (
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                        {selectedCompany.address}
+                      </div>
                     )}
                   </div>
                 </div>
-
-                {/* Percentage allocation cards */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  {companySplits.map((split) => {
-                    const share = ((val * (parseFloat(split.percentage) || 0)) / 100).toFixed(2);
-                    return (
-                      <div
-                        key={split.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '0.5rem 0.75rem',
-                          background: '#ffffff',
-                          border: '1px solid #cbd5e1',
-                          borderRadius: '6px',
-                          gap: '0.5rem'
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: '600', fontSize: '0.82rem', color: '#0f172a' }}>{split.companyName}</div>
-                          {split.taxDetails && <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Tax/GST: {split.taxDetails}</div>}
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="1"
-                              disabled={isReadOnly}
-                              value={split.percentage}
-                              onChange={(e) => handlePercentageChange(split.id, e.target.value)}
-                              style={{
-                                width: '55px',
-                                padding: '0.3rem 0.4rem',
-                                borderRadius: '4px',
-                                border: '1px solid #cbd5e1',
-                                textAlign: 'right',
-                                fontSize: '0.85rem',
-                                fontWeight: '600',
-                                color: '#0f172a'
-                              }}
-                            />
-                            <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>%</span>
-                          </div>
-
-                          <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#0284c7', minWidth: '85px', textAlign: 'right' }}>
-                            {share} {formData.contractCurrency}
-                          </div>
-
-                          {!isReadOnly && companySplits.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => toggleCompanySelection(split)}
-                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                              title="Remove company"
-                            >
-                              <i className="bx bx-trash" style={{ fontSize: '1rem' }}></i>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <span style={{
+                  fontSize: '0.7rem',
+                  padding: '0.15rem 0.45rem',
+                  borderRadius: '4px',
+                  background: selectedCompany.source === 'custom' ? '#f5f3ff' : '#eff6ff',
+                  color: selectedCompany.source === 'custom' ? '#6d28d9' : '#1d4ed8',
+                  fontWeight: '600'
+                }}>
+                  {selectedCompany.source === 'custom' ? 'Custom Entity' : 'Onboarding Entity'}
+                </span>
               </div>
             )}
           </div>

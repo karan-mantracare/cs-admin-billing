@@ -1559,7 +1559,9 @@ function EditDivision() {
                                             {cnt.companyEntities.map((ent, eIdx) => (
                                               <div key={ent.id || eIdx} style={{ fontSize: '0.75rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                                 <span style={{ fontWeight: '600', color: '#1e293b' }}>{ent.companyName}</span>
-                                                <span style={{ color: '#0284c7', fontWeight: '700', fontSize: '0.72rem' }}>({ent.percentage}%)</span>
+                                                {ent.percentage !== undefined && ent.percentage !== null && (
+                                                  <span style={{ color: '#0284c7', fontWeight: '700', fontSize: '0.72rem' }}>({ent.percentage}%)</span>
+                                                )}
                                                 {ent.taxDetails && <span style={{ color: '#94a3b8' }}>• Tax: {ent.taxDetails}</span>}
                                               </div>
                                             ))}
@@ -1590,11 +1592,36 @@ function EditDivision() {
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem', color: cnt.orderName ? '#0f172a' : '#94a3b8' }}>
                                   {cnt.orderName ? (
-                                    <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500' }}>
+                                    <span 
+                                      onClick={() => {
+                                        if (cnt.orderId) {
+                                          navigate(`/corporate/division/order/edit/${cnt.orderId}`, {
+                                            state: { edit: true, orderId: cnt.orderId, clientName: formData.clientName, divisionName: formData.divisionName, divisionId: division.id }
+                                          });
+                                        }
+                                      }}
+                                      style={{ 
+                                        background: '#eff6ff', 
+                                        color: '#1d4ed8', 
+                                        padding: '0.25rem 0.6rem', 
+                                        borderRadius: '4px', 
+                                        fontSize: '0.8rem', 
+                                        fontWeight: '600',
+                                        cursor: cnt.orderId ? 'pointer' : 'default',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.35rem',
+                                        border: '1px solid #bfdbfe'
+                                      }}
+                                      title={cnt.orderId ? 'Click to view / edit order' : ''}
+                                    >
+                                      <i className='bx bx-receipt' style={{ fontSize: '0.9rem' }}></i>
                                       {cnt.orderName}
                                     </span>
                                   ) : (
-                                    '— Unlinked —'
+                                    <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.8rem', background: '#f8fafc', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px dashed #cbd5e1' }}>
+                                      — Unlinked —
+                                    </span>
                                   )}
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>

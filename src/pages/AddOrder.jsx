@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
-import BillingDetailsModal from '../components/BillingDetailsModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
 import DocumentConnectModalV2 from '../components/DocumentConnectModalV2';
-import ContractConnectModal from '../components/ContractConnectModal';
 import PaymentSummaryModal from '../components/PaymentSummaryModal';
 import ConfirmModal from '../components/ConfirmModal';
 import PaymentScheduleModal from '../components/PaymentScheduleModal';
@@ -175,67 +173,228 @@ function AddOrder() {
         }
       }
     } else {
-      const targetDivId = location.state?.divisionId || searchParams.get('divisionId');
-      if (targetDivId) {
-        try {
-          const savedOnboarding = localStorage.getItem('onboardingFiled_' + targetDivId);
-          if (savedOnboarding) {
-            const parsed = JSON.parse(savedOnboarding);
-            if (parsed.billingDetails && (parsed.billingDetails.companyName || parsed.billingDetails.gstNumber || parsed.billingDetails.address || parsed.billingDetails.companies?.length)) {
-              const companies = (parsed.billingDetails.companies || []).filter(c => c.companyName && c.companyName.trim());
-              let initialSplits = [];
-              if (companies.length > 1) {
-                const count = companies.length;
-                const base = Math.floor(100 / count);
-                const remainder = 100 - (base * count);
-                initialSplits = companies.map((c, idx) => ({
-                  id: c.id || idx + 1,
-                  companyName: c.companyName,
-                  gstNumber: c.gstNumber || '',
-                  address: c.address || '',
-                  selected: true,
-                  percentage: idx === count - 1 ? (base + remainder) : base
-                }));
-              }
-              setFormData(prev => {
-                if (prev.billingDetails) return prev;
-                return {
-                  ...prev,
-                  divisionId: targetDivId,
-                  clientName: location.state?.clientName || prev.clientName || '',
-                  divisionName: location.state?.divisionName || prev.divisionName || '',
-                  billingDetails: {
-                    billingEntity: initialSplits.length > 1
-                      ? `${initialSplits[0].companyName} (+${initialSplits.length - 1} entities)`
-                      : (parsed.billingDetails.companyName || ''),
-                    taxDetails: parsed.billingDetails.gstNumber || '',
-                    billingAddress: parsed.billingDetails.address || '',
-                    contractValue: '',
-                    clientCurrency: 'USD',
-                    currencyExchangeValue: '1',
-                    paymentDueDays: '30',
-                    billFrom: 'Mantracare',
-                    receivingBankName: '',
-                    bankDetailsLink: '',
-                    billingDate: new Date().toISOString().split('T')[0],
-                    billingSplits: initialSplits
-                  }
-                };
-              });
-            }
-          }
-        } catch (e) {
-          console.error("Error loading onboarding billing data:", e);
-        }
-      }
+      const targetDivId = location.state?.divisionId || searchParams.get('divisionId') || '1';
+      setFormData(prev => ({
+        ...prev,
+        divisionId: targetDivId,
+        clientName: location.state?.clientName || prev.clientName || 'Corporate Client',
+        divisionName: location.state?.divisionName || prev.divisionName || `Division #${targetDivId}`
+      }));
     }
   }, [isEditMode, effectiveOrderId, location.state, searchParams]);
 
-  const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
-  const [openAddCompanyDirectly, setOpenAddCompanyDirectly] = useState(false);
+  // Division Contracts State (Single source of truth from Division page)
+  const resolvedDivisionId = useMemo(() => {
+    return (
+      location.state?.divisionId || 
+      searchParams.get('divisionId') || 
+      formData.divisionId || 
+      '1'
+    );
+  }, [location.state, searchParams, formData.divisionId]);
+
+  const [divisionContracts, setDivisionContracts] = useState([]);
+  const [selectedContractIds, setSelectedContractIds] = useState([]);
+  const [isContractsDropdownOpen, setIsContractsDropdownOpen] = useState(false);
+  const [contractSearch, setContractSearch] = useState('');
+  const contractsDropdownRef = useRef(null);
+
+  // Close contracts dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (contractsDropdownRef.current && !contractsDropdownRef.current.contains(e.target)) {
+        setIsContractsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredDivisionContracts = useMemo(() => {
+    if (!contractSearch.trim()) return divisionContracts;
+    const q = contractSearch.toLowerCase();
+    return divisionContracts.filter(c => 
+      (c.companyName && c.companyName.toLowerCase().includes(q)) ||
+      (c.taxDetails && c.taxDetails.toLowerCase().includes(q)) ||
+      (c.contractCurrency && c.contractCurrency.toLowerCase().includes(q)) ||
+      (c.billFrom && c.billFrom.toLowerCase().includes(q)) ||
+      (c.receivingBankName && c.receivingBankName.toLowerCase().includes(q))
+    );
+  }, [divisionContracts, contractSearch]);
+
+  // Load contracts for this division
+  const loadDivisionContracts = () => {
+    try {
+      const saved = localStorage.getItem('division_contracts');
+      let all = saved ? JSON.parse(saved) : [];
+
+      // Seed realistic demo contracts for division '1' if completely empty
+      if ((!all || all.length === 0) && (String(resolvedDivisionId) === '1' || resolvedDivisionId === 1)) {
+        all = [
+          {
+            id: 'cnt_demo_1',
+            divisionId: '1',
+            companyName: 'Acme Global Corp (US)',
+            taxDetails: 'US-EIN-9876543',
+            contractValue: 12000,
+            contractCurrency: 'USD',
+            currencyExchangeValue: 1,
+            amountInUSD: 12000,
+            billFrom: 'MCC',
+            receivingBankName: 'AirWallex',
+            billingDate: new Date().toISOString().split('T')[0],
+            paymentDueDays: 30,
+            orderId: '',
+            orderName: ''
+          },
+          {
+            id: 'cnt_demo_2',
+            divisionId: '1',
+            companyName: 'Acme Solutions Pvt Ltd (India)',
+            taxDetails: 'GSTIN27AABCU9603R1ZM',
+            contractValue: 350000,
+            contractCurrency: 'INR',
+            currencyExchangeValue: 83.5,
+            amountInUSD: 4191.62,
+            billFrom: 'MCHPL',
+            receivingBankName: 'ICICI',
+            billingDate: new Date().toISOString().split('T')[0],
+            paymentDueDays: 15,
+            orderId: '',
+            orderName: ''
+          }
+        ];
+        localStorage.setItem('division_contracts', JSON.stringify(all));
+      }
+
+      const forThisDiv = all.filter(c => String(c.divisionId) === String(resolvedDivisionId));
+      setDivisionContracts(forThisDiv);
+      return forThisDiv;
+    } catch (e) {
+      console.error('Failed to load division_contracts:', e);
+      setDivisionContracts([]);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    loadDivisionContracts();
+    window.addEventListener('storage', loadDivisionContracts);
+    return () => window.removeEventListener('storage', loadDivisionContracts);
+  }, [resolvedDivisionId]);
+
+  // Sync selected contract IDs on order load
+  useEffect(() => {
+    if (formData.contractDetails?.contracts && formData.contractDetails.contracts.length > 0) {
+      setSelectedContractIds(formData.contractDetails.contracts.map(c => c.id));
+    } else if (effectiveOrderId && divisionContracts.length > 0) {
+      const linked = divisionContracts.filter(c => String(c.orderId) === String(effectiveOrderId));
+      if (linked.length > 0) {
+        setSelectedContractIds(linked.map(c => c.id));
+      }
+    }
+  }, [effectiveOrderId, divisionContracts.length]);
+
+  // Helper to recompute order amount & billing details when contracts are selected/deselected
+  const updateOrderFromSelectedContracts = (newSelectedIds, currentContracts = divisionContracts) => {
+    const selected = currentContracts.filter(c => newSelectedIds.includes(c.id));
+    const totalUSD = selected.reduce((sum, c) => {
+      const val = Number(c.amountInUSD) || Number(c.contractValue) || 0;
+      return sum + val;
+    }, 0);
+
+    const primary = selected[0] || null;
+
+    setFormData(prev => ({
+      ...prev,
+      amount: totalUSD > 0 ? totalUSD.toFixed(2) : '',
+      contractDetails: {
+        ...prev.contractDetails,
+        contracts: selected
+      },
+      billingDetails: selected.length > 0 ? {
+        billingEntity: selected.map(c => c.companyName).join(', '),
+        companyName: selected.map(c => c.companyName).join(', '),
+        taxDetails: selected.map(c => c.taxDetails).filter(Boolean).join(', ') || 'N/A',
+        contractValue: totalUSD.toFixed(2),
+        clientCurrency: selected.every(c => c.contractCurrency === primary?.contractCurrency) 
+          ? (primary?.contractCurrency || 'USD') 
+          : 'USD',
+        currencyExchangeValue: '1',
+        amountInUSD: totalUSD.toFixed(2),
+        paymentDueDays: primary?.paymentDueDays || '30',
+        paymentDue: primary?.paymentDueDays || '30',
+        billFrom: selected.map(c => c.billFrom).filter(Boolean).join(', ') || 'MCC',
+        receivingBankName: selected.map(c => c.receivingBankName).filter(Boolean).join(', ') || '',
+        bankDetailsLink: primary?.bankDetailsLink || '',
+        billingDate: primary?.billingDate || new Date().toISOString().split('T')[0],
+        billingSplits: selected.map(c => ({
+          id: c.id,
+          companyName: c.companyName,
+          taxDetails: c.taxDetails,
+          contractValue: c.contractValue,
+          contractCurrency: c.contractCurrency,
+          amountInUSD: c.amountInUSD,
+          billFrom: c.billFrom,
+          receivingBankName: c.receivingBankName,
+          bankDetailsLink: c.bankDetailsLink,
+          selected: true
+        }))
+      } : null
+    }));
+  };
+
+  const handleToggleContract = (contractId) => {
+    setSelectedContractIds(prev => {
+      const isSelected = prev.includes(contractId);
+      const newSelected = isSelected ? prev.filter(id => id !== contractId) : [...prev, contractId];
+      updateOrderFromSelectedContracts(newSelected);
+      return newSelected;
+    });
+  };
+
+  const handleSelectAllContracts = () => {
+    const allIds = divisionContracts.map(c => c.id);
+    setSelectedContractIds(allIds);
+    updateOrderFromSelectedContracts(allIds);
+  };
+
+  const handleDeselectAllContracts = () => {
+    setSelectedContractIds([]);
+    updateOrderFromSelectedContracts([]);
+  };
+
+
+  const syncDivisionContractsMapping = (targetOrderId, targetOrderName, selectedContracts) => {
+    try {
+      const allDivContracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+      const selectedIds = (selectedContracts || []).map(c => c.id);
+
+      (selectedContracts || []).forEach(sc => {
+        if (!allDivContracts.find(c => c.id === sc.id)) {
+          allDivContracts.push({ ...sc, divisionId: resolvedDivisionId });
+        }
+      });
+
+      const updated = allDivContracts.map(c => {
+        if (selectedIds.includes(c.id)) {
+          return { ...c, orderId: targetOrderId, orderName: targetOrderName };
+        }
+        if (String(c.orderId) === String(targetOrderId) && !selectedIds.includes(c.id)) {
+          return { ...c, orderId: '', orderName: '' };
+        }
+        return c;
+      });
+
+      localStorage.setItem('division_contracts', JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {
+      console.error('Failed to sync division contracts mapping', e);
+    }
+  };
+
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [isDocModalV2Open, setIsDocModalV2Open] = useState(false);
-  const [isContractConnectModalOpen, setIsContractConnectModalOpen] = useState(false);
   const [isPaymentSummaryOpen, setIsPaymentSummaryOpen] = useState(false);
   const [isPaymentScheduleOpen, setIsPaymentScheduleOpen] = useState(false);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
@@ -312,68 +471,8 @@ function AddOrder() {
     setIsDocModalV2Open(false);
   };
 
-  const addOrderContracts = (contracts) => {
-    setFormData(prev => {
-      const existing = prev.contractDetails.contracts || [];
-      const newContracts = contracts.filter(c => !existing.find(ec => ec.id === c.id));
-      const firstNew = newContracts[0] || contracts[0];
-
-      let updatedBilling = prev.billingDetails;
-      let updatedAmount = prev.amount;
-      if (firstNew && (!prev.billingDetails || !prev.billingDetails.contractValue || prev.billingDetails.contractValue === '0' || prev.billingDetails.contractValue === 0)) {
-        updatedBilling = {
-          ...prev.billingDetails,
-          billingEntity: firstNew.companyName,
-          taxDetails: firstNew.taxDetails,
-          companyName: firstNew.companyName,
-          contractValue: firstNew.contractValue,
-          clientCurrency: firstNew.contractCurrency,
-          currencyExchangeValue: firstNew.currencyExchangeValue,
-          paymentDue: firstNew.paymentDueDays,
-          amountInUSD: firstNew.amountInUSD,
-          billFrom: firstNew.billFrom,
-          receivingBankName: firstNew.receivingBankName,
-          billingDate: firstNew.billingDate,
-          bankDetailsLink: firstNew.bankDetailsLink
-        };
-        updatedAmount = firstNew.amountInUSD;
-      }
-
-      return {
-        ...prev,
-        billingDetails: updatedBilling,
-        amount: updatedAmount,
-        contractDetails: {
-          ...prev.contractDetails,
-          contracts: [...existing, ...newContracts]
-        }
-      };
-    });
-    setIsContractConnectModalOpen(false);
-  };
-
   const removeOrderContract = (contract) => {
-    const isDirect = contract.isDirectlyUploaded;
-    const title = isDirect ? 'Delete Contract' : 'Disconnect Contract';
-    const message = isDirect 
-      ? 'Are you sure you want to delete this contract? It will be removed from both the Division and this Order.' 
-      : 'Are you sure you want to disconnect this contract from this order?';
-    
-    setConfirmConfig({
-      isOpen: true,
-      title,
-      message,
-      confirmText: isDirect ? 'Delete' : 'Disconnect',
-      onConfirm: () => {
-        setFormData(prev => ({
-          ...prev,
-          contractDetails: {
-            ...prev.contractDetails,
-            contracts: (prev.contractDetails.contracts || []).filter(c => c.id !== contract.id)
-          }
-        }));
-      }
-    });
+    handleToggleContract(contract.id);
   };
   
   const removeDocument = (id) => {
@@ -672,32 +771,8 @@ function AddOrder() {
         localStorage.setItem('division_documents', JSON.stringify(updatedDivDocs));
       }
 
-      // Process contracts connecting/saving
-      if (formData.contractDetails?.contracts) {
-        const allDivContracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
-        const contractIds = formData.contractDetails.contracts.map(c => c.id);
-
-        formData.contractDetails.contracts.forEach(cnt => {
-          if (!allDivContracts.find(c => c.id === cnt.id)) {
-            allDivContracts.push(cnt);
-          }
-        });
-
-        const updatedDivContracts = allDivContracts.map(c => {
-          if (contractIds.includes(c.id)) {
-            return { ...c, orderId: targetOrderId, orderName: targetOrderName };
-          }
-          if (String(c.orderId) === String(targetOrderId) && !contractIds.includes(c.id)) {
-            if (c.isDirectlyUploaded) {
-              return null;
-            }
-            return { ...c, orderId: '', orderName: '' };
-          }
-          return c;
-        }).filter(Boolean);
-
-        localStorage.setItem('division_contracts', JSON.stringify(updatedDivContracts));
-      }
+      // Sync mapped contracts to division_contracts table
+      syncDivisionContractsMapping(targetOrderId, targetOrderName, formData.contractDetails?.contracts || []);
 
       return { targetOrderId, targetOrderName, clientName: resolvedClientName, divisionName: resolvedDivisionName };
     } catch (e) {
@@ -795,33 +870,9 @@ function AddOrder() {
       localStorage.setItem('division_documents', JSON.stringify(updatedDivDocs));
     }
 
-    // Process contracts connecting/saving
-    if (formData.contractDetails?.contracts) {
-      const targetOrderName = `${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart} - ${formData.plan}`;
-      const allDivContracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
-      const contractIds = formData.contractDetails.contracts.map(c => c.id);
-
-      formData.contractDetails.contracts.forEach(cnt => {
-        if (!allDivContracts.find(c => c.id === cnt.id)) {
-          allDivContracts.push(cnt);
-        }
-      });
-
-      const updatedDivContracts = allDivContracts.map(c => {
-        if (contractIds.includes(c.id)) {
-          return { ...c, orderId: targetOrderId, orderName: targetOrderName };
-        }
-        if (String(c.orderId) === String(targetOrderId) && !contractIds.includes(c.id)) {
-          if (c.isDirectlyUploaded) {
-            return null;
-          }
-          return { ...c, orderId: '', orderName: '' };
-        }
-        return c;
-      }).filter(Boolean);
-
-      localStorage.setItem('division_contracts', JSON.stringify(updatedDivContracts));
-    }
+    // Sync mapped contracts to division_contracts table
+    const targetOrderName = `${location.state?.divisionName || formData.divisionName || 'Unknown'} | ${formData.planStart || 'Active'} - ${formData.plan || 'Standard'}`;
+    syncDivisionContractsMapping(targetOrderId, targetOrderName, formData.contractDetails?.contracts || []);
 
     navigate(-1);
   };
@@ -983,137 +1034,366 @@ function AddOrder() {
             }} placeholder="e.g. 100" />
           </div>
 
+          {/* Division Contracts & Order Value */}
           <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label style={{...labelStyle, marginBottom: 0}}>Billing Details</label>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenAddCompanyDirectly(true);
-                    setIsBillingModalOpen(true);
-                  }}
-                  style={{ padding: '0.4rem 0.8rem', background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#dcfce7'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#f0fdf4'; }}
-                >
-                  <i className="bx bx-plus-circle"></i> Add Company
-                </button>
-                <button 
-                  onClick={() => {
-                    setOpenAddCompanyDirectly(false);
-                    setIsBillingModalOpen(true);
-                  }}
-                  style={{ padding: '0.4rem 0.8rem', background: 'transparent', color: '#0ea5e9', border: '1px solid #0ea5e9', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#f0f9ff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <i className={`bx bx-${formData.billingDetails ? 'edit' : 'plus'}`} style={{ marginRight: '0.25rem', fontSize: '1rem' }}></i>
-                  {formData.billingDetails ? 'Edit' : 'Add'} Billing Details
-                </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <label style={{ ...labelStyle, marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.95rem', fontWeight: '700' }}>
+                  <i className='bx bx-file-blank' style={{ color: '#0284c7', fontSize: '1.2rem' }}></i>
+                  Division Contracts & Commercial Value
+                  <Tooltip text="Commercial contracts are created and maintained at the Division level. Select which contracts belong to this order. The total order value adds up automatically." align="left" />
+                </label>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  Select the division contracts applicable to this order from the dropdown below. Amount automatically calculates from selected contracts.
+                </div>
               </div>
             </div>
-            
-            {formData.billingDetails ? (
-              <div style={{ padding: '1rem', border: '1px solid #bfdbfe', borderRadius: '8px', background: 'linear-gradient(to right, #f0f9ff, #ffffff)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ padding: '0.6rem', background: '#dbeafe', borderRadius: '8px', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <i className='bx bx-receipt' style={{ fontSize: '1.4rem' }}></i>
+
+            {/* Total Order Value Calculation Banner */}
+            <div style={{
+              padding: '1rem 1.25rem',
+              borderRadius: '10px',
+              border: selectedContractIds.length > 0 ? '1px solid #93c5fd' : '1px solid #e2e8f0',
+              background: selectedContractIds.length > 0 
+                ? 'linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)' 
+                : '#f8fafc',
+              marginBottom: '1rem',
+              boxShadow: selectedContractIds.length > 0 ? '0 2px 4px rgba(37, 99, 235, 0.06)' : 'none'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '10px',
+                    background: selectedContractIds.length > 0 ? '#dbeafe' : '#e2e8f0',
+                    color: selectedContractIds.length > 0 ? '#1d4ed8' : '#64748b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.5rem'
+                  }}>
+                    <i className='bx bx-calculator'></i>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      Total Order Value (Sum of Selected Contracts)
                     </div>
-                    <div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Contract Value</div>
-                      <div style={{ fontSize: '1.35rem', color: '#0f172a', fontWeight: '800' }}>
-                        {formData.billingDetails.clientCurrency || '$'} {formData.billingDetails.contractValue || formData.amount || '0'}
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.15rem' }}>
+                      <span style={{ fontSize: '1.6rem', color: selectedContractIds.length > 0 ? '#0f172a' : '#64748b', fontWeight: '800' }}>
+                        ${selectedContractIds.length > 0 ? (Number(formData.amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                      </span>
+                      <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>USD</span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#dcfce7', padding: '0.35rem 0.75rem', borderRadius: '20px', border: '1px solid #bbf7d0' }}>
-                      <i className='bx bx-check-circle' style={{ fontSize: '1rem' }}></i> Billing Configured
-                    </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>Selected Contracts</div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: '700', color: selectedContractIds.length > 0 ? '#0284c7' : '#94a3b8' }}>
+                      {selectedContractIds.length} of {divisionContracts.length} selected
+                    </div>
+                  </div>
+                  {selectedContractIds.length > 0 && (
                     <button
                       type="button"
                       onClick={handleSaveDraftAndCreateSchedule}
-                      style={{ padding: '0.4rem 0.85rem', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                      style={{ padding: '0.45rem 0.9rem', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                     >
                       <i className='bx bx-calendar-plus'></i> Schedule Billing
                     </button>
-                  </div>
+                  )}
                 </div>
+              </div>
+            </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px dashed #cbd5e1', fontSize: '0.82rem' }}>
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Billing Entity</span>
-                    <strong style={{ color: '#1e293b' }}>{formData.billingDetails.billingEntity || formData.clientName || 'Not specified'}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Tax / GST ID</span>
-                    <strong style={{ color: '#1e293b' }}>{formData.billingDetails.taxDetails || 'N/A'}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Payment Terms</span>
-                    <strong style={{ color: '#1e293b' }}>{formData.billingDetails.paymentDueDays ? `Net ${formData.billingDetails.paymentDueDays} days` : 'Net 30 days'}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Billing Entity From</span>
-                    <strong style={{ color: '#1e293b' }}>{formData.billingDetails.billFrom || 'Mantracare'}</strong>
-                  </div>
-                  {formData.billingDetails.billingAddress && (
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Billing Address</span>
-                      <strong style={{ color: '#1e293b' }}>{formData.billingDetails.billingAddress}</strong>
+            {/* Contracts Multi-Select Dropdown Container */}
+            <div style={{ position: 'relative', marginBottom: '0.75rem' }} ref={contractsDropdownRef}>
+              <label style={{ ...labelStyle, fontSize: '0.82rem', marginBottom: '0.35rem', fontWeight: '600' }}>
+                Select Contracts (Multi-Select)
+              </label>
+
+              {/* Dropdown Header Trigger */}
+              <div
+                onClick={() => setIsContractsDropdownOpen(!isContractsDropdownOpen)}
+                style={{
+                  ...inputStyle,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  backgroundColor: '#ffffff',
+                  minHeight: '44px',
+                  padding: '0.5rem 0.85rem',
+                  border: isContractsDropdownOpen ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
+                  boxShadow: isContractsDropdownOpen ? '0 0 0 3px rgba(2, 132, 199, 0.12)' : 'none'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+                  {selectedContractIds.length === 0 ? (
+                    <span style={{ color: '#94a3b8', fontSize: '0.88rem' }}>
+                      -- Click to select contracts from this division --
+                    </span>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                      <span style={{
+                        background: '#e0f2fe',
+                        color: '#0369a1',
+                        padding: '0.15rem 0.55rem',
+                        borderRadius: '20px',
+                        fontSize: '0.74rem',
+                        fontWeight: '700',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}>
+                        <i className='bx bx-check'></i>
+                        {selectedContractIds.length} of {divisionContracts.length} selected
+                      </span>
+                      <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#0f172a' }}>
+                        {divisionContracts
+                          .filter(c => selectedContractIds.includes(c.id))
+                          .map(c => c.companyName)
+                          .join(', ')}
+                      </span>
                     </div>
                   )}
                 </div>
+                <i className={`bx bx-chevron-${isContractsDropdownOpen ? 'up' : 'down'}`} style={{ color: '#64748b', fontSize: '1.25rem', marginLeft: '0.5rem' }}></i>
+              </div>
 
-                {/* Multi-Entity Split Allocation Preview */}
-                {formData.billingDetails.billingSplits?.filter(s => s.selected)?.length > 1 && (
-                  <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px dashed #bfdbfe' }}>
-                    <div style={{ fontSize: '0.74rem', color: '#0369a1', fontWeight: '700', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <i className='bx bx-git-branch'></i> Multi-Entity Billing Split Breakdown:
+              {/* Dropdown Menu Panel */}
+              {isContractsDropdownOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  marginTop: '5px',
+                  zIndex: 50,
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.08)',
+                  maxHeight: '380px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
+                }}>
+                  {/* Select All & Summary Action Bar */}
+                  <div style={{
+                    padding: '0.65rem 0.9rem',
+                    background: '#f8fafc',
+                    borderBottom: '1px solid #e2e8f0',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0, fontSize: '0.82rem', fontWeight: '700', color: '#0f172a' }}>
+                      <input
+                        type="checkbox"
+                        checked={divisionContracts.length > 0 && selectedContractIds.length === divisionContracts.length}
+                        onChange={() => {
+                          if (selectedContractIds.length === divisionContracts.length) {
+                            handleDeselectAllContracts();
+                          } else {
+                            handleSelectAllContracts();
+                          }
+                        }}
+                        style={{ accentColor: '#0284c7', width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <span>Select All ({divisionContracts.length})</span>
+                    </label>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>
+                        {selectedContractIds.length} selected
+                      </span>
+                      {selectedContractIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleDeselectAllContracts}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ef4444',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        >
+                          Clear
+                        </button>
+                      )}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.5rem' }}>
-                      {formData.billingDetails.billingSplits.filter(s => s.selected).map((s, idx) => {
-                        const cVal = parseFloat(formData.billingDetails.contractValue || formData.amount) || 0;
-                        const share = ((cVal * (Number(s.percentage) || 0)) / 100).toFixed(2);
+                  </div>
+
+                  {/* Search input if more than 3 contracts */}
+                  {divisionContracts.length > 3 && (
+                    <div style={{ padding: '0.5rem 0.85rem', borderBottom: '1px solid #e2e8f0', background: '#ffffff' }}>
+                      <div style={{ position: 'relative' }}>
+                        <i className='bx bx-search' style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '0.95rem' }}></i>
+                        <input
+                          type="text"
+                          placeholder="Search contract by company, tax ID, currency..."
+                          value={contractSearch}
+                          onChange={(e) => setContractSearch(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '0.35rem 0.5rem 0.35rem 1.8rem',
+                            borderRadius: '4px',
+                            border: '1px solid #cbd5e1',
+                            outline: 'none',
+                            fontSize: '0.8rem',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Contracts Dropdown Options List */}
+                  <div style={{ overflowY: 'auto', maxHeight: '280px' }}>
+                    {filteredDivisionContracts.length === 0 ? (
+                      <div style={{ padding: '1.25rem', textAlign: 'center', color: '#64748b', fontSize: '0.82rem' }}>
+                        {divisionContracts.length === 0
+                          ? 'No contracts found for this Division. Please create contracts on the Division page.'
+                          : 'No matching contracts found.'}
+                      </div>
+                    ) : (
+                      filteredDivisionContracts.map((cnt) => {
+                        const isSelected = selectedContractIds.includes(cnt.id);
+                        const cntAmountUSD = Number(cnt.amountInUSD || cnt.contractValue || 0);
+
                         return (
-                          <div key={s.id || idx} style={{ background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #bfdbfe', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '0.5rem' }}>
-                              <strong style={{ color: '#0f172a', display: 'block' }}>{s.companyName}</strong>
-                              <span style={{ color: '#64748b', fontSize: '0.7rem' }}>Tax: {s.gstNumber || 'N/A'}</span>
+                          <div
+                            key={cnt.id}
+                            onClick={() => handleToggleContract(cnt.id)}
+                            style={{
+                              padding: '0.65rem 0.9rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              cursor: 'pointer',
+                              background: isSelected ? '#f0f9ff' : '#ffffff',
+                              borderBottom: '1px solid #f1f5f9',
+                              gap: '0.75rem',
+                              transition: 'background 0.12s ease'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = isSelected ? '#e0f2fe' : '#f8fafc'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = isSelected ? '#f0f9ff' : '#ffffff'}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                readOnly
+                                style={{ accentColor: '#0284c7', width: '16px', height: '16px', cursor: 'pointer', flexShrink: 0 }}
+                              />
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                  <span style={{ fontWeight: '700', fontSize: '0.86rem', color: '#0f172a' }}>
+                                    {cnt.companyName}
+                                  </span>
+                                  {cnt.taxDetails && (
+                                    <span style={{ fontSize: '0.68rem', color: '#64748b', background: '#f1f5f9', padding: '0.05rem 0.35rem', borderRadius: '3px', border: '1px solid #e2e8f0' }}>
+                                      Tax: {cnt.taxDetails}
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.72rem', color: '#64748b', marginTop: '0.15rem' }}>
+                                  <span>Bill From: <strong>{cnt.billFrom || 'MCC'}</strong></span>
+                                  <span>•</span>
+                                  <span>Bank: <strong>{cnt.receivingBankName || 'AirWallex'}</strong></span>
+                                  <span>•</span>
+                                  <span>Net <strong>{cnt.paymentDueDays || 30}d</strong></span>
+                                </div>
+                              </div>
                             </div>
+
                             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                              <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.45rem', borderRadius: '4px', fontWeight: '700', fontSize: '0.72rem' }}>
-                                {s.percentage}%
-                              </span>
-                              <div style={{ color: '#0369a1', fontWeight: '700', fontSize: '0.78rem', marginTop: '0.15rem' }}>
-                                {formData.billingDetails.clientCurrency || '$'} {share}
+                              <div style={{ fontSize: '0.9rem', fontWeight: '800', color: isSelected ? '#0369a1' : '#0f172a' }}>
+                                {Number(cnt.contractValue).toLocaleString()} {cnt.contractCurrency}
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>
+                                ≈ ${cntAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
                               </div>
                             </div>
                           </div>
                         );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ width: '100%', padding: '1.25rem', border: '1px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', color: '#64748b', fontSize: '0.85rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                  <i className='bx bx-info-circle' style={{ fontSize: '1.3rem', color: '#3b82f6' }}></i>
-                  <div>
-                    <span>No billing details added yet. Fill the onboarding form or click </span>
-                    <button 
-                      type="button" 
-                      onClick={() => setIsBillingModalOpen(true)}
-                      style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                    >
-                      Add Billing Details
-                    </button>
-                    <span> to set contract value and generate invoices/schedules.</span>
+                      })
+                    )}
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* Selected Contracts Preview Chips */}
+            {selectedContractIds.length > 0 && (
+              <div style={{
+                padding: '0.75rem 0.9rem',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                flexWrap: 'wrap'
+              }}>
+                <span style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <i className='bx bx-check-double'></i> Active Contracts:
+                </span>
+                {divisionContracts.filter(c => selectedContractIds.includes(c.id)).map(c => {
+                  const cntAmountUSD = Number(c.amountInUSD || c.contractValue || 0);
+                  return (
+                    <span 
+                      key={c.id} 
+                      style={{
+                        background: '#ffffff',
+                        color: '#1e40af',
+                        border: '1px solid #bfdbfe',
+                        padding: '0.25rem 0.6rem',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.45rem',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                      }}
+                    >
+                      <span>{c.companyName}</span>
+                      <strong style={{ color: '#0284c7' }}>
+                        ({Number(c.contractValue).toLocaleString()} {c.contractCurrency} ≈ ${cntAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleContract(c.id);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#94a3b8',
+                          cursor: 'pointer',
+                          padding: '0 2px',
+                          fontSize: '0.95rem',
+                          lineHeight: 1,
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
+                        title="Remove from order"
+                      >
+                        <i className='bx bx-x'></i>
+                      </button>
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1180,61 +1460,7 @@ function AddOrder() {
             ))}
           </div>
 
-          {/* Contracts Section */}
-          <div style={{ gridColumn: '1 / -1' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label style={{ ...labelStyle, marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <i className='bx bx-file-blank' style={{ color: '#0284c7', fontSize: '1.1rem' }}></i>
-                Contracts
-                <Tooltip text="Attach or create commercial contracts for this order." align="left" />
-              </label>
-              <button 
-                type="button"
-                onClick={() => setIsContractConnectModalOpen(true)}
-                style={{ padding: '0.4rem 0.8rem', background: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-              >
-                <i className='bx bx-plus'></i> Attach Contract
-              </button>
-            </div>
 
-            {(!formData.contractDetails.contracts || formData.contractDetails.contracts.length === 0) ? (
-              <div style={{ width: '100%', padding: '1.5rem', border: '1px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', color: '#94a3b8', fontSize: '0.85rem' }}>
-                No contracts attached yet. Click "+ Attach Contract" to connect or create one.
-              </div>
-            ) : (
-              (formData.contractDetails.contracts || []).map((cnt) => (
-                <div key={cnt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '1px solid #bae6fd', borderRadius: '8px', marginBottom: '0.5rem', background: '#f0f9ff' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                    <i className='bx bx-buildings' style={{ color: '#0284c7', fontSize: '1.35rem' }}></i>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
-                        <span style={{ fontWeight: '600', color: '#0f172a' }}>{cnt.companyName}</span>
-                        {cnt.taxDetails && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({cnt.taxDetails})</span>}
-                        <span style={{ color: '#cbd5e1' }}>|</span>
-                        <span style={{ color: '#0284c7', fontWeight: '700' }}>
-                          {cnt.contractValue?.toLocaleString()} {cnt.contractCurrency} (${cnt.amountInUSD?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD)
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
-                        <span><strong>Bill From:</strong> {cnt.billFrom}</span>
-                        <span><strong>Bank:</strong> {cnt.receivingBankName}</span>
-                        <span><strong>Billing Date:</strong> {cnt.billingDate}</span>
-                        <span><strong>Due:</strong> {cnt.paymentDueDays}d</span>
-                      </div>
-                    </div>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => removeOrderContract(cnt)} 
-                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
-                    title="Disconnect / Remove Contract"
-                  >
-                    <i className='bx bx-trash' style={{ fontSize: '1.1rem' }}></i>
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
 
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={labelStyle}>Remarks</label>
@@ -1698,35 +1924,6 @@ function AddOrder() {
       </div>
 
       {/* Modals */}
-      <BillingDetailsModal 
-        isOpen={isBillingModalOpen} 
-        openAddCompany={openAddCompanyDirectly}
-        onClose={() => {
-          setIsBillingModalOpen(false);
-          setOpenAddCompanyDirectly(false);
-        }} 
-        initialData={formData.billingDetails || {}}
-        divisionId={formData.divisionId || location.state?.divisionId}
-        onSave={(data) => {
-          setFormData(prev => {
-            const updated = {
-              ...prev, 
-              billingDetails: data,
-              amount: data.amountInUSD // sync amount
-            };
-            if (data.linkedContract) {
-              const existingContracts = prev.contractDetails.contracts || [];
-              if (!existingContracts.find(c => c.id === data.linkedContract.id)) {
-                updated.contractDetails = {
-                  ...prev.contractDetails,
-                  contracts: [...existingContracts, data.linkedContract]
-                };
-              }
-            }
-            return updated;
-          });
-        }} 
-      />
       <DocumentUploadModal 
         isOpen={isDocModalOpen} 
         onClose={() => setIsDocModalOpen(false)} 
@@ -1740,15 +1937,6 @@ function AddOrder() {
         divisionId={formData.divisionId || location.state?.divisionId || ''}
         orderId={isEditMode ? effectiveOrderId : ''}
         existingV2Docs={formData.contractDetails?.v2Documents || []}
-      />
-
-      <ContractConnectModal 
-        isOpen={isContractConnectModalOpen}
-        onClose={() => setIsContractConnectModalOpen(false)}
-        onConnect={addOrderContracts}
-        divisionId={formData.divisionId || location.state?.divisionId || ''}
-        orderId={isEditMode ? effectiveOrderId : ''}
-        existingContracts={formData.contractDetails?.contracts || []}
       />
 
       <PaymentSummaryModal
