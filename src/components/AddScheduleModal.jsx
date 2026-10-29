@@ -1496,12 +1496,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           background: 'white', 
           borderRadius: '12px', 
           width: '95%', 
-          maxWidth: (selectedOrder && availableContracts.length > 1) ? '760px' : ((selectedOrder && Number(formData.paymentTerms) > 0) ? '920px' : '520px'),
+          maxWidth: (selectedOrder && availableContracts.length > 1) ? '760px' : '520px',
           maxHeight: '90vh',
           overflowY: 'auto',
           padding: '1.5rem', 
-          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
-          transition: 'max-width 0.25s ease'
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
@@ -1509,15 +1508,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: '700' }}>
               {mode === 'row' ? 'Add Row' : 'Add Invoice Schedule'}
             </h2>
-            {selectedOrder && availableContracts.length > 1 ? (
+            {selectedOrder && availableContracts.length > 1 && (
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
                 Set independent installments per contract. Click Preview Schedule to review dates & remarks.
               </p>
-            ) : (selectedOrder && Number(formData.paymentTerms) > 0 && (
-              <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                Configure installments, dates, and split percentages with live auto-preview.
-              </p>
-            ))}
+            )}
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
             &times;
@@ -2066,6 +2061,33 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                       </div>
                     </div>
                   )}
+
+                  {/* Single Contract Estimated Per-Month Breakdown */}
+                  {availableContracts.length <= 1 && formData.paymentTerms && Number(formData.paymentTerms) > 0 && selectedOrder && (() => {
+                    const totalVal = Number(selectedOrder.billingDetails?.contractValue || selectedOrder.amount || 0);
+                    const curr = selectedOrder.billingDetails?.clientCurrency || 'USD';
+                    const months = Number(formData.paymentTerms) || 1;
+                    const perMonthVal = Number((totalVal / months).toFixed(2));
+                    return (
+                      <div style={{
+                        marginTop: '0.65rem',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '0.6rem 0.85rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '500' }}>
+                          Estimated Per Month ({months} {months === 1 ? 'installment' : 'installments'}):
+                        </span>
+                        <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#059669' }}>
+                          {curr} {Number(perMonthVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -2084,309 +2106,6 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               />
             </div>
           )}
-
-          {/* --- LIVE AUTO PREVIEW SCHEDULE TABLE FOR SINGLE CONTRACT --- */}
-          {mode === 'schedule' && selectedOrder && contractScope !== 'all_separate' && Number(formData.paymentTerms) > 0 && (() => {
-            const isSingleContract = Boolean(activeSingleContract);
-            const termsCount = Number(formData.paymentTerms);
-            const splits = recalculateSplits(termsCount, pinnedPercentages);
-            const contractValue = isSingleContract 
-              ? (Number(activeSingleContract.contractValue) || Number(activeSingleContract.amountInUSD) || 0)
-              : (Number(selectedOrder.billingDetails?.contractValue) || Number(selectedOrder.amount) || 0);
-            const amountInUSD = isSingleContract
-              ? (Number(activeSingleContract.amountInUSD) || contractValue || 0)
-              : (Number(selectedOrder.billingDetails?.amountInUSD) || Number(selectedOrder.amount) || 0);
-            const currency = isSingleContract
-              ? (activeSingleContract.contractCurrency || 'USD')
-              : (selectedOrder.billingDetails?.clientCurrency || 'USD');
-            const planStart = selectedOrder.planStart || '';
-            const paymentDueDays = Number(selectedOrder.billingDetails?.paymentDue) || 30;
-            const activeSplits = isSingleContract ? [activeSingleContract] : (availableContracts || []);
-            const hasMultiSplits = activeSplits.length > 1;
-
-            const hasPinned = Object.keys(pinnedPercentages).length > 0;
-
-            return (
-              <div style={{
-                marginTop: '0.5rem',
-                background: '#ffffff',
-                border: '1px solid #bae6fd',
-                borderRadius: '10px',
-                overflow: 'hidden',
-                boxShadow: '0 4px 12px rgba(2, 132, 199, 0.08)'
-              }}>
-                {/* Auto Preview Header Bar */}
-                <div style={{
-                  padding: '0.75rem 1rem',
-                  background: 'linear-gradient(to right, #f0f9ff, #f8fafc)',
-                  borderBottom: '1px solid #e0f2fe',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: '0.5rem'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                    <i className='bx bx-calendar-star' style={{ fontSize: '1.2rem', color: '#0284c7' }}></i>
-                    <div>
-                      <strong style={{ fontSize: '0.85rem', color: '#0369a1' }}>
-                        Schedule Auto-Preview ({termsCount} Back-to-Back Monthly Invoices)
-                      </strong>
-                      <span style={{ fontSize: '0.73rem', color: '#64748b', marginLeft: '0.5rem' }}>
-                        Edit % on any invoice & click ✓ to auto-balance remaining
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    {hasPinned && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPinnedPercentages({});
-                          setTempPercentageInputs({});
-                        }}
-                        style={{
-                          padding: '0.25rem 0.65rem',
-                          background: '#ffffff',
-                          border: '1px solid #cbd5e1',
-                          borderRadius: '5px',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          color: '#475569',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                        }}
-                        title="Reset all invoices back to equal distribution"
-                      >
-                        <i className='bx bx-reset'></i> Reset to Equal Split
-                      </button>
-                    )}
-                    <span style={{
-                      background: '#dcfce7',
-                      color: '#15803d',
-                      padding: '0.25rem 0.65rem',
-                      borderRadius: '5px',
-                      fontSize: '0.75rem',
-                      fontWeight: '700',
-                      border: '1px solid #bbf7d0'
-                    }}>
-                      Total: 100% • {currency} {contractValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Table Body */}
-                <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        <th style={{ padding: '0.55rem 0.65rem' }}>Invoice #</th>
-                        <th style={{ padding: '0.55rem 0.65rem' }}>Invoice By Date</th>
-                        <th style={{ padding: '0.55rem 0.65rem' }}>Due Date</th>
-                        <th style={{ padding: '0.55rem 0.65rem', minWidth: '155px' }}>Share (%)</th>
-                        <th style={{ padding: '0.55rem 0.65rem' }}>Amount ({currency})</th>
-                        <th style={{ padding: '0.55rem 0.65rem' }}>Amount (USD)</th>
-                        <th style={{ padding: '0.55rem 0.65rem', minWidth: '160px' }}>Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {splits.map((split, idx) => {
-                        const invDate = customDates[idx]?.invoiceDate || getMonthlyDate(planStart, idx);
-                        const dueDate = customDates[idx]?.dueByDate || getDueDate(invDate, paymentDueDays);
-                        const termAmt = Number(((contractValue * split.percentage) / 100).toFixed(2));
-                        const termUsd = Number(((amountInUSD * split.percentage) / 100).toFixed(2));
-
-                        const isPinned = split.isPinned;
-                        const tempVal = tempPercentageInputs[idx];
-                        const isDirty = tempVal !== undefined && Number(tempVal) !== split.percentage;
-                        const displayVal = tempVal !== undefined ? tempVal : split.percentage;
-
-                        return (
-                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
-                            <td style={{ padding: '0.55rem 0.65rem', fontWeight: '700', color: '#0f172a', whiteSpace: 'nowrap' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                <span>Invoice #{idx + 1}</span>
-                                {isPinned && (
-                                  <span style={{ background: '#dbeafe', color: '#1e40af', fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '3px', fontWeight: '700' }}>
-                                    PINNED
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Invoice Date */}
-                            <td style={{ padding: '0.45rem 0.65rem' }}>
-                              <input 
-                                type="date"
-                                value={invDate}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  const newDue = getDueDate(val, paymentDueDays);
-                                  setCustomDates(prev => ({
-                                    ...prev,
-                                    [idx]: { ...(prev[idx] || {}), invoiceDate: val, dueByDate: newDue }
-                                  }));
-                                }}
-                                style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
-                              />
-                            </td>
-
-                            {/* Due Date */}
-                            <td style={{ padding: '0.45rem 0.65rem' }}>
-                              <input 
-                                type="date"
-                                value={dueDate}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setCustomDates(prev => ({
-                                    ...prev,
-                                    [idx]: { ...(prev[idx] || {}), dueByDate: val }
-                                  }));
-                                }}
-                                style={{ padding: '0.3rem 0.45rem', borderRadius: '5px', border: '1px solid #cbd5e1', fontSize: '0.8rem', color: '#0f172a' }}
-                              />
-                            </td>
-
-                            {/* Percentage Control */}
-                            <td style={{ padding: '0.45rem 0.65rem' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                <div style={{ position: 'relative', width: '78px' }}>
-                                  <input 
-                                    type="number"
-                                    step="0.01"
-                                    min="0.1"
-                                    max="99.9"
-                                    value={displayVal}
-                                    onChange={(e) => {
-                                      setTempPercentageInputs(prev => ({ ...prev, [idx]: e.target.value }));
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        confirmPercentage(idx, displayVal, termsCount);
-                                      }
-                                    }}
-                                    style={{
-                                      width: '100%',
-                                      padding: '0.32rem 0.45rem',
-                                      borderRadius: '5px',
-                                      border: isPinned ? '1.5px solid #2563eb' : (isDirty ? '1.5px solid #f59e0b' : '1px solid #cbd5e1'),
-                                      background: isPinned ? '#eff6ff' : '#ffffff',
-                                      fontWeight: isPinned ? '700' : '600',
-                                      color: isPinned ? '#1d4ed8' : '#0f172a',
-                                      fontSize: '0.82rem',
-                                      boxSizing: 'border-box'
-                                    }}
-                                  />
-                                </div>
-                                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>%</span>
-
-                                {/* Confirm Tick Button */}
-                                {isDirty && (
-                                  <button
-                                    type="button"
-                                    onClick={() => confirmPercentage(idx, displayVal, termsCount)}
-                                    style={{
-                                      padding: '0.3rem 0.5rem',
-                                      background: '#10b981',
-                                      color: '#ffffff',
-                                      border: 'none',
-                                      borderRadius: '4px',
-                                      cursor: 'pointer',
-                                      fontSize: '0.9rem',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      boxShadow: '0 1px 3px rgba(16, 185, 129, 0.3)'
-                                    }}
-                                    title="Confirm percentage & auto-adjust remaining"
-                                  >
-                                    <i className='bx bx-check'></i>
-                                  </button>
-                                )}
-
-                                {/* Reset Button */}
-                                {isPinned && !isDirty && (
-                                  <button
-                                    type="button"
-                                    onClick={() => resetPercentage(idx)}
-                                    style={{
-                                      padding: '0.3rem 0.45rem',
-                                      background: '#f1f5f9',
-                                      color: '#64748b',
-                                      border: '1px solid #cbd5e1',
-                                      borderRadius: '4px',
-                                      cursor: 'pointer',
-                                      fontSize: '0.85rem',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center'
-                                    }}
-                                    title="Reset this invoice to auto equal split"
-                                  >
-                                    <i className='bx bx-undo'></i>
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Amount ({currency}) */}
-                            <td style={{ padding: '0.55rem 0.65rem', whiteSpace: 'nowrap' }}>
-                              <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.85rem' }}>
-                                {termAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </div>
-                              {hasMultiSplits && (
-                                <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
-                                  {activeSplits.map((s, sIdx) => {
-                                    const partAmt = ((termAmt * (Number(s.percentage) || 0)) / 100).toFixed(2);
-                                    return (
-                                      <span key={sIdx} style={{ fontSize: '0.68rem', background: '#f1f5f9', color: '#475569', padding: '0.1rem 0.35rem', borderRadius: '3px', fontWeight: '500' }}>
-                                        {s.companyName}: {partAmt}
-                                      </span>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </td>
-
-                            {/* Amount (USD) */}
-                            <td style={{ padding: '0.55rem 0.65rem', color: '#059669', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                              ${termUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-
-                            {/* Remarks */}
-                            <td style={{ padding: '0.45rem 0.65rem' }}>
-                              <input 
-                                type="text"
-                                placeholder={`Remarks for Invoice #${idx + 1}...`}
-                                value={customRemarks[idx] || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setCustomRemarks(prev => ({ ...prev, [idx]: val }));
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '0.35rem 0.55rem',
-                                  borderRadius: '5px',
-                                  border: '1px solid #cbd5e1',
-                                  fontSize: '0.8rem',
-                                  color: '#0f172a',
-                                  boxSizing: 'border-box'
-                                }}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })()}
 
         </div>
 
