@@ -11,38 +11,45 @@ const steps = [
 function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const getInitialCompanies = () => {
-    if (initialData.billingDetails?.companies?.length) {
-      return initialData.billingDetails.companies;
-    }
+  const getInitialCompany = () => {
     if (initialData.billingDetails?.companyName) {
-      return [{
-        id: Date.now(),
+      return {
+        id: initialData.billingDetails.companies?.[0]?.id || Date.now(),
         companyName: initialData.billingDetails.companyName,
         gstNumber: initialData.billingDetails.gstNumber || '',
         address: initialData.billingDetails.address || '',
         isPrimary: true
-      }];
+      };
     }
-    return [{
+    if (initialData.billingDetails?.companies?.length) {
+      const first = initialData.billingDetails.companies[0];
+      return {
+        id: first.id || Date.now(),
+        companyName: first.companyName || '',
+        gstNumber: first.gstNumber || '',
+        address: first.address || '',
+        isPrimary: true
+      };
+    }
+    return {
       id: Date.now(),
       companyName: '',
       gstNumber: '',
       address: '',
       isPrimary: true
-    }];
+    };
   };
 
   const [formData, setFormData] = useState(() => {
-    const initialCompanies = getInitialCompanies();
+    const initialCompany = getInitialCompany();
     return {
       keySpoc: initialData.keySpoc || { name: '', email: '', contact: '' },
       escalationSpocs: initialData.escalationSpocs?.length ? initialData.escalationSpocs : [{ id: Date.now(), name: '', email: '', contact: '', designation: '' }],
       billingDetails: {
-        companies: initialCompanies,
-        companyName: initialCompanies[0]?.companyName || '',
-        gstNumber: initialCompanies[0]?.gstNumber || '',
-        address: initialCompanies[0]?.address || ''
+        companies: [initialCompany],
+        companyName: initialCompany.companyName,
+        gstNumber: initialCompany.gstNumber,
+        address: initialCompany.address
       },
       billingSpocs: initialData.billingSpocs?.length ? initialData.billingSpocs : [{ id: Date.now(), name: '', email: '', contact: '', department: 'Billing' }],
       expectations: initialData.expectations || ''
@@ -105,63 +112,23 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
     }));
   };
 
-  const handleCompanyChange = (id, field, value) => {
+  const handleBillingFieldChange = (field, value) => {
     setFormData(prev => {
-      const updatedCompanies = (prev.billingDetails.companies || []).map(c => 
-        c.id === id ? { ...c, [field]: value } : c
-      );
-      const primary = updatedCompanies[0] || {};
+      const updated = {
+        ...prev.billingDetails,
+        [field]: value
+      };
+      const comp = {
+        id: prev.billingDetails.companies?.[0]?.id || Date.now(),
+        companyName: field === 'companyName' ? value : (updated.companyName || ''),
+        gstNumber: field === 'gstNumber' ? value : (updated.gstNumber || ''),
+        address: field === 'address' ? value : (updated.address || ''),
+        isPrimary: true
+      };
+      updated.companies = [comp];
       return {
         ...prev,
-        billingDetails: {
-          ...prev.billingDetails,
-          companies: updatedCompanies,
-          companyName: primary.companyName || '',
-          gstNumber: primary.gstNumber || '',
-          address: primary.address || ''
-        }
-      };
-    });
-  };
-
-  const addCompany = () => {
-    setFormData(prev => {
-      const newCompany = {
-        id: Date.now(),
-        companyName: '',
-        gstNumber: '',
-        address: '',
-        isPrimary: false
-      };
-      const updatedCompanies = [...(prev.billingDetails?.companies || []), newCompany];
-      return {
-        ...prev,
-        billingDetails: {
-          ...prev.billingDetails,
-          companies: updatedCompanies
-        }
-      };
-    });
-  };
-
-  const removeCompany = (id) => {
-    setFormData(prev => {
-      const currentList = prev.billingDetails?.companies || [];
-      if (currentList.length <= 1) return prev;
-      const updatedCompanies = currentList.filter(c => c.id !== id);
-      if (updatedCompanies.length > 0) {
-        updatedCompanies[0].isPrimary = true;
-      }
-      const primary = updatedCompanies[0] || {};
-      return {
-        ...prev,
-        billingDetails: {
-          ...prev.billingDetails,
-          companies: updatedCompanies,
-          companyName: primary.companyName || '',
-          gstNumber: primary.gstNumber || '',
-          address: primary.address || ''
-        }
+        billingDetails: updated
       };
     });
   };
@@ -263,90 +230,64 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
           </div>
         );
       case 3:
-        const companies = formData.billingDetails?.companies || [];
+        const billing = formData.billingDetails || {};
         return (
           <div className="wizard-step animate-fade-in" style={{ padding: '1rem 0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
-              <div>
-                <h2 style={{ color: '#0f172a', marginBottom: '0.25rem', fontSize: '14px', fontWeight: '600' }}>Company Information / Billing Details</h2>
-                <p style={{ color: '#64748b', fontSize: '11px', margin: 0 }}>Provide registered company legal entities for invoicing. You can add multiple companies if the contract will be split across multiple entities.</p>
-              </div>
-              <button 
-                type="button"
-                onClick={addCompany} 
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.75rem', background: '#0284c7', border: 'none', borderRadius: '6px', color: '#ffffff', cursor: 'pointer', fontWeight: '600', fontSize: '11px', transition: 'all 0.2s', flexShrink: 0 }}
-                className="hover:opacity-90"
-              >
-                <i className='bx bx-plus' style={{ fontSize: '14px' }}></i> Add Another Company
-              </button>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <h2 style={{ color: '#0f172a', marginBottom: '0.25rem', fontSize: '14px', fontWeight: '600' }}>Company Information / Billing Details</h2>
+              <p style={{ color: '#64748b', fontSize: '11px', margin: 0 }}>Provide the registered company legal entity for invoicing and contracts.</p>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {companies.map((company, index) => (
-                <div key={company.id} style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '10px', border: '1px solid #e2e8f0', position: 'relative' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ 
-                        background: index === 0 ? '#dbeafe' : '#e0e7ff', 
-                        color: index === 0 ? '#1e40af' : '#4338ca', 
-                        fontSize: '10px', 
-                        fontWeight: '700', 
-                        padding: '0.2rem 0.5rem', 
-                        borderRadius: '4px',
-                        textTransform: 'uppercase'
-                      }}>
-                        {index === 0 ? 'Primary Entity' : `Company #${index + 1}`}
-                      </span>
-                      <h4 style={{ margin: 0, color: '#334155', fontSize: '12px', fontWeight: '600' }}>
-                        {company.companyName || `Entity Details ${index + 1}`}
-                      </h4>
-                    </div>
-                    {companies.length > 1 && (
-                      <button 
-                        type="button"
-                        onClick={() => removeCompany(company.id)} 
-                        title="Remove Company"
-                        style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#ef4444', cursor: 'pointer', borderRadius: '4px', padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '11px', fontWeight: '500' }}
-                      >
-                        <i className='bx bx-trash' style={{ fontSize: '12px' }}></i> Remove
-                      </button>
-                    )}
-                  </div>
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <span style={{ 
+                  background: '#dbeafe', 
+                  color: '#1e40af', 
+                  fontSize: '10px', 
+                  fontWeight: '700', 
+                  padding: '0.2rem 0.5rem', 
+                  borderRadius: '4px',
+                  textTransform: 'uppercase'
+                }}>
+                  Registered Entity
+                </span>
+                <h4 style={{ margin: 0, color: '#334155', fontSize: '12px', fontWeight: '600' }}>
+                  {billing.companyName || 'Entity Details'}
+                </h4>
+              </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Company Name (Legal) <span style={{ color: '#ef4444' }}>*</span></label>
-                      <input 
-                        type="text" 
-                        value={company.companyName} 
-                        onChange={(e) => handleCompanyChange(company.id, 'companyName', e.target.value)} 
-                        style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none' }} 
-                        placeholder="e.g. MantraCare Inc." 
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>GST / Tax Number / VAT Number <span style={{ color: '#ef4444' }}>*</span></label>
-                      <input 
-                        type="text" 
-                        value={company.gstNumber} 
-                        onChange={(e) => handleCompanyChange(company.id, 'gstNumber', e.target.value)} 
-                        style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none' }} 
-                        placeholder="Enter tax / VAT ID" 
-                      />
-                    </div>
-                    <div style={{ gridColumn: 'span 2' }}>
-                      <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Registered Address</label>
-                      <textarea 
-                        rows="2" 
-                        value={company.address} 
-                        onChange={(e) => handleCompanyChange(company.id, 'address', e.target.value)} 
-                        style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', resize: 'vertical' }} 
-                        placeholder="Full postal address with city, state, and zip code" 
-                      />
-                    </div>
-                  </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Company Name (Legal) <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input 
+                    type="text" 
+                    value={billing.companyName || ''} 
+                    onChange={(e) => handleBillingFieldChange('companyName', e.target.value)} 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }} 
+                    placeholder="e.g. MantraCare Inc." 
+                  />
                 </div>
-              ))}
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>GST / Tax Number / VAT Number <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input 
+                    type="text" 
+                    value={billing.gstNumber || ''} 
+                    onChange={(e) => handleBillingFieldChange('gstNumber', e.target.value)} 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }} 
+                    placeholder="Enter tax / VAT ID" 
+                  />
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Registered Address</label>
+                  <textarea 
+                    rows="3" 
+                    value={billing.address || ''} 
+                    onChange={(e) => handleBillingFieldChange('address', e.target.value)} 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} 
+                    placeholder="Full postal address with city, state, and zip code" 
+                  />
+                </div>
+              </div>
             </div>
           </div>
         );

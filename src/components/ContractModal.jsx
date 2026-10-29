@@ -59,21 +59,22 @@ export default function ContractModal({
   isOpen, 
   onClose, 
   onSave, 
+  onSaveAndSchedule,
   divisionId, 
   initialData = null, 
   isReadOnly = false 
 }) {
   // All available companies (from onboarding + custom)
   const [allCompanies, setAllCompanies] = useState([]);
+  // Mode: 'select' (choose onboarding entity) vs 'custom' (create new custom entity)
+  const [entityMode, setEntityMode] = useState('select');
   // Selected company for this contract
   const [selectedCompany, setSelectedCompany] = useState(null);
 
-  // Multi-select dropdown state
+  // Dropdown state
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState('');
-  const [isAddingCustom, setIsAddingCustom] = useState(false);
   const [customForm, setCustomForm] = useState({ companyName: '', taxDetails: '', address: '' });
-  const [customError, setCustomError] = useState('');
   const companyDropdownRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -178,13 +179,29 @@ export default function ContractModal({
           }
         });
         setAllCompanies(companies);
-        const match = companies.find(c => c.id === initialData.companyEntities[0].id || c.companyName === initialData.companyEntities[0].companyName);
-        setSelectedCompany(match || initialData.companyEntities[0]);
+        const ceFirst = initialData.companyEntities[0];
+        if (ceFirst.source === 'custom') {
+          setEntityMode('custom');
+          setCustomForm({
+            companyName: ceFirst.companyName || '',
+            taxDetails: ceFirst.taxDetails || '',
+            address: ceFirst.address || ''
+          });
+          setSelectedCompany(ceFirst);
+        } else {
+          setEntityMode('select');
+          const onboardingComp = companies.find(c => c.source === 'onboarding') || (companies.length > 0 ? companies[0] : null);
+          const match = companies.find(c => c.id === ceFirst.id || c.companyName === ceFirst.companyName);
+          setSelectedCompany(match || onboardingComp || ceFirst);
+          setCustomForm({ companyName: '', taxDetails: '', address: '' });
+        }
       } else if (initialData?.companyName) {
         const found = companies.find(c => c.companyName === initialData.companyName);
-        if (found) {
+        if (found && found.source !== 'custom') {
           setAllCompanies(companies);
+          setEntityMode('select');
           setSelectedCompany(found);
+          setCustomForm({ companyName: '', taxDetails: '', address: '' });
         } else {
           const custom = {
             id: 'custom_1',
@@ -194,15 +211,21 @@ export default function ContractModal({
             source: 'custom'
           };
           setAllCompanies([custom, ...companies]);
+          setEntityMode('custom');
+          setCustomForm({
+            companyName: initialData.companyName || '',
+            taxDetails: initialData.taxDetails || '',
+            address: initialData.address || ''
+          });
           setSelectedCompany(custom);
         }
       } else {
+        // Creating NEW contract: Auto-select company from Onboarding
         setAllCompanies(companies);
-        if (companies.length > 0) {
-          setSelectedCompany(companies[0]);
-        } else {
-          setSelectedCompany(null);
-        }
+        setEntityMode('select');
+        const onboardingComp = companies.find(c => c.source === 'onboarding') || (companies.length > 0 ? companies[0] : null);
+        setSelectedCompany(onboardingComp);
+        setCustomForm({ companyName: '', taxDetails: '', address: '' });
       }
 
       if (initialData) {
@@ -232,9 +255,7 @@ export default function ContractModal({
         });
       }
       setErrors({});
-      setIsAddingCustom(false);
       setCustomForm({ companyName: '', taxDetails: '', address: '' });
-      setCustomError('');
     }
   }, [isOpen, divisionId, initialData]);
 
@@ -275,28 +296,6 @@ export default function ContractModal({
     if (errors.company) setErrors(prev => ({ ...prev, company: null }));
   };
 
-  const handleAddCustomCompany = (e) => {
-    e.preventDefault();
-    if (!customForm.companyName.trim()) {
-      setCustomError('Company Name is required');
-      return;
-    }
-    const newComp = {
-      id: 'custom_' + Date.now(),
-      companyName: customForm.companyName.trim(),
-      taxDetails: customForm.taxDetails.trim(),
-      address: customForm.address.trim(),
-      source: 'custom'
-    };
-
-    setAllCompanies(prev => [...prev, newComp]);
-    setSelectedCompany(newComp);
-    setCustomForm({ companyName: '', taxDetails: '', address: '' });
-    setCustomError('');
-    setIsAddingCustom(false);
-    if (errors.company) setErrors(prev => ({ ...prev, company: null }));
-  };
-
   const handleCopyBankLink = () => {
     if (formData.bankDetailsLink) {
       navigator.clipboard.writeText(formData.bankDetailsLink);
@@ -307,8 +306,14 @@ export default function ContractModal({
 
   const validate = () => {
     const newErrors = {};
-    if (!selectedCompany) {
-      newErrors.company = 'Please select a company / entity';
+    if (entityMode === 'select') {
+      if (!selectedCompany) {
+        newErrors.company = 'Please select a company / entity from Onboarding';
+      }
+    } else {
+      if (!customForm.companyName.trim()) {
+        newErrors.customCompanyName = 'Company / Entity Name is required';
+      }
     }
 
     if (!formData.contractCurrency) newErrors.contractCurrency = 'Currency is required';
@@ -322,23 +327,40 @@ export default function ContractModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = (andSchedule = false) => {
     if (isReadOnly) {
       onClose();
       return;
     }
     if (!validate()) return;
 
+    let targetEntity = selectedCompany;
+    if (entityMode === 'custom') {
+      targetEntity = {
+        id: initialData?.companyEntities?.[0]?.id || ('custom_' + Date.now()),
+        companyName: customForm.companyName.trim(),
+        taxDetails: customForm.taxDetails.trim(),
+        address: customForm.address.trim(),
+        source: 'custom'
+      };
+      setAllCompanies(prev => {
+        if (!prev.find(c => c.companyName === targetEntity.companyName)) {
+          return [...prev, targetEntity];
+        }
+        return prev;
+      });
+    }
+
     const savedContract = {
       id: initialData?.id || (Date.now() + Math.random()),
       divisionId: divisionId || initialData?.divisionId || '',
       orderId: initialData?.orderId || '',
       orderName: initialData?.orderName || '',
-      companyEntities: selectedCompany ? [selectedCompany] : [],
-      billingSplits: selectedCompany ? [{ ...selectedCompany, selected: true }] : [],
-      companyName: selectedCompany?.companyName || '',
-      taxDetails: selectedCompany?.taxDetails || '',
-      address: selectedCompany?.address || '',
+      companyEntities: targetEntity ? [targetEntity] : [],
+      billingSplits: targetEntity ? [{ ...targetEntity, selected: true }] : [],
+      companyName: targetEntity?.companyName || '',
+      taxDetails: targetEntity?.taxDetails || '',
+      address: targetEntity?.address || '',
       contractValue: parseFloat(formData.contractValue) || 0,
       contractCurrency: formData.contractCurrency,
       currencyExchangeValue: parseFloat(formData.currencyExchangeValue) || 1,
@@ -352,7 +374,11 @@ export default function ContractModal({
       createdAt: initialData?.createdAt || new Date().toISOString().split('T')[0]
     };
 
-    onSave(savedContract);
+    if (andSchedule && onSaveAndSchedule) {
+      onSaveAndSchedule(savedContract);
+    } else if (onSave) {
+      onSave(savedContract, andSchedule);
+    }
   };
 
   const filteredCurrencies = currenciesList.filter(c => 
@@ -434,7 +460,7 @@ export default function ContractModal({
               {isReadOnly ? 'Contract Details' : (initialData ? 'Edit Contract Option' : 'Create Contract Option')}
             </h3>
             <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-              Select Onboarding or Custom company, and set commercial terms.
+              Select an Onboarding company or create a custom entity, and set commercial terms.
             </p>
           </div>
           <button 
@@ -459,255 +485,269 @@ export default function ContractModal({
         {/* Modal Body */}
         <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-          {/* Section 1: Select Company / Entity */}
-          <div style={{ background: '#f8fafc', border: errors.company ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          {/* Section 1: Company / Entity Selection or Creation */}
+          <div style={{ background: '#f8fafc', border: (errors.company || errors.customCompanyName) ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <label style={{ ...labelStyle, marginBottom: 0 }}>
                 <i className="bx bx-buildings" style={{ color: '#0284c7' }}></i>
-                Select Company / Entity <span style={{ color: '#ef4444' }}>*</span>
-                <Tooltip text="Select the company or legal entity from Onboarding or add a custom entity for this contract." align="left" />
+                Company / Entity <span style={{ color: '#ef4444' }}>*</span>
+                <Tooltip text="Select an existing company from Onboarding or create a custom company entity." align="left" />
               </label>
+            </div>
 
-              {!isReadOnly && !isAddingCustom && (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingCustom(true)}
+            {/* Option Selector: Select Existing vs Create Custom */}
+            {!isReadOnly && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', marginBottom: '1rem' }}>
+                <div
+                  onClick={() => {
+                    setEntityMode('select');
+                    const onboardingComp = allCompanies.find(c => c.source === 'onboarding') || (allCompanies.length > 0 ? allCompanies[0] : null);
+                    if (onboardingComp) {
+                      setSelectedCompany(onboardingComp);
+                    }
+                    if (errors.customCompanyName) setErrors(prev => ({ ...prev, customCompanyName: null }));
+                    if (errors.company) setErrors(prev => ({ ...prev, company: null }));
+                  }}
                   style={{
-                    background: '#eff6ff',
-                    color: '#0284c7',
-                    border: '1px solid #bfdbfe',
-                    borderRadius: '5px',
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    padding: '0.3rem 0.6rem',
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '6px',
+                    border: entityMode === 'select' ? '2px solid #0284c7' : '1px solid #cbd5e1',
+                    background: entityMode === 'select' ? '#eff6ff' : '#ffffff',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.25rem'
+                    gap: '0.5rem',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  <i className="bx bx-plus"></i> Add Custom Company
-                </button>
-              )}
-            </div>
-
-            {/* Inline Add Custom Company Form */}
-            {isAddingCustom && (
-              <div style={{ background: '#ffffff', border: '1px solid #93c5fd', borderRadius: '6px', padding: '0.85rem', marginBottom: '0.75rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#1e40af' }}>
-                    <i className="bx bx-building-house" style={{ marginRight: '0.25rem' }}></i> New Custom Company
-                  </span>
-                  <button 
-                    type="button" 
-                    onClick={() => { setIsAddingCustom(false); setCustomError(''); }} 
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
-                  >
-                    <i className="bx bx-x"></i>
-                  </button>
+                  <input
+                    type="radio"
+                    name="entityMode"
+                    checked={entityMode === 'select'}
+                    onChange={() => {
+                      setEntityMode('select');
+                      const onboardingComp = allCompanies.find(c => c.source === 'onboarding') || (allCompanies.length > 0 ? allCompanies[0] : null);
+                      if (onboardingComp) {
+                        setSelectedCompany(onboardingComp);
+                      }
+                      if (errors.customCompanyName) setErrors(prev => ({ ...prev, customCompanyName: null }));
+                      if (errors.company) setErrors(prev => ({ ...prev, company: null }));
+                    }}
+                    style={{ accentColor: '#0284c7', cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '0.84rem', fontWeight: '700', color: entityMode === 'select' ? '#1e40af' : '#334155' }}>
+                      Select from Onboarding
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                      Choose pre-configured entity
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+
+                <div
+                  onClick={() => {
+                    setEntityMode('custom');
+                    if (errors.company) setErrors(prev => ({ ...prev, company: null }));
+                  }}
+                  style={{
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '6px',
+                    border: entityMode === 'custom' ? '2px solid #0284c7' : '1px solid #cbd5e1',
+                    background: entityMode === 'custom' ? '#eff6ff' : '#ffffff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="entityMode"
+                    checked={entityMode === 'custom'}
+                    onChange={() => setEntityMode('custom')}
+                    style={{ accentColor: '#0284c7', cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '0.84rem', fontWeight: '700', color: entityMode === 'custom' ? '#1e40af' : '#334155' }}>
+                      Create Custom Entity
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                      Specify new company, tax & address
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Mode 1: Select from Onboarding */}
+            {entityMode === 'select' && (
+              <div>
+                {/* If multiple onboarding companies exist in legacy data, show quick selector tabs */}
+                {allCompanies.filter(c => c.source === 'onboarding').length > 1 && (
+                  <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
+                    {allCompanies.filter(c => c.source === 'onboarding').map(c => {
+                      const isSel = selectedCompany && (selectedCompany.id === c.id || selectedCompany.companyName === c.companyName);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCompany(c);
+                            if (errors.company) setErrors(prev => ({ ...prev, company: null }));
+                          }}
+                          style={{
+                            padding: '0.3rem 0.65rem',
+                            borderRadius: '5px',
+                            border: isSel ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
+                            background: isSel ? '#eff6ff' : '#ffffff',
+                            color: isSel ? '#0284c7' : '#475569',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {c.companyName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {selectedCompany ? (
+                  <div style={{
+                    padding: '0.9rem 1.1rem',
+                    background: '#f8fafc',
+                    border: '1.5px solid #bfdbfe',
+                    borderRadius: '8px',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.65rem'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{
+                          background: '#dbeafe',
+                          color: '#1e40af',
+                          fontSize: '0.68rem',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '4px',
+                          fontWeight: '700',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em'
+                        }}>
+                          Onboarding Entity
+                        </span>
+                        <span style={{ fontWeight: '700', fontSize: '0.95rem', color: '#0f172a' }}>
+                          {selectedCompany.companyName}
+                        </span>
+                      </div>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#16a34a', fontSize: '0.75rem', fontWeight: '600' }}>
+                        <i className="bx bx-check-circle" style={{ fontSize: '0.95rem' }}></i> Active from Onboarding
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #e2e8f0', fontSize: '0.8rem' }}>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.7rem', color: '#64748b', fontWeight: '500', marginBottom: '0.15rem' }}>
+                          GST / Tax Number / VAT
+                        </span>
+                        <span style={{ color: '#0f172a', fontWeight: '600' }}>
+                          {selectedCompany.taxDetails || <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 'normal' }}>Not specified</span>}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.7rem', color: '#64748b', fontWeight: '500', marginBottom: '0.15rem' }}>
+                          Registered Address
+                        </span>
+                        <span style={{ color: '#334155', fontWeight: '500', lineHeight: '1.4' }}>
+                          {selectedCompany.address || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Not specified</span>}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '1rem',
+                    background: '#fffbeb',
+                    border: '1px solid #fef3c7',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.75rem',
+                    color: '#92400e',
+                    fontSize: '0.82rem',
+                    lineHeight: '1.5'
+                  }}>
+                    <i className="bx bx-info-circle" style={{ fontSize: '1.25rem', color: '#d97706', flexShrink: 0, marginTop: '2px' }}></i>
+                    <div>
+                      <div style={{ fontWeight: '700', marginBottom: '0.2rem' }}>No Onboarding Entity Found</div>
+                      <div>No registered entity details were found in the Onboarding form for this division yet. You can complete the Onboarding form or select <strong>Create Custom Entity</strong> above to add company details for this contract.</div>
+                    </div>
+                  </div>
+                )}
+
+                {errors.company && (
+                  <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.35rem' }}>
+                    <i className="bx bx-error-circle" style={{ marginRight: '0.25rem' }}></i>
+                    {errors.company}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mode 2: Create Custom Entity */}
+            {entityMode === 'custom' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '0.85rem' }}>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: '0.8rem' }}>
+                    Custom Company / Entity Name <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
                   <input
                     type="text"
-                    placeholder="Company / Entity Name *"
+                    disabled={isReadOnly}
+                    placeholder="e.g. Acme Germany GmbH"
                     value={customForm.companyName}
-                    onChange={(e) => setCustomForm({ ...customForm, companyName: e.target.value })}
-                    style={{ ...inputStyle, padding: '0.45rem 0.65rem', fontSize: '0.85rem' }}
+                    onChange={(e) => {
+                      setCustomForm({ ...customForm, companyName: e.target.value });
+                      if (errors.customCompanyName) setErrors(prev => ({ ...prev, customCompanyName: null }));
+                    }}
+                    style={inputStyle}
                   />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  {errors.customCompanyName && (
+                    <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                      <i className="bx bx-error-circle" style={{ marginRight: '0.25rem' }}></i>
+                      {errors.customCompanyName}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Tax / GST Number</label>
                     <input
                       type="text"
-                      placeholder="Tax / GST Number"
+                      disabled={isReadOnly}
+                      placeholder="e.g. DE123456789"
                       value={customForm.taxDetails}
                       onChange={(e) => setCustomForm({ ...customForm, taxDetails: e.target.value })}
-                      style={{ ...inputStyle, padding: '0.45rem 0.65rem', fontSize: '0.85rem' }}
+                      style={inputStyle}
                     />
+                  </div>
+                  <div>
+                    <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Registered Address</label>
                     <input
                       type="text"
-                      placeholder="Registered Address"
+                      disabled={isReadOnly}
+                      placeholder="e.g. Berlin, Germany"
                       value={customForm.address}
                       onChange={(e) => setCustomForm({ ...customForm, address: e.target.value })}
-                      style={{ ...inputStyle, padding: '0.45rem 0.65rem', fontSize: '0.85rem' }}
+                      style={inputStyle}
                     />
                   </div>
-                  {customError && <span style={{ color: '#ef4444', fontSize: '0.75rem' }}>{customError}</span>}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.25rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingCustom(false)}
-                      style={{ padding: '0.35rem 0.75rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer', color: '#475569' }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddCustomCompany}
-                      style={{ padding: '0.35rem 0.75rem', background: '#0284c7', border: 'none', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer', color: '#ffffff', fontWeight: '600' }}
-                    >
-                      Add & Select
-                    </button>
-                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Select Dropdown Header Input */}
-            <div style={{ position: 'relative' }} ref={companyDropdownRef}>
-              <div
-                onClick={() => !isReadOnly && setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
-                style={{
-                  ...inputStyle,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  cursor: isReadOnly ? 'default' : 'pointer',
-                  backgroundColor: '#ffffff'
-                }}
-              >
-                <span style={{ color: selectedCompany ? '#0f172a' : '#94a3b8', fontSize: '0.85rem', fontWeight: selectedCompany ? '600' : 'normal' }}>
-                  {selectedCompany 
-                    ? selectedCompany.companyName
-                    : '-- Click to select company from Onboarding or Custom --'}
-                </span>
-                <i className={`bx bx-chevron-${isCompanyDropdownOpen ? 'up' : 'down'}`} style={{ color: '#64748b' }}></i>
-              </div>
-
-              {/* Dropdown Menu */}
-              {isCompanyDropdownOpen && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '6px',
-                  marginTop: '4px',
-                  zIndex: 30,
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  maxHeight: '220px',
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}>
-                  <div style={{ padding: '0.5rem', borderBottom: '1px solid #e2e8f0' }}>
-                    <input
-                      type="text"
-                      autoFocus
-                      placeholder="Search company or tax ID..."
-                      value={companySearch}
-                      onChange={(e) => setCompanySearch(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '0.35rem 0.5rem',
-                        borderRadius: '4px',
-                        border: '1px solid #cbd5e1',
-                        outline: 'none',
-                        fontSize: '0.8rem',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ overflowY: 'auto' }}>
-                    {filteredCompanies.length === 0 ? (
-                      <div style={{ padding: '1rem', textAlign: 'center', color: '#64748b', fontSize: '0.8rem' }}>
-                        No companies found. Click "+ Add Custom Company" above to add one.
-                      </div>
-                    ) : (
-                      filteredCompanies.map(c => {
-                        const isSelected = selectedCompany && (selectedCompany.id === c.id || selectedCompany.companyName === c.companyName);
-                        return (
-                          <div
-                            key={c.id}
-                            onClick={() => handleSelectCompany(c)}
-                            style={{
-                              padding: '0.55rem 0.75rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              cursor: 'pointer',
-                              background: isSelected ? '#f0f9ff' : '#ffffff',
-                              borderBottom: '1px solid #f8fafc'
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.backgroundColor = isSelected ? '#e0f2fe' : '#f8fafc'}
-                            onMouseLeave={e => e.currentTarget.style.backgroundColor = isSelected ? '#f0f9ff' : '#ffffff'}
-                          >
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                <span style={{ fontWeight: '600', fontSize: '0.85rem', color: '#0f172a' }}>{c.companyName}</span>
-                                <span style={{
-                                  fontSize: '0.65rem',
-                                  padding: '0.1rem 0.35rem',
-                                  borderRadius: '3px',
-                                  background: c.source === 'custom' ? '#f5f3ff' : '#eff6ff',
-                                  color: c.source === 'custom' ? '#6d28d9' : '#1d4ed8',
-                                  fontWeight: '600'
-                                }}>
-                                  {c.source === 'custom' ? 'Custom' : 'Onboarding'}
-                                </span>
-                              </div>
-                              {c.taxDetails && <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Tax/GST: {c.taxDetails}</div>}
-                            </div>
-                            {isSelected && (
-                              <i className="bx bx-check" style={{ color: '#0284c7', fontSize: '1.25rem', fontWeight: 'bold' }}></i>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Error Message for Company */}
-            {errors.company && (
-              <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.35rem' }}>
-                <i className="bx bx-error-circle" style={{ marginRight: '0.25rem' }}></i>
-                {errors.company}
-              </div>
-            )}
-
-            {/* Selected Company Details (No Share %) */}
-            {selectedCompany && (
-              <div style={{
-                marginTop: '0.75rem',
-                padding: '0.65rem 0.85rem',
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <i className="bx bx-check-circle" style={{ color: '#16a34a', fontSize: '1.2rem' }}></i>
-                  <div>
-                    <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#0f172a' }}>
-                      {selectedCompany.companyName}
-                    </div>
-                    {selectedCompany.taxDetails && (
-                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        Tax/GST: {selectedCompany.taxDetails}
-                      </div>
-                    )}
-                    {selectedCompany.address && (
-                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                        {selectedCompany.address}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <span style={{
-                  fontSize: '0.7rem',
-                  padding: '0.15rem 0.45rem',
-                  borderRadius: '4px',
-                  background: selectedCompany.source === 'custom' ? '#f5f3ff' : '#eff6ff',
-                  color: selectedCompany.source === 'custom' ? '#6d28d9' : '#1d4ed8',
-                  fontWeight: '600'
-                }}>
-                  {selectedCompany.source === 'custom' ? 'Custom Entity' : 'Onboarding Entity'}
-                </span>
               </div>
             )}
           </div>
@@ -1014,30 +1054,43 @@ export default function ContractModal({
           borderBottomLeftRadius: '12px',
           borderBottomRightRadius: '12px'
         }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: '0.55rem 1.25rem',
-              backgroundColor: '#ffffff',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              fontSize: '0.9rem',
-              fontWeight: '500',
-              color: '#475569',
-              cursor: 'pointer',
-              transition: 'background 0.15s ease'
-            }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#ffffff'}
-          >
-            Cancel
-          </button>
+          {!isReadOnly && (
+            <button
+              type="button"
+              onClick={() => handleSave(true)}
+              style={{
+                padding: '0.55rem 1.25rem',
+                backgroundColor: '#ecfdf5',
+                border: '1.5px solid #a7f3d0',
+                borderRadius: '6px',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                color: '#059669',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = '#d1fae5';
+                e.currentTarget.style.borderColor = '#6ee7b7';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = '#ecfdf5';
+                e.currentTarget.style.borderColor = '#a7f3d0';
+              }}
+              title="Save contract and schedule billing in Accounts Receivable"
+            >
+              <i className="bx bx-calendar-plus" style={{ fontSize: '1.1rem' }}></i>
+              Save and Schedule Billing
+            </button>
+          )}
 
           {!isReadOnly && (
             <button
               type="button"
-              onClick={handleSave}
+              onClick={() => handleSave(false)}
               style={{
                 padding: '0.55rem 1.25rem',
                 backgroundColor: '#0284c7',

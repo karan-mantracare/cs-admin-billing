@@ -162,6 +162,25 @@ function ClientPayments() {
     localStorage.setItem('client_payment_records', JSON.stringify(paymentRecords));
   }, [paymentRecords]);
 
+  // Listen for storage events (e.g. when billing is scheduled from EditDivision or orders synced in AddOrder)
+  useEffect(() => {
+    const handleStorageUpdate = () => {
+      try {
+        const saved = localStorage.getItem('client_payments');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setPayments(parsed.filter(p => p != null));
+          }
+        }
+      } catch (e) {
+        console.error("Failed to reload payments on storage event", e);
+      }
+    };
+    window.addEventListener('storage', handleStorageUpdate);
+    return () => window.removeEventListener('storage', handleStorageUpdate);
+  }, []);
+
   // Tabs
   const [activeTab, setActiveTab] = useState('billing');
 
@@ -481,23 +500,29 @@ function ClientPayments() {
                   </span>
                 </td>
                 <td>
-                  <span
-                    onClick={() => {
-                      navigate(`/corporate/division/order/edit/${p.orderId}`, { 
-                        state: { 
-                          edit: true, 
-                          orderId: p.orderId, 
-                          clientName: p.clientName 
-                        } 
-                      });
-                    }}
-                    style={{ color: '#0284c7', cursor: 'pointer', fontWeight: '700' }}
-                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                    title={`Edit Order #${p.orderId}`}
-                  >
-                    {p.orderId}
-                  </span>
+                  {p.orderId && p.orderId !== 'Null' ? (
+                    <span
+                      onClick={() => {
+                        navigate(`/corporate/division/order/edit/${p.orderId}`, { 
+                          state: { 
+                            edit: true, 
+                            orderId: p.orderId, 
+                            clientName: p.clientName 
+                          } 
+                        });
+                      }}
+                      style={{ color: '#0284c7', cursor: 'pointer', fontWeight: '700' }}
+                      onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                      onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                      title={`Edit Order #${p.orderId}`}
+                    >
+                      {p.orderId}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#94a3b8', fontStyle: 'italic', background: '#f8fafc', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px dashed #cbd5e1', fontSize: '0.78rem' }}>
+                      Null
+                    </span>
+                  )}
                 </td>
                 <td>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>

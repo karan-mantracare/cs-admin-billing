@@ -387,6 +387,30 @@ function AddOrder() {
       });
 
       localStorage.setItem('division_contracts', JSON.stringify(updated));
+
+      // Also update Accounts Receivable (client_payments in localStorage)
+      try {
+        const clientPayments = JSON.parse(localStorage.getItem('client_payments') || '[]');
+        let paymentsModified = false;
+        const updatedPayments = clientPayments.map(p => {
+          if (p.contractId && selectedIds.includes(p.contractId)) {
+            paymentsModified = true;
+            return { ...p, orderId: targetOrderId, orderName: targetOrderName };
+          }
+          if (p.contractId && String(p.orderId) === String(targetOrderId) && !selectedIds.includes(p.contractId)) {
+            paymentsModified = true;
+            return { ...p, orderId: 'Null', orderName: '' };
+          }
+          return p;
+        });
+
+        if (paymentsModified) {
+          localStorage.setItem('client_payments', JSON.stringify(updatedPayments));
+        }
+      } catch (err) {
+        console.error('Failed to sync client_payments mapping in AddOrder:', err);
+      }
+
       window.dispatchEvent(new Event('storage'));
     } catch (e) {
       console.error('Failed to sync division contracts mapping', e);

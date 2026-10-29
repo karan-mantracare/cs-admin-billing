@@ -72,13 +72,16 @@ function EditDivision() {
     expectations: division.expectations || ''
   });
 
-  const [isOtherDetailsOpen, setIsOtherDetailsOpen] = useState(false);
+  const [isAdditionalDetailsOpen, setIsAdditionalDetailsOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isDocumentsOpen, setIsDocumentsOpen] = useState(false);
+  const [isContractsOpen, setIsContractsOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isFiled, setIsFiled] = useState(false);
   const [filedData, setFiledData] = useState(null);
   
-  const [isOnboardingExpanded, setIsOnboardingExpanded] = useState(false);
+  const [isOnboardingExpanded, setIsOnboardingExpanded] = useState(true);
   const [isEditingOnboarding, setIsEditingOnboarding] = useState(false);
   const [onboardingLogs, setOnboardingLogs] = useState(() => {
     const saved = localStorage.getItem('onboardingLogs_' + (division?.id || '1'));
@@ -439,20 +442,133 @@ function EditDivision() {
     return () => window.removeEventListener('storage', fetchContracts);
   }, [division.id]);
 
-  const handleSaveContract = (contractData) => {
+  const handleSaveContract = (contractData, shouldSchedule = false) => {
     const all = JSON.parse(localStorage.getItem('division_contracts') || '[]');
     const existingIndex = all.findIndex(c => c.id === contractData.id);
     let updated;
+    let savedItem;
     if (existingIndex >= 0) {
-      updated = all.map(c => c.id === contractData.id ? { ...c, ...contractData, divisionId: division.id } : c);
+      const existing = all[existingIndex];
+      savedItem = { 
+        ...existing, 
+        ...contractData, 
+        divisionId: division.id,
+        orderId: contractData.orderId !== undefined ? contractData.orderId : (existing.orderId || ''),
+        orderName: contractData.orderName !== undefined ? contractData.orderName : (existing.orderName || '')
+      };
+      updated = all.map(c => c.id === contractData.id ? savedItem : c);
     } else {
-      updated = [...all, { ...contractData, divisionId: division.id, orderId: contractData.orderId || '', orderName: contractData.orderName || '' }];
+      savedItem = { ...contractData, divisionId: division.id, orderId: contractData.orderId || '', orderName: contractData.orderName || '' };
+      updated = [...all, savedItem];
     }
     localStorage.setItem('division_contracts', JSON.stringify(updated));
     setDivisionContracts(updated.filter(c => String(c.divisionId) === String(division.id)));
+
+    // Sync any existing Accounts Receivable record for this contract
+    try {
+      const clientPayments = JSON.parse(localStorage.getItem('client_payments') || '[]');
+      const pIdx = clientPayments.findIndex(p => p.contractId === contractData.id);
+      if (pIdx >= 0) {
+        const existingP = clientPayments[pIdx];
+        const targetOrder = contractData.orderId ? contractData.orderId : (existingP.orderId || 'Null');
+        const updatedPayments = clientPayments.map(p => {
+          if (p.contractId === contractData.id) {
+            return {
+              ...p,
+              orderId: targetOrder,
+              orderName: contractData.orderName !== undefined ? contractData.orderName : p.orderName,
+              clientBillingEntity: contractData.companyName || p.clientBillingEntity,
+              billingCompany: contractData.billFrom || p.billingCompany,
+              receivingBankName: contractData.receivingBankName || p.receivingBankName,
+              bankDetailsLink: contractData.bankDetailsLink || p.bankDetailsLink,
+              amountDueUsd: Number(contractData.amountInUSD) || p.amountDueUsd,
+              amountDue: Number(contractData.contractValue) || p.amountDue,
+              currency: contractData.contractCurrency || p.currency
+            };
+          }
+          return p;
+        });
+        localStorage.setItem('client_payments', JSON.stringify(updatedPayments));
+        window.dispatchEvent(new Event('storage'));
+      }
+    } catch (err) {
+      console.error('Failed to sync client_payments on contract edit', err);
+    }
+
     setIsContractModalOpen(false);
     setSelectedContractForEdit(null);
-    if (showToast) showToast('Contract saved successfully!', 3000);
+
+    if (shouldSchedule) {
+      handleScheduleBilling(savedItem);
+    } else {
+      if (showToast) showToast('Contract saved successfully!', 3000);
+    }
+  };
+
+  const handleScheduleBilling = (cnt) => {
+    try {
+      const existingPayments = JSON.parse(localStorage.getItem('client_payments') || '[]');
+
+      // Calculate dueByDate: billingDate + paymentDueDays
+      let dueByDate = cnt.billingDate || new Date().toISOString().split('T')[0];
+      if (cnt.billingDate && cnt.paymentDueDays) {
+        const d = new Date(cnt.billingDate);
+        d.setDate(d.getDate() + (parseInt(cnt.paymentDueDays, 10) || 0));
+        dueByDate = d.toISOString().split('T')[0];
+      }
+
+      const clientName = formData.clientName || division.clientName || 'Client Name';
+      const divisionName = formData.divisionName || division.divisionName || 'Division Name';
+      const orderIdVal = cnt.orderId ? cnt.orderId : 'Null';
+      const orderNameVal = cnt.orderName || '';
+
+      // Check if this contract is already scheduled in client_payments
+      const existingIndex = existingPayments.findIndex(p => p.contractId === cnt.id);
+
+      const paymentItem = {
+        id: existingIndex >= 0 ? existingPayments[existingIndex].id : (Date.now() + Math.floor(Math.random() * 1000)),
+        contractId: cnt.id,
+        clientName: clientName,
+        divisionName: divisionName,
+        orderId: orderIdVal,
+        orderName: orderNameVal,
+        clientBillingEntity: cnt.companyName || (cnt.companyEntities?.[0]?.companyName) || 'Primary Entity',
+        billingCompany: cnt.billFrom || 'MCHI',
+        receivingBankName: cnt.receivingBankName || 'AirWallex',
+        bankDetailsLink: cnt.bankDetailsLink || '',
+        amountDueUsd: Number(cnt.amountInUSD) || 0,
+        amountDue: Number(cnt.contractValue) || 0,
+        currency: cnt.contractCurrency || 'EUR',
+        invoiceByDate: cnt.billingDate || new Date().toISOString().split('T')[0],
+        dueByDate: dueByDate,
+        invoiceDate: '-',
+        invoiceLink: '',
+        totalPaid: 0,
+        dueAmount: Number(cnt.contractValue) || 0,
+        status: 'To be Raised',
+        remarks: cnt.remarks || '',
+        createdAt: new Date().toISOString()
+      };
+
+      let updatedPayments;
+      if (existingIndex >= 0) {
+        updatedPayments = existingPayments.map((p, idx) => idx === existingIndex ? { ...p, ...paymentItem } : p);
+      } else {
+        updatedPayments = [paymentItem, ...existingPayments];
+      }
+
+      localStorage.setItem('client_payments', JSON.stringify(updatedPayments));
+      window.dispatchEvent(new Event('storage'));
+
+      if (showToast) {
+        showToast('Billing scheduled in Accounts Receivable!', 3000);
+      }
+
+      navigate('/accounts-receivable');
+    } catch (e) {
+      console.error('Failed to schedule billing for contract:', e);
+      navigate('/accounts-receivable');
+    }
   };
 
   const deleteDivisionContract = (id) => {
@@ -596,61 +712,26 @@ function EditDivision() {
     }));
   };
 
-  const handleDivisionCompanyChange = (id, field, value) => {
+  const handleDivisionCompanyChange = (field, value) => {
     setOnboardingFormState(prev => {
-      const companies = (prev.billingDetails?.companies || []).map(c => 
-        c.id === id ? { ...c, [field]: value } : c
-      );
-      const primary = companies[0] || {};
+      const billing = {
+        ...(prev.billingDetails || {}),
+        [field]: value
+      };
+      const singleComp = {
+        id: prev.billingDetails?.companies?.[0]?.id || Date.now(),
+        companyName: field === 'companyName' ? value : (billing.companyName || ''),
+        gstNumber: field === 'gstNumber' ? value : (billing.gstNumber || ''),
+        address: field === 'address' ? value : (billing.address || ''),
+        isPrimary: true
+      };
+      billing.companies = [singleComp];
+      billing.companyName = singleComp.companyName;
+      billing.gstNumber = singleComp.gstNumber;
+      billing.address = singleComp.address;
       return {
         ...prev,
-        billingDetails: {
-          ...prev.billingDetails,
-          companies,
-          companyName: primary.companyName || '',
-          gstNumber: primary.gstNumber || '',
-          address: primary.address || ''
-        }
-      };
-    });
-  };
-
-  const addDivisionCompany = () => {
-    setOnboardingFormState(prev => {
-      const newCompany = {
-        id: Date.now(),
-        companyName: '',
-        gstNumber: '',
-        address: '',
-        isPrimary: false
-      };
-      const companies = [...(prev.billingDetails?.companies || []), newCompany];
-      return {
-        ...prev,
-        billingDetails: {
-          ...prev.billingDetails,
-          companies
-        }
-      };
-    });
-  };
-
-  const removeDivisionCompany = (id) => {
-    setOnboardingFormState(prev => {
-      const currentList = prev.billingDetails?.companies || [];
-      if (currentList.length <= 1) return prev;
-      const companies = currentList.filter(c => c.id !== id);
-      if (companies.length > 0) companies[0].isPrimary = true;
-      const primary = companies[0] || {};
-      return {
-        ...prev,
-        billingDetails: {
-          ...prev.billingDetails,
-          companies,
-          companyName: primary.companyName || '',
-          gstNumber: primary.gstNumber || '',
-          address: primary.address || ''
-        }
+        billingDetails: billing
       };
     });
   };
@@ -783,28 +864,40 @@ function EditDivision() {
               </div>
             </div>
 
-            {/* Collapsible Section: Other Details */}
-            <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+            {/* Section 1: Additional Details */}
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', marginBottom: '1rem', background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
               <button 
                 type="button"
-                onClick={() => setIsOtherDetailsOpen(!isOtherDetailsOpen)}
+                onClick={() => setIsAdditionalDetailsOpen(!isAdditionalDetailsOpen)}
                 style={{ 
                   width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                  padding: '0.85rem 1.25rem', background: isOtherDetailsOpen ? '#f1f5f9' : '#f8fafc', border: 'none', cursor: 'pointer',
-                  fontSize: '0.92rem', color: '#1e293b', fontWeight: '600', transition: 'all 0.15s ease'
+                  padding: '0.85rem 1.25rem',
+                  background: isAdditionalDetailsOpen ? '#f8fafc' : 'linear-gradient(90deg, #ffffff 80%, #f1f5f9 100%)',
+                  border: 'none', cursor: 'pointer', transition: 'all 0.15s ease'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                  <i className='bx bx-slider-alt' style={{ color: '#0284c7', fontSize: '1.15rem' }}></i>
-                  <span>Additional Details & Onboarding Form</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <i className='bx bx-slider-alt' style={{ color: '#64748b', fontSize: '1.2rem' }}></i>
+                  <span style={{ fontSize: '0.92rem', color: '#1e293b', fontWeight: '600' }}>Additional Details</span>
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>• Notes & Remarks</span>
                 </div>
-                <i className={`bx ${isOtherDetailsOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.25rem', color: '#64748b' }}></i>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.55rem',
+                  background: '#f1f5f9',
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155'
+                }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: '600' }}>Remarks</span>
+                  <i className={`bx ${isAdditionalDetailsOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.2rem', color: '#64748b' }}></i>
+                </div>
               </button>
               
-              {isOtherDetailsOpen && (
-                <div style={{ padding: '1.5rem', background: 'white', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  
-                  {/* Remarks */}
+              {isAdditionalDetailsOpen && (
+                <div style={{ padding: '1.25rem', background: 'white', borderTop: '1px solid #e2e8f0' }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label style={{ fontSize: '0.8rem', color: '#64748b' }}>Remarks</label>
                     <textarea 
@@ -812,14 +905,132 @@ function EditDivision() {
                       name="remarks" 
                       value={formData.remarks} 
                       onChange={handleInputChange} 
-                      rows="2"
-                      style={{ padding: '0.5rem', fontSize: '0.85rem' }}
+                      rows="3"
+                      style={{ padding: '0.6rem', fontSize: '0.85rem' }}
                       placeholder="Internal notes about this division..."
                     ></textarea>
                   </div>
+                </div>
+              )}
+            </div>
 
-                  <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9', margin: 0 }} />
+            {/* Active Status Toggle */}
+            <div style={{ marginTop: '2rem' }}>
+              <label style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '500', display: 'block', marginBottom: '0.5rem' }}>Active Status</label>
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  padding: '1rem', 
+                  background: formData.status === 'Active' ? '#f0fdf4' : '#f8fafc',
+                  border: formData.status === 'Active' ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  transition: 'all 0.3s'
+                }}
+              >
+                <div>
+                  <h4 style={{ margin: '0 0 0.25rem 0', color: formData.status === 'Active' ? '#16a34a' : '#64748b', fontSize: '0.95rem', fontWeight: '600' }}>
+                    {formData.status === 'Active' ? 'Active' : 'Inactive'}
+                  </h4>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.8rem' }}>
+                    {formData.status === 'Active' ? 'Division can place and manage orders.' : 'Division is disabled. No orders can be placed.'}
+                  </p>
+                </div>
+                
+                {/* Toggle Switch */}
+                <div 
+                  onClick={() => setFormData({...formData, status: formData.status === 'Active' ? 'Inactive' : 'Active'})}
+                  style={{
+                    width: '44px',
+                    height: '24px',
+                    background: formData.status === 'Active' ? '#0ea5e9' : '#cbd5e1',
+                    borderRadius: '12px',
+                    position: 'relative',
+                    cursor: 'pointer',
+                    transition: 'background 0.3s'
+                  }}
+                >
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    background: 'white',
+                    borderRadius: '50%',
+                    position: 'absolute',
+                    top: '2px',
+                    left: formData.status === 'Active' ? '22px' : '2px',
+                    transition: 'left 0.3s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                  }}></div>
+                </div>
+              </div>
+            </div>
 
+          </div>
+
+          {/* Logo - Right Side */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '150px' }}>
+            <div style={{ 
+              width: '100px', height: '100px', 
+              borderRadius: '50%', 
+              background: '#f1f5f9', 
+              border: '1px dashed #cbd5e1',
+              display: 'flex', justifyContent: 'center', alignItems: 'center',
+              marginBottom: '0.75rem'
+            }}>
+              <i className='bx bx-image' style={{ fontSize: '2rem', color: '#94a3b8' }}></i>
+            </div>
+            <button style={{ background: 'transparent', border: 'none', color: '#0ea5e9', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <i className='bx bx-edit-alt'></i> Change Logo
+            </button>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', marginTop: '1.5rem', borderTop: '1px solid #f1f5f9' }}>
+          <button className="btn-outline" onClick={() => navigate(-1)} style={{ border: 'none', color: '#64748b', padding: '0.4rem 1rem', fontSize: '0.85rem' }}>Discard</button>
+          <button className="btn-primary" onClick={handleSaveChanges} style={{ padding: '0.4rem 1.25rem', background: '#6366f1', fontSize: '0.85rem' }}>Save Changes</button>
+        </div>
+      </div>
+      
+      {/* Collapsible Sections: Onboarding, Documents, Contracts */}
+      {/* Section 2: Onboarding Form */}
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', marginBottom: '1rem', background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+              <button 
+                type="button"
+                onClick={() => setIsOnboardingOpen(!isOnboardingOpen)}
+                style={{ 
+                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                  padding: '0.85rem 1.25rem',
+                  background: isOnboardingOpen ? '#f8fafc' : 'linear-gradient(90deg, #ffffff 80%, #eff6ff 100%)',
+                  border: 'none', cursor: 'pointer', transition: 'all 0.15s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <i className='bx bx-id-card' style={{ color: '#2563eb', fontSize: '1.25rem' }}></i>
+                  <span style={{ fontSize: '0.92rem', color: '#1e293b', fontWeight: '600' }}>Onboarding Form</span>
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>• Client link & submission details</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.55rem',
+                  background: '#eff6ff',
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '8px',
+                  border: '1px solid #bfdbfe',
+                  color: '#1d4ed8'
+                }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <i className={`bx ${isFiled ? 'bx-check-circle' : 'bx-time-five'}`}></i>
+                    {isFiled ? 'Form Filed' : 'Pending'}
+                  </span>
+                  <i className={`bx ${isOnboardingOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.2rem', color: '#2563eb' }}></i>
+                </div>
+              </button>
+              
+              {isOnboardingOpen && (
+                <div style={{ padding: '1.25rem', background: 'white', borderTop: '1px solid #e2e8f0' }}>
                   {/* Onboarding Form Card */}
                   <div style={{ 
                     padding: '1.35rem 1.5rem', 
@@ -1194,98 +1405,80 @@ function EditDivision() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                               <h5 style={{ margin: 0, fontSize: '0.82rem', color: '#475569', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                 <i className='bx bx-credit-card' style={{ color: '#10b981' }}></i> Billing Details & Entities
-                                {(onboardingFormState.billingDetails?.companies?.length > 1) && (
-                                  <span style={{ fontSize: '0.68rem', background: '#ecfdf5', color: '#059669', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: '700' }}>
-                                    {onboardingFormState.billingDetails.companies.length} Entities
-                                  </span>
-                                )}
                               </h5>
-                              {isEditingOnboarding && (
-                                <button
-                                  type="button"
-                                  onClick={addDivisionCompany}
-                                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.25rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', color: '#334155', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                                >
-                                  <i className='bx bx-plus'></i> Add Entity
-                                </button>
-                              )}
                             </div>
 
                             {isEditingOnboarding ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                                {(onboardingFormState.billingDetails?.companies || [{ id: 1, companyName: onboardingFormState.billingDetails?.companyName || '', gstNumber: onboardingFormState.billingDetails?.gstNumber || '', address: onboardingFormState.billingDetails?.address || '' }]).map((comp, idx) => (
-                                  <div key={comp.id || idx} style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', position: 'relative' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                      <span style={{ fontSize: '0.72rem', fontWeight: '700', color: idx === 0 ? '#1e40af' : '#475569', background: idx === 0 ? '#dbeafe' : '#e2e8f0', padding: '0.1rem 0.4rem', borderRadius: '3px', textTransform: 'uppercase' }}>
-                                        {idx === 0 ? 'Primary Entity' : `Entity #${idx + 1}`}
-                                      </span>
-                                      {(onboardingFormState.billingDetails?.companies?.length > 1) && (
-                                        <button
-                                          type="button"
-                                          onClick={() => removeDivisionCompany(comp.id)}
-                                          style={{ background: '#fee2e2', border: 'none', color: '#ef4444', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.72rem', cursor: 'pointer' }}
-                                        >
-                                          <i className='bx bx-trash'></i>
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                                      <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Company Name</label>
-                                        <input type="text" className="form-control" value={comp.companyName || ''} onChange={(e) => handleDivisionCompanyChange(comp.id, 'companyName', e.target.value)} placeholder="Registered Entity" style={{ fontSize: '0.82rem', padding: '0.4rem' }} />
-                                      </div>
-                                      <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label style={{ fontSize: '0.72rem', color: '#64748b' }}>GST / Tax Number</label>
-                                        <input type="text" className="form-control" value={comp.gstNumber || ''} onChange={(e) => handleDivisionCompanyChange(comp.id, 'gstNumber', e.target.value)} placeholder="Tax / GST ID" style={{ fontSize: '0.82rem', padding: '0.4rem' }} />
-                                      </div>
-                                      <div className="form-group" style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
-                                        <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Billing Address</label>
-                                        <textarea className="form-control" rows="2" value={comp.address || ''} onChange={(e) => handleDivisionCompanyChange(comp.id, 'address', e.target.value)} placeholder="Full Registered Address" style={{ fontSize: '0.82rem', padding: '0.4rem' }}></textarea>
-                                      </div>
-                                    </div>
+                              <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                                  <span style={{ fontSize: '0.72rem', fontWeight: '700', color: '#1e40af', background: '#dbeafe', padding: '0.1rem 0.4rem', borderRadius: '3px', textTransform: 'uppercase' }}>
+                                    Primary Entity
+                                  </span>
+                                  <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>
+                                    {onboardingFormState.billingDetails?.companyName || onboardingFormState.billingDetails?.companies?.[0]?.companyName || 'Entity Details'}
+                                  </strong>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                                  <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Company Name</label>
+                                    <input 
+                                      type="text" 
+                                      className="form-control" 
+                                      value={onboardingFormState.billingDetails?.companyName || onboardingFormState.billingDetails?.companies?.[0]?.companyName || ''} 
+                                      onChange={(e) => handleDivisionCompanyChange('companyName', e.target.value)} 
+                                      placeholder="Registered Entity" 
+                                      style={{ fontSize: '0.82rem', padding: '0.4rem' }} 
+                                    />
                                   </div>
-                                ))}
+                                  <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label style={{ fontSize: '0.72rem', color: '#64748b' }}>GST / Tax Number</label>
+                                    <input 
+                                      type="text" 
+                                      className="form-control" 
+                                      value={onboardingFormState.billingDetails?.gstNumber || onboardingFormState.billingDetails?.companies?.[0]?.gstNumber || ''} 
+                                      onChange={(e) => handleDivisionCompanyChange('gstNumber', e.target.value)} 
+                                      placeholder="Tax / GST ID" 
+                                      style={{ fontSize: '0.82rem', padding: '0.4rem' }} 
+                                    />
+                                  </div>
+                                  <div className="form-group" style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+                                    <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Billing Address</label>
+                                    <textarea 
+                                      className="form-control" 
+                                      rows="2" 
+                                      value={onboardingFormState.billingDetails?.address || onboardingFormState.billingDetails?.companies?.[0]?.address || ''} 
+                                      onChange={(e) => handleDivisionCompanyChange('address', e.target.value)} 
+                                      placeholder="Full Registered Address" 
+                                      style={{ fontSize: '0.82rem', padding: '0.4rem' }}
+                                    ></textarea>
+                                  </div>
+                                </div>
                               </div>
                             ) : (
-                              (onboardingFormState.billingDetails?.companies?.length > 0) ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                  {onboardingFormState.billingDetails.companies.map((comp, idx) => (
-                                    <div key={comp.id || idx} style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                                        <span style={{ fontSize: '0.68rem', fontWeight: '700', color: idx === 0 ? '#1e40af' : '#475569', background: idx === 0 ? '#dbeafe' : '#e2e8f0', padding: '0.1rem 0.35rem', borderRadius: '3px', textTransform: 'uppercase' }}>
-                                          {idx === 0 ? 'Primary Entity' : `Entity #${idx + 1}`}
-                                        </span>
-                                        <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>{comp.companyName || 'Unnamed Entity'}</strong>
-                                      </div>
-                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                                        <div>
-                                          <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>GST / Tax Number</span>
-                                          <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: '500' }}>{comp.gstNumber || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
-                                        </div>
-                                        <div style={{ gridColumn: '1 / -1' }}>
-                                          <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>Billing Address</span>
-                                          <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: '500', whiteSpace: 'pre-wrap' }}>{comp.address || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
+                              <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                                  <span style={{ fontSize: '0.68rem', fontWeight: '700', color: '#1e40af', background: '#dbeafe', padding: '0.1rem 0.35rem', borderRadius: '3px', textTransform: 'uppercase' }}>
+                                    Primary Entity
+                                  </span>
+                                  <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>
+                                    {onboardingFormState.billingDetails?.companyName || onboardingFormState.billingDetails?.companies?.[0]?.companyName || 'Unnamed Entity'}
+                                  </strong>
                                 </div>
-                              ) : (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
                                   <div>
-                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Company Name</span>
-                                    <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.billingDetails?.companyName || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
-                                  </div>
-                                  <div>
-                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>GST / Tax Number</span>
-                                    <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.billingDetails?.gstNumber || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>GST / Tax Number</span>
+                                    <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: '500' }}>
+                                      {onboardingFormState.billingDetails?.gstNumber || onboardingFormState.billingDetails?.companies?.[0]?.gstNumber || <em style={{ color: '#94a3b8' }}>Not provided</em>}
+                                    </span>
                                   </div>
                                   <div style={{ gridColumn: '1 / -1' }}>
-                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Billing Address</span>
-                                    <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500', whiteSpace: 'pre-wrap' }}>{onboardingFormState.billingDetails?.address || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>Billing Address</span>
+                                    <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: '500', whiteSpace: 'pre-wrap' }}>
+                                      {onboardingFormState.billingDetails?.address || onboardingFormState.billingDetails?.companies?.[0]?.address || <em style={{ color: '#94a3b8' }}>Not provided</em>}
+                                    </span>
                                   </div>
                                 </div>
-                              )
+                              </div>
                             )}
                           </div>
 
@@ -1441,8 +1634,46 @@ function EditDivision() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+            </div>
 
-                  <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9', margin: 0 }} />
+            {/* Section 3: Division Documents */}
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', marginBottom: '1rem', background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+              <button 
+                type="button"
+                onClick={() => setIsDocumentsOpen(!isDocumentsOpen)}
+                style={{ 
+                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                  padding: '0.85rem 1.25rem',
+                  background: isDocumentsOpen ? '#f8fafc' : 'linear-gradient(90deg, #ffffff 80%, #faf5ff 100%)',
+                  border: 'none', cursor: 'pointer', transition: 'all 0.15s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <i className='bx bx-folder' style={{ color: '#7c3aed', fontSize: '1.25rem' }}></i>
+                  <span style={{ fontSize: '0.92rem', color: '#1e293b', fontWeight: '600' }}>Division Documents</span>
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>• Upload and manage documents</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.55rem',
+                  background: '#faf5ff',
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e9d5ff',
+                  color: '#6d28d9'
+                }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: '600' }}>
+                    {divisionDocs.length} {divisionDocs.length === 1 ? 'Doc' : 'Docs'}
+                  </span>
+                  <i className={`bx ${isDocumentsOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.2rem', color: '#7c3aed' }}></i>
+                </div>
+              </button>
+              
+              {isDocumentsOpen && (
+                <div style={{ padding: '1.25rem', background: 'white', borderTop: '1px solid #e2e8f0' }}>
 
                   {/* Upload Documents V2 */}
                   <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -1499,10 +1730,46 @@ function EditDivision() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+            </div>
 
-                  <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9', margin: 0 }} />
-
-                  {/* Division Contracts */}
+            {/* Section 4: Division Contracts */}
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', marginBottom: '1.25rem', background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+              <button 
+                type="button"
+                onClick={() => setIsContractsOpen(!isContractsOpen)}
+                style={{ 
+                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                  padding: '0.85rem 1.25rem',
+                  background: isContractsOpen ? '#f8fafc' : 'linear-gradient(90deg, #ffffff 80%, #ecfdf5 100%)',
+                  border: 'none', cursor: 'pointer', transition: 'all 0.15s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <i className='bx bx-file-blank' style={{ color: '#0284c7', fontSize: '1.25rem' }}></i>
+                  <span style={{ fontSize: '0.92rem', color: '#1e293b', fontWeight: '600' }}>Division Contracts</span>
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>• Legal entities & billing contracts</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.55rem',
+                  background: '#ecfdf5',
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '8px',
+                  border: '1px solid #a7f3d0',
+                  color: '#047857'
+                }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: '600' }}>
+                    {divisionContracts.length} {divisionContracts.length === 1 ? 'Contract' : 'Contracts'}
+                  </span>
+                  <i className={`bx ${isContractsOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.2rem', color: '#047857' }}></i>
+                </div>
+              </button>
+              
+              {isContractsOpen && (
+                <div style={{ padding: '1.25rem', background: 'white', borderTop: '1px solid #e2e8f0' }}>
                   <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                       <div>
@@ -1537,7 +1804,7 @@ function EditDivision() {
                               <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Bill From / Bank</th>
                               <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Billing Date</th>
                               <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600' }}>Order Name</th>
-                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600', width: '80px', textAlign: 'center' }}>Actions</th>
+                              <th style={{ padding: '0.75rem 1rem', color: '#475569', fontWeight: '600', minWidth: '130px', textAlign: 'center' }}>Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1625,14 +1892,35 @@ function EditDivision() {
                                   )}
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem' }}>
+                                    <button 
+                                      type="button"
+                                      onClick={() => handleScheduleBilling(cnt)}
+                                      style={{ 
+                                        background: 'none', 
+                                        border: 'none', 
+                                        color: '#059669', 
+                                        cursor: 'pointer', 
+                                        padding: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: '4px',
+                                        transition: 'background 0.15s ease'
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.background = '#ecfdf5'}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                      title="Schedule Billing"
+                                    >
+                                      <i className='bx bx-calendar-plus' style={{ fontSize: '1.15rem' }}></i>
+                                    </button>
                                     <button 
                                       type="button"
                                       onClick={() => {
                                         setSelectedContractForEdit(cnt);
                                         setIsContractModalOpen(true);
                                       }}
-                                      style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', padding: '2px' }}
+                                      style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', padding: '4px' }}
                                       title="Edit Contract"
                                     >
                                       <i className='bx bx-edit-alt' style={{ fontSize: '1.1rem' }}></i>
@@ -1640,7 +1928,7 @@ function EditDivision() {
                                     <button 
                                       type="button"
                                       onClick={() => deleteDivisionContract(cnt.id)} 
-                                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }} 
+                                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }} 
                                       title="Delete Contract"
                                     >
                                       <i className='bx bx-trash' style={{ fontSize: '1.1rem' }}></i>
@@ -1662,86 +1950,7 @@ function EditDivision() {
                 </div>
               )}
             </div>
-            
-            {/* Active Status Toggle */}
-            <div style={{ marginTop: '2rem' }}>
-              <label style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '500', display: 'block', marginBottom: '0.5rem' }}>Active Status</label>
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
-                  padding: '1rem', 
-                  background: formData.status === 'Active' ? '#f0fdf4' : '#f8fafc',
-                  border: formData.status === 'Active' ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  transition: 'all 0.3s'
-                }}
-              >
-                <div>
-                  <h4 style={{ margin: '0 0 0.25rem 0', color: formData.status === 'Active' ? '#16a34a' : '#64748b', fontSize: '0.95rem', fontWeight: '600' }}>
-                    {formData.status === 'Active' ? 'Active' : 'Inactive'}
-                  </h4>
-                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.8rem' }}>
-                    {formData.status === 'Active' ? 'Division can place and manage orders.' : 'Division is disabled. No orders can be placed.'}
-                  </p>
-                </div>
-                
-                {/* Toggle Switch */}
-                <div 
-                  onClick={() => setFormData({...formData, status: formData.status === 'Active' ? 'Inactive' : 'Active'})}
-                  style={{
-                    width: '44px',
-                    height: '24px',
-                    background: formData.status === 'Active' ? '#0ea5e9' : '#cbd5e1',
-                    borderRadius: '12px',
-                    position: 'relative',
-                    cursor: 'pointer',
-                    transition: 'background 0.3s'
-                  }}
-                >
-                  <div style={{
-                    width: '20px',
-                    height: '20px',
-                    background: 'white',
-                    borderRadius: '50%',
-                    position: 'absolute',
-                    top: '2px',
-                    left: formData.status === 'Active' ? '22px' : '2px',
-                    transition: 'left 0.3s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                  }}></div>
-                </div>
-              </div>
-            </div>
 
-          </div>
-
-          {/* Logo - Right Side */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '150px' }}>
-            <div style={{ 
-              width: '100px', height: '100px', 
-              borderRadius: '50%', 
-              background: '#f1f5f9', 
-              border: '1px dashed #cbd5e1',
-              display: 'flex', justifyContent: 'center', alignItems: 'center',
-              marginBottom: '0.75rem'
-            }}>
-              <i className='bx bx-image' style={{ fontSize: '2rem', color: '#94a3b8' }}></i>
-            </div>
-            <button style={{ background: 'transparent', border: 'none', color: '#0ea5e9', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <i className='bx bx-edit-alt'></i> Change Logo
-            </button>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', marginTop: '1.5rem', borderTop: '1px solid #f1f5f9' }}>
-          <button className="btn-outline" onClick={() => navigate(-1)} style={{ border: 'none', color: '#64748b', padding: '0.4rem 1rem', fontSize: '0.85rem' }}>Discard</button>
-          <button className="btn-primary" onClick={handleSaveChanges} style={{ padding: '0.4rem 1.25rem', background: '#6366f1', fontSize: '0.85rem' }}>Save Changes</button>
-        </div>
-      </div>
-      
       {/* Access & Roles Section */}
       <div style={{ padding: '1.5rem 2rem', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', marginTop: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
@@ -2379,6 +2588,7 @@ function EditDivision() {
           setSelectedContractForEdit(null);
         }}
         onSave={handleSaveContract}
+        onSaveAndSchedule={(data) => handleSaveContract(data, true)}
         divisionId={division.id}
         initialData={selectedContractForEdit}
       />
