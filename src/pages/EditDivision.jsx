@@ -72,10 +72,13 @@ function EditDivision() {
     expectations: division.expectations || ''
   });
 
+  const [isDivisionDetailsOpen, setIsDivisionDetailsOpen] = useState(false);
   const [isAdditionalDetailsOpen, setIsAdditionalDetailsOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isDocumentsOpen, setIsDocumentsOpen] = useState(false);
   const [isContractsOpen, setIsContractsOpen] = useState(false);
+  const [isAccessRolesOpen, setIsAccessRolesOpen] = useState(false);
+  const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isFiled, setIsFiled] = useState(false);
@@ -834,30 +837,43 @@ function EditDivision() {
         </div>
       </div>
 
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-        {/* Card Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ background: '#e0f2fe', color: '#0284c7', padding: '0.3rem', borderRadius: '4px', display: 'flex' }}>
-              <i className='bx bx-briefcase' style={{ fontSize: '1.1rem' }}></i>
-            </div>
-            <h3 style={{ margin: 0, fontSize: '1rem', color: '#1e293b' }}>Division Details</h3>
+      {/* Section 1: Division Details */}
+      <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', marginBottom: '1rem', background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+        <button 
+          type="button"
+          onClick={() => setIsDivisionDetailsOpen(!isDivisionDetailsOpen)}
+          style={{ 
+            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+            padding: '0.85rem 1.25rem',
+            background: isDivisionDetailsOpen ? '#f8fafc' : 'linear-gradient(90deg, #ffffff 80%, #f0f9ff 100%)',
+            border: 'none', cursor: 'pointer', transition: 'all 0.15s ease'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <i className='bx bx-briefcase' style={{ color: '#0284c7', fontSize: '1.25rem' }}></i>
+            <span style={{ fontSize: '0.92rem', color: '#1e293b', fontWeight: '600' }}>Division Details</span>
+            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>• Basic info, logo, remarks & status</span>
           </div>
-          <span style={{ 
-            background: formData.status === 'Active' ? '#dcfce7' : '#fee2e2', 
-            color: formData.status === 'Active' ? '#166534' : '#991b1b', 
-            padding: '0.3rem 0.8rem', 
-            borderRadius: '20px', 
-            fontSize: '0.85rem',
-            fontWeight: '500',
+          <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.4rem'
+            gap: '0.55rem',
+            background: formData.status === 'Active' ? '#f0fdf4' : '#fef2f2',
+            padding: '0.35rem 0.85rem',
+            borderRadius: '8px',
+            border: formData.status === 'Active' ? '1px solid #bbf7d0' : '1px solid #fecaca',
+            color: formData.status === 'Active' ? '#15803d' : '#991b1b'
           }}>
-            <i className={`bx ${formData.status === 'Active' ? 'bx-check-circle' : 'bx-x-circle'}`}></i>
-            {formData.status}
-          </span>
-        </div>
+            <span style={{ fontSize: '0.78rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <i className={`bx ${formData.status === 'Active' ? 'bx-check-circle' : 'bx-x-circle'}`}></i>
+              {formData.status}
+            </span>
+            <i className={`bx ${isDivisionDetailsOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.2rem', color: formData.status === 'Active' ? '#15803d' : '#991b1b' }}></i>
+          </div>
+        </button>
+
+        {isDivisionDetailsOpen && (
+          <div style={{ padding: '1.25rem', background: 'white', borderTop: '1px solid #e2e8f0' }}>
 
         <div style={{ display: 'flex', gap: '2rem' }}>
           {/* Form Fields - Left Side */}
@@ -1004,6 +1020,8 @@ function EditDivision() {
           <button className="btn-outline" onClick={() => navigate(-1)} style={{ border: 'none', color: '#64748b', padding: '0.4rem 1rem', fontSize: '0.85rem' }}>Discard</button>
           <button className="btn-primary" onClick={handleSaveChanges} style={{ padding: '0.4rem 1.25rem', background: '#6366f1', fontSize: '0.85rem' }}>Save Changes</button>
         </div>
+          </div>
+        )}
       </div>
       
       {/* Collapsible Sections: Onboarding, Documents, Contracts */}
@@ -1965,18 +1983,48 @@ function EditDivision() {
             </div>
 
       {/* Access & Roles Section */}
-      <div style={{ padding: '1.5rem 2rem', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', marginTop: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ width: '32px', height: '32px', background: '#f0f9ff', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0ea5e9' }}>
-                <i className='bx bx-group'></i>
-              </div>
-              <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: '700' }}>Access & Roles</h2>
-            </div>
-            <p style={{ margin: '0.5rem 0 0 0', color: '#64748b', fontSize: '0.85rem' }}>Manage roles and permissions for corporate access</p>
+      <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', marginBottom: '1rem', background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+        <button 
+          type="button"
+          onClick={() => setIsAccessRolesOpen(!isAccessRolesOpen)}
+          style={{ 
+            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+            padding: '0.85rem 1.25rem',
+            background: isAccessRolesOpen ? '#f8fafc' : 'linear-gradient(90deg, #ffffff 80%, #f0fdfa 100%)',
+            border: 'none', cursor: 'pointer', transition: 'all 0.15s ease'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <i className='bx bx-group' style={{ color: '#0d9488', fontSize: '1.25rem' }}></i>
+            <span style={{ fontSize: '0.92rem', color: '#1e293b', fontWeight: '600' }}>Access & Roles</span>
+            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>• Manage roles and permissions for corporate access</span>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.55rem',
+            background: '#f0fdfa',
+            padding: '0.35rem 0.85rem',
+            borderRadius: '8px',
+            border: '1px solid #99f6e4',
+            color: '#0f766e'
+          }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <i className='bx bx-user-check'></i>
+              {roles.length} Roles {invitedUsers.length > 0 ? `• ${invitedUsers.length} Invites` : ''}
+            </span>
+            <i className={`bx ${isAccessRolesOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.2rem', color: '#0d9488' }}></i>
+          </div>
+        </button>
+
+        {isAccessRolesOpen && (
+          <div style={{ padding: '1.25rem', background: 'white', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1rem', color: '#0f172a', fontWeight: '700' }}>Roles & Corporate Permissions</h4>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.82rem' }}>Invite stakeholders and manage individual role access</p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <button 
               type="button"
               onClick={() => {
@@ -2390,22 +2438,58 @@ function EditDivision() {
             )}
           </div>
         </div>
+          </div>
+        )}
       </div>
       
       {/* Orders Section */}
-      <div style={{ padding: '1.5rem 2rem', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', marginTop: '2rem' }}>
-        
-        {/* Section Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <i className='bx bx-receipt' style={{ color: '#3b82f6' }}></i> Division Orders
-            </h3>
-            <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.82rem' }}>
-              BD team can configure billing details and save as a draft order to create billing schedules & invoices.
-            </p>
+      <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', marginBottom: '1rem', background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+        <button 
+          type="button"
+          onClick={() => setIsOrdersOpen(!isOrdersOpen)}
+          style={{ 
+            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+            padding: '0.85rem 1.25rem',
+            background: isOrdersOpen ? '#f8fafc' : 'linear-gradient(90deg, #ffffff 80%, #eef2ff 100%)',
+            border: 'none', cursor: 'pointer', transition: 'all 0.15s ease'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <i className='bx bx-receipt' style={{ color: '#4338ca', fontSize: '1.25rem' }}></i>
+            <span style={{ fontSize: '0.92rem', color: '#1e293b', fontWeight: '600' }}>Division Orders</span>
+            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>• BD billing configurations, draft & active orders</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.55rem',
+            background: '#eef2ff',
+            padding: '0.35rem 0.85rem',
+            borderRadius: '8px',
+            border: '1px solid #c7d2fe',
+            color: '#4338ca'
+          }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <i className='bx bx-package'></i>
+              {orders.length} {orders.length === 1 ? 'Order' : 'Orders'}
+            </span>
+            <i className={`bx ${isOrdersOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.2rem', color: '#4338ca' }}></i>
+          </div>
+        </button>
+
+        {isOrdersOpen && (
+          <div style={{ padding: '1.25rem', background: 'white', borderTop: '1px solid #e2e8f0' }}>
+            {/* Section Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <i className='bx bx-receipt' style={{ color: '#3b82f6' }}></i> Division Orders
+                </h3>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.82rem' }}>
+                  BD team can configure billing details and save as a draft order to create billing schedules & invoices.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             {isFiled ? (
               <span style={{ fontSize: '0.75rem', background: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0', padding: '0.35rem 0.75rem', borderRadius: '20px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                 <i className='bx bx-check-circle'></i> Onboarding Filled (Billing Ready)
@@ -2557,6 +2641,8 @@ function EditDivision() {
             </button>
           </div>
         </div>
+          </div>
+        )}
       </div>
       
       
