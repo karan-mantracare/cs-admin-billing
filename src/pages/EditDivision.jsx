@@ -519,76 +519,99 @@ function EditDivision() {
     }
   };
 
+  const mapContractToOrder = (contractId, selectedOrderId) => {
+    try {
+      const allContracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+      const allOrders = JSON.parse(localStorage.getItem('division_orders') || '[]');
+      const targetOrder = allOrders.find(o => String(o.id) === String(selectedOrderId));
+      const targetOrderName = targetOrder 
+        ? `${targetOrder.planStart || 'Unknown Date'} & ${targetOrder.plan || targetOrder.planName || targetOrder.product || `Order #${targetOrder.id}`}`
+        : '';
+
+      const updatedContracts = allContracts.map(c => {
+        if (String(c.id) === String(contractId)) {
+          return {
+            ...c,
+            orderId: selectedOrderId ? String(selectedOrderId) : '',
+            orderName: targetOrderName
+          };
+        }
+        return c;
+      });
+
+      localStorage.setItem('division_contracts', JSON.stringify(updatedContracts));
+      setDivisionContracts(updatedContracts.filter(c => String(c.divisionId) === String(division.id)));
+
+      // Sync related invoice lines in Accounts Receivable (client_payments)
+      try {
+        const clientPayments = JSON.parse(localStorage.getItem('client_payments') || '[]');
+        let modified = false;
+        const updatedPayments = clientPayments.map(p => {
+          if (p && String(p.contractId) === String(contractId)) {
+            modified = true;
+            return {
+              ...p,
+              orderId: selectedOrderId ? String(selectedOrderId) : 'Null',
+              orderName: targetOrderName
+            };
+          }
+          return p;
+        });
+
+        if (modified) {
+          localStorage.setItem('client_payments', JSON.stringify(updatedPayments));
+        }
+      } catch (err) {
+        console.error('Failed to sync client_payments on mapContractToOrder:', err);
+      }
+
+      window.dispatchEvent(new Event('storage'));
+      if (showToast) showToast(`Contract mapped to ${targetOrderName || 'Order'}`, 3000);
+    } catch (e) {
+      console.error('Failed to map contract to order:', e);
+    }
+  };
+
   const handleScheduleBilling = (cnt) => {
     try {
       const existingPayments = JSON.parse(localStorage.getItem('client_payments') || '[]');
+      const existingEntries = existingPayments.filter(p => p && String(p.contractId) === String(cnt.id));
 
-      // Calculate dueByDate: billingDate + paymentDueDays
-      let dueByDate = cnt.billingDate || new Date().toISOString().split('T')[0];
-      if (cnt.billingDate && cnt.paymentDueDays) {
-        const d = new Date(cnt.billingDate);
-        d.setDate(d.getDate() + (parseInt(cnt.paymentDueDays, 10) || 0));
-        dueByDate = d.toISOString().split('T')[0];
-      }
+      const doNavigate = () => {
+        const clientName = formData.clientName || division.clientName || 'Client Name';
+        const divisionName = formData.divisionName || division.divisionName || 'Division Name';
 
-      const clientName = formData.clientName || division.clientName || 'Client Name';
-      const divisionName = formData.divisionName || division.divisionName || 'Division Name';
-      const orderIdVal = cnt.orderId ? cnt.orderId : 'Null';
-      const orderNameVal = cnt.orderName || '';
-      const entityName = cnt.companyName || (cnt.companyEntities?.[0]?.companyName) || 'Primary Entity';
-      const taxDetailsVal = cnt.taxDetails || (cnt.companyEntities?.[0]?.taxDetails) || '';
-      const addressVal = cnt.address || (cnt.companyEntities?.[0]?.address) || '';
-      const remarksVal = cnt.remarks || `Invoice for ${entityName} - ${cnt.contractCurrency || 'EUR'} ${cnt.contractValue || 0}`;
-
-      // Check if this contract is already scheduled in client_payments
-      const existingIndex = existingPayments.findIndex(p => p.contractId === cnt.id);
-
-      const paymentItem = {
-        id: existingIndex >= 0 ? existingPayments[existingIndex].id : (Date.now() + Math.floor(Math.random() * 1000)),
-        contractId: cnt.id,
-        clientName: clientName,
-        divisionName: divisionName,
-        orderId: orderIdVal,
-        orderName: orderNameVal,
-        clientBillingEntity: entityName,
-        clientTaxDetails: taxDetailsVal,
-        clientAddress: addressVal,
-        billingCompany: cnt.billFrom || 'MCHI',
-        receivingBankName: cnt.receivingBankName || 'AirWallex',
-        bankDetailsLink: cnt.bankDetailsLink || '',
-        paymentDueDays: cnt.paymentDueDays || 15,
-        contractValue: Number(cnt.contractValue) || 0,
-        amountDueUsd: Number(cnt.amountInUSD) || 0,
-        amountDue: Number(cnt.contractValue) || 0,
-        currency: cnt.contractCurrency || 'EUR',
-        invoiceByDate: cnt.billingDate || new Date().toISOString().split('T')[0],
-        dueByDate: dueByDate,
-        invoiceDate: '-',
-        invoiceLink: '',
-        totalPaid: 0,
-        dueAmount: Number(cnt.contractValue) || 0,
-        status: 'To be Raised',
-        remarks: remarksVal,
-        createdAt: new Date().toISOString()
+        navigate('/accounts-receivable', {
+          state: {
+            openAddSchedule: true,
+            contractSchedule: cnt,
+            corporate: clientName,
+            division: divisionName,
+            divisionId: division.id,
+            orderId: cnt.orderId && cnt.orderId !== 'Null' ? String(cnt.orderId) : '',
+            orderName: cnt.orderName || ''
+          }
+        });
       };
 
-      let updatedPayments;
-      if (existingIndex >= 0) {
-        updatedPayments = existingPayments.map((p, idx) => idx === existingIndex ? { ...p, ...paymentItem } : p);
-      } else {
-        updatedPayments = [paymentItem, ...existingPayments];
+      if (existingEntries.length > 0) {
+        setConfirmConfig({
+          isOpen: true,
+          title: 'Schedule Already Exists',
+          message: `This contract already has ${existingEntries.length} invoice line(s) in Accounts Receivable. Do you want to proceed and create a new schedule / additional invoices for this contract?`,
+          confirmText: 'Proceed to Schedule',
+          cancelText: 'Cancel',
+          onConfirm: () => {
+            setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+            doNavigate();
+          }
+        });
+        return;
       }
 
-      localStorage.setItem('client_payments', JSON.stringify(updatedPayments));
-      window.dispatchEvent(new Event('storage'));
-
-      if (showToast) {
-        showToast('Billing scheduled in Accounts Receivable!', 3000);
-      }
-
-      navigate('/accounts-receivable');
+      doNavigate();
     } catch (e) {
-      console.error('Failed to schedule billing for contract:', e);
+      console.error('Failed to initiate schedule for contract:', e);
       navigate('/accounts-receivable');
     }
   };
@@ -1923,9 +1946,40 @@ function EditDivision() {
                                       {cnt.orderName}
                                     </span>
                                   ) : (
-                                    <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.8rem', background: '#f8fafc', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px dashed #cbd5e1' }}>
-                                      — Unlinked —
-                                    </span>
+                                    orders && orders.length > 0 ? (
+                                      <select
+                                        value=""
+                                        onChange={(e) => {
+                                          if (e.target.value) {
+                                            mapContractToOrder(cnt.id, e.target.value);
+                                          }
+                                        }}
+                                        style={{
+                                          padding: '0.2rem 0.45rem',
+                                          borderRadius: '4px',
+                                          border: '1px dashed #93c5fd',
+                                          background: '#eff6ff',
+                                          color: '#1d4ed8',
+                                          fontSize: '0.78rem',
+                                          cursor: 'pointer',
+                                          fontWeight: '600',
+                                          outline: 'none',
+                                          maxWidth: '190px'
+                                        }}
+                                        title="Click to link this contract to an Order"
+                                      >
+                                        <option value="" disabled>+ Link Order</option>
+                                        {orders.map(o => (
+                                          <option key={o.id} value={o.id}>
+                                            #{o.id} • {o.planStart || 'Date'} ({o.plan || o.planName || o.product || 'Order'})
+                                          </option>
+                                        ))}
+                                      </select>
+                                    ) : (
+                                      <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.8rem', background: '#f8fafc', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px dashed #cbd5e1' }}>
+                                        — Unlinked —
+                                      </span>
+                                    )
                                   )}
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>

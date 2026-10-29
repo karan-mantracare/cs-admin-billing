@@ -118,7 +118,8 @@ function ClientPayments() {
         corporate: location.state.corporate || location.state.clientName || '',
         division: location.state.division || location.state.divisionName || '',
         orderName: location.state.orderName || '',
-        orderId: location.state.orderId || ''
+        orderId: location.state.orderId || '',
+        contractSchedule: location.state.contractSchedule || null
       });
       setAddModalMode('schedule');
       setIsAddScheduleOpen(true);
@@ -330,7 +331,25 @@ function ClientPayments() {
   const toBeBilled = filteredPayments.filter(p => p.status === 'To be Raised').reduce((sum, p) => sum + p.amountDueUsd, 0);
 
   const handleSaveEdit = (updatedPayment) => {
-    setPayments(prev => prev.map(p => p.id === updatedPayment.id ? updatedPayment : p));
+    setPayments(prev => {
+      if (updatedPayment.contractId) {
+        return prev.map(p => {
+          if (p.id === updatedPayment.id) {
+            return updatedPayment;
+          }
+          if (String(p.contractId) === String(updatedPayment.contractId)) {
+            return {
+              ...p,
+              orderId: updatedPayment.orderId && updatedPayment.orderId !== 'Null' ? updatedPayment.orderId : 'Null',
+              orderName: updatedPayment.orderName || ''
+            };
+          }
+          return p;
+        });
+      }
+      return prev.map(p => p.id === updatedPayment.id ? updatedPayment : p);
+    });
+
     if (updatedPayment.contractId) {
       try {
         const contracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
@@ -345,6 +364,7 @@ function ClientPayments() {
           return c;
         });
         localStorage.setItem('division_contracts', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
       } catch (e) {
         console.error("Failed to sync division_contracts on payment edit", e);
       }

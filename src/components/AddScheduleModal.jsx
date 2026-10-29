@@ -19,6 +19,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   const [corporates, setCorporates] = useState([]);
   const [divisions, setDivisions] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [unlinkedContract, setUnlinkedContract] = useState(null);
   
   const [isCorpDropdownOpen, setIsCorpDropdownOpen] = useState(false);
   const [corpSearch, setCorpSearch] = useState('');
@@ -68,12 +69,27 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         let selOrderName = initialSelection.orderName || '';
         let selOrderId = initialSelection.orderId ? String(initialSelection.orderId) : '';
 
+        if (initialSelection.contractSchedule) {
+          const cnt = initialSelection.contractSchedule;
+          setUnlinkedContract(cnt);
+          if (!selCorp) selCorp = cnt.corporate || cnt.clientName || '';
+          if (!selDiv) selDiv = cnt.division || cnt.divisionName || '';
+          if (!selOrderId || selOrderId === 'Null') {
+            selOrderId = cnt.orderId && cnt.orderId !== 'Null' ? String(cnt.orderId) : 'Null';
+          }
+          if (!selOrderName) {
+            selOrderName = cnt.orderName || (cnt.companyName ? `[Unlinked Contract] ${cnt.companyName}` : 'Unlinked Contract');
+          }
+        } else {
+          setUnlinkedContract(null);
+        }
+
         // Match order by ID first
         let matchedOrder = null;
-        if (selOrderId) {
+        if (selOrderId && selOrderId !== 'Null') {
           matchedOrder = loadedOrders.find(o => String(o.id) === selOrderId);
         }
-        if (!matchedOrder && selOrderName) {
+        if (!matchedOrder && selOrderName && selOrderId !== 'Null') {
           matchedOrder = loadedOrders.find(o => {
             const ps = o.planStart || 'Unknown Date';
             const pn = o.plan || o.planName || o.product || `Order #${o.id}`;
@@ -121,8 +137,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           orderName: selOrderName || prev.orderName,
           orderId: selOrderId || prev.orderId,
           paymentTerms: initialSelection.paymentTerms || prev.paymentTerms || '1',
-          amount: initialSelection.amount || matchedOrder?.billingDetails?.contractValue || matchedOrder?.amount || prev.amount || ''
+          amount: initialSelection.amount || (initialSelection.contractSchedule?.contractValue || initialSelection.contractSchedule?.amount) || matchedOrder?.billingDetails?.contractValue || matchedOrder?.amount || prev.amount || ''
         }));
+      } else {
+        setUnlinkedContract(null);
       }
     }
   }, [isOpen, initialSelection, globalClients]);
@@ -209,15 +227,58 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
   // Calculate currently selected order details for validation
   const selectedOrder = safeOrders.find(o => {
-    if (formData.orderId && String(o.id) === String(formData.orderId)) return true;
-    if (formData.orderName) {
+    if (formData.orderId && formData.orderId !== 'Null' && String(o.id) === String(formData.orderId)) return true;
+    if (formData.orderName && formData.orderId !== 'Null') {
       const ps = o.planStart || 'Unknown Date';
       const pn = o.plan || o.planName || o.product || `Order #${o.id}`;
       const nameKey = `${ps} & ${pn}`;
       return nameKey === formData.orderName || String(o.id) === formData.orderName || o.orderName === formData.orderName;
     }
     return false;
-  }) || null;
+  }) || (unlinkedContract ? {
+    id: 'Null',
+    corporate: formData.corporate || unlinkedContract.corporate || unlinkedContract.clientName || '',
+    division: formData.division || unlinkedContract.division || unlinkedContract.divisionName || '',
+    orderName: unlinkedContract.orderName || (unlinkedContract.companyName ? `[Unlinked Contract] ${unlinkedContract.companyName}` : 'Unlinked Contract'),
+    planStart: unlinkedContract.startDate || unlinkedContract.contractStart || new Date().toISOString().split('T')[0],
+    planEnd: unlinkedContract.endDate || unlinkedContract.contractEnd || '',
+    amount: Number(unlinkedContract.contractValue) || Number(unlinkedContract.amount) || 0,
+    billingDetails: {
+      contractValue: Number(unlinkedContract.contractValue) || Number(unlinkedContract.amount) || 0,
+      amountInUSD: Number(unlinkedContract.amountInUSD) || Number(unlinkedContract.contractValue) || Number(unlinkedContract.amount) || 0,
+      clientCurrency: unlinkedContract.contractCurrency || unlinkedContract.currency || 'USD',
+      billingEntity: unlinkedContract.companyName || 'Contract Entity',
+      taxDetails: unlinkedContract.taxDetails || (unlinkedContract.companyEntities?.[0]?.taxDetails) || '',
+      billFrom: unlinkedContract.billFrom || 'MCC',
+      paymentDue: Number(unlinkedContract.paymentDueDays) || 30,
+      billingSplits: [{
+        id: String(unlinkedContract.id || 1),
+        companyName: unlinkedContract.companyName || 'Contract Entity',
+        taxDetails: unlinkedContract.taxDetails || (unlinkedContract.companyEntities?.[0]?.taxDetails) || '',
+        contractValue: Number(unlinkedContract.contractValue) || Number(unlinkedContract.amount) || 0,
+        contractCurrency: unlinkedContract.contractCurrency || unlinkedContract.currency || 'USD',
+        amountInUSD: Number(unlinkedContract.amountInUSD) || Number(unlinkedContract.contractValue) || Number(unlinkedContract.amount) || 0,
+        percentage: 100,
+        billFrom: unlinkedContract.billFrom || 'MCC',
+        receivingBankName: unlinkedContract.receivingBankName || '',
+        bankDetailsLink: unlinkedContract.bankDetailsLink || '',
+        selected: true
+      }]
+    },
+    contracts: [{
+      id: String(unlinkedContract.id || 1),
+      companyName: unlinkedContract.companyName || 'Contract Entity',
+      taxDetails: unlinkedContract.taxDetails || (unlinkedContract.companyEntities?.[0]?.taxDetails) || '',
+      contractValue: Number(unlinkedContract.contractValue) || Number(unlinkedContract.amount) || 0,
+      contractCurrency: unlinkedContract.contractCurrency || unlinkedContract.currency || 'USD',
+      amountInUSD: Number(unlinkedContract.amountInUSD) || Number(unlinkedContract.contractValue) || Number(unlinkedContract.amount) || 0,
+      percentage: 100,
+      billFrom: unlinkedContract.billFrom || 'MCC',
+      receivingBankName: unlinkedContract.receivingBankName || '',
+      bankDetailsLink: unlinkedContract.bankDetailsLink || '',
+      selected: true
+    }]
+  } : null);
 
   const availableContracts = React.useMemo(() => {
     if (!selectedOrder) return [];
@@ -478,6 +539,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           totalSplits: 1,
           clientName: formData.corporate || selectedOrder.corporate || selectedOrder.clientName || 'Unknown',
           orderId: String(selectedOrder.id),
+          orderName: selectedOrder.id === 'Null' ? '' : (selectedOrder.orderName || formData.orderName || ''),
           contractId: String(targetContract.id),
           billingCompany: entityName,
           clientBillingEntity: entityName,
@@ -532,6 +594,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             totalSplits: activeSplits.length,
             clientName: formData.corporate || selectedOrder.corporate || selectedOrder.clientName || 'Unknown',
             orderId: String(selectedOrder.id),
+            orderName: selectedOrder.id === 'Null' ? '' : (selectedOrder.orderName || formData.orderName || ''),
             contractId: String(contract.id),
             billingCompany: entityName,
             clientBillingEntity: entityName,
@@ -608,6 +671,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             totalSplits: activeSplits.length,
             clientName: formData.corporate || selectedOrder.corporate || selectedOrder.clientName || 'Unknown',
             orderId: String(selectedOrder.id),
+            orderName: selectedOrder.id === 'Null' ? '' : (selectedOrder.orderName || formData.orderName || ''),
             contractId: String(split.id || ''),
             billingCompany: split.companyName,
             clientBillingEntity: split.companyName,
@@ -650,7 +714,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           splitIndex: 1,
           clientName: formData.corporate || selectedOrder.corporate || selectedOrder.clientName || 'Unknown',
           orderId: String(selectedOrder.id),
-          contractId: String(activeSplits[0]?.id || ''),
+          orderName: selectedOrder.id === 'Null' ? '' : (selectedOrder.orderName || formData.orderName || ''),
+          contractId: String(activeSplits[0]?.id || (unlinkedContract?.id ? unlinkedContract.id : '')),
           billingCompany: entityName,
           clientBillingEntity: entityName,
           taxId: taxId,
@@ -756,12 +821,36 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         alert("Unable to generate schedule. Please check that order value and payment terms are valid.");
         return;
       }
+      if (!checkDuplicateWarning(invoices)) {
+        return;
+      }
       onSave({ formData, selectedOrder, mode, invoices });
       onClose();
     }
   };
 
+  const checkDuplicateWarning = (invoices) => {
+    try {
+      const clientPayments = JSON.parse(localStorage.getItem('client_payments') || '[]');
+      const contractIdsToCheck = [...new Set((invoices || []).map(inv => inv.contractId).filter(Boolean))];
+      if (contractIdsToCheck.length > 0) {
+        const existingMatches = clientPayments.filter(p => p && p.contractId && contractIdsToCheck.includes(String(p.contractId)));
+        if (existingMatches.length > 0) {
+          return window.confirm(
+            `Warning: This contract already has ${existingMatches.length} invoice line(s) in Accounts Receivable.\n\nDo you want to proceed and generate ${invoices.length} additional invoice line(s)?`
+          );
+        }
+      }
+    } catch (e) {
+      console.error('Error checking duplicate warning:', e);
+    }
+    return true;
+  };
+
   const handleSave = () => {
+    if (!checkDuplicateWarning(previewInvoices)) {
+      return;
+    }
     onSave({ formData, selectedOrder, mode, invoices: previewInvoices });
     onClose();
   };
@@ -1332,6 +1421,15 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               value={formData.orderId || (selectedOrder ? String(selectedOrder.id) : '')}
               onChange={(e) => {
                 const val = e.target.value;
+                if (val === 'Null' && unlinkedContract) {
+                  setFormData(prev => ({
+                    ...prev,
+                    orderId: 'Null',
+                    orderName: unlinkedContract.orderName || (unlinkedContract.companyName ? `[Unlinked Contract] ${unlinkedContract.companyName}` : 'Unlinked Contract'),
+                    amount: unlinkedContract.contractValue || unlinkedContract.amount || prev.amount
+                  }));
+                  return;
+                }
                 const matched = filteredOrders.find(o => String(o.id) === val);
                 if (matched) {
                   const ps = matched.planStart || 'Unknown Date';
@@ -1349,6 +1447,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               disabled={!formData.division}
             >
               <option value="" disabled hidden>Select Order</option>
+              {unlinkedContract && (
+                <option value="Null">
+                  Unlinked Contract • {unlinkedContract.companyName || 'Contract'} ({unlinkedContract.contractCurrency || unlinkedContract.currency || 'USD'} {Number(unlinkedContract.contractValue || unlinkedContract.amount || 0).toLocaleString()})
+                </option>
+              )}
               {filteredOrders.map(o => {
                 const planStart = o.planStart || 'Unknown Date';
                 const planName = o.plan || o.planName || o.product || `Order #${o.id}`;
@@ -1362,7 +1465,16 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               })}
             </select>
 
-            {formData.division && filteredOrders.length === 0 && (
+            {unlinkedContract && (formData.orderId === 'Null' || !formData.orderId) && (
+              <div style={{ marginTop: '0.6rem', padding: '0.65rem 0.85rem', background: '#ecfdf5', borderRadius: '8px', border: '1px solid #a7f3d0', fontSize: '0.8rem', color: '#065f46', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className='bx bx-check-shield' style={{ fontSize: '1.1rem', color: '#059669' }}></i>
+                <div>
+                  <span style={{ fontWeight: '700' }}>Unlinked Contract Schedule:</span> Order ID is <strong>Null</strong>. When an Order is linked, all invoice lines will update automatically.
+                </div>
+              </div>
+            )}
+
+            {formData.division && filteredOrders.length === 0 && !unlinkedContract && (
               <div style={{ marginTop: '0.6rem', padding: '0.75rem 0.85rem', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe', fontSize: '0.8rem', color: '#1e40af' }}>
                 <div style={{ fontWeight: '700', marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   <i className='bx bx-info-circle' style={{ fontSize: '1rem', color: '#2563eb' }}></i> No existing orders found for this division

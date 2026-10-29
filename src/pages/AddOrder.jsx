@@ -373,19 +373,19 @@ function AddOrder() {
   const syncDivisionContractsMapping = (targetOrderId, targetOrderName, selectedContracts) => {
     try {
       const allDivContracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
-      const selectedIds = (selectedContracts || []).map(c => c.id);
+      const selectedIds = (selectedContracts || []).map(c => String(c.id));
 
       (selectedContracts || []).forEach(sc => {
-        if (!allDivContracts.find(c => c.id === sc.id)) {
+        if (!allDivContracts.find(c => String(c.id) === String(sc.id))) {
           allDivContracts.push({ ...sc, divisionId: resolvedDivisionId });
         }
       });
 
       const updated = allDivContracts.map(c => {
-        if (selectedIds.includes(c.id)) {
+        if (selectedIds.includes(String(c.id))) {
           return { ...c, orderId: targetOrderId, orderName: targetOrderName };
         }
-        if (String(c.orderId) === String(targetOrderId) && !selectedIds.includes(c.id)) {
+        if (String(c.orderId) === String(targetOrderId) && !selectedIds.includes(String(c.id))) {
           return { ...c, orderId: '', orderName: '' };
         }
         return c;
@@ -398,11 +398,11 @@ function AddOrder() {
         const clientPayments = JSON.parse(localStorage.getItem('client_payments') || '[]');
         let paymentsModified = false;
         const updatedPayments = clientPayments.map(p => {
-          if (p.contractId && selectedIds.includes(p.contractId)) {
+          if (p.contractId && selectedIds.includes(String(p.contractId))) {
             paymentsModified = true;
             return { ...p, orderId: targetOrderId, orderName: targetOrderName };
           }
-          if (p.contractId && String(p.orderId) === String(targetOrderId) && !selectedIds.includes(p.contractId)) {
+          if (p.contractId && String(p.orderId) === String(targetOrderId) && !selectedIds.includes(String(p.contractId))) {
             paymentsModified = true;
             return { ...p, orderId: 'Null', orderName: '' };
           }
