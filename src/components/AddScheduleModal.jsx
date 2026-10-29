@@ -195,8 +195,6 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     setCustomDates({});
   }, [formData.paymentTerms, formData.orderName, formData.orderId]);
 
-  if (!isOpen) return null;
-
   const filteredCorps = Array.isArray(corporates) ? corporates.filter(c => c && c.toLowerCase().includes(corpSearch.toLowerCase())) : [];
   const filteredDivs = Array.isArray(divisions) ? divisions.filter(d => d && d.toLowerCase().includes(divSearch.toLowerCase())) : [];
   
@@ -748,6 +746,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box',
     fontFamily: 'inherit'
   };
+
+  if (!isOpen) return null;
 
   if (isPreview) {
     return (
