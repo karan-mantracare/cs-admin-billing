@@ -595,12 +595,14 @@ function EditDivision() {
       };
 
       if (existingEntries.length > 0) {
+        const totalExistingVal = existingEntries.reduce((sum, p) => sum + (Number(p.amountDueUsd) || Number(p.amountDue) || 0), 0);
+        const curr = existingEntries[0]?.currency || cnt.contractCurrency || '$';
         setConfirmConfig({
           isOpen: true,
-          title: 'Schedule Already Exists',
-          message: `This contract already has ${existingEntries.length} invoice line(s) in Accounts Receivable. Do you want to proceed and create a new schedule / additional invoices for this contract?`,
+          title: 'Existing Schedule Detected',
+          message: `This contract already has ${existingEntries.length} invoice line(s) recorded in Accounts Receivable (${curr} ${Number(totalExistingVal).toLocaleString()}). Proceeding will open the scheduler to generate additional invoice lines for this contract.`,
           confirmText: 'Proceed to Schedule',
-          cancelText: 'Cancel',
+          cancelText: 'Cancel & Review',
           onConfirm: () => {
             setConfirmConfig(prev => ({ ...prev, isOpen: false }));
             doNavigate();

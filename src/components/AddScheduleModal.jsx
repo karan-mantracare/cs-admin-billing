@@ -181,6 +181,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   const [previewInvoices, setPreviewInvoices] = useState([]);
   const [showRemarksTooltip, setShowRemarksTooltip] = useState(false);
   const [hoveredSplitRow, setHoveredSplitRow] = useState(null);
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
 
   // Dynamic % distribution & live schedule states
   const [pinnedPercentages, setPinnedPercentages] = useState({});
@@ -821,36 +822,56 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         alert("Unable to generate schedule. Please check that order value and payment terms are valid.");
         return;
       }
-      if (!checkDuplicateWarning(invoices)) {
-        return;
-      }
+      const hasDuplicate = checkDuplicateWarning(invoices, () => {
+        onSave({ formData, selectedOrder, mode, invoices });
+        onClose();
+      });
+      if (hasDuplicate) return;
+
       onSave({ formData, selectedOrder, mode, invoices });
       onClose();
     }
   };
 
-  const checkDuplicateWarning = (invoices) => {
+  const checkDuplicateWarning = (invoices, onProceed) => {
     try {
       const clientPayments = JSON.parse(localStorage.getItem('client_payments') || '[]');
       const contractIdsToCheck = [...new Set((invoices || []).map(inv => inv.contractId).filter(Boolean))];
       if (contractIdsToCheck.length > 0) {
         const existingMatches = clientPayments.filter(p => p && p.contractId && contractIdsToCheck.includes(String(p.contractId)));
         if (existingMatches.length > 0) {
-          return window.confirm(
-            `Warning: This contract already has ${existingMatches.length} invoice line(s) in Accounts Receivable.\n\nDo you want to proceed and generate ${invoices.length} additional invoice line(s)?`
-          );
+          const existingTotal = existingMatches.reduce((sum, p) => sum + (Number(p.amountDueUsd) || Number(p.amountDue) || 0), 0);
+          const newTotal = (invoices || []).reduce((sum, inv) => sum + (Number(inv.amountDueUsd) || Number(inv.amountDue) || 0), 0);
+          const curr = invoices?.[0]?.currency || existingMatches[0]?.currency || 'USD';
+          const entityName = invoices?.[0]?.clientBillingEntity || invoices?.[0]?.billingCompany || existingMatches[0]?.clientBillingEntity || formData.corporate || 'Contract Entity';
+
+          setDuplicateWarning({
+            existingMatches,
+            existingCount: existingMatches.length,
+            existingTotal,
+            newCount: invoices.length,
+            newTotal,
+            currency: curr,
+            contractName: entityName,
+            invoices,
+            onProceed
+          });
+          return true; // Found existing entries, opened warning modal
         }
       }
     } catch (e) {
       console.error('Error checking duplicate warning:', e);
     }
-    return true;
+    return false;
   };
 
   const handleSave = () => {
-    if (!checkDuplicateWarning(previewInvoices)) {
-      return;
-    }
+    const hasDuplicate = checkDuplicateWarning(previewInvoices, () => {
+      onSave({ formData, selectedOrder, mode, invoices: previewInvoices });
+      onClose();
+    });
+    if (hasDuplicate) return;
+
     onSave({ formData, selectedOrder, mode, invoices: previewInvoices });
     onClose();
   };
@@ -860,12 +881,231 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     if (!isOpen) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' || e.keyCode === 27) {
-        onClose();
+        if (duplicateWarning) {
+          setDuplicateWarning(null);
+        } else {
+          onClose();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, duplicateWarning, onClose]);
+
+  const renderDuplicateWarningModal = () => {
+    if (!duplicateWarning) return null;
+
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.72)',
+          backdropFilter: 'blur(5px)',
+          zIndex: 3000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.25rem',
+          animation: 'fadeIn 0.15s ease-out'
+        }}
+        onClick={() => setDuplicateWarning(null)}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '520px',
+            width: '100%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(245, 158, 11, 0.25)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            textAlign: 'left'
+          }}
+        >
+          {/* Top Amber Warning Accent Bar */}
+          <div style={{ height: '5px', background: 'linear-gradient(90deg, #f59e0b, #d97706, #b45309)' }} />
+
+          {/* Modal Header & Content */}
+          <div style={{ padding: '1.5rem 1.75rem 1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.25rem' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '14px',
+                background: '#fef3c7',
+                border: '1px solid #fde68a',
+                color: '#d97706',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.75rem',
+                flexShrink: 0,
+                boxShadow: '0 4px 12px rgba(217, 119, 6, 0.15)'
+              }}>
+                <i className='bx bx-error-alt'></i>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#0f172a', lineHeight: '1.3' }}>
+                    Existing Schedule Detected
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateWarning(null)}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.35rem', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                  >
+                    <i className='bx bx-x'></i>
+                  </button>
+                </div>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.84rem', color: '#64748b', lineHeight: '1.4' }}>
+                  Accounts Receivable already has active invoice line(s) for this contract.
+                </p>
+              </div>
+            </div>
+
+            {/* Context Card */}
+            <div style={{
+              background: '#fffbeb',
+              border: '1px solid #fde68a',
+              borderRadius: '12px',
+              padding: '1rem',
+              marginBottom: '1rem'
+            }}>
+              {/* Contract Entity */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '0.65rem', marginBottom: '0.75rem', borderBottom: '1px dashed #fde68a' }}>
+                <span style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Contract Entity
+                </span>
+                <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#78350f', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <i className='bx bx-buildings' style={{ color: '#d97706' }}></i> {duplicateWarning.contractName}
+                </span>
+              </div>
+
+              {/* Side-by-side stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0.65rem', alignItems: 'center' }}>
+                <div style={{ background: '#ffffff', padding: '0.75rem', borderRadius: '8px', border: '1px solid #fde68a', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#b45309', fontWeight: '700', marginBottom: '0.2rem', textTransform: 'uppercase' }}>
+                    Currently in AR
+                  </div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#92400e' }}>
+                    {duplicateWarning.existingCount} <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>lines</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: '600', marginTop: '0.2rem' }}>
+                    {duplicateWarning.currency} {Number(duplicateWarning.existingTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+
+                <div style={{ color: '#d97706', fontSize: '1.15rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className='bx bx-plus' style={{ background: '#fef3c7', borderRadius: '50%', padding: '4px', border: '1px solid #fde68a' }}></i>
+                </div>
+
+                <div style={{ background: '#ffffff', padding: '0.75rem', borderRadius: '8px', border: '1px solid #bfdbfe', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#1d4ed8', fontWeight: '700', marginBottom: '0.2rem', textTransform: 'uppercase' }}>
+                    New to be Added
+                  </div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#1e40af' }}>
+                    +{duplicateWarning.newCount} <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>lines</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#1d4ed8', fontWeight: '600', marginTop: '0.2rem' }}>
+                    {duplicateWarning.currency} {Number(duplicateWarning.newTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sample existing invoice tags */}
+              {duplicateWarning.existingMatches && duplicateWarning.existingMatches.length > 0 && (
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.65rem', borderTop: '1px dashed #fde68a', fontSize: '0.74rem', color: '#92400e' }}>
+                  <span style={{ fontWeight: '700' }}>Existing lines in table: </span>
+                  {duplicateWarning.existingMatches.slice(0, 3).map((item, idx) => (
+                    <span key={idx} style={{ background: '#fef3c7', padding: '2px 6px', borderRadius: '4px', margin: '0 2px', border: '1px solid #fde68a', fontWeight: '600', display: 'inline-block', marginTop: '2px' }}>
+                      #{String(item.id).slice(-6)} • {item.currency || duplicateWarning.currency} {Number(item.amountDue || item.amountDueUsd || 0).toLocaleString()} ({item.status || 'To be Raised'})
+                    </span>
+                  ))}
+                  {duplicateWarning.existingMatches.length > 3 && (
+                    <span style={{ fontStyle: 'italic', color: '#b45309', marginLeft: '4px' }}>+{duplicateWarning.existingMatches.length - 3} more</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Clear explanation notice */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', background: '#f8fafc', padding: '0.75rem 0.85rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <i className='bx bx-info-circle' style={{ color: '#0284c7', fontSize: '1.1rem', marginTop: '1px', flexShrink: 0 }}></i>
+              <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.45' }}>
+                Generating this schedule will <strong>append {duplicateWarning.newCount} additional invoice line(s)</strong> without deleting previously recorded lines.
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Buttons */}
+          <div style={{
+            padding: '0.85rem 1.5rem',
+            background: '#f8fafc',
+            borderTop: '1px solid #f1f5f9',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            gap: '0.75rem'
+          }}>
+            <button
+              type="button"
+              onClick={() => setDuplicateWarning(null)}
+              style={{
+                padding: '0.55rem 1.15rem',
+                background: '#ffffff',
+                color: '#475569',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '0.85rem',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+              onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
+            >
+              Cancel & Review
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (duplicateWarning.onProceed) {
+                  duplicateWarning.onProceed();
+                }
+                setDuplicateWarning(null);
+              }}
+              style={{
+                padding: '0.55rem 1.35rem',
+                background: 'linear-gradient(135deg, #d97706, #b45309)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '0.85rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                boxShadow: '0 2px 6px rgba(180, 83, 9, 0.25)',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.05)'}
+              onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+            >
+              <i className='bx bx-check-circle' style={{ fontSize: '1rem' }}></i> Proceed & Generate Invoices
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const inputStyle = {
     width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px',
@@ -1236,6 +1476,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             </button>
           </div>
         </div>
+        {renderDuplicateWarningModal()}
       </div>
     );
   }
@@ -2191,6 +2432,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           </button>
         </div>
       </div>
+      {renderDuplicateWarningModal()}
     </div>
   );
 }
