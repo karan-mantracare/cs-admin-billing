@@ -32,7 +32,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     if (isOpen) {
       // 1. Load Corporates from GlobalContext
       const safeClients = Array.isArray(globalClients) ? globalClients : [];
-      let uniqueCorps = [...new Set(safeClients.map(c => c?.name || c?.clientName).filter(Boolean))];
+      let uniqueCorps = [...new Set(safeClients.map(c => c?.name || c?.clientName).filter(Boolean))].filter(c => c !== 'N/A');
 
       // 2. Load Orders from localStorage (division_orders)
       let loadedOrders = [];
@@ -44,7 +44,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           // Also include any corporates from orders
           loadedOrders.forEach(o => {
             const cName = o.corporate || o.clientName;
-            if (cName && !uniqueCorps.includes(cName)) {
+            if (cName && cName !== 'N/A' && !uniqueCorps.includes(cName)) {
               uniqueCorps.push(cName);
             }
           });
@@ -62,9 +62,28 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
       // 3. Pre-fill if initialSelection is passed
       if (initialSelection) {
-        const selCorp = initialSelection.corporate || initialSelection.clientName || '';
+        let selCorp = initialSelection.corporate || initialSelection.clientName || '';
         const selDiv = initialSelection.division || initialSelection.divisionName || '';
         let selOrderName = initialSelection.orderName || '';
+
+        // If selCorp is 'N/A' or empty, resolve from client list or orders using division
+        if (!selCorp || selCorp === 'N/A') {
+          if (selDiv) {
+            const matchedClient = safeClients.find(c => 
+              (c.divisions && c.divisions.some(d => d.divisionName === selDiv || String(d.id) === String(selDiv))) ||
+              c.divisionName === selDiv || c.name === selDiv
+            );
+            if (matchedClient) {
+              selCorp = matchedClient.name || matchedClient.clientName || '';
+            }
+          }
+          if (!selCorp || selCorp === 'N/A') {
+            const matchedOrder = loadedOrders.find(o => (o.division || o.divisionName) === selDiv && o.corporate && o.corporate !== 'N/A');
+            if (matchedOrder) {
+              selCorp = matchedOrder.corporate || matchedOrder.clientName || '';
+            }
+          }
+        }
 
         // If orderId is passed but not orderName, find matching order
         if (initialSelection.orderId && !selOrderName) {
@@ -73,15 +92,18 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             const ps = matched.planStart || 'Unknown Date';
             const pn = matched.plan || matched.planName || matched.product || `Order #${matched.id}`;
             selOrderName = `${ps} & ${pn}`;
+            if (!selCorp || selCorp === 'N/A') {
+              selCorp = matched.corporate || matched.clientName || selCorp;
+            }
           }
         }
 
         setFormData(prev => ({
           ...prev,
-          corporate: selCorp || prev.corporate,
+          corporate: (selCorp && selCorp !== 'N/A' ? selCorp : prev.corporate),
           division: selDiv || prev.division,
           orderName: selOrderName || prev.orderName,
-          paymentTerms: initialSelection.paymentTerms || prev.paymentTerms || '',
+          paymentTerms: initialSelection.paymentTerms || prev.paymentTerms || '1',
           amount: initialSelection.amount || prev.amount || ''
         }));
       }
@@ -159,8 +181,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   const filteredOrders = safeOrders.filter(o => {
     const oCorp = o.corporate || o.clientName;
     const oDiv = o.division || o.divisionName;
-    const matchCorp = !formData.corporate || !oCorp || oCorp === formData.corporate;
     const matchDiv = !formData.division || !oDiv || oDiv === formData.division;
+    const matchCorp = !formData.corporate || !oCorp || oCorp === formData.corporate || (matchDiv && (!oCorp || oCorp === 'N/A'));
     return matchCorp && matchDiv;
   });
 
@@ -1355,19 +1377,20 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             Cancel
           </button>
           
-          {mode === 'schedule' && selectedOrder && Number(formData.paymentTerms) > 0 && (
+          {mode === 'schedule' && (
             <button 
               type="button"
-              onClick={handlePreview} 
-              style={{ padding: '0.55rem 1.15rem', background: '#ffffff', color: '#0284c7', border: '1px solid #0284c7', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}
+              onClick={handleSaveDirect} 
+              style={{ padding: '0.55rem 1.15rem', background: '#ffffff', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}
+              title="Save without opening full preview"
             >
-              Full Preview
+              Direct Save
             </button>
           )}
 
           <button 
             type="button"
-            onClick={mode === 'schedule' ? handleSaveDirect : handlePreview} 
+            onClick={handlePreview} 
             style={{ 
               padding: '0.55rem 1.35rem', 
               background: 'linear-gradient(135deg, #0284c7, #0ea5e9)', 
@@ -1383,7 +1406,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               gap: '0.35rem'
             }}
           >
-            <i className='bx bx-check'></i> {mode === 'row' ? 'Add Row' : 'Add Schedule'}
+            <i className={mode === 'row' ? 'bx bx-check' : 'bx bx-show'}></i> {mode === 'row' ? 'Add Row' : 'Preview Schedule'}
           </button>
         </div>
       </div>

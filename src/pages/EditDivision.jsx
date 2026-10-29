@@ -26,7 +26,10 @@ function EditDivision() {
       for (const c of (clients || [])) {
         if (c.divisions && Array.isArray(c.divisions)) {
           const found = c.divisions.find(d => String(d.id) === String(targetDivisionId));
-          if (found) return { ...found, clientName: found.clientName || c.name };
+          if (found) {
+            const corpName = (found.clientName && found.clientName !== 'N/A') ? found.clientName : (c.name || c.clientName || 'Corporate Client');
+            return { ...found, clientName: corpName };
+          }
         }
       }
       try {
@@ -34,7 +37,10 @@ function EditDivision() {
         for (const c of savedClients) {
           if (c.divisions && Array.isArray(c.divisions)) {
             const found = c.divisions.find(d => String(d.id) === String(targetDivisionId));
-            if (found) return { ...found, clientName: found.clientName || c.name };
+            if (found) {
+              const corpName = (found.clientName && found.clientName !== 'N/A') ? found.clientName : (c.name || c.clientName || 'Corporate Client');
+              return { ...found, clientName: corpName };
+            }
           }
         }
       } catch (e) {}

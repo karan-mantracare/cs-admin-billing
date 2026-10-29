@@ -731,8 +731,23 @@ function AddOrder() {
 
       let targetOrderId;
       let targetOrderName;
-      const resolvedClientName = location.state?.clientName || formData.clientName || '';
+      let resolvedClientName = location.state?.clientName || formData.clientName || '';
       const resolvedDivisionName = location.state?.divisionName || formData.divisionName || '';
+
+      // If clientName is empty or 'N/A', resolve from cs-admin-clients using division
+      if (!resolvedClientName || resolvedClientName === 'N/A') {
+        try {
+          const savedClients = JSON.parse(localStorage.getItem('cs-admin-clients') || '[]');
+          for (const c of savedClients) {
+            if (c.divisions && Array.isArray(c.divisions)) {
+              if (c.divisions.some(d => String(d.id) === String(resolvedDivisionId) || d.divisionName === resolvedDivisionName)) {
+                resolvedClientName = c.name || c.clientName || '';
+                break;
+              }
+            }
+          }
+        } catch (e) {}
+      }
 
       if (isEditMode && effectiveOrderId) {
         targetOrderId = effectiveOrderId;
@@ -743,7 +758,9 @@ function AddOrder() {
           id: targetOrderId, 
           status: 'Draft',
           clientName: resolvedClientName,
-          divisionName: resolvedDivisionName
+          corporate: resolvedClientName,
+          divisionName: resolvedDivisionName,
+          division: resolvedDivisionName
         } : o);
       } else {
         targetOrderId = Date.now();
@@ -753,7 +770,9 @@ function AddOrder() {
           id: targetOrderId, 
           status: 'Draft',
           divisionName: resolvedDivisionName,
+          division: resolvedDivisionName,
           clientName: resolvedClientName,
+          corporate: resolvedClientName,
           divisionId: location.state?.divisionId || formData.divisionId || searchParams.get('divisionId') || '',
           sessionCount: formData.sessionCount || 0
         };

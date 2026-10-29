@@ -67,8 +67,8 @@ function EditCorporate() {
           {
             id: `div_${client.id || Date.now()}`,
             divisionName: client.divisionName || 'Default Division',
-            clientName: client.clientName || 'N/A',
-            responsible: client.responsible || 'N/A',
+            clientName: (client.clientName && client.clientName !== 'N/A' ? client.clientName : client.name) || 'Corporate Client',
+            responsible: client.responsible || 'Internal CS',
             remarks: client.divisionRemarks || ''
           }
         ]
@@ -77,7 +77,8 @@ function EditCorporate() {
   const [isAddDivisionOpen, setIsAddDivisionOpen] = useState(false);
 
   const handleAddDivision = (newDiv) => {
-    setDivisions(prev => [...prev, { ...newDiv, id: Date.now(), responsible: formData.responsible }]);
+    const corpName = formData.name || client.name || 'Corporate Client';
+    setDivisions(prev => [...prev, { ...newDiv, id: Date.now(), responsible: formData.responsible || 'Internal CS', clientName: corpName }]);
     setIsAddDivisionOpen(false);
   };
 
