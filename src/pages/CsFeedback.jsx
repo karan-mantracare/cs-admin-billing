@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getPrimaryCS } from '../utils/roleUtils';
 
@@ -424,6 +424,84 @@ export default function CsFeedback() {
     }
   }, [searchParams]);
 
+  const allCompanyOptions = useMemo(() => {
+    const list = new Set();
+    try {
+      const storedClients = JSON.parse(localStorage.getItem('cs-admin-clients') || '[]');
+      if (Array.isArray(storedClients)) {
+        storedClients.forEach((c) => {
+          const name = c.companyName || c.clientName;
+          if (name && name !== 'N/A' && name !== 'All') list.add(name);
+        });
+      }
+    } catch { }
+
+    try {
+      const storedOrders = JSON.parse(localStorage.getItem('division_orders') || '[]');
+      if (Array.isArray(storedOrders)) {
+        storedOrders.forEach((o) => {
+          const name = o.corporate || o.clientName;
+          if (name && name !== 'N/A' && name !== 'All') list.add(name);
+        });
+      }
+    } catch { }
+
+    if (Array.isArray(submissionsList)) {
+      submissionsList.forEach((s) => {
+        const name = s.clientDetails?.company;
+        if (name && name !== 'N/A' && name !== 'All') list.add(name);
+      });
+    }
+
+    if (list.size === 0) {
+      list.add('TechCorp Solutions');
+      list.add('Corporate 1');
+      list.add('Corporate 2');
+    }
+
+    return Array.from(list);
+  }, [submissionsList]);
+
+  const handleCompanyChange = (newCompany) => {
+    if (!newCompany) return;
+    const divisionsList = [];
+    let firstDivName = '';
+    try {
+      const allClients = JSON.parse(localStorage.getItem('cs-admin-clients') || '[]');
+      const matchedClient = Array.isArray(allClients)
+        ? allClients.find((c) => (c.companyName || c.clientName) === newCompany)
+        : null;
+
+      if (matchedClient && Array.isArray(matchedClient.divisions) && matchedClient.divisions.length > 0) {
+        matchedClient.divisions.forEach((d) => {
+          divisionsList.push({
+            id: d.id,
+            name: d.divisionName,
+            company: newCompany
+          });
+        });
+        firstDivName = matchedClient.divisions[0].divisionName;
+      }
+    } catch { }
+
+    if (divisionsList.length === 0) {
+      divisionsList.push({ id: '1', name: 'Healthcare', company: newCompany });
+      firstDivName = 'Healthcare';
+    }
+
+    setAvailableDivisions(divisionsList);
+    const resolvedCS = getPrimaryCS(null, firstDivName, newCompany, null);
+
+    setClientDetails((prev) => ({
+      ...prev,
+      company: newCompany,
+      selectedDivision: firstDivName || prev.selectedDivision,
+      csSpocName: resolvedCS || prev.csSpocName || 'Karan Hinduja'
+    }));
+
+    setSelectedCompanyFilter(newCompany);
+  };
+
   const handleDivisionChange = (divName) => {
     const resolvedCS = getPrimaryCS(null, divName, clientDetails.company, null);
     setClientDetails((prev) => ({
@@ -673,7 +751,38 @@ export default function CsFeedback() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.45rem' }}>
+            {/* Company Filter above Logged In Name */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <i className="bx bx-buildings" style={{ color: '#0284c7', fontSize: '1.05rem' }}></i>
+                Company:
+              </label>
+              <select
+                value={clientDetails.company}
+                onChange={(e) => handleCompanyChange(e.target.value)}
+                style={{
+                  padding: '0.35rem 0.65rem',
+                  borderRadius: '6px',
+                  border: '1.5px solid #cbd5e1',
+                  fontSize: '0.82rem',
+                  fontWeight: '600',
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  cursor: 'pointer',
+                  minWidth: '180px',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                }}
+              >
+                {allCompanyOptions.map((comp) => (
+                  <option key={comp} value={comp}>
+                    {comp}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Logged in User Badge */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#ffffff', border: '1px solid #e2e8f0', padding: '0.3rem 0.65rem', borderRadius: '6px', fontSize: '0.8rem', color: '#475569' }}>
               <i className="bx bx-user" style={{ color: '#0284c7' }}></i>
               <span>Logged in: <strong style={{ color: '#0f172a' }}>{clientDetails.name}</strong> ({clientDetails.company})</span>
@@ -2115,7 +2224,10 @@ export default function CsFeedback() {
               <label style={{ fontSize: '0.8rem', fontWeight: '600', color: '#64748b' }}>Company:</label>
               <select
                 value={selectedCompanyFilter}
-                onChange={e => setSelectedCompanyFilter(e.target.value)}
+                onChange={e => {
+                  setSelectedCompanyFilter(e.target.value);
+                  handleCompanyChange(e.target.value);
+                }}
                 style={{
                   padding: '0.45rem 0.65rem',
                   borderRadius: '8px',
@@ -2125,8 +2237,7 @@ export default function CsFeedback() {
                   color: '#0f172a'
                 }}
               >
-                <option value="All">All Companies ({uniqueSubmissionCompanies.length})</option>
-                {uniqueSubmissionCompanies.map(c => (
+                {allCompanyOptions.map(c => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
