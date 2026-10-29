@@ -2011,7 +2011,7 @@ function EditDivision() {
           }}>
             <span style={{ fontSize: '0.78rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <i className='bx bx-user-check'></i>
-              {roles.length} Roles {invitedUsers.length > 0 ? `• ${invitedUsers.length} Invites` : ''}
+              {roles.length} Roles {invites?.length > 0 ? `• ${invites.length} Invites` : ''}
             </span>
             <i className={`bx ${isAccessRolesOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.2rem', color: '#0d9488' }}></i>
           </div>
