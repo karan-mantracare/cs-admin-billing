@@ -1,5 +1,99 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-cs-feedback-standalone-portal-20261030',
+    date: '2026-10-30',
+    formattedDate: 'Oct 30, 2026',
+    page: 'CS',
+    subPage: 'Feedback & Escalation / Client Survey Form',
+    summary: 'Launched standalone client survey portal at /feedback-form/:id with shareable links and corporate prefill',
+    details: 'Created a clean, dedicated feedback submission portal at /feedback-form/:id powered by ClientFeedbackWizard. Automatically pre-populates HR contact, corporate entity, division, and CS SPOC from the submission record or URL parameters. Features clean step-by-step navigation, direct question rendering without redundant headers, and real-time validation.',
+    plainLanguage: 'Corporate clients can now complete their satisfaction evaluation via a distraction-free, branded portal link (/feedback-form/:id). When CS managers share the link, the client HR name, company, and service division are automatically pre-filled. The multi-step wizard guides the client directly through service quality questions without requiring login credentials.',
+    highlights: [
+      'Dedicated route /feedback-form/:id with standalone clean view outside admin chrome',
+      'Direct step-by-step evaluation flow starting immediately on evaluation questions',
+      'Auto-resolves company profile, HR SPOC, and assigned CS manager from submission ID or URL query params',
+      'Optional SOW exclusion tag ("Not a part of SOW / No session done") for non-subscribed services',
+      'Captures additional open improvement suggestions and optional priority callback request'
+    ],
+    path: '/cs/feedback',
+    linkText: 'CS Feedback'
+  },
+  {
+    id: 'cl-cs-feedback-analytics-diagnostics-20261030',
+    date: '2026-10-30',
+    formattedDate: 'Oct 30, 2026',
+    page: 'CS',
+    subPage: 'Feedback & Escalation / Submissions & Sentiment',
+    summary: 'Added Submissions Directory, CS Satisfaction Index (5.0), Positive Sentiment %, and Diagnostic Tags',
+    details: 'Enhanced /cs/feedback with an end-to-end feedback tracking directory. Displays top KPI cards for Total Submissions, CS Satisfaction Index (out of 5.0), Positive Sentiment %, and active Escalation Alerts. Introduces 4 domain-specific diagnostic tags triggered whenever a client marks Neutral (3), Dissatisfied (2), or Very Dissatisfied (1). Supports Sentiment filtering (Positive, Neutral, Low), search, and CSV export.',
+    plainLanguage: 'The CS Feedback portal now functions as a complete customer intelligence dashboard. CS leaders can monitor client sentiment in real-time, view the overall Satisfaction Index score, and catch at-risk accounts through Escalation Alerts. When clients rate any service 3 or below, intuitive diagnostic tags capture the exact operational reason (e.g., missed callbacks, slow app load, generic webinar topics), which are stored and exportable to CSV.',
+    highlights: [
+      'Top analytical cards: Total Submissions, CS Satisfaction Index (0-5.0), Positive Sentiment %, and Escalation Alerts count',
+      'Dynamic diagnostic tags on Neutral (3), Dissatisfied (2), and Very Dissatisfied (1) ratings with custom remarks',
+      'Submissions Directory with status tracking (Pending vs Submitted), sentiment badges, and detailed inspect drawer',
+      'Sentiment filter dropdown (All, Positive, Neutral, Low / Escalation) and full-text search',
+      '1-click "Share Feedback Form" modal generating pre-mapped links and instant clipboard copying',
+      'CSV export functionality for corporate leadership and QBR presentations'
+    ],
+    path: '/cs/feedback',
+    linkText: 'CS Feedback'
+  },
+  {
+    id: 'cl-admin-per-contract-scheduling-20261029',
+    date: '2026-10-29',
+    formattedDate: 'Oct 29, 2026',
+    page: 'Admin',
+    subPage: 'Accounts Receivable / Per-Contract Scheduling',
+    summary: 'Enabled independent billing schedules per contract with separate payment terms toggle and order sync',
+    details: 'Added capability to configure independent billing schedules for each contract under a client order. When multiple contracts are attached, users can toggle "Add separate schedule for each contract", allowing customized installments, invoicing dates, and billing cycles per contract with instant order synchronization.',
+    plainLanguage: 'Orders with multiple contracts (e.g., healthcare + mental wellness) often require different billing cadences. You can now toggle separate schedules for each contract within the same order. Each contract receives its own dedicated billing installment inputs, currency calculation, and due dates, eliminating the need to force all contracts into a single schedule.',
+    highlights: [
+      'Toggle "Add separate schedule for each contract" in Add Schedule modal',
+      'Independent installment breakdown and payment terms for each attached contract',
+      'Per-contract value, billing cycle, and dynamic USD calculation',
+      'Automatic synchronization with master order records and client invoices ledger'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
+    id: 'cl-admin-unlinked-contracts-duplicate-warning-20261029',
+    date: '2026-10-29',
+    formattedDate: 'Oct 29, 2026',
+    page: 'Admin',
+    subPage: 'Accounts Receivable / Unlinked Contracts & Modals',
+    summary: 'Added unlinked contract scheduling, rich duplicate schedule warnings, and auto-cascading schedule dates',
+    details: 'Enabled direct scheduling of division contracts not yet linked to an order, automatically creating the underlying order reference. Replaced browser alert prompts with a rich custom Duplicate Schedule warning modal. Enhanced live preview with auto-cascading installment dates and auto-balancing percentage splits.',
+    plainLanguage: 'You can now schedule invoices for contracts directly from Accounts Receivable even before an order is placed. If a schedule already exists, a clean warning modal alerts you instead of raw browser popups. In addition, changing an installment date automatically cascades down to subsequent monthly installments, and editing percentages rebalances remaining rows seamlessly.',
+    highlights: [
+      'Schedule unlinked contracts directly from the Accounts Receivable "Add Schedule" flow',
+      'Automatic order generation and contract linking upon schedule creation',
+      'Custom Duplicate Schedule Warning modal replacing default browser alerts',
+      'Auto-cascading installment dates: adjusting an invoice date smoothly shifts subsequent monthly dates',
+      'Modal stability improvements: fixed width jitter on billing month selection, Escape key and backdrop dismissal'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
+    id: 'cl-global-navbar-company-filter-20261029',
+    date: '2026-10-29',
+    formattedDate: 'Oct 29, 2026',
+    page: 'Home',
+    subPage: 'Navigation & Filters / Global UX',
+    summary: 'Relocated Logged In user badge to top white navbar and refined single-company selector',
+    details: 'Moved the Logged In profile badge to the universal top white header across all screens for consistent user identity display. Streamlined the company selection dropdown above user context, removing redundant All options and maintaining persistent client scoping across portal views.',
+    plainLanguage: 'The user profile and session indicator has been moved up into the primary top navigation bar, keeping page headers cleaner and consistent across both CS and Admin tools. The company filter dropdown was also streamlined to focus directly on specific corporate accounts.',
+    highlights: [
+      'Universal Logged In user profile badge integrated into the top sticky navigation header',
+      'Cleaner page headers without cluttered session chips',
+      'Refined company dropdown selector for focused single-client filtering',
+      'Preserved role indicators (Admin, CS SPOC) across all active workspaces'
+    ],
+    path: '/home',
+    linkText: 'Home Page'
+  },
+  {
     id: 'cl-admin-division-order-contracts',
     date: '2026-10-28',
     formattedDate: 'Oct 28, 2026',

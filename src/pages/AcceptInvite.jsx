@@ -467,7 +467,15 @@ export default function AcceptInvite() {
 
               <button
                 type="button"
-                onClick={() => navigate('/cs/feedback')}
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (inviteData.name) params.set('hrName', inviteData.name);
+                  if (inviteData.role) params.set('hrRole', inviteData.role);
+                  if (inviteData.divisionAccess) params.set('division', inviteData.divisionAccess);
+                  if (inviteData.email) params.set('hrEmail', inviteData.email);
+                  const queryStr = params.toString();
+                  navigate(`/feedback-form/1${queryStr ? '?' + queryStr : ''}`);
+                }}
                 style={{
                   padding: '0.75rem 1.25rem',
                   borderRadius: '6px',

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useGlobal } from './context/GlobalContext';
 import Home from './pages/Home';
 import CsPortal from './pages/CsPortal';
 import Dashboard from './pages/Dashboard';
@@ -16,6 +17,7 @@ import Corporate from './pages/Corporate';
 import EditCorporate from './pages/EditCorporate';
 import EditDivision from './pages/EditDivision';
 import ClientOnboardingPage from './pages/ClientOnboardingPage';
+import ClientFeedbackPage from './pages/ClientFeedbackPage';
 import AddOrder from './pages/AddOrder';
 import ModuleSummaryPage from './pages/ModuleSummaryPage';
 import CsFeedback from './pages/CsFeedback';
@@ -51,6 +53,71 @@ function App() {
     };
   }, []);
 
+  const { clients } = useGlobal();
+
+  // List of all clients added in Corporate Tab
+  const corporateClientNames = useMemo(() => {
+    const list = new Set();
+    
+    // 1. From GlobalContext clients (Corporate Tab)
+    if (Array.isArray(clients)) {
+      clients.forEach((c) => {
+        const name = c.name || c.companyName || c.clientName || c.corporateName;
+        if (name && typeof name === 'string' && name.trim() && name !== 'N/A' && name !== 'All') {
+          list.add(name.trim());
+        }
+      });
+    }
+
+    // 2. Also check localStorage cs-admin-clients directly
+    try {
+      const stored = JSON.parse(localStorage.getItem('cs-admin-clients') || '[]');
+      if (Array.isArray(stored)) {
+        stored.forEach((c) => {
+          const name = c.name || c.companyName || c.clientName || c.corporateName;
+          if (name && typeof name === 'string' && name.trim() && name !== 'N/A' && name !== 'All') {
+            list.add(name.trim());
+          }
+        });
+      }
+    } catch {}
+
+    // 3. Fallbacks if no clients have been created yet
+    if (list.size === 0) {
+      list.add('TechCorp Solutions');
+      list.add('Corporate 1');
+      list.add('Corporate 2');
+    }
+
+    if (currentUser?.company && typeof currentUser.company === 'string' && currentUser.company.trim()) {
+      list.add(currentUser.company.trim());
+    }
+
+    return Array.from(list);
+  }, [clients, currentUser?.company]);
+
+  const handleCompanySelect = (newCompany) => {
+    if (!newCompany) return;
+    const updatedUser = {
+      ...currentUser,
+      company: newCompany
+    };
+    setCurrentUser(updatedUser);
+    try {
+      localStorage.setItem('logged_in_user', JSON.stringify(updatedUser));
+      localStorage.setItem('selected_company', newCompany);
+    } catch {}
+    window.dispatchEvent(new Event('user-profile-updated'));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('company-changed', { detail: { company: newCompany } }));
+  };
+
+  const isStandaloneClientView =
+    location.pathname.startsWith('/client-onboarding') ||
+    location.pathname.startsWith('/feedback-form') ||
+    location.pathname.startsWith('/client-feedback') ||
+    location.pathname.startsWith('/cs/feedback-form');
+
   const isCsRoute = location.pathname.startsWith('/cs') || 
                     location.pathname.startsWith('/calendar') || 
                     location.pathname.startsWith('/hr-dash') || 
@@ -79,15 +146,18 @@ function App() {
 
   return (
     <div className="layout">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      {!isStandaloneClientView && (
+        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      )}
       
-      <header className="topbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
-            <i className='bx bx-menu'></i>
-          </button>
-          <div className="logo" onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>
-            <i className='bx bx-heart-circle'></i>
+      {!isStandaloneClientView && (
+        <header className="topbar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
+              <i className='bx bx-menu'></i>
+            </button>
+            <div className="logo" onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>
+              <i className='bx bx-heart-circle'></i>
             <span>MantraCare</span>
           </div>
         </div>
@@ -159,6 +229,43 @@ function App() {
         </nav>
 
         <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          {/* Company Selector (Clients from Corporate Tab) */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderRadius: '6px',
+            padding: '0.28rem 0.55rem',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+          }}>
+            <i className="bx bx-buildings" style={{ color: '#0284c7', fontSize: '1rem' }}></i>
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600' }}>Company:</span>
+            <select
+              value={currentUser.company || ''}
+              onChange={(e) => handleCompanySelect(e.target.value)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                outline: 'none',
+                fontWeight: '700',
+                fontSize: '0.82rem',
+                color: '#0f172a',
+                cursor: 'pointer',
+                minWidth: '120px',
+                maxWidth: '180px'
+              }}
+              title="Select Company (from Corporate Clients list)"
+            >
+              {corporateClientNames.map((compName) => (
+                <option key={compName} value={compName}>
+                  {compName}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -179,6 +286,7 @@ function App() {
           </div>
         </div>
       </header>
+      )}
 
       <Routes>
         <Route path="/" element={<Navigate to="/home" replace />} />
@@ -205,6 +313,12 @@ function App() {
         <Route path="/corporate/division/order/add/:orderId" element={<AddOrder />} />
         <Route path="/corporate/division/order/edit/:orderId" element={<AddOrder />} />
         <Route path="/client-onboarding/:id" element={<ClientOnboardingPage />} />
+        <Route path="/feedback-form/:id" element={<ClientFeedbackPage />} />
+        <Route path="/feedback-form" element={<ClientFeedbackPage />} />
+        <Route path="/client-feedback/:id" element={<ClientFeedbackPage />} />
+        <Route path="/client-feedback" element={<ClientFeedbackPage />} />
+        <Route path="/cs/feedback-form/:id" element={<ClientFeedbackPage />} />
+        <Route path="/cs/feedback-form" element={<ClientFeedbackPage />} />
         <Route path="/client-payments" element={<ClientPayments />} />
         <Route path="/billing-and-payments" element={<ClientPayments />} />
         <Route path="/accounts-receivable" element={<ClientPayments />} />
