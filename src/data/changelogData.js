@@ -1,5 +1,25 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-billing-schedule-frequency-and-month-calc-20261031',
+    date: '2026-10-31',
+    formattedDate: 'Oct 31, 2026',
+    page: 'Accounts Receivable',
+    subPage: 'Add Billing Schedule / Billing Frequency & Month Calculator',
+    summary: 'Added Billing Month tooltip and automated Monthly, Quarterly, and Bi-Annually frequency calculations',
+    details: 'Enhanced the Add Schedule modal in Accounts Receivable with a dedicated Tooltip on "Billing Month" ("This will break the total value in the entered months") and introduced an interactive Billing Frequency dropdown with options for Monthly, Quarterly, and Bi Anually. If Bi Anually is selected, Billing Month automatically sets to 2. If Monthly is selected, Billing Month resolves to the exact month difference between Billing Start Date and Plan End Date. If Quarterly is selected, Billing Month calculates up to a maximum of 4 installments, dividing the month span by 3 without decimals or floor-snapping to the closest quarterly milestone before Plan End.',
+    plainLanguage: 'Users configuring billing schedules can now hover over the new info tooltip next to Billing Month to see that it divides the total contract value across the entered months. They can also select the Billing Frequency directly: Bi-Annually sets 2 installments; Monthly counts the total months between start and end dates; and Quarterly automatically calculates the optimal number of quarterly milestones (up to 4) before the plan ends.',
+    highlights: [
+      'Billing Month Tooltip: Displays "This will break the total value in the entered months" next to all Billing Month labels and contract cards',
+      'Billing Frequency Dropdown: Select between Monthly, Quarterly, and Bi Anually with real-time plan term badges',
+      'Bi Anually Rule: Automatically sets Billing Month to 2 semi-annual installments',
+      'Monthly Rule: Calculates the full month span between Billing Start Date and Plan End Date',
+      'Quarterly Rule: Computes month span divided by 3, floor-snapped to closest quarter before plan end (maximum 4 installments)',
+      'Independent Per-Contract Frequency: Allows custom frequency selection per corporate entity in split-contract schedules'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
     id: 'cl-cs-feedback-score-derivation-and-ux-20261031',
     date: '2026-10-31',
     formattedDate: 'Oct 31, 2026',
