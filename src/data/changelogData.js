@@ -1,5 +1,24 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-add-schedule-modal-stepper-and-table-redesign-20261031',
+    date: '2026-10-31',
+    formattedDate: 'Oct 31, 2026',
+    page: 'Accounts Receivable',
+    subPage: 'Add Billing Schedule / 2-Step Wizard & Table Redesign',
+    summary: 'Streamlined Add Invoice Schedule into a 2-step modal with Next navigation, collapsible Total Order Value dropdown, and per-contract table',
+    details: 'Redesigned the Add Invoice Schedule modal to eliminate congestion. Step 1 focuses solely on Corporate, Division, and Order selection with a single "Next" action button. Removed the redundant Cancel button in favor of the modal close icon (×). On clicking Next, Step 2 reveals an expandable "Total Order Value" summary dropdown, master and per-contract Billing Frequency selectors, and replaces the congested card/tab layout with a clean, responsive "Billing Month per Contract" table displaying Entity Name, Contract Value, Billing Frequency, Billing Month (with tooltip), and Per Month/Installment amounts. Step 2 footer provides clear Back and Preview Schedule actions.',
+    plainLanguage: 'Adding a billing schedule is now clean and uncluttered. Step 1 lets you choose the Corporate, Division, and Order, then click "Next". Step 2 neatly packs the Total Order Value into an expandable dropdown and presents all contracts in an organized table where you can view values, set frequencies, and adjust billing months. The Cancel button was removed since the top-right "X" already closes the modal, and the footer now features intuitive "Back" and "Preview Schedule" buttons.',
+    highlights: [
+      '2-Step Schedule Modal: Separated Order selection (Step 1) from schedule configuration (Step 2) to eliminate visual congestion',
+      'Next Button Navigation: Replaced Cancel, Direct Save, and Preview Schedule on Step 1 with a single primary "Next" button',
+      'Collapsible Order Value Dropdown: Total Order Value and plan terms are displayed in an expandable accordion dropdown with summary headers',
+      'Contract Schedule Table: Replaced bulky tabs/cards with a structured table featuring Entity Name, Contract Value, Billing Frequency, Billing Month (with tooltip), and Per-Month calculations',
+      'Streamlined Footers: Cancel button removed in favor of top-right "×"; Step 2 features Back, Direct Save, and Preview Schedule buttons'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
     id: 'cl-billing-schedule-frequency-and-month-calc-20261031',
     date: '2026-10-31',
     formattedDate: 'Oct 31, 2026',

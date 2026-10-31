@@ -67,6 +67,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   const [paymentTermError, setPaymentTermError] = useState('');
   const [billingFrequency, setBillingFrequency] = useState('Monthly');
   const [contractFrequencies, setContractFrequencies] = useState({});
+  const [step, setStep] = useState(1);
+  const [isOrderSummaryOpen, setIsOrderSummaryOpen] = useState(false);
+  const [stepError, setStepError] = useState('');
   
   const [corporates, setCorporates] = useState([]);
   const [divisions, setDivisions] = useState([]);
@@ -84,6 +87,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   // Load clients and orders from localStorage on mount
   useEffect(() => {
     if (isOpen) {
+      setStep(1);
+      setIsOrderSummaryOpen(false);
+      setStepError('');
       // 1. Load Corporates from GlobalContext
       const safeClients = Array.isArray(globalClients) ? globalClients : [];
       let uniqueCorps = [...new Set(safeClients.map(c => c?.name || c?.clientName).filter(Boolean))].filter(c => c !== 'N/A');
@@ -1096,6 +1102,23 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     });
   };
 
+  const handleNext = () => {
+    if (!formData.corporate) {
+      setStepError('Please select Corporate.');
+      return;
+    }
+    if (!formData.division) {
+      setStepError('Please select Division.');
+      return;
+    }
+    if (!formData.orderName && !formData.orderId && !selectedOrder) {
+      setStepError('Please select an Order.');
+      return;
+    }
+    setStepError('');
+    setStep(2);
+  };
+
   const handlePreview = () => {
     if (mode === 'schedule') {
       if (!selectedOrder) {
@@ -2071,25 +2094,46 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           background: 'white', 
           borderRadius: '12px', 
           width: '95%', 
-          maxWidth: (selectedOrder && availableContracts.length > 1) ? '760px' : '520px',
+          maxWidth: (step === 2 && mode === 'schedule') ? '840px' : '520px',
           maxHeight: '90vh',
           overflowY: 'auto',
           padding: '1.5rem', 
-          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)'
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+          transition: 'max-width 0.2s ease'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: '700' }}>
-              {mode === 'row' ? 'Add Row' : 'Add Invoice Schedule'}
-            </h2>
-            {selectedOrder && availableContracts.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: '700' }}>
+                {mode === 'row' ? 'Add Row' : 'Add Invoice Schedule'}
+              </h2>
+              {mode === 'schedule' && (
+                <span style={{
+                  fontSize: '0.72rem',
+                  fontWeight: '700',
+                  padding: '0.15rem 0.55rem',
+                  borderRadius: '999px',
+                  background: step === 1 ? '#eff6ff' : '#ecfdf5',
+                  color: step === 1 ? '#2563eb' : '#059669',
+                  border: `1px solid ${step === 1 ? '#bfdbfe' : '#a7f3d0'}`
+                }}>
+                  Step {step} of 2: {step === 1 ? 'Select Order' : 'Configure Schedule'}
+                </span>
+              )}
+            </div>
+            {mode === 'schedule' && step === 1 && (
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                Set independent installments per contract. Click Preview Schedule to review dates & remarks.
+                Select Corporate, Division and Order to configure billing schedule.
+              </p>
+            )}
+            {mode === 'schedule' && step === 2 && (
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                Review contract values, set billing frequencies and installment months.
               </p>
             )}
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }} title="Close">
             &times;
           </button>
         </div>
@@ -2317,7 +2361,77 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             )}
           </div>
 
-          {selectedOrder && (() => {
+          {/* Step 1 Fields & Step 1 Footer */}
+          {(step === 1 || mode === 'row') && (
+            <div>
+              {mode === 'row' && (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
+                    Amount ({selectedOrder?.billingDetails?.clientCurrency || 'USD'}) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="number"
+                    style={inputStyle}
+                    placeholder="e.g. 500"
+                    min="0"
+                    value={formData.amount}
+                    onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                  />
+                </div>
+              )}
+
+              {stepError && (
+                <div style={{ marginTop: '0.85rem', padding: '0.55rem 0.85rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#dc2626', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <i className='bx bx-error-circle' style={{ fontSize: '1rem' }}></i> {stepError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '1.25rem', marginTop: '1.25rem' }}>
+                {mode === 'row' ? (
+                  <button 
+                    type="button"
+                    onClick={handlePreview} 
+                    style={{ 
+                      padding: '0.55rem 1.35rem', 
+                      background: 'linear-gradient(135deg, #0284c7, #0ea5e9)', 
+                      color: 'white', 
+                      border: 'none', 
+                      borderRadius: '6px', 
+                      cursor: 'pointer', 
+                      fontWeight: '600', 
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    <i className='bx bx-check'></i> Add Row
+                  </button>
+                ) : (
+                  <button 
+                    type="button"
+                    onClick={handleNext} 
+                    style={{ 
+                      padding: '0.6rem 1.6rem', 
+                      background: 'linear-gradient(135deg, #0284c7, #0ea5e9)', 
+                      color: 'white', 
+                      border: 'none', 
+                      borderRadius: '6px', 
+                      cursor: 'pointer', 
+                      fontWeight: '600', 
+                      fontSize: '0.88rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)'
+                    }}
+                  >
+                    Next <i className='bx bx-right-arrow-alt' style={{ fontSize: '1.15rem' }}></i>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Total Order Value (in Dropdown), Contract Table, and Back | Preview Schedule */}
+          {step === 2 && mode === 'schedule' && selectedOrder && (() => {
             const isSingleContract = Boolean(activeSingleContract);
             const contractValue = isSingleContract 
               ? (Number(activeSingleContract.contractValue) || Number(activeSingleContract.amountInUSD) || 0)
@@ -2335,488 +2449,444 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
               ? `${maxPaymentTerms} Months (${planStart || 'Start'} to ${planEnd || 'Ongoing'})`
               : (planStart ? `${planStart} to ${planEnd || 'Ongoing'}` : 'Open Term');
 
+            const contractsList = availableContracts.length > 0 
+              ? availableContracts 
+              : [{
+                  id: 'primary',
+                  companyName: activeSingleContract?.companyName || selectedOrder?.clientName || formData.corporate || 'Primary Entity',
+                  taxDetails: activeSingleContract?.taxDetails || '',
+                  contractValue: contractValue,
+                  contractCurrency: currency,
+                  amountInUSD: amountInUSD
+                }];
+
             return (
-              <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {selectedOrder.status === 'Draft' && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '700', width: 'fit-content' }}>
-                      <i className='bx bx-edit-alt'></i> Draft Order • Billing Details Configured
+                {/* 1. Total Order Value Section (Collapsible Accordion / Dropdown) */}
+                <div style={{
+                  background: '#f8fafc',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  overflow: 'hidden'
+                }}>
+                  <div 
+                    onClick={() => setIsOrderSummaryOpen(!isOrderSummaryOpen)}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: isOrderSummaryOpen ? '#f1f5f9' : '#f8fafc',
+                      transition: 'background 0.15s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <i className='bx bx-receipt' style={{ fontSize: '1.25rem', color: '#0284c7' }}></i>
+                      <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#0f172a' }}>
+                        Total Order Value:
+                      </span>
+                      <span style={{ fontSize: '0.92rem', fontWeight: '800', color: '#0284c7' }}>
+                        {currency} {Number(contractValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: '600', background: '#ecfdf5', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid #a7f3d0' }}>
+                        USD ${Number(amountInUSD).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        • {selectedOrder.orderName || formData.orderName} ({contractsList.length} {contractsList.length === 1 ? 'Contract' : 'Contracts'})
+                      </span>
                     </div>
-                  )}
-                  {isSingleContract && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '700' }}>
-                      <i className='bx bx-check-circle'></i> Single Contract Scope: {activeSingleContract.companyName}
-                    </div>
-                  )}
-                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>
-                      {isSingleContract ? 'Contract Value' : 'Total Order Value'}
-                    </label>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>{Number(contractValue).toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Currency</label>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>{currency}</div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Value in USD</label>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#10b981' }}>${Number(amountInUSD).toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
-                  </div>
-                </div>
-
-                <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '0.65rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <label style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.1rem' }}>Plan Term</label>
-                    <div style={{ fontSize: '0.82rem', color: '#334155' }}>{termDisplay}</div>
-                  </div>
-                  {isSingleContract ? (
-                    <div style={{ fontSize: '0.75rem', background: '#f1f5f9', color: '#475569', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
-                      Billing Entity: {activeSingleContract.companyName} {activeSingleContract.taxDetails ? `(${activeSingleContract.taxDetails})` : ''}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#0284c7', fontWeight: '600' }}>
+                      <span>{isOrderSummaryOpen ? 'Hide Details' : 'Show Details'}</span>
+                      <i className={`bx bx-chevron-${isOrderSummaryOpen ? 'up' : 'down'}`} style={{ fontSize: '1.15rem' }}></i>
                     </div>
-                  ) : (
-                    availableContracts.length > 1 && (
-                      <div style={{ fontSize: '0.75rem', background: '#eff6ff', color: '#1e40af', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: '600' }}>
-                        Multi-Company: {availableContracts.length} Entities
+                  </div>
+
+                  {isOrderSummaryOpen && (
+                    <div style={{ padding: '0.85rem 1rem', borderTop: '1px solid #e2e8f0', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        {selectedOrder.status === 'Draft' && (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '700' }}>
+                            <i className='bx bx-edit-alt'></i> Draft Order • Billing Details Configured
+                          </div>
+                        )}
+                        {isSingleContract ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '700' }}>
+                            <i className='bx bx-check-circle'></i> Single Contract: {activeSingleContract.companyName}
+                          </div>
+                        ) : (
+                          availableContracts.length > 1 && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '700' }}>
+                              <i className='bx bx-buildings'></i> Multi-Company: {availableContracts.length} Entities
+                            </div>
+                          )
+                        )}
                       </div>
-                    )
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>Contract Value</label>
+                          <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>{Number(contractValue).toLocaleString('en-US', { maximumFractionDigits: 2 })} {currency}</div>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>Currency</label>
+                          <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>{currency}</div>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>Value in USD</label>
+                          <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#10b981' }}>${Number(amountInUSD).toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>Plan Term</label>
+                          <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{termDisplay}</div>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
-                
-              </div>
-            );
-          })()}
 
-          {mode === 'schedule' ? (
-            <div>
-              {/* Multi-Contract Schedule Mode Switcher */}
-              {availableContracts.length > 1 && (
+                {/* 2. Contract Scope & Master Billing Frequency Bar */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  marginBottom: '0.75rem',
-                  padding: '0.45rem 0.75rem',
-                  background: '#f8fafc',
+                  background: '#ffffff',
+                  padding: '0.65rem 0.85rem',
                   borderRadius: '8px',
                   border: '1px solid #e2e8f0',
                   flexWrap: 'wrap',
-                  gap: '0.5rem'
+                  gap: '0.6rem'
                 }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <i className='bx bx-git-branch' style={{ color: '#0284c7' }}></i>
-                    Contract Schedule:
-                  </span>
-                  <div style={{ display: 'inline-flex', background: '#e2e8f0', padding: '2px', borderRadius: '6px', gap: '2px' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPaymentTermError('');
-                        setContractScope('all_separate');
-                        setSeparateTerms(prev => {
-                          const next = { ...prev };
-                          availableContracts.forEach(c => {
-                            if (next[c.id] === undefined) {
-                              next[c.id] = formData.paymentTerms || '1';
-                            }
-                          });
-                          return next;
-                        });
-                      }}
+                  {/* Multi-Contract Schedule Mode Switcher */}
+                  {availableContracts.length > 1 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <i className='bx bx-git-branch' style={{ color: '#0284c7' }}></i>
+                        Contract Schedule:
+                      </span>
+                      <div style={{ display: 'inline-flex', background: '#e2e8f0', padding: '2px', borderRadius: '6px', gap: '2px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaymentTermError('');
+                            setContractScope('all_separate');
+                            setSeparateTerms(prev => {
+                              const next = { ...prev };
+                              availableContracts.forEach(c => {
+                                if (next[c.id] === undefined) {
+                                  next[c.id] = formData.paymentTerms || '1';
+                                }
+                              });
+                              return next;
+                            });
+                          }}
+                          style={{
+                            padding: '0.25rem 0.65rem',
+                            borderRadius: '5px',
+                            border: 'none',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            background: contractScope === 'all_separate' ? '#ffffff' : 'transparent',
+                            color: contractScope === 'all_separate' ? '#0284c7' : '#64748b',
+                            boxShadow: contractScope === 'all_separate' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                          }}
+                        >
+                          Different Schedule for each Contract
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaymentTermError('');
+                            setContractScope('all_combined');
+                          }}
+                          style={{
+                            padding: '0.25rem 0.65rem',
+                            borderRadius: '5px',
+                            border: 'none',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            background: contractScope === 'all_combined' ? '#ffffff' : 'transparent',
+                            color: contractScope === 'all_combined' ? '#0284c7' : '#64748b',
+                            boxShadow: contractScope === 'all_combined' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                          }}
+                        >
+                          Same for all Contracts
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <i className='bx bx-calendar' style={{ color: '#0284c7' }}></i>
+                      Schedule Configuration
+                    </div>
+                  )}
+
+                  {/* Master Frequency Selector */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <i className='bx bx-calendar-event' style={{ color: '#0284c7' }}></i>
+                      Billing Frequency:
+                    </span>
+                    <select
+                      value={billingFrequency}
+                      onChange={(e) => handleFrequencyChange(e.target.value)}
                       style={{
-                        padding: '0.3rem 0.75rem',
-                        borderRadius: '5px',
-                        border: 'none',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
+                        padding: '0.25rem 0.55rem',
+                        borderRadius: '6px',
+                        border: '1.5px solid #0284c7',
+                        background: '#ffffff',
+                        color: '#0369a1',
+                        fontSize: '0.8rem',
+                        fontWeight: '700',
                         cursor: 'pointer',
-                        transition: 'all 0.15s',
-                        background: contractScope === 'all_separate' ? '#ffffff' : 'transparent',
-                        color: contractScope === 'all_separate' ? '#0284c7' : '#64748b',
-                        boxShadow: contractScope === 'all_separate' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                        outline: 'none'
                       }}
                     >
-                      Different Schedule for each Contract
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPaymentTermError('');
-                        setContractScope('all_combined');
-                      }}
-                      style={{
-                        padding: '0.3rem 0.75rem',
-                        borderRadius: '5px',
-                        border: 'none',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                        background: contractScope === 'all_combined' ? '#ffffff' : 'transparent',
-                        color: contractScope === 'all_combined' ? '#0284c7' : '#64748b',
-                        boxShadow: contractScope === 'all_combined' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                      }}
-                    >
-                      Same for all Contracts
-                    </button>
+                      <option value="Monthly">Monthly</option>
+                      <option value="Quarterly">Quarterly</option>
+                      <option value="Bi Anually">Bi Anually</option>
+                    </select>
+
+                    <span style={{
+                      fontSize: '0.73rem',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '4px',
+                      fontWeight: '600',
+                      border: '1px solid',
+                      background: billingFrequency === 'Bi Anually' ? '#f0fdf4' : (billingFrequency === 'Quarterly' ? '#faf5ff' : '#eff6ff'),
+                      color: billingFrequency === 'Bi Anually' ? '#16a34a' : (billingFrequency === 'Quarterly' ? '#7c3aed' : '#2563eb'),
+                      borderColor: billingFrequency === 'Bi Anually' ? '#bbf7d0' : (billingFrequency === 'Quarterly' ? '#e9d5ff' : '#bfdbfe')
+                    }}>
+                      {billingFrequency === 'Bi Anually' && 'Bi Anually: Billing Month = 2'}
+                      {billingFrequency === 'Monthly' && `Monthly: Billing Month = ${maxPaymentTerms || 12} (${maxPaymentTerms || 12} mo diff)`}
+                      {billingFrequency === 'Quarterly' && `Quarterly: Billing Month = ${getFrequencyMonths('Quarterly', maxPaymentTerms)} (Max 4)`}
+                    </span>
                   </div>
                 </div>
-              )}
 
-              {/* Billing Frequency Selector */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: '#f8fafc',
-                padding: '0.6rem 0.85rem',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                marginBottom: '0.85rem',
-                flexWrap: 'wrap',
-                gap: '0.5rem'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <i className='bx bx-calendar-event' style={{ color: '#0284c7', fontSize: '1rem' }}></i>
-                    Billing Frequency:
-                  </span>
-                  <select
-                    value={billingFrequency}
-                    onChange={(e) => handleFrequencyChange(e.target.value)}
-                    style={{
-                      padding: '0.3rem 0.65rem',
-                      borderRadius: '6px',
-                      border: '1.5px solid #0284c7',
-                      background: '#ffffff',
-                      color: '#0369a1',
-                      fontSize: '0.8rem',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      boxShadow: '0 1px 2px rgba(2, 132, 199, 0.08)'
+                {/* 3. Billing Month per Contract - In a TABLE */}
+                <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', color: '#334155' }}>
+                        <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700' }}>Entity / Contract Name</th>
+                        <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700' }}>Contract Value</th>
+                        <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700' }}>Billing Frequency</th>
+                        <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                            Billing Month <span style={{ color: '#ef4444', marginRight: '2px' }}>*</span>
+                            <Tooltip text="This will break the total value in the entered months" />
+                          </span>
+                        </th>
+                        <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700', textAlign: 'right' }}>Per Month / Installment</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {contractsList.map((c, idx) => {
+                        const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
+                        const cCurr = c.contractCurrency || currency || 'USD';
+                        const isSeparate = availableContracts.length > 1 && contractScope === 'all_separate';
+                        const termsVal = isSeparate
+                          ? (separateTerms[c.id] !== undefined ? separateTerms[c.id] : (formData.paymentTerms || '1'))
+                          : (formData.paymentTerms || '1');
+                        const months = Number(termsVal) || 1;
+                        const perMonthVal = Number((cVal / months).toFixed(2));
+                        const currentFreq = (isSeparate && contractFrequencies[c.id]) || billingFrequency;
+
+                        return (
+                          <tr key={c.id || idx} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                            <td style={{ padding: '0.65rem 0.85rem', verticalAlign: 'middle' }}>
+                              <strong style={{ color: '#0f172a', display: 'block', fontSize: '0.84rem' }}>{c.companyName}</strong>
+                              {c.taxDetails ? (
+                                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{c.taxDetails}</span>
+                              ) : (
+                                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Contract ID: {c.id}</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '0.65rem 0.85rem', verticalAlign: 'middle', fontWeight: '700', color: '#0284c7' }}>
+                              {cCurr} {Number(cVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td style={{ padding: '0.65rem 0.85rem', verticalAlign: 'middle' }}>
+                              {isSeparate ? (
+                                <select
+                                  value={currentFreq}
+                                  onChange={(e) => handleContractFrequencyChange(c.id, e.target.value)}
+                                  style={{
+                                    padding: '0.25rem 0.45rem',
+                                    borderRadius: '5px',
+                                    border: '1px solid #cbd5e1',
+                                    fontSize: '0.78rem',
+                                    color: '#0369a1',
+                                    background: '#ffffff',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <option value="Monthly">Monthly</option>
+                                  <option value="Quarterly">Quarterly</option>
+                                  <option value="Bi Anually">Bi Anually</option>
+                                </select>
+                              ) : (
+                                <span style={{ fontSize: '0.78rem', fontWeight: '600', color: '#475569', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                                  {billingFrequency}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '0.65rem 0.85rem', verticalAlign: 'middle' }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <input 
+                                  type="number"
+                                  min="1"
+                                  max={maxPaymentTerms || undefined}
+                                  value={termsVal}
+                                  onChange={(e) => {
+                                    setPaymentTermError('');
+                                    const val = e.target.value;
+                                    if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
+                                      if (isSeparate) {
+                                        setSeparateTerms(prev => ({ ...prev, [c.id]: maxPaymentTerms }));
+                                      } else {
+                                        setFormData(prev => ({ ...prev, paymentTerms: String(maxPaymentTerms) }));
+                                      }
+                                      setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+                                    } else {
+                                      if (isSeparate) {
+                                        setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
+                                      } else {
+                                        setFormData(prev => ({ ...prev, paymentTerms: val }));
+                                      }
+                                    }
+                                  }}
+                                  placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms}` : "e.g. 6"}
+                                  style={{
+                                    width: '70px',
+                                    padding: '0.35rem 0.5rem',
+                                    borderRadius: '6px',
+                                    border: '1.5px solid #cbd5e1',
+                                    fontSize: '0.85rem',
+                                    fontWeight: '600',
+                                    color: '#0f172a',
+                                    textAlign: 'center',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>mo</span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '0.65rem 0.85rem', verticalAlign: 'middle', textAlign: 'right' }}>
+                              <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#059669' }}>
+                                {cCurr} {Number(perMonthVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </div>
+                              <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                                {months} {months === 1 ? 'installment' : 'installments'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0', fontWeight: '700', color: '#334155' }}>
+                        <td style={{ padding: '0.65rem 0.85rem' }}>
+                          Total: {contractsList.length} {contractsList.length === 1 ? 'Entity' : 'Entities'}
+                        </td>
+                        <td style={{ padding: '0.65rem 0.85rem', color: '#0284c7' }}>
+                          {currency} {Number(contractValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td colSpan="2" style={{ padding: '0.65rem 0.85rem' }}>
+                          <span style={{ fontSize: '0.78rem', color: '#0284c7', background: '#eff6ff', padding: '0.2rem 0.55rem', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
+                            {contractsList.reduce((sum, c) => {
+                              const isSep = availableContracts.length > 1 && contractScope === 'all_separate';
+                              const m = Number(isSep ? (separateTerms[c.id] !== undefined ? separateTerms[c.id] : (formData.paymentTerms || 1)) : (formData.paymentTerms || 1)) || 1;
+                              return sum + m;
+                            }, 0)} Total Scheduled Invoices
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontSize: '0.78rem', color: '#64748b' }}>
+                          Auto-calculated
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {paymentTermError && (
+                  <div style={{ color: '#ef4444', fontSize: '0.8rem', padding: '0.5rem 0.75rem', background: '#fef2f2', borderRadius: '6px', border: '1px solid #fee2e2', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <i className='bx bx-error-circle'></i> {paymentTermError}
+                  </div>
+                )}
+
+                {/* Step 2 Footer Buttons: Back | Preview Schedule (plus Direct Save) - Cancel removed */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
+                  <button 
+                    type="button"
+                    onClick={() => setStep(1)} 
+                    style={{ 
+                      padding: '0.55rem 1.25rem', 
+                      background: '#ffffff', 
+                      color: '#475569', 
+                      border: '1.5px solid #cbd5e1', 
+                      borderRadius: '6px', 
+                      cursor: 'pointer', 
+                      fontWeight: '600', 
+                      fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem'
                     }}
                   >
-                    <option value="Monthly">Monthly</option>
-                    <option value="Quarterly">Quarterly</option>
-                    <option value="Bi Anually">Bi Anually</option>
-                  </select>
+                    <i className='bx bx-left-arrow-alt' style={{ fontSize: '1.1rem' }}></i> Back
+                  </button>
+
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    <button 
+                      type="button"
+                      onClick={handleSaveDirect} 
+                      style={{ 
+                        padding: '0.55rem 1.15rem', 
+                        background: '#f8fafc', 
+                        color: '#475569', 
+                        border: '1px solid #cbd5e1', 
+                        borderRadius: '6px', 
+                        cursor: 'pointer', 
+                        fontWeight: '600', 
+                        fontSize: '0.85rem' 
+                      }}
+                      title="Save schedule directly without opening full preview"
+                    >
+                      Direct Save
+                    </button>
+
+                    <button 
+                      type="button"
+                      onClick={handlePreview} 
+                      style={{ 
+                        padding: '0.55rem 1.45rem', 
+                        background: 'linear-gradient(135deg, #0284c7, #0ea5e9)', 
+                        color: 'white', 
+                        border: 'none', 
+                        borderRadius: '6px', 
+                        cursor: 'pointer', 
+                        fontWeight: '600', 
+                        fontSize: '0.85rem',
+                        boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem'
+                      }}
+                    >
+                      <i className='bx bx-show'></i> Preview Schedule
+                    </button>
+                  </div>
                 </div>
 
-                <div style={{ fontSize: '0.74rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  {billingFrequency === 'Bi Anually' && (
-                    <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '0.2rem 0.55rem', borderRadius: '4px', fontWeight: '600', border: '1px solid #bbf7d0' }}>
-                      Bi Anually: Billing Month = 2
-                    </span>
-                  )}
-                  {billingFrequency === 'Monthly' && (
-                    <span style={{ background: '#eff6ff', color: '#2563eb', padding: '0.2rem 0.55rem', borderRadius: '4px', fontWeight: '600', border: '1px solid #bfdbfe' }}>
-                      Monthly: Billing Month = {maxPaymentTerms || 12} ({maxPaymentTerms || 12} mo diff)
-                    </span>
-                  )}
-                  {billingFrequency === 'Quarterly' && (
-                    <span style={{ background: '#faf5ff', color: '#7c3aed', padding: '0.2rem 0.55rem', borderRadius: '4px', fontWeight: '600', border: '1px solid #e9d5ff' }}>
-                      Quarterly: Billing Month = {getFrequencyMonths('Quarterly', maxPaymentTerms)} (Max 4, closest before plan end)
-                    </span>
-                  )}
-                </div>
               </div>
-
-              {/* VIEW 1: Different Schedule per Contract */}
-              {availableContracts.length > 1 && contractScope === 'all_separate' ? (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0, display: 'flex', alignItems: 'center' }}>
-                      Billing Month per Contract <span style={{ color: '#ef4444', marginRight: '2px' }}>*</span>
-                      <Tooltip text="This will break the total value in the entered months" />
-                    </label>
-                    <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: '600' }}>
-                      Independent installments per contract
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: availableContracts.length > 2 ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr 1fr', gap: '0.65rem' }}>
-                    {availableContracts.map(c => {
-                      const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
-                      const cCurr = c.contractCurrency || 'USD';
-                      const termsVal = separateTerms[c.id] !== undefined ? separateTerms[c.id] : (formData.paymentTerms || '1');
-                      const months = Number(termsVal) || 1;
-                      const perMonthVal = Number((cVal / months).toFixed(2));
-
-                      return (
-                        <div key={c.id} style={{
-                          background: '#ffffff',
-                          border: '1.5px solid #bae6fd',
-                          borderRadius: '8px',
-                          padding: '0.75rem 0.9rem',
-                          boxShadow: '0 2px 4px rgba(2, 132, 199, 0.05)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.5rem'
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div>
-                              <strong style={{ fontSize: '0.83rem', color: '#0f172a', display: 'block' }}>{c.companyName}</strong>
-                              {c.taxDetails && <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{c.taxDetails}</span>}
-                            </div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#0284c7', background: '#f0f9ff', padding: '0.15rem 0.4rem', borderRadius: '4px', whiteSpace: 'nowrap' }}>
-                              {cCurr} {Number(cVal).toLocaleString()}
-                            </span>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.2rem' }}>
-                            <label style={{ fontSize: '0.78rem', fontWeight: '600', color: '#475569', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>
-                              Billing Month <span style={{ color: '#ef4444', marginRight: '2px' }}>*</span>
-                              <Tooltip text="This will break the total value in the entered months" />
-                            </label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <select
-                                value={contractFrequencies[c.id] || billingFrequency}
-                                onChange={(e) => handleContractFrequencyChange(c.id, e.target.value)}
-                                style={{
-                                  padding: '0.25rem 0.4rem',
-                                  borderRadius: '5px',
-                                  border: '1px solid #cbd5e1',
-                                  fontSize: '0.72rem',
-                                  color: '#0369a1',
-                                  background: '#f8fafc',
-                                  fontWeight: '600',
-                                  cursor: 'pointer'
-                                }}
-                                title="Frequency for this contract"
-                              >
-                                <option value="Monthly">Monthly</option>
-                                <option value="Quarterly">Quarterly</option>
-                                <option value="Bi Anually">Bi Anually</option>
-                              </select>
-                              <input 
-                                type="number"
-                                min="1"
-                                max={maxPaymentTerms || undefined}
-                                value={termsVal}
-                                onChange={(e) => {
-                                  setPaymentTermError('');
-                                  const val = e.target.value;
-                                  if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
-                                    setSeparateTerms(prev => ({ ...prev, [c.id]: maxPaymentTerms }));
-                                    setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
-                                  } else {
-                                    setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
-                                  }
-                                }}
-                                placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms}` : "e.g. 6"}
-                                style={{
-                                  width: '65px',
-                                  padding: '0.35rem 0.5rem',
-                                  borderRadius: '6px',
-                                  border: '1px solid #cbd5e1',
-                                  fontSize: '0.85rem',
-                                  color: '#0f172a',
-                                  textAlign: 'right',
-                                  boxSizing: 'border-box'
-                                }}
-                              />
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '0.4rem', borderTop: '1px dashed #e2e8f0' }}>
-                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Per Month:</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#059669' }}>
-                              {cCurr} {Number(perMonthVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {paymentTermError && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.35rem' }}>{paymentTermError}</div>}
-
-                  <div style={{
-                    marginTop: '0.75rem',
-                    padding: '0.6rem 0.85rem',
-                    background: '#f0f9ff',
-                    border: '1px solid #bae6fd',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontSize: '0.78rem',
-                    color: '#0369a1'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <i className='bx bx-check-double' style={{ fontSize: '1rem', color: '#0284c7' }}></i>
-                      <span>Different billing schedules configured for {availableContracts.length} contracts</span>
-                    </div>
-                    <span style={{ fontWeight: '700', background: '#ffffff', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid #bae6fd' }}>
-                      {availableContracts.reduce((sum, c) => sum + (Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : (formData.paymentTerms || 1)) || 1), 0)} Total Invoices
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                /* VIEW 2: Same Billing Month for All Contracts or Single Contract */
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: 0, display: 'flex', alignItems: 'center' }}>
-                      {availableContracts.length > 1 
-                        ? 'Billing month for all the contracts' 
-                        : (activeSingleContract 
-                            ? `Billing Month for ${activeSingleContract.companyName}` 
-                            : 'Billing Month')} <span style={{ color: '#ef4444', marginRight: '2px' }}>*</span>
-                      <Tooltip text="This will break the total value in the entered months" />
-                    </label>
-                    {formData.paymentTerms && Number(formData.paymentTerms) > 0 && (
-                      <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: '600' }}>
-                        {billingFrequency === 'Quarterly' ? 'Quarterly Billing Schedule' : (billingFrequency === 'Bi Anually' ? 'Bi-Annual Billing Schedule' : 'Monthly Back-to-Back Billing')}
-                      </span>
-                    )}
-                  </div>
-                  <input 
-                    type="number"
-                    style={{ ...inputStyle, borderColor: paymentTermError ? '#ef4444' : '#cbd5e1' }}
-                    placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms} months (e.g. 6)` : "e.g. 6"}
-                    min="1"
-                    max={maxPaymentTerms || undefined}
-                    value={formData.paymentTerms}
-                    onChange={(e) => {
-                      setPaymentTermError('');
-                      const val = e.target.value;
-                      if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
-                        setFormData(prev => ({ ...prev, paymentTerms: maxPaymentTerms }));
-                        setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
-                      } else {
-                        setFormData(prev => ({ ...prev, paymentTerms: val }));
-                      }
-                    }}
-                  />
-                  {paymentTermError && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>{paymentTermError}</div>}
-
-                  {/* Per-contract Monthly Breakdown */}
-                  {availableContracts.length > 1 && (
-                    <div style={{ marginTop: '0.85rem' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: availableContracts.length > 2 ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr 1fr', gap: '0.65rem' }}>
-                        {availableContracts.map(c => {
-                          const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
-                          const cCurr = c.contractCurrency || 'USD';
-                          const months = Number(formData.paymentTerms) || 1;
-                          const perMonthVal = Number((cVal / months).toFixed(2));
-                          return (
-                            <div key={c.id} style={{
-                              background: '#ffffff',
-                              border: '1.5px solid #bfdbfe',
-                              borderRadius: '8px',
-                              padding: '0.65rem 0.85rem',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-                            }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                                <strong style={{ fontSize: '0.82rem', color: '#0f172a' }}>{c.companyName}</strong>
-                                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#0284c7' }}>
-                                  {cCurr} {Number(cVal).toLocaleString()}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '0.35rem', borderTop: '1px dashed #e2e8f0' }}>
-                                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Per Month:</span>
-                                <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#059669' }}>
-                                  {cCurr} {Number(perMonthVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Single Contract Estimated Per-Month Breakdown */}
-                  {availableContracts.length <= 1 && formData.paymentTerms && Number(formData.paymentTerms) > 0 && selectedOrder && (() => {
-                    const totalVal = Number(selectedOrder.billingDetails?.contractValue || selectedOrder.amount || 0);
-                    const curr = selectedOrder.billingDetails?.clientCurrency || 'USD';
-                    const months = Number(formData.paymentTerms) || 1;
-                    const perMonthVal = Number((totalVal / months).toFixed(2));
-                    return (
-                      <div style={{
-                        marginTop: '0.65rem',
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px',
-                        padding: '0.6rem 0.85rem',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '500' }}>
-                          Estimated Per Month ({months} {months === 1 ? 'installment' : 'installments'}):
-                        </span>
-                        <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#059669' }}>
-                          {curr} {Number(perMonthVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
-                Amount ({selectedOrder?.billingDetails?.clientCurrency || 'USD'}) <span style={{ color: '#ef4444' }}>*</span>
-              </label>
-              <input 
-                type="number"
-                style={inputStyle}
-                placeholder="e.g. 500"
-                min="0"
-                value={formData.amount}
-                onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-              />
-            </div>
-          )}
-
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.25rem' }}>
-          <button 
-            type="button"
-            onClick={onClose} 
-            style={{ padding: '0.55rem 1.15rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}
-          >
-            Cancel
-          </button>
-          
-          {mode === 'schedule' && (
-            <button 
-              type="button"
-              onClick={handleSaveDirect} 
-              style={{ padding: '0.55rem 1.15rem', background: '#ffffff', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}
-              title="Save without opening full preview"
-            >
-              Direct Save
-            </button>
-          )}
-
-          <button 
-            type="button"
-            onClick={handlePreview} 
-            style={{ 
-              padding: '0.55rem 1.35rem', 
-              background: 'linear-gradient(135deg, #0284c7, #0ea5e9)', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '6px', 
-              cursor: 'pointer', 
-              fontWeight: '600', 
-              fontSize: '0.85rem',
-              boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem'
-            }}
-          >
-            <i className={mode === 'row' ? 'bx bx-check' : 'bx bx-show'}></i> {mode === 'row' ? 'Add Row' : 'Preview Schedule'}
-          </button>
+            );
+          })()}
         </div>
       </div>
       {renderDuplicateWarningModal()}
