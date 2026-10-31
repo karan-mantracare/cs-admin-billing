@@ -2129,7 +2129,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             )}
             {mode === 'schedule' && step === 2 && (
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                Review contract values, set billing frequencies and installment months.
+                Configuring schedule for <strong style={{ color: '#0f172a' }}>{formData.corporate}</strong> • <strong style={{ color: '#0f172a' }}>{formData.division}</strong>
               </p>
             )}
           </div>
@@ -2140,10 +2140,13 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
           
-          <div style={{ position: 'relative' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
-              Corporate <span style={{ color: '#ef4444' }}>*</span>
-            </label>
+          {/* STEP 1: Corporate, Division, and Order Selection */}
+          {(step === 1 || mode === 'row') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ position: 'relative' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
+                  Corporate <span style={{ color: '#ef4444' }}>*</span>
+                </label>
             <div 
               onClick={() => setIsCorpDropdownOpen(!isCorpDropdownOpen)}
               style={{ ...inputStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
@@ -2361,10 +2364,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             )}
           </div>
 
-          {/* Step 1 Fields & Step 1 Footer */}
-          {(step === 1 || mode === 'row') && (
-            <div>
-              {mode === 'row' && (
+          {mode === 'row' && (
                 <div style={{ marginTop: '0.75rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
                     Amount ({selectedOrder?.billingDetails?.clientCurrency || 'USD'}) <span style={{ color: '#ef4444' }}>*</span>
