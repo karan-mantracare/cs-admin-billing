@@ -550,6 +550,46 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     return d.toISOString().split('T')[0];
   };
 
+  const checkPlanEndCrossError = () => {
+    if (!selectedOrder) return '';
+    const planStart = selectedOrder.planStart;
+    const planEnd = selectedOrder.planEnd;
+    if (!planStart || !planEnd || planStart === 'Unknown Date') return '';
+
+    const isSeparate = availableContracts.length > 1 && contractScope === 'all_separate';
+
+    if (isSeparate) {
+      for (const c of availableContracts) {
+        const cFreq = contractFrequencies[c.id] || billingFrequency;
+        const terms = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : formData.paymentTerms) || 0;
+        if (!terms || terms <= 0) {
+          return `Billing month for "${c.companyName}" is required.`;
+        }
+        const lastOffset = getCadenceOffset(terms - 1, cFreq, maxPaymentTerms);
+        const lastInvoiceDate = getMonthlyDate(planStart, lastOffset);
+        const totalSpanMonths = cFreq === 'Quarterly' ? terms * 3 : (cFreq === 'Bi Anually' ? terms * Math.max(1, Math.floor((maxPaymentTerms || 12) / 2)) : terms);
+
+        if (lastInvoiceDate > planEnd || (maxPaymentTerms > 0 && totalSpanMonths > maxPaymentTerms) || (maxPaymentTerms > 0 && terms > maxPaymentTerms)) {
+          return `The selected billing month (${terms} installments for "${c.companyName}") will cross the Plan End Date (${planEnd}).`;
+        }
+      }
+    } else {
+      const terms = Number(formData.paymentTerms) || 0;
+      if (!terms || terms <= 0) {
+        return 'Billing month is required.';
+      }
+      const lastOffset = getCadenceOffset(terms - 1, billingFrequency, maxPaymentTerms);
+      const lastInvoiceDate = getMonthlyDate(planStart, lastOffset);
+      const totalSpanMonths = billingFrequency === 'Quarterly' ? terms * 3 : (billingFrequency === 'Bi Anually' ? terms * Math.max(1, Math.floor((maxPaymentTerms || 12) / 2)) : terms);
+
+      if (lastInvoiceDate > planEnd || (maxPaymentTerms > 0 && totalSpanMonths > maxPaymentTerms) || (maxPaymentTerms > 0 && terms > maxPaymentTerms)) {
+        return `The selected billing month (${terms} installments) will cross the Plan End Date (${planEnd}).`;
+      }
+    }
+
+    return '';
+  };
+
   // --- Automatic Percentage Rebalancing ---
   const recalculateSplits = (termsCount, pinnedMap = {}) => {
     const terms = Number(termsCount) || 1;
@@ -1136,6 +1176,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         return;
       }
       setPaymentTermError('');
+      const planCrossErr = checkPlanEndCrossError();
+      if (planCrossErr) {
+        setPaymentTermError(planCrossErr);
+        return;
+      }
       if (contractScope === 'all_separate' && availableContracts.length > 1) {
         for (const c of availableContracts) {
           const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : formData.paymentTerms);
@@ -1188,6 +1233,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         return;
       }
       setPaymentTermError('');
+      const planCrossErr = checkPlanEndCrossError();
+      if (planCrossErr) {
+        setPaymentTermError(planCrossErr);
+        return;
+      }
       if (contractScope === 'all_separate' && availableContracts.length > 1) {
         for (const c of availableContracts) {
           const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : formData.paymentTerms);
@@ -2849,75 +2899,91 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                   </table>
                 </div>
 
-                {paymentTermError && (
-                  <div style={{ color: '#ef4444', fontSize: '0.8rem', padding: '0.5rem 0.75rem', background: '#fef2f2', borderRadius: '6px', border: '1px solid #fee2e2', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <i className='bx bx-error-circle'></i> {paymentTermError}
-                  </div>
-                )}
+                {(() => {
+                  const planCrossErr = checkPlanEndCrossError();
+                  const displayError = planCrossErr || paymentTermError;
+                  const isBlocked = Boolean(displayError);
 
-                {/* Step 2 Footer Buttons: Back | Preview Schedule (plus Direct Save) - Cancel removed */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
-                  <button 
-                    type="button"
-                    onClick={() => setStep(1)} 
-                    style={{ 
-                      padding: '0.55rem 1.25rem', 
-                      background: '#ffffff', 
-                      color: '#475569', 
-                      border: '1.5px solid #cbd5e1', 
-                      borderRadius: '6px', 
-                      cursor: 'pointer', 
-                      fontWeight: '600', 
-                      fontSize: '0.85rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.35rem'
-                    }}
-                  >
-                    <i className='bx bx-left-arrow-alt' style={{ fontSize: '1.1rem' }}></i> Back
-                  </button>
+                  return (
+                    <>
+                      {displayError && (
+                        <div style={{ color: '#b91c1c', fontSize: '0.82rem', padding: '0.6rem 0.85rem', background: '#fef2f2', borderRadius: '6px', border: '1.5px solid #fecaca', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500', marginTop: '0.5rem' }}>
+                          <i className='bx bx-error-circle' style={{ fontSize: '1.15rem', color: '#ef4444', flexShrink: 0 }}></i>
+                          <span>{displayError}</span>
+                        </div>
+                      )}
 
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <button 
-                      type="button"
-                      onClick={handleSaveDirect} 
-                      style={{ 
-                        padding: '0.55rem 1.15rem', 
-                        background: '#f8fafc', 
-                        color: '#475569', 
-                        border: '1px solid #cbd5e1', 
-                        borderRadius: '6px', 
-                        cursor: 'pointer', 
-                        fontWeight: '600', 
-                        fontSize: '0.85rem' 
-                      }}
-                      title="Save schedule directly without opening full preview"
-                    >
-                      Direct Save
-                    </button>
+                      {/* Step 2 Footer Buttons: Back | Preview Schedule (plus Direct Save) - Cancel removed */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '1.25rem', marginTop: '0.75rem' }}>
+                        <button 
+                          type="button"
+                          onClick={() => setStep(1)} 
+                          style={{ 
+                            padding: '0.55rem 1.25rem', 
+                            background: '#ffffff', 
+                            color: '#475569', 
+                            border: '1.5px solid #cbd5e1', 
+                            borderRadius: '6px', 
+                            cursor: 'pointer', 
+                            fontWeight: '600', 
+                            fontSize: '0.85rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem'
+                          }}
+                        >
+                          <i className='bx bx-left-arrow-alt' style={{ fontSize: '1.1rem' }}></i> Back
+                        </button>
 
-                    <button 
-                      type="button"
-                      onClick={handlePreview} 
-                      style={{ 
-                        padding: '0.55rem 1.45rem', 
-                        background: 'linear-gradient(135deg, #0284c7, #0ea5e9)', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '6px', 
-                        cursor: 'pointer', 
-                        fontWeight: '600', 
-                        fontSize: '0.85rem',
-                        boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.4rem'
-                      }}
-                    >
-                      <i className='bx bx-show'></i> Preview Schedule
-                    </button>
-                  </div>
-                </div>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                          <button 
+                            type="button"
+                            disabled={isBlocked}
+                            onClick={isBlocked ? undefined : handleSaveDirect} 
+                            style={{ 
+                              padding: '0.55rem 1.15rem', 
+                              background: isBlocked ? '#f1f5f9' : '#f8fafc', 
+                              color: isBlocked ? '#94a3b8' : '#475569', 
+                              border: `1px solid ${isBlocked ? '#e2e8f0' : '#cbd5e1'}`, 
+                              borderRadius: '6px', 
+                              cursor: isBlocked ? 'not-allowed' : 'pointer', 
+                              fontWeight: '600', 
+                              fontSize: '0.85rem',
+                              opacity: isBlocked ? 0.6 : 1
+                            }}
+                            title={isBlocked ? displayError : "Save schedule directly without opening full preview"}
+                          >
+                            Direct Save
+                          </button>
+
+                          <button 
+                            type="button"
+                            disabled={isBlocked}
+                            onClick={isBlocked ? undefined : handlePreview} 
+                            style={{ 
+                              padding: '0.55rem 1.45rem', 
+                              background: isBlocked ? '#94a3b8' : 'linear-gradient(135deg, #0284c7, #0ea5e9)', 
+                              color: 'white', 
+                              border: 'none', 
+                              borderRadius: '6px', 
+                              cursor: isBlocked ? 'not-allowed' : 'pointer', 
+                              fontWeight: '600', 
+                              fontSize: '0.85rem',
+                              boxShadow: isBlocked ? 'none' : '0 2px 4px rgba(2, 132, 199, 0.25)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              opacity: isBlocked ? 0.6 : 1
+                            }}
+                            title={isBlocked ? displayError : "Preview Schedule"}
+                          >
+                            <i className='bx bx-show'></i> Preview Schedule
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
 
               </div>
             );

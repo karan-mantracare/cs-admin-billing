@@ -15,7 +15,8 @@ export const CHANGELOG_DATA = [
       'Automated Frequency Rules: Bi-Annually freezes to 2 installments, Monthly calculates total month span, Quarterly calculates up to 4 installments',
       'Collapsible Order Value Dropdown: Total Order Value and plan terms are displayed in an expandable accordion dropdown with summary headers',
       'Contract Schedule Table: Replaced bulky tabs/cards with a structured table featuring Entity Name, Contract Value, Billing Frequency, Billing Month (with tooltip), and Per-Month calculations',
-      'Streamlined Footers: Cancel button removed in favor of top-right "×"; Step 2 features Back, Direct Save, and Preview Schedule buttons'
+      'Streamlined Footers: Cancel button removed in favor of top-right "×"; Step 2 features Back, Direct Save, and Preview Schedule buttons',
+      'Plan End Date Validation & Button Disabling: If entered installments cross the Plan End Date, an error banner is displayed and both Preview and Direct Save buttons are disabled (not-allowed cursor, reduced opacity) leaving only Back clickable'
     ],
     path: '/client-payments',
     linkText: 'Accounts Receivable'
