@@ -518,6 +518,16 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     setPaymentTermError('');
   };
 
+  // Enforce frozen calculation when 'Same for all Contracts' is active
+  useEffect(() => {
+    if (contractScope === 'all_combined' && maxPaymentTerms > 0) {
+      const calculatedTerms = getFrequencyMonths(billingFrequency, maxPaymentTerms);
+      if (formData.paymentTerms !== String(calculatedTerms)) {
+        setFormData(prev => ({ ...prev, paymentTerms: String(calculatedTerms) }));
+      }
+    }
+  }, [contractScope, billingFrequency, maxPaymentTerms]);
+
   // --- Monthly Back-to-Back Date Helpers ---
   const getMonthlyDate = (baseDateStr, monthOffset) => {
     let d = baseDateStr ? new Date(baseDateStr) : new Date();
@@ -1139,6 +1149,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           }
         }
       } else {
+        const calculated = getFrequencyMonths(billingFrequency, maxPaymentTerms);
+        formData.paymentTerms = String(calculated);
         if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
           setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
           return;
@@ -1189,6 +1201,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           }
         }
       } else {
+        const calculated = getFrequencyMonths(billingFrequency, maxPaymentTerms);
+        formData.paymentTerms = String(calculated);
         if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
           setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
           return;
@@ -2661,9 +2675,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                       color: billingFrequency === 'Bi Anually' ? '#16a34a' : (billingFrequency === 'Quarterly' ? '#7c3aed' : '#2563eb'),
                       borderColor: billingFrequency === 'Bi Anually' ? '#bbf7d0' : (billingFrequency === 'Quarterly' ? '#e9d5ff' : '#bfdbfe')
                     }}>
-                      {billingFrequency === 'Bi Anually' && 'Bi Anually: Billing Month = 2'}
-                      {billingFrequency === 'Monthly' && `Monthly: Billing Month = ${maxPaymentTerms || 12} (${maxPaymentTerms || 12} mo diff)`}
-                      {billingFrequency === 'Quarterly' && `Quarterly: Billing Month = ${getFrequencyMonths('Quarterly', maxPaymentTerms)} (Max 4)`}
+                      <i className='bx bx-lock-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
+                      {billingFrequency === 'Bi Anually' && 'Bi Anually: Billing Month = 2 (Frozen)'}
+                      {billingFrequency === 'Monthly' && `Monthly: Billing Month = ${maxPaymentTerms || 12} (${maxPaymentTerms || 12} mo diff, Frozen)`}
+                      {billingFrequency === 'Quarterly' && `Quarterly: Billing Month = ${getFrequencyMonths('Quarterly', maxPaymentTerms)} (Max 4, Frozen)`}
                     </span>
                   </div>
                 </div>
@@ -2677,9 +2692,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                         <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700' }}>Contract Value</th>
                         <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700' }}>Billing Frequency</th>
                         <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                            Billing Month <span style={{ color: '#ef4444', marginRight: '2px' }}>*</span>
-                            <Tooltip text="This will break the total value in the entered months" />
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                            Billing Month <span style={{ color: '#ef4444' }}>*</span>
+                            <Tooltip text="This will break the total value in the entered months. Frozen based on the selected Billing Frequency calculation." />
                           </span>
                         </th>
                         <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700', textAlign: 'right' }}>Per Month / Installment</th>
@@ -2690,9 +2705,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                         const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
                         const cCurr = c.contractCurrency || currency || 'USD';
                         const isSeparate = availableContracts.length > 1 && contractScope === 'all_separate';
+                        const calculatedCombinedTerms = getFrequencyMonths(billingFrequency, maxPaymentTerms);
                         const termsVal = isSeparate
-                          ? (separateTerms[c.id] !== undefined ? separateTerms[c.id] : (formData.paymentTerms || '1'))
-                          : (formData.paymentTerms || '1');
+                          ? (separateTerms[c.id] !== undefined ? separateTerms[c.id] : String(getFrequencyMonths(contractFrequencies[c.id] || billingFrequency, maxPaymentTerms)))
+                          : String(calculatedCombinedTerms);
                         const months = Number(termsVal) || 1;
                         const perMonthVal = Number((cVal / months).toFixed(2));
                         const currentFreq = (isSeparate && contractFrequencies[c.id]) || billingFrequency;
@@ -2737,45 +2753,64 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                               )}
                             </td>
                             <td style={{ padding: '0.65rem 0.85rem', verticalAlign: 'middle' }}>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                                <input 
-                                  type="number"
-                                  min="1"
-                                  max={maxPaymentTerms || undefined}
-                                  value={termsVal}
-                                  onChange={(e) => {
-                                    setPaymentTermError('');
-                                    const val = e.target.value;
-                                    if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
-                                      if (isSeparate) {
+                              {!isSeparate ? (
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                                  <input 
+                                    type="number"
+                                    value={termsVal}
+                                    disabled
+                                    readOnly
+                                    title={`Frozen: automatically calculated as ${termsVal} months for ${billingFrequency} billing`}
+                                    style={{
+                                      width: '65px',
+                                      padding: '0.35rem 0.5rem',
+                                      borderRadius: '6px',
+                                      border: '1px solid #cbd5e1',
+                                      fontSize: '0.85rem',
+                                      fontWeight: '700',
+                                      color: '#334155',
+                                      background: '#f1f5f9',
+                                      textAlign: 'center',
+                                      cursor: 'not-allowed',
+                                      boxSizing: 'border-box'
+                                    }}
+                                  />
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>mo</span>
+                                  <i className='bx bx-lock-alt' style={{ color: '#0284c7', fontSize: '0.95rem' }} title={`Frozen: ${billingFrequency} = ${termsVal} months`}></i>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                                  <input 
+                                    type="number"
+                                    min="1"
+                                    max={maxPaymentTerms || undefined}
+                                    value={termsVal}
+                                    onChange={(e) => {
+                                      setPaymentTermError('');
+                                      const val = e.target.value;
+                                      if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
                                         setSeparateTerms(prev => ({ ...prev, [c.id]: maxPaymentTerms }));
+                                        setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
                                       } else {
-                                        setFormData(prev => ({ ...prev, paymentTerms: String(maxPaymentTerms) }));
-                                      }
-                                      setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
-                                    } else {
-                                      if (isSeparate) {
                                         setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
-                                      } else {
-                                        setFormData(prev => ({ ...prev, paymentTerms: val }));
                                       }
-                                    }
-                                  }}
-                                  placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms}` : "e.g. 6"}
-                                  style={{
-                                    width: '70px',
-                                    padding: '0.35rem 0.5rem',
-                                    borderRadius: '6px',
-                                    border: '1.5px solid #cbd5e1',
-                                    fontSize: '0.85rem',
-                                    fontWeight: '600',
-                                    color: '#0f172a',
-                                    textAlign: 'center',
-                                    boxSizing: 'border-box'
-                                  }}
-                                />
-                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>mo</span>
-                              </div>
+                                    }}
+                                    placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms}` : "e.g. 6"}
+                                    style={{
+                                      width: '65px',
+                                      padding: '0.35rem 0.5rem',
+                                      borderRadius: '6px',
+                                      border: '1.5px solid #cbd5e1',
+                                      fontSize: '0.85rem',
+                                      fontWeight: '600',
+                                      color: '#0f172a',
+                                      textAlign: 'center',
+                                      boxSizing: 'border-box'
+                                    }}
+                                  />
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>mo</span>
+                                </div>
+                              )}
                             </td>
                             <td style={{ padding: '0.65rem 0.85rem', verticalAlign: 'middle', textAlign: 'right' }}>
                               <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#059669' }}>
