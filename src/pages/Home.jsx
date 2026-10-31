@@ -19,6 +19,24 @@ function Home() {
       desc: 'Interactive schedule of client webinars, trainer assignments, session tracking, and attendance logs.'
     },
     {
+      title: 'Client Feedback & Quality Evaluation',
+      icon: 'bx-star',
+      path: '/cs/feedback',
+      tag: 'Active Workflow',
+      color: '#034ea2',
+      bg: '#eff6ff',
+      desc: '10-pillar client feedback questionnaire, directory table, real-time score derivation, and escalation matrix.'
+    },
+    {
+      title: 'Client Cadence & Governance',
+      icon: 'bx-line-chart',
+      path: '/cadence',
+      tag: 'Active Workflow',
+      color: '#7c3aed',
+      bg: '#f3e8ff',
+      desc: 'Corporate communication cadence, milestone tracking, quarterly relationship reviews, and account health logs.'
+    },
+    {
       title: 'HR Approval & Calendar',
       icon: 'bx-user-circle',
       path: '/hr-dash',

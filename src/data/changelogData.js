@@ -1,5 +1,24 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-cs-feedback-score-derivation-and-ux-20261031',
+    date: '2026-10-31',
+    formattedDate: 'Oct 31, 2026',
+    page: 'CS',
+    subPage: 'Feedback & Escalation / Score Explanation & Topbar Company Selector',
+    summary: 'Added topbar corporate selector, streamlined direct form creation, compact table actions, and Score Explanation derivation modal',
+    details: 'Added a persistent corporate client switcher dropdown in the top navigation bar with real-time storage event synchronization. Streamlined the "Open Form" flow to directly create pending submissions for the logged-in user under the active company without modal barriers. Enhanced the Share Form modal with Access & Roles user selection, prefilled designations, and corporate division dropdowns. Upgraded the Submissions table with compact Copy, View/Edit icon buttons, and a 3-dots action menu featuring a comprehensive Score Explanation modal detailing the 10-question rubric and mathematical derivation of Overall Satisfaction.',
+    plainLanguage: 'CS managers can now switch companies instantly from the top menu bar. Clicking "Open Form" now directly creates and launches the feedback questionnaire in a new tab under the logged-in user with zero intermediate popups. The Share Form modal pulls users and divisions straight from the Corporate tab. In the Feedback table, action buttons are now sleek and compact, featuring a 3-dots menu with a full "Score Explanation" modal that walks through each question score and clearly demonstrates how the Overall Satisfaction rating was calculated.',
+    highlights: [
+      'Topbar Company Selector: Persistent dropdown on the right side of the top navbar sourcing corporate clients with instant profile synchronization',
+      'Direct Open Form: 1-click generation of Pending feedback entries for the logged-in user and active company, directly opening /feedback-form/:id',
+      'Streamlined Share Form: Access & Roles recipient selection with corporate role prefill, concise single-line recipient info, and company division dropdown',
+      'Compact Table Actions: Replaced wide buttons with Copy icon, View/Edit icon, and a floating 3-dots action menu with smart overflow positioning',
+      'Score Explanation Modal: Added 3rd option to the 3-dots menu showing each question, option scores (1-5 & SOW N/A), user selection, and step-by-step arithmetic derivation of Overall Satisfaction'
+    ],
+    path: '/cs/feedback',
+    linkText: 'CS Feedback'
+  },
+  {
     id: 'cl-cs-feedback-standalone-portal-20261030',
     date: '2026-10-30',
     formattedDate: 'Oct 30, 2026',
