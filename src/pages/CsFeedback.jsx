@@ -314,6 +314,118 @@ const SEED_FEEDBACK_SUBMISSIONS = [
   }
 ];
 
+const ESCALATION_TIERS = [
+  {
+    tier: 'Tier 1',
+    tierLabel: 'Primary Frontline',
+    role: 'Customer Success SPOC',
+    shortRole: 'CS SPOC',
+    whoTheyAre: 'Your Primary SPOC',
+    whoTheyAreSubtitle: 'Dedicated Account Manager for all client requests',
+    sla: '24 hrs',
+    slaBadge: '⚡ 24 hrs Response',
+    themeColor: '#0284c7',
+    lightBg: '#f0f9ff',
+    border: '#bae6fd',
+    accentBorder: '#0284c7',
+    icon: 'bx-user-voice',
+    howCanTheyHelp: [
+      'Your single day-to-day point of contact for any and all requests',
+      'Assists with session bookings, counselor allocation & scheduling',
+      'Coordinates onboarding, HR portal access & employee wellness rollouts',
+      'Answers inquiries directly and resolves day-to-day operational issues'
+    ],
+    triggers: [
+      { label: 'All incoming client requests', tag: 'Routine' },
+      { label: 'Routine operational & technical support', tag: 'Standard' },
+      { label: 'Day-to-day session scheduling & assistance', tag: 'Operations' }
+    ]
+  },
+  {
+    tier: 'Tier 2',
+    tierLabel: 'Internal Escalation',
+    role: 'Customer Success Manager',
+    shortRole: 'CS Manager',
+    whoTheyAre: 'Manager of CS SPOC',
+    whoTheyAreSubtitle: 'CS Team Lead & Account Health Supervisor',
+    sla: '24 to 36 hrs',
+    slaBadge: '⏱️ 24 to 36 hrs',
+    themeColor: '#6366f1',
+    lightBg: '#eef2ff',
+    border: '#c7d2fe',
+    accentBorder: '#6366f1',
+    icon: 'bx-shield-quarter',
+    howCanTheyHelp: [
+      'Addresses queries that your CS SPOC is unable to resolve or answer',
+      'Steps in immediately when your CS SPOC is unresponsive or missing SLA',
+      'Investigates recurring operational bottlenecks and provides recovery plans',
+      'Ensures SLA accountability, reviews feedback & addresses low ratings'
+    ],
+    triggers: [
+      { label: 'CS SPOC unable to handle query', severity: 'warning', tag: 'Unresolved' },
+      { label: 'CS SPOC unresponsive / not replying at all', severity: 'danger', tag: 'SLA Breach' },
+      { label: 'Issue remains unsolved after initial attempt', severity: 'warning', tag: 'Stalled' },
+      { label: 'Account closure threatened by client', severity: 'danger', tag: 'Churn Risk' },
+      { label: 'Potential switch to competitor signaled', severity: 'danger', tag: 'Competitor' },
+      { label: 'Bad review or negative feedback rating', severity: 'warning', tag: 'Low Rating' }
+    ]
+  },
+  {
+    tier: 'Tier 3',
+    tierLabel: 'Commercial Escalation',
+    role: 'Business Development SPOC',
+    shortRole: 'BD SPOC',
+    whoTheyAre: 'BD SPOC (Who Sold the Program to You)',
+    whoTheyAreSubtitle: 'Sales & Commercial Relationship Owner',
+    sla: '24 hrs',
+    slaBadge: '⚡ 24 hrs Response',
+    themeColor: '#ea580c',
+    lightBg: '#fff7ed',
+    border: '#fed7aa',
+    accentBorder: '#ea580c',
+    icon: 'bx-briefcase-alt-2',
+    howCanTheyHelp: [
+      'Intervenes if there is no reply from the team or a communication breakdown',
+      'Audits actual delivered services against the sales pitch & signed SOW',
+      'Resolves mismatches in deliverables, feature access, or contractual terms',
+      'Facilitates commercial re-alignments, contract adjustments & renewals'
+    ],
+    triggers: [
+      { label: 'No reply from anyone on the team', severity: 'danger', tag: 'Total Breakdown' },
+      { label: 'Direct client escalation on Customer Success', severity: 'danger', tag: 'CS Failure' },
+      { label: 'Service delivered mismatch vs sales pitch/SOW', severity: 'warning', tag: 'SOW Mismatch' },
+      { label: 'Delivery expectations & contract scope dispute', severity: 'warning', tag: 'Scope Dispute' }
+    ]
+  },
+  {
+    tier: 'Tier 4',
+    tierLabel: 'Executive & CXO',
+    role: 'Senior Management',
+    shortRole: 'Owner / CXO',
+    whoTheyAre: 'Company Owner & CXOs',
+    whoTheyAreSubtitle: 'Executive Leadership & Governance',
+    sla: '48 hrs',
+    slaBadge: '🛡️ 48 hrs Resolution',
+    themeColor: '#059669',
+    lightBg: '#ecfdf5',
+    border: '#a7f3d0',
+    accentBorder: '#059669',
+    icon: 'bx-crown',
+    howCanTheyHelp: [
+      'Direct C-Suite / Owner engagement for critical, unresolved enterprise issues',
+      'Executive-level mediation when previous support & commercial tiers fail',
+      'Authorizes strategic commercial concessions, policy exceptions & remedies',
+      'Implements organizational fixes to guarantee long-term service excellence'
+    ],
+    triggers: [
+      { label: 'Enterprise contract termination or legal breach notice', severity: 'danger', tag: 'Contract Threat' },
+      { label: 'Unresolved critical escalations from CS Manager & BD SPOC', severity: 'danger', tag: 'Final Stage' },
+      { label: 'High-value enterprise revenue or strategic partner at risk', severity: 'danger', tag: 'Major Churn' },
+      { label: 'Company Owner & CXO-level intervention required', severity: 'warning', tag: 'Executive' }
+    ]
+  }
+];
+
 export default function CsFeedback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -381,6 +493,88 @@ export default function CsFeedback() {
     division: '',
     csSpoc: ''
   });
+
+  // Contact Escalation Role Modal State
+  const [contactModalData, setContactModalData] = useState({
+    isOpen: false,
+    roleTitle: '',
+    roleBadge: '',
+    shortRole: '',
+    themeColor: '#0284c7',
+    employeeName: '',
+    toEmail: '',
+    ccEmail: '',
+    userName: '',
+    companyName: '',
+    subject: '',
+    emailMode: 'auto', // 'auto' | 'custom'
+    autoContent: '',
+    customContent: '',
+    isSent: false
+  });
+
+  const handleOpenContactModal = (tier) => {
+    let currentUserName = 'HR Partner';
+    let currentUserEmail = 'hr@company.com';
+    try {
+      const u = JSON.parse(localStorage.getItem('logged_in_user') || '{}');
+      if (u?.name) currentUserName = u.name;
+      if (u?.email) currentUserEmail = u.email;
+    } catch {}
+    if (clientDetails?.name && currentUserName === 'HR Partner') {
+      currentUserName = clientDetails.name;
+    }
+    if (clientDetails?.email && currentUserEmail === 'hr@company.com') {
+      currentUserEmail = clientDetails.email;
+    }
+
+    const companyName = clientDetails?.company || 'Corporate Client';
+
+    let empName = '';
+    let toEmail = '';
+    let autoContent = '';
+    let defaultSubject = '';
+
+    if (tier.shortRole === 'CS SPOC') {
+      empName = clientDetails?.csSpocName || 'Karan Hinduja';
+      toEmail = `${empName.toLowerCase().replace(/\s+/g, '.')}@mantracare.com`;
+      defaultSubject = `[Account Connect] ${companyName} - Inquiry for ${empName} (CS SPOC)`;
+      autoContent = `Hello ${empName},\n\n${currentUserName} from ${companyName} wants to connect with you regarding their corporate account, session coordination, and ongoing service operations.\n\nFeel free to reply directly to this thread or start a new thread to arrange a quick sync.\n\nBest regards,\n${currentUserName}\n${companyName}`;
+    } else if (tier.shortRole === 'CS Manager') {
+      empName = 'Jane Smith';
+      toEmail = 'cs.manager@mantracare.com';
+      defaultSubject = `[CS Escalation] ${companyName} - Escalation Notice for CS Manager`;
+      autoContent = `Hello ${empName},\n\n${currentUserName} from ${companyName} wants to connect with you regarding an escalation on their Customer Success support. They require management intervention to resolve stalled queries and ensure SLA compliance.\n\nFeel free to reply directly to this thread or start a new thread to review their account.\n\nBest regards,\n${currentUserName}\n${companyName}`;
+    } else if (tier.shortRole === 'BD SPOC') {
+      empName = 'Rahul Verma';
+      toEmail = 'rahul.bd@mantracare.com';
+      defaultSubject = `[Program Alignment] ${companyName} - Commercial & SOW Query for BD SPOC`;
+      autoContent = `Hello ${empName},\n\n${currentUserName} from ${companyName} wants to connect with you regarding their corporate program deliverables and SOW alignment.\n\nFeel free to reply directly to this thread or start a new thread to review contract expectations and scope.\n\nBest regards,\n${currentUserName}\n${companyName}`;
+    } else {
+      empName = 'Executive Leadership Team';
+      toEmail = 'management@mantracare.com';
+      defaultSubject = `[Executive Escalation] ${companyName} - Priority Connect with Senior Management`;
+      autoContent = `Hello ${empName},\n\n${currentUserName} from ${companyName} has requested executive-level intervention regarding their corporate partnership and service delivery.\n\nFeel free to reply directly to this thread or start a new thread to coordinate an executive briefing.\n\nBest regards,\n${currentUserName}\n${companyName}`;
+    }
+
+    setContactModalData({
+      isOpen: true,
+      roleTitle: tier.role,
+      roleBadge: tier.whoTheyAre,
+      shortRole: tier.shortRole,
+      themeColor: tier.themeColor,
+      employeeName: empName,
+      toEmail,
+      ccEmail: currentUserEmail,
+      userName: currentUserName,
+      companyName,
+      subject: defaultSubject,
+      emailMode: 'auto',
+      autoContent,
+      customContent: autoContent,
+      isSent: false
+    });
+  };
   const [openFormPageData, setOpenFormPageData] = useState({
     company: '',
     hrName: '',
@@ -437,7 +631,6 @@ export default function CsFeedback() {
   const [validationError, setValidationError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [isMatrixExpanded, setIsMatrixExpanded] = useState(false); // Collapsed by default for compact page
   const [availableDivisions, setAvailableDivisions] = useState([]);
 
   // Auto pre-fill HR name and Customer Success SPOC Name
@@ -2750,434 +2943,290 @@ export default function CsFeedback() {
 
         {/* ESCALATION MATRIX TAB */}
         {activeTab === 'matrix' && (
-          <div style={{ maxWidth: '1200px', margin: '0 auto 2rem auto' }}>
+          <div style={{ maxWidth: '1240px', margin: '0 auto 2.5rem auto' }}>
             {/* Header & Overview Card */}
             <div style={{
               background: '#ffffff',
-              borderRadius: '12px',
+              borderRadius: '14px',
               border: '1px solid #e2e8f0',
-              padding: '1.5rem',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-              marginBottom: '1.25rem'
+              padding: '1.25rem 1.5rem',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '1rem'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{
-                    width: '42px',
-                    height: '42px',
-                    borderRadius: '10px',
-                    background: '#e0f2fe',
-                    color: '#034ea2',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.35rem'
-                  }}>
-                    <i className='bx bx-shield-quarter'></i>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: '#e0f2fe',
+                  color: '#034ea2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.4rem',
+                  boxShadow: '0 2px 6px rgba(3, 78, 162, 0.12)'
+                }}>
+                  <i className='bx bx-shield-quarter'></i>
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                      Customer Service Escalation Matrix
+                    </h2>
+                    <span style={{ fontSize: '0.72rem', fontWeight: '700', color: '#034ea2', background: '#e0f2fe', padding: '0.15rem 0.55rem', borderRadius: '4px' }}>
+                      4-Tier SLA Protocol
+                    </span>
                   </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-                        Customer Service Escalation Matrix
-                      </h2>
-                      <span style={{ fontSize: '0.74rem', fontWeight: '700', color: '#034ea2', background: '#e0f2fe', padding: '0.15rem 0.55rem', borderRadius: '4px' }}>
-                        8-Tier SLA Protocol
-                      </span>
-                    </div>
-                    <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
-                      Standard operational resolution SLAs, complaint workflows, and intervention triggers across support tiers.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* SLA Highlights */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.85rem', marginTop: '1.25rem' }}>
-                <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: '700', color: '#0284c7', textTransform: 'uppercase' }}>Tier 1 - 2: Frontline Support</div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0f172a', marginTop: '0.2rem' }}>15m – 1hr Response</div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Call Center Rep & Support Manager triage</div>
-                </div>
-                <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: '700', color: '#ea580c', textTransform: 'uppercase' }}>Tier 3 - 4: Account & Sales</div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0f172a', marginTop: '0.2rem' }}>1hr – 5hr Resolution</div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Account Manager & Sales Manager incident review</div>
-                </div>
-                <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: '700', color: '#16a34a', textTransform: 'uppercase' }}>Tier 5 - 8: Leadership & Exec</div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0f172a', marginTop: '0.2rem' }}>1 – 3 Business Days</div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Director, Stakeholders & Senior Management sign-off</div>
+                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+                    Standard operational resolution SLAs, direct role contacts, and progressive intervention triggers across support tiers.
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Matrix Table Container */}
-            <div
-              style={{
-                marginTop: '1.25rem',
-                background: '#ffffff',
-                borderRadius: '12px',
-                border: '1px solid #cbd5e1',
-                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
-                overflow: 'hidden'
-              }}
-            >
-          {/* Accordion Header Trigger */}
-          <div
-            onClick={() => setIsMatrixExpanded(!isMatrixExpanded)}
-            style={{
-              padding: '0.75rem 1rem',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              cursor: 'pointer',
-              background: isMatrixExpanded ? '#f8fafc' : '#ffffff',
-              borderBottom: isMatrixExpanded ? '1px solid #e2e8f0' : 'none',
-              transition: 'background-color 0.15s ease'
-            }}
-            onMouseOver={(e) => {
-              if (!isMatrixExpanded) e.currentTarget.style.backgroundColor = '#f8fafc';
-            }}
-            onMouseOut={(e) => {
-              if (!isMatrixExpanded) e.currentTarget.style.backgroundColor = '#ffffff';
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  background: isMatrixExpanded ? '#e0f2fe' : '#f1f5f9',
-                  color: isMatrixExpanded ? '#034ea2' : '#64748b',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.1rem'
-                }}
-              >
-                <i className="bx bx-table"></i>
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                  <h2 style={{ fontSize: '1.02rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
-                    Customer Service Escalation Matrix
-                  </h2>
-                  <span style={{ fontSize: '0.7rem', fontWeight: '600', color: '#034ea2', background: '#e0f2fe', padding: '0.1rem 0.45rem', borderRadius: '4px' }}>
-                    8-Tier SLA Protocol
-                  </span>
-                </div>
-                <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.15rem 0 0 0' }}>
-                  {isMatrixExpanded
-                    ? 'Click to collapse standard resolution SLAs and intervention triggers across support tiers.'
-                    : 'Click to expand standard operational resolution SLAs, complaint workflows, and intervention triggers.'}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsMatrixExpanded(!isMatrixExpanded);
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.35rem 0.75rem',
-                borderRadius: '5px',
-                border: '1px solid #cbd5e1',
-                background: isMatrixExpanded ? '#034ea2' : '#ffffff',
-                color: isMatrixExpanded ? '#ffffff' : '#334155',
-                fontSize: '0.78rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <span>{isMatrixExpanded ? 'Collapse Matrix' : 'Expand Matrix'}</span>
-              <i className={`bx ${isMatrixExpanded ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1rem' }}></i>
-            </button>
-          </div>
-
-          {/* Collapsible Body containing the full 8-column matrix table */}
-          {isMatrixExpanded && (
-            <div style={{ padding: '0.85rem', overflowX: 'auto', background: '#ffffff' }}>
-              <table
-                style={{
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '14px',
+              border: '1px solid #cbd5e1',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              overflow: 'hidden'
+            }}>
+              <div style={{ padding: '0.85rem', overflowX: 'auto', background: '#ffffff' }}>
+                <table style={{
                   width: '100%',
                   borderCollapse: 'collapse',
-                  minWidth: '1020px',
+                  minWidth: '850px',
                   fontSize: '0.85rem',
                   color: '#1e293b'
-                }}
-              >
-                <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #94a3b8' }}>
-                    <th
-                      style={{
+                }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #94a3b8' }}>
+                      <th style={{
                         width: '180px',
                         padding: '0.85rem 1rem',
                         borderRight: '1px solid #94a3b8',
-                        background: '#f8fafc'
-                      }}
-                    ></th>
-                    <th
-                      style={{
-                        padding: '0.85rem 0.75rem',
-                        borderRight: '1px solid #94a3b8',
-                        fontWeight: '700',
-                        textAlign: 'center',
-                        color: '#0f172a',
-                        lineHeight: '1.3'
-                      }}
-                    >
-                      Call Center<br />Representative
-                    </th>
-                    <th
-                      style={{
-                        padding: '0.85rem 0.75rem',
-                        borderRight: '1px solid #94a3b8',
-                        fontWeight: '700',
-                        textAlign: 'center',
-                        color: '#0f172a',
-                        lineHeight: '1.3'
-                      }}
-                    >
-                      Call Center<br />Support Manager
-                    </th>
-                    <th
-                      style={{
-                        padding: '0.85rem 0.75rem',
-                        borderRight: '1px solid #94a3b8',
-                        fontWeight: '700',
-                        textAlign: 'center',
-                        color: '#0f172a',
-                        lineHeight: '1.3'
-                      }}
-                    >
-                      Account<br />Manager
-                    </th>
-                    <th
-                      style={{
-                        padding: '0.85rem 0.75rem',
-                        borderRight: '1px solid #94a3b8',
-                        fontWeight: '700',
-                        textAlign: 'center',
-                        color: '#0f172a',
-                        lineHeight: '1.3'
-                      }}
-                    >
-                      Sales Manager
-                    </th>
-                    <th
-                      style={{
-                        padding: '0.85rem 0.75rem',
-                        borderRight: '1px solid #94a3b8',
-                        fontWeight: '700',
-                        textAlign: 'center',
-                        color: '#0f172a',
-                        lineHeight: '1.3'
-                      }}
-                    >
-                      Director of Sales &<br />Operations
-                    </th>
-                    <th
-                      style={{
-                        padding: '0.85rem 0.75rem',
-                        borderRight: '1px solid #94a3b8',
-                        fontWeight: '700',
-                        textAlign: 'center',
-                        color: '#0f172a',
-                        lineHeight: '1.3'
-                      }}
-                    >
-                      Stake Holder
-                    </th>
-                    <th
-                      style={{
-                        padding: '0.85rem 0.75rem',
-                        fontWeight: '700',
-                        textAlign: 'center',
-                        color: '#0f172a',
-                        lineHeight: '1.3'
-                      }}
-                    >
-                      Senior<br />Management
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {/* ROW 1: Timeline */}
-                  <tr style={{ borderBottom: '1px solid #94a3b8' }}>
-                    <td
-                      style={{
-                        padding: '0.75rem 1rem',
-                        fontWeight: '600',
                         background: '#f8fafc',
-                        borderRight: '1px solid #94a3b8',
-                        color: '#334155'
-                      }}
-                    >
-                      Timeline
-                    </td>
-                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                      15mins – 30mins
-                    </td>
-                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                      30mins – 1hr
-                    </td>
-                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                      1hr – 2hr
-                    </td>
-                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                      2hr – 5hr
-                    </td>
-                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                      1-2 business days
-                    </td>
-                    <td style={{ padding: '0.75rem', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#1e293b' }}>
-                      1-3 business days
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'left', color: '#1e293b' }}>
-                      Resolution
-                    </td>
-                  </tr>
+                        textAlign: 'left',
+                        fontSize: '0.8rem',
+                        fontWeight: '700',
+                        color: '#475569',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em'
+                      }}>
+                        Support Protocol
+                      </th>
+                      {ESCALATION_TIERS.map((tier, idx) => (
+                        <th
+                          key={tier.tier}
+                          style={{
+                            padding: '0.85rem 0.75rem',
+                            borderRight: idx < ESCALATION_TIERS.length - 1 ? '1px solid #94a3b8' : 'none',
+                            textAlign: 'center',
+                            lineHeight: '1.3'
+                          }}
+                        >
+                          <span style={{
+                            display: 'inline-block',
+                            fontSize: '0.68rem',
+                            fontWeight: '800',
+                            textTransform: 'uppercase',
+                            color: tier.themeColor,
+                            background: tier.lightBg,
+                            padding: '0.15rem 0.5rem',
+                            borderRadius: '4px',
+                            marginBottom: '0.35rem'
+                          }}>
+                            {tier.tier}
+                          </span>
+                          <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '0.9rem' }}>
+                            {tier.role}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '500', marginTop: '0.15rem' }}>
+                            {tier.whoTheyAre}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
 
-                  {/* ROW 2: Complaint about product quality or past customer service */}
-                  <tr style={{ borderBottom: '1px solid #94a3b8', verticalAlign: 'top' }}>
-                    <td
-                      style={{
+                  <tbody>
+                    {/* ROW 1: Reachout (Contact Action Button & Expected TAT) */}
+                    <tr style={{ borderBottom: '1px solid #94a3b8', verticalAlign: 'middle' }}>
+                      <td style={{
                         padding: '0.85rem 1rem',
-                        fontWeight: '600',
+                        fontWeight: '700',
                         background: '#f8fafc',
                         borderRight: '1px solid #94a3b8',
                         color: '#334155',
                         lineHeight: '1.4'
-                      }}
-                    >
-                      Complaint about product quality or past customer service
-                    </td>
+                      }}>
+                        Reachout
+                        <div style={{ fontSize: '0.72rem', fontWeight: '500', color: '#64748b', marginTop: '0.15rem' }}>
+                          Connect with role owner
+                        </div>
+                      </td>
+                      {ESCALATION_TIERS.map((tier, idx) => (
+                        <td
+                          key={tier.tier}
+                          style={{
+                            padding: '0.75rem',
+                            borderRight: idx < ESCALATION_TIERS.length - 1 ? '1px solid #94a3b8' : 'none',
+                            textAlign: 'center'
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenContactModal(tier)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.4rem',
+                                padding: '0.45rem 0.85rem',
+                                borderRadius: '6px',
+                                background: tier.lightBg,
+                                border: `1px solid ${tier.border}`,
+                                color: tier.themeColor,
+                                fontSize: '0.8rem',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.background = tier.themeColor;
+                                e.currentTarget.style.color = '#ffffff';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.background = tier.lightBg;
+                                e.currentTarget.style.color = tier.themeColor;
+                              }}
+                            >
+                              <i className="bx bx-envelope" style={{ fontSize: '0.95rem' }}></i>
+                              <span>Contact {tier.shortRole}</span>
+                            </button>
+                            <div style={{
+                              fontSize: '0.74rem',
+                              color: '#64748b',
+                              fontWeight: '500',
+                              marginTop: '0.15rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}>
+                              <span>Expected TAT {tier.sla}</span>
+                            </div>
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
 
-                    {/* Call Center Representative */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Customer states their problem</div>
-                    </td>
-
-                    {/* Call Center Support Manager */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Attempted solution</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Collect Contact Details</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Follow-up after internal review</div>
-                    </td>
-
-                    {/* Account Manager */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Review Account Details</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Communicate new information</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Outline resolution plan</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Attempt Solution</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Create incident report</div>
-                    </td>
-
-                    {/* Sales Manager */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Further investigate issue</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Offers financial incentive</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Documentation of conversation and problems</div>
-                    </td>
-
-                    {/* Director of Sales & Operations */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Apologize</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Ask for feedback</div>
-                    </td>
-
-                    {/* Stake Holder */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Review prior attempts</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Offers refund or cancellation</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Speak to representatives</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Plan to improve process</div>
-                    </td>
-
-                    {/* Senior Management */}
-                    <td style={{ padding: '0.85rem 0.75rem', lineHeight: '1.45' }}>
-                      <div>– Review incident report</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Sign off on plans</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Redefine objectives</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Hire experts to evaluate new process</div>
-                    </td>
-                  </tr>
-
-                  {/* ROW 3: Triggers */}
-                  <tr style={{ verticalAlign: 'top' }}>
-                    <td
-                      style={{
+                    {/* ROW 2: How can they help you */}
+                    <tr style={{ borderBottom: '1px solid #94a3b8', verticalAlign: 'top' }}>
+                      <td style={{
                         padding: '0.85rem 1rem',
-                        fontWeight: '600',
+                        fontWeight: '700',
+                        background: '#f8fafc',
+                        borderRight: '1px solid #94a3b8',
+                        color: '#334155',
+                        lineHeight: '1.4'
+                      }}>
+                        How can they help you
+                        <div style={{ fontSize: '0.72rem', fontWeight: '500', color: '#64748b', marginTop: '0.15rem' }}>
+                          Direct assistance & resolution
+                        </div>
+                      </td>
+                      {ESCALATION_TIERS.map((tier, idx) => (
+                        <td
+                          key={tier.tier}
+                          style={{
+                            padding: '0.85rem 0.75rem',
+                            borderRight: idx < ESCALATION_TIERS.length - 1 ? '1px solid #94a3b8' : 'none',
+                            lineHeight: '1.45'
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                            {tier.howCanTheyHelp.map((help, hIdx) => (
+                              <div key={hIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem', fontSize: '0.78rem', color: '#334155' }}>
+                                <i className="bx bx-check-circle" style={{ color: tier.themeColor, fontSize: '0.95rem', marginTop: '2px', flexShrink: 0 }}></i>
+                                <span>{help}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+
+                    {/* ROW 3: When to Escalate (Triggers) */}
+                    <tr style={{ verticalAlign: 'top' }}>
+                      <td style={{
+                        padding: '0.85rem 1rem',
+                        fontWeight: '700',
                         background: '#f8fafc',
                         borderRight: '1px solid #94a3b8',
                         color: '#334155'
-                      }}
-                    >
-                      Triggers
-                    </td>
+                      }}>
+                        When to Escalate
+                        <div style={{ fontSize: '0.72rem', fontWeight: '500', color: '#64748b', marginTop: '0.15rem' }}>
+                          Triggers requiring handover
+                        </div>
+                      </td>
+                      {ESCALATION_TIERS.map((tier, idx) => (
+                        <td
+                          key={tier.tier}
+                          style={{
+                            padding: '0.85rem 0.75rem',
+                            borderRight: idx < ESCALATION_TIERS.length - 1 ? '1px solid #94a3b8' : 'none',
+                            lineHeight: '1.45'
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            {tier.triggers.map((trig, tIdx) => {
+                              const isDanger = trig.severity === 'danger';
+                              const isWarning = trig.severity === 'warning';
+                              const chipBg = isDanger ? '#fef2f2' : isWarning ? '#fffbeb' : '#f0f9ff';
+                              const chipBorder = isDanger ? '#fee2e2' : isWarning ? '#fef3c7' : '#e0f2fe';
+                              const chipColor = isDanger ? '#991b1b' : isWarning ? '#92400e' : '#0369a1';
+                              const iconClass = isDanger ? 'bx-error-circle' : isWarning ? 'bx-alarm-exclamation' : 'bx-info-circle';
 
-                    {/* Call Center Representative */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Representatives unable to solve problem</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Representatives asks to speak to manager</div>
-                    </td>
-
-                    {/* Call Center Support Manager */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Unsuccessful Solution</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Requires a specific department or skill</div>
-                    </td>
-
-                    {/* Account Manager */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Account closure threatened</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Potential switch to competitor</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Bad review</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Issue remains unsolved</div>
-                    </td>
-
-                    {/* Sales Manager */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Issue unsolved</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Customer's privacy/data threatened</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Customer lodges formal complaint</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Customer asks to speak to director</div>
-                    </td>
-
-                    {/* Director of Sales & Operations */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Customer demands refund/cancellation</div>
-                      <div style={{ marginTop: '0.35rem' }}>– No possible resolution</div>
-                      <div style={{ marginTop: '0.35rem' }}>– Customer wants to keep account</div>
-                    </td>
-
-                    {/* Stake Holder */}
-                    <td style={{ padding: '0.85rem 0.75rem', borderRight: '1px solid #94a3b8', lineHeight: '1.45' }}>
-                      <div>– Senior management approval needed</div>
-                    </td>
-
-                    {/* Senior Management */}
-                    <td style={{ padding: '0.85rem 0.75rem' }}>
-                      {/* Empty cell as shown in the reference matrix */}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                              return (
+                                <div
+                                  key={tIdx}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.35rem',
+                                    background: chipBg,
+                                    border: `1px solid ${chipBorder}`,
+                                    color: chipColor,
+                                    padding: '0.3rem 0.5rem',
+                                    borderRadius: '5px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '500'
+                                  }}
+                                >
+                                  <i className={`bx ${iconClass}`} style={{ fontSize: '0.85rem', flexShrink: 0 }}></i>
+                                  <span>{trig.label}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
-    )}
+          </div>
+        )}
 
     {/* SUBMISSIONS DIRECTORY (DIRECT TABLE VIEW MATCHING USER SCREENSHOT) */}
     {activeTab === 'submissions' && (
@@ -5093,9 +5142,403 @@ export default function CsFeedback() {
       </div>
     )}
 
+    {/* CONTACT ESCALATION ROLE MODAL */}
+    {contactModalData.isOpen && (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10000,
+        padding: '1.25rem'
+      }}>
+        <div style={{
+          background: '#ffffff',
+          borderRadius: '16px',
+          width: '100%',
+          maxWidth: '680px',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+          border: '1px solid #e2e8f0',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: '92vh'
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '1.25rem 1.5rem',
+            borderBottom: '1px solid #f1f5f9',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: 'linear-gradient(to right, #f8fafc, #ffffff)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
+                background: contactModalData.themeColor,
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.3rem',
+                boxShadow: `0 4px 10px ${contactModalData.themeColor}33`
+              }}>
+                <i className='bx bx-envelope'></i>
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.15rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>
+                    Contact {contactModalData.roleTitle}
+                  </h3>
+                  <span style={{
+                    fontSize: '0.7rem',
+                    fontWeight: '700',
+                    color: contactModalData.themeColor,
+                    background: `${contactModalData.themeColor}15`,
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '4px'
+                  }}>
+                    {contactModalData.roleBadge}
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
+                  Direct escalation communication to <strong>{contactModalData.employeeName}</strong>
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setContactModalData((prev) => ({ ...prev, isOpen: false }))}
+              style={{
+                background: '#f1f5f9',
+                border: 'none',
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                color: '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.2rem',
+                transition: 'all 0.15s'
+              }}
+              title="Close modal"
+            >
+              <i className='bx bx-x'></i>
+            </button>
+          </div>
 
+          {/* Mode Switcher Tabs */}
+          <div style={{
+            display: 'flex',
+            padding: '0.75rem 1.5rem 0 1.5rem',
+            background: '#ffffff',
+            borderBottom: '1px solid #e2e8f0',
+            gap: '0.5rem'
+          }}>
+            <button
+              type="button"
+              onClick={() => setContactModalData((prev) => ({ ...prev, emailMode: 'auto' }))}
+              style={{
+                padding: '0.55rem 1rem',
+                border: 'none',
+                background: 'none',
+                borderBottom: contactModalData.emailMode === 'auto' ? `2px solid ${contactModalData.themeColor}` : '2px solid transparent',
+                color: contactModalData.emailMode === 'auto' ? contactModalData.themeColor : '#64748b',
+                fontWeight: contactModalData.emailMode === 'auto' ? '700' : '500',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem'
+              }}
+            >
+              <i className='bx bx-bot' style={{ fontSize: '1rem' }}></i>
+              <span>Auto-Drafted Email (Fixed)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setContactModalData((prev) => ({ ...prev, emailMode: 'custom' }))}
+              style={{
+                padding: '0.55rem 1rem',
+                border: 'none',
+                background: 'none',
+                borderBottom: contactModalData.emailMode === 'custom' ? `2px solid ${contactModalData.themeColor}` : '2px solid transparent',
+                color: contactModalData.emailMode === 'custom' ? contactModalData.themeColor : '#64748b',
+                fontWeight: contactModalData.emailMode === 'custom' ? '700' : '500',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem'
+              }}
+            >
+              <i className='bx bx-edit' style={{ fontSize: '1rem' }}></i>
+              <span>Custom Email (Draft Your Own)</span>
+            </button>
+          </div>
 
-    {/* VIEW DETAILS MODAL */}
+          {/* Modal Body */}
+          <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto' }}>
+            {/* Headers: TO and CC (Strictly Fixed) */}
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '10px',
+              padding: '0.85rem 1rem',
+              marginBottom: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.6rem',
+              fontSize: '0.82rem'
+            }}>
+              {/* TO field */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.4rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ width: '45px', color: '#64748b', fontWeight: '700' }}>To:</span>
+                  <span style={{ fontWeight: '700', color: '#0f172a' }}>
+                    {contactModalData.employeeName}
+                  </span>
+                  <span style={{ color: '#475569', fontSize: '0.78rem' }}>
+                    &lt;{contactModalData.toEmail}&gt;
+                  </span>
+                </div>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontSize: '0.68rem',
+                  fontWeight: '600',
+                  color: '#475569',
+                  background: '#e2e8f0',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '4px'
+                }}>
+                  <i className='bx bx-lock-alt'></i> Fixed Role Recipient
+                </span>
+              </div>
+
+              {/* CC field */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.4rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ width: '45px', color: '#64748b', fontWeight: '700' }}>CC:</span>
+                  <span style={{ fontWeight: '700', color: '#0f172a' }}>
+                    {contactModalData.userName} (You)
+                  </span>
+                  <span style={{ color: '#475569', fontSize: '0.78rem' }}>
+                    &lt;{contactModalData.ccEmail}&gt;
+                  </span>
+                </div>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontSize: '0.68rem',
+                  fontWeight: '600',
+                  color: '#475569',
+                  background: '#e2e8f0',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '4px'
+                }}>
+                  <i className='bx bx-lock-alt'></i> Auto CC (Logged-in User)
+                </span>
+              </div>
+
+              {/* SUBJECT field */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ width: '45px', color: '#64748b', fontWeight: '700' }}>Subject:</span>
+                {contactModalData.emailMode === 'auto' ? (
+                  <span style={{ fontWeight: '700', color: contactModalData.themeColor }}>
+                    {contactModalData.subject}
+                  </span>
+                ) : (
+                  <input
+                    type="text"
+                    value={contactModalData.subject}
+                    onChange={(e) => setContactModalData((prev) => ({ ...prev, subject: e.target.value }))}
+                    style={{
+                      flex: 1,
+                      padding: '0.35rem 0.65rem',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      fontWeight: '600',
+                      color: '#0f172a',
+                      outline: 'none'
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Content Display based on Email Mode */}
+            {contactModalData.emailMode === 'auto' ? (
+              <div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '0.4rem',
+                  fontSize: '0.75rem',
+                  color: '#64748b'
+                }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: '600' }}>
+                    <i className='bx bx-check-shield' style={{ color: '#16a34a' }}></i>
+                    Pre-drafted based on role protocol (Fixed Template)
+                  </span>
+                  <span>Ready to send</span>
+                </div>
+
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '10px',
+                  padding: '1.25rem',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: '1.6',
+                  fontSize: '0.85rem',
+                  color: '#1e293b',
+                  minHeight: '170px'
+                }}>
+                  {contactModalData.autoContent}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '0.4rem',
+                  fontSize: '0.75rem',
+                  color: '#64748b'
+                }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: '600' }}>
+                    <i className='bx bx-pencil' style={{ color: contactModalData.themeColor }}></i>
+                    Draft your custom message below (To & CC will remain locked)
+                  </span>
+                  <span>{contactModalData.customContent?.length || 0} characters</span>
+                </div>
+
+                <textarea
+                  rows={8}
+                  value={contactModalData.customContent}
+                  onChange={(e) => setContactModalData((prev) => ({ ...prev, customContent: e.target.value }))}
+                  placeholder={`Write your specific query or escalation details for ${contactModalData.employeeName}...`}
+                  style={{
+                    width: '100%',
+                    padding: '0.85rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    lineHeight: '1.5',
+                    color: '#0f172a',
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Modal Footer */}
+          <div style={{
+            padding: '1rem 1.5rem',
+            borderTop: '1px solid #f1f5f9',
+            background: '#f8fafc',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.5rem',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              type="button"
+              onClick={() => {
+                const messageBody = contactModalData.emailMode === 'auto' ? contactModalData.autoContent : contactModalData.customContent;
+                const fullText = `To: ${contactModalData.toEmail}\nCC: ${contactModalData.ccEmail}\nSubject: ${contactModalData.subject}\n\n${messageBody}`;
+                try {
+                  navigator.clipboard.writeText(fullText);
+                  triggerToast('Email content & recipients copied to clipboard!');
+                } catch {}
+              }}
+              style={{
+                padding: '0.5rem 0.85rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: '#475569',
+                fontSize: '0.8rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem'
+              }}
+            >
+              <i className='bx bx-copy'></i>
+              <span>Copy Email</span>
+            </button>
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setContactModalData((prev) => ({ ...prev, isOpen: false }))}
+                style={{
+                  padding: '0.55rem 1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#64748b',
+                  fontSize: '0.84rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerToast(`Email dispatched to ${contactModalData.employeeName} (${contactModalData.toEmail}) with CC to ${contactModalData.ccEmail}!`);
+                  setContactModalData((prev) => ({ ...prev, isOpen: false, isSent: true }));
+                }}
+                style={{
+                  padding: '0.55rem 1.25rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: contactModalData.themeColor,
+                  color: '#ffffff',
+                  fontSize: '0.84rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  boxShadow: `0 2px 6px ${contactModalData.themeColor}40`
+                }}
+              >
+                <i className='bx bx-send'></i>
+                <span>Send Email</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     {selectedDetailsItem && (
       <div style={{
         position: 'fixed',
