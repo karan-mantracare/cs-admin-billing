@@ -16,164 +16,268 @@ export const NOT_APPLICABLE_OPTION = {
 
 export const PILLAR_QUESTIONS = [
   {
-    id: 'bdCommitment',
-    pillarGroup: 'BD',
-    title: 'BD Commitment vs. Actual Service Delivery: *',
-    description: 'How well did actual operational execution align with deliverables, promised scope, and timelines agreed during the Business Development / sales phase?',
-    shortLabel: 'BD Commitment vs Delivery',
-    category: 'Sales & Onboarding Alignment',
-    icon: 'bx-briefcase-alt-2',
-    allowNotApplicable: false,
+    id: 'onboardingDelivery',
+    pillarGroup: 'Onboarding',
+    title: 'Onboarding & Delivery: *',
+    questionText: 'How well was the program implemented against the agreed scope and timelines?',
+    description: 'How well was the program implemented against the agreed scope and timelines?',
+    shortLabel: 'Onboarding & Delivery',
+    category: 'Onboarding & delivery',
+    icon: 'bx-rocket',
+    allowNotApplicable: true,
     lowRatingTags: [
-      'Scope of services mismatched',
-      'Delayed onboarding & kickoff',
-      'Deliverables promised were missing',
-      'Billing or pricing miscommunication'
-    ]
+      'Scope or services differed from what was agreed',
+      'Delayed onboarding or kickoff',
+      'Promised services or deliverables were missing',
+      'Billing or pricing communication was unclear'
+    ],
+    scoreGuidance: '5 = Fully met/exceeded; 4 = Met with minor gaps; 3 = Partially met; 2 = Major gaps; 1 = Not delivered / materially off-scope; N/A = excluded.',
+    goodGuidance: 'Rating 4–5, with scope, timelines and deliverables substantially met.',
+    urgentGuidance: 'Rating 1, or a critical contractual/service gap that blocks launch or delivery.',
+    escalationRequired: 'Escalate rating 1 to the program owner and account lead immediately; rating 2 to the owner for a dated corrective action plan.',
+    priorityGuidance: 'High priority if launch, contractual scope, compliance or material delivery is affected.'
   },
   {
     id: 'csSupport',
     pillarGroup: 'CS',
-    title: 'Customer Success (CS) Support & Account Management: *',
-    description: 'Responsiveness, proactiveness, and helpfulness of your dedicated Customer Success SPOC in resolving queries, managing account requests, and reviewing health metrics:',
-    shortLabel: 'CS Support & Responsiveness',
-    category: 'Customer Success Operations',
+    title: 'CS Support & Responsiveness: *',
+    questionText: "How satisfied are you with the CS team's responsiveness, communication and proactive support?",
+    description: "How satisfied are you with the CS team's responsiveness, communication and proactive support?",
+    shortLabel: 'CS Support',
+    category: 'CS support',
     icon: 'bx-user-voice',
-    allowNotApplicable: false,
+    allowNotApplicable: true,
     lowRatingTags: [
-      'Slow response to emails / queries',
-      'Need more proactive follow-ups',
+      'Slow response to emails or queries',
+      'Lack of proactive follow-ups',
       'Escalations remained unresolved',
-      'Need more frequent status reviews'
-    ]
+      'Infrequent status updates or review meetings'
+    ],
+    scoreGuidance: '5 = Consistently proactive and responsive; 4 = Responsive with minor delays; 3 = Adequate/inconsistent; 2 = Slow or reactive; 1 = Unresponsive / unresolved critical concerns; N/A = excluded.',
+    goodGuidance: 'Rating 4–5 and no unresolved high-impact concern.',
+    urgentGuidance: 'Rating 1, or a critical client concern remains unanswered beyond the agreed SLA.',
+    escalationRequired: 'Rating 1: immediate account-lead review. Rating 2: CS manager review and documented recovery action.',
+    priorityGuidance: 'Escalate repeated missed commitments, unresolved complaints or risk to client relationship.'
   },
   {
-    id: 'techSupport',
-    pillarGroup: 'Tech',
-    title: 'Tech & App Support (Platform Reliability & Usability): *',
-    description: 'Ease of use, app speed, uptime reliability, and technical assistance for the MantraCare employee mobile app and corporate portal:',
-    shortLabel: 'Tech & App Support',
-    category: 'Product & Technology',
-    icon: 'bx-laptop',
-    allowNotApplicable: false,
+    id: 'employeeAwareness',
+    pillarGroup: 'Awareness',
+    title: 'Employee Awareness & Access: *',
+    questionText: 'How effectively are employees informed about and able to access the services?',
+    description: 'How effectively are employees informed about and able to access the services?',
+    shortLabel: 'Employee Awareness & Access',
+    category: 'Employee awareness & access',
+    icon: 'bx-group',
+    allowNotApplicable: true,
     lowRatingTags: [
-      'Login / OTP verification issues',
-      'App performance / slow loading',
-      'Feature bugs or app crashes',
-      'Portal navigation was confusing'
-    ]
+      'Limited employee awareness of services',
+      'Insufficient communication or promotional material',
+      'Employees unclear about how to access services',
+      'Low participation despite communication'
+    ],
+    scoreGuidance: '5 = Employees clearly informed and access easily; 4 = Good awareness with minor gaps; 3 = Mixed awareness/access; 2 = Significant access or awareness gaps; 1 = Most employees cannot understand/access services; N/A = excluded.',
+    goodGuidance: 'Rating 4–5 and no widespread access barrier.',
+    urgentGuidance: 'Rating 1, or a widespread access barrier prevents employees from using the service.',
+    escalationRequired: 'Escalate systemic access issues to operations/product; agree communication or access fix and owner.',
+    priorityGuidance: 'Urgent when access failure affects a large employee group or prevents service utilization.'
   },
   {
-    id: 'hotlineCallQuality',
+    id: 'hotlineSupport',
     pillarGroup: 'Hotline',
-    title: 'Hotline: Call Quality & Pickup Ratio: *',
-    description: 'Immediate call pickup speed, zero connection dropouts, audio clarity, and 24/7 helpline accessibility when employees call in:',
-    shortLabel: 'Hotline: Call Quality',
-    category: 'Helpline & Assistance',
+    title: 'Hotline Support: *',
+    questionText: 'How would you rate the accessibility and responsiveness of the employee support hotline?',
+    description: 'How would you rate the accessibility and responsiveness of the employee support hotline?',
+    shortLabel: 'Hotline Support',
+    category: 'Hotline support',
     icon: 'bx-phone-call',
     allowNotApplicable: true,
     lowRatingTags: [
-      'High wait time before call answered',
-      'Frequent dropped / disconnected calls',
-      'Audio line crackling or lag',
-      'Pickup delays during peak hours'
-    ]
+      'Long wait time before calls were answered',
+      'Frequent dropped or disconnected calls',
+      'Hotline availability was limited',
+      'Delays during peak hours'
+    ],
+    scoreGuidance: '5 = Easily reachable and timely; 4 = Minor delays; 3 = Sometimes difficult to reach; 2 = Frequent delays/dropped calls; 1 = Unavailable or consistently failing; N/A = excluded.',
+    goodGuidance: 'Rating 4–5 with reliable availability and response.',
+    urgentGuidance: 'Rating 1, or hotline outage / repeated inability to reach support.',
+    escalationRequired: 'Notify service operations immediately for outage or repeated call failures; provide workaround and restoration ETA.',
+    priorityGuidance: 'Treat prolonged outage or inability to reach urgent support as critical.'
   },
   {
-    id: 'hotlineCallSupport',
-    pillarGroup: 'Hotline',
-    title: 'Hotline: Counselor & Agent Call Support: *',
-    description: 'Empathy, active listening, problem handling, and professionalism displayed by helpline agents when handling employee situations:',
-    shortLabel: 'Hotline: Call Support',
-    category: 'Helpline & Assistance',
-    icon: 'bx-support',
+    id: 'appExperience',
+    pillarGroup: 'Tech',
+    title: 'App Experience & Usability: *',
+    questionText: 'How easy is the app for employees to access, navigate and use?',
+    description: 'How easy is the app for employees to access, navigate and use?',
+    shortLabel: 'App Experience',
+    category: 'App experience',
+    icon: 'bx-mobile',
     allowNotApplicable: true,
     lowRatingTags: [
-      'Agent sounded rushed or impatient',
-      'Lacked active empathy & understanding',
-      'Inadequate clinical / wellness guidance',
-      'Tone was perceived as unprofessional'
-    ]
+      'Login or OTP verification issues',
+      'App performance or slow loading',
+      'Navigation was confusing',
+      'Features were difficult to use'
+    ],
+    scoreGuidance: '5 = Seamless and intuitive; 4 = Easy with minor friction; 3 = Usable but some friction; 2 = Frequent usability issues; 1 = App unusable for core tasks; N/A = excluded.',
+    goodGuidance: 'Rating 4–5 and no material barrier to core user journeys.',
+    urgentGuidance: 'Rating 1, or a widespread app failure blocks sign-in or core service access.',
+    escalationRequired: 'Route technical defects to product/engineering; communicate workaround, owner and target fix date.',
+    priorityGuidance: 'Escalate widespread or recurring defects, especially those affecting service access.'
   },
   {
-    id: 'hotlineOpsResponse',
-    pillarGroup: 'Hotline',
-    title: 'Hotline: Ops Response to Queries & Follow-ups: *',
-    description: 'Operational turnaround speed and efficiency in closing ticket escalations, scheduled callbacks, and resolving employee queries:',
-    shortLabel: 'Hotline: Ops Response',
-    category: 'Helpline & Assistance',
-    icon: 'bx-time-five',
+    id: 'technicalSupport',
+    pillarGroup: 'Tech',
+    title: 'Technical Support & Resolution: *',
+    questionText: 'How effectively are app, login or access-related technical issues resolved?',
+    description: 'How effectively are app, login or access-related technical issues resolved?',
+    shortLabel: 'Technical Support',
+    category: 'Technical support',
+    icon: 'bx-wrench',
     allowNotApplicable: true,
     lowRatingTags: [
-      'Scheduled callback was delayed / missed',
-      'Ticket escalation took days to resolve',
-      'Lack of clear status communication',
-      'Operations resolution was incomplete'
-    ]
+      'Delayed resolution of technical issues',
+      'Login or access issues remained unresolved',
+      'Unclear troubleshooting instructions',
+      'Recurring technical issues'
+    ],
+    scoreGuidance: '5 = Resolved quickly and permanently; 4 = Resolved with minor delay; 3 = Resolved but inconsistently; 2 = Slow / recurring unresolved issues; 1 = Critical issue unresolved or no support; N/A = excluded.',
+    goodGuidance: 'Rating 4–5 and no recurring unresolved technical issue.',
+    urgentGuidance: 'Rating 1, security/privacy concern, or an outage preventing access for multiple users.',
+    escalationRequired: 'Immediately route security/privacy incidents through the designated incident process; other critical failures to technical lead.',
+    priorityGuidance: 'Security/privacy concerns and broad outages require immediate escalation irrespective of average score.'
+  },
+  {
+    id: 'serviceExperience',
+    pillarGroup: 'Service',
+    title: 'Service Experience & Quality: *',
+    questionText: 'Based on employee feedback, how would you rate the quality and relevance of the services?',
+    description: 'Based on employee feedback, how would you rate the quality and relevance of the services?',
+    shortLabel: 'Service Experience',
+    category: 'Service experience',
+    icon: 'bx-badge-check',
+    allowNotApplicable: true,
+    lowRatingTags: [
+      'Services did not meet employee expectations',
+      'Quality of services was inconsistent',
+      'Limited service options or accessibility',
+      'Mixed employee feedback'
+    ],
+    scoreGuidance: '5 = Consistently high-quality and relevant; 4 = Good quality/relevance; 3 = Mixed; 2 = Often below expectations; 1 = Consistently poor / unsuitable; N/A = excluded.',
+    goodGuidance: 'Rating 4–5 and feedback indicates services meet employee needs.',
+    urgentGuidance: 'Rating 1, or credible report of unsafe, inappropriate or materially poor service.',
+    escalationRequired: 'Escalate quality/suitability concerns to service owner; follow safeguarding or incident protocol for safety-related reports.',
+    priorityGuidance: 'Safety, professional-conduct or safeguarding concerns are critical regardless of rating.'
+  },
+  {
+    id: 'utilizationReporting',
+    pillarGroup: 'Reporting',
+    title: 'Utilization & Reporting Insights: *',
+    questionText: 'Are utilization reports and insights timely, clear and useful?',
+    description: 'Are utilization reports and insights timely, clear and useful?',
+    shortLabel: 'Utilization & Reporting',
+    category: 'Utilization & reporting',
+    icon: 'bx-bar-chart-alt-2',
+    allowNotApplicable: true,
+    lowRatingTags: [
+      'Reports were delayed or incomplete',
+      'Data or metrics were unclear',
+      'Reports lacked actionable insights',
+      'Limited service-wise or department-wise analysis'
+    ],
+    scoreGuidance: '5 = Timely, accurate and actionable; 4 = Clear and timely with minor gaps; 3 = Adequate but limited insight; 2 = Delayed/incomplete or unclear; 1 = Materially inaccurate/missing reporting; N/A = excluded.',
+    goodGuidance: 'Rating 4–5 and reporting is accurate, timely and useful.',
+    urgentGuidance: 'Rating 1, material data discrepancy, or repeated missed reporting deadline affecting decisions.',
+    escalationRequired: 'Escalate data integrity issues to reporting owner; validate source data and issue corrected report with timeline.',
+    priorityGuidance: 'Escalate suspected privacy breach or material data integrity issue immediately.'
   },
   {
     id: 'oneOnOneSessions',
     pillarGroup: '1-on-1',
     title: '1-on-1 Individual Sessions: *',
-    description: 'Quality, punctuality, practitioner expertise, confidentiality, and employee satisfaction with individual 1-on-1 sessions:',
-    shortLabel: '1-on-1 Sessions',
-    category: 'Clinical & Wellness Care',
+    questionText: 'Were individual sessions timely, useful, confidential and delivered by suitable experts?',
+    description: 'Were individual sessions timely, useful, confidential and delivered by suitable experts?',
+    shortLabel: '1-on-1 Individual Sessions',
+    category: '1-on-1 individual sessions',
     icon: 'bx-user-pin',
     allowNotApplicable: true,
     lowRatingTags: [
       'Limited expert slot availability',
-      'Expert rescheduled / cancelled sessions',
+      'Experts rescheduled or cancelled sessions',
       'Consultation quality was inconsistent',
-      'Feedback from employees was mixed'
-    ]
+      'Mixed employee feedback'
+    ],
+    scoreGuidance: '5 = Timely, useful, confidential and well-matched; 4 = Good with minor scheduling gaps; 3 = Mixed experience; 2 = Frequent delays/cancellations or quality concerns; 1 = Serious service failure / confidentiality concern; N/A = excluded.',
+    goodGuidance: 'Rating 4–5 and no confidentiality, suitability or repeated scheduling concern.',
+    urgentGuidance: 'Rating 1, confidentiality breach, safeguarding concern, or report of immediate risk to an individual.',
+    escalationRequired: 'Route confidentiality/safeguarding concerns through the authorized clinical/privacy escalation pathway immediately; do not put sensitive case details in this HR score sheet.',
+    priorityGuidance: 'Clinical safety, confidentiality and safeguarding concerns override numeric score and require restricted handling.'
   },
   {
-    id: 'webinarTopic',
+    id: 'webinarTopicsVariety',
     pillarGroup: 'Webinars',
-    title: 'Webinars: Topic Relevance & Variety: *',
-    description: 'Alignment of webinar themes with workforce wellness priorities, mental health awareness, and employee interest:',
-    shortLabel: 'Webinars: Topic Relevance',
-    category: 'Engagement & Activities',
-    icon: 'bx-list-check',
-    allowNotApplicable: true,
-    lowRatingTags: [
-      'Topics too generic or repetitive',
-      'Did not resonate with workforce needs',
-      'Need more specialized wellness themes',
-      'Too few topics to choose from'
-    ]
-  },
-  {
-    id: 'webinarContent',
-    pillarGroup: 'Webinars',
-    title: 'Webinars: Content Depth & Presentation Quality: *',
-    description: 'Practicality, visual presentation, depth of actionable health takeaways, and reference materials provided to attendees:',
-    shortLabel: 'Webinars: Content Quality',
-    category: 'Engagement & Activities',
+    title: 'Webinar Topics & Variety: *',
+    questionText: 'Were webinar topics relevant to employees and varied enough?',
+    description: 'Were webinar topics relevant to employees and varied enough?',
+    shortLabel: 'Webinar Topics & Variety',
+    category: 'Webinar topics & variety',
     icon: 'bx-slideshow',
     allowNotApplicable: true,
     lowRatingTags: [
-      'Slides were text-heavy & hard to follow',
-      'Lack of actionable everyday tips',
-      'Content was too theoretical/basic',
-      'Resource guides / recordings delayed'
-    ]
+      'Topics were too generic or repetitive',
+      'Topics did not resonate with workforce needs',
+      'More specialized wellness themes were needed',
+      'Too few topics to choose from'
+    ],
+    scoreGuidance: '5 = Highly relevant and varied; 4 = Relevant with good variety; 3 = Some topics resonate; 2 = Often generic/repetitive; 1 = Consistently irrelevant; N/A = excluded.',
+    goodGuidance: 'Rating 4–5 and topics align with employee needs.',
+    urgentGuidance: 'Normally not urgent on its own; urgent only if content is unsafe, discriminatory or materially inappropriate.',
+    escalationRequired: 'Use ratings 1–2 to refresh the topic calendar and validate needs with HR; escalate inappropriate content to program owner.',
+    priorityGuidance: 'Usually improvement priority, not urgent, unless there is a content safety or conduct concern.'
   },
   {
-    id: 'webinarExpert',
-    pillarGroup: 'Webinars',
-    title: 'Webinars: Trainer / Expert Engagement & Q&A: *',
-    description: 'Speaker energy, subject mastery, audience engagement, and effectiveness in answering live employee questions:',
-    shortLabel: 'Webinars: Expert Engagement',
-    category: 'Engagement & Activities',
-    icon: 'bx-broadcast',
+    id: 'issueResolution',
+    pillarGroup: 'Resolution',
+    title: 'Issue & Escalation Resolution: *',
+    questionText: 'How effectively are queries and escalations resolved?',
+    description: 'How effectively are queries and escalations resolved?',
+    shortLabel: 'Issue Resolution',
+    category: 'Issue resolution',
+    icon: 'bx-check-shield',
     allowNotApplicable: true,
     lowRatingTags: [
-      'Speaker lacked dynamic engagement',
-      'Audience Q&A was rushed or skipped',
-      'Session started late or ran overtime',
-      'Could not answer complex attendee queries'
-    ]
+      'Delayed query or ticket resolution',
+      'Unclear ownership of issues',
+      'Lack of regular resolution updates',
+      'Repeated issues without corrective action'
+    ],
+    scoreGuidance: '5 = Resolved within SLA with clear ownership; 4 = Resolved with minor delay; 3 = Resolved but inconsistent; 2 = Delayed / unclear ownership; 1 = Critical issue unresolved or repeated failure; N/A = excluded.',
+    goodGuidance: 'Rating 4–5 and no overdue high-impact issue.',
+    urgentGuidance: 'Rating 1, unresolved high-impact issue beyond SLA, or repeat failure affecting employees/client operations.',
+    escalationRequired: 'Rating 1: immediate escalation to accountable service owner and account lead. Rating 2: corrective action with owner and due date.',
+    priorityGuidance: 'Escalate repeat incidents, overdue critical tickets and issues with material employee impact.'
+  },
+  {
+    id: 'overallSatisfaction',
+    pillarGroup: 'Overall',
+    title: 'Overall Program Satisfaction: *',
+    questionText: 'Overall, how satisfied are you with the program and partnership?',
+    description: 'Overall, how satisfied are you with the program and partnership?',
+    shortLabel: 'Overall Satisfaction',
+    category: 'Overall satisfaction',
+    icon: 'bx-star',
+    allowNotApplicable: false,
+    lowRatingTags: [
+      'Overall service delivery did not meet expectations',
+      'CS support needs improvement',
+      'Employee adoption or engagement was low',
+      'Overall program value did not meet expectations'
+    ],
+    scoreGuidance: '5 = Very satisfied; 4 = Satisfied; 3 = Neither satisfied nor dissatisfied; 2 = Dissatisfied; 1 = Very dissatisfied.',
+    goodGuidance: 'Rating 4–5 and no urgent trigger in any other response.',
+    urgentGuidance: 'Rating 1, or rating 2 together with a specific material unresolved concern.',
+    escalationRequired: 'Rating 1: account lead/CS manager review. Compare with detailed ratings and open feedback before agreeing recovery plan.',
+    priorityGuidance: 'A low overall score should trigger a review; do not use it as the only basis for escalation.'
   }
 ];
 

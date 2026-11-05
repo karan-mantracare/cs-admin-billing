@@ -1,195 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { getPrimaryCS } from '../utils/roleUtils';
-
-const STANDARD_RATING_OPTIONS = [
-  { label: 'Very satisfied', value: 'Very satisfied', color: '#166534', bg: '#dcfce7', icon: 'bx-smile' },
-  { label: 'Satisfied', value: 'Satisfied', color: '#0369a1', bg: '#e0f2fe', icon: 'bx-happy' },
-  { label: 'Neutral', value: 'Neutral', color: '#854d0e', bg: '#fef3c7', icon: 'bx-meh' },
-  { label: 'Dissatisfied', value: 'Dissatisfied', color: '#c2410c', bg: '#ffedd5', icon: 'bx-sad' },
-  { label: 'Very dissatisfied', value: 'Very dissatisfied', color: '#991b1b', bg: '#fee2e2', icon: 'bx-angry' }
-];
-
-const NOT_APPLICABLE_OPTION = {
-  label: 'Not a part of SOW / No session done',
-  value: 'Not a part of SOW / No session done',
-  color: '#475569',
-  bg: '#f1f5f9',
-  icon: 'bx-minus-circle'
-};
-
-const PILLAR_QUESTIONS = [
-  {
-    id: 'bdCommitment',
-    pillarGroup: 'BD',
-    title: 'BD Commitment vs. Actual Service Delivery: *',
-    description: 'How well did actual operational execution align with deliverables, promised scope, and timelines agreed during the Business Development / sales phase?',
-    shortLabel: 'BD Commitment vs Delivery',
-    category: 'Sales & Onboarding Alignment',
-    icon: 'bx-briefcase-alt-2',
-    allowNotApplicable: false,
-    lowRatingTags: [
-      'Scope of services mismatched',
-      'Delayed onboarding & kickoff',
-      'Deliverables promised were missing',
-      'Billing or pricing miscommunication'
-    ]
-  },
-  {
-    id: 'csSupport',
-    pillarGroup: 'CS',
-    title: 'Customer Success (CS) Support & Account Management: *',
-    description: 'Responsiveness, proactiveness, and helpfulness of your dedicated Customer Success SPOC in resolving queries, managing account requests, and reviewing health metrics:',
-    shortLabel: 'CS Support & Responsiveness',
-    category: 'Customer Success Operations',
-    icon: 'bx-user-voice',
-    allowNotApplicable: false,
-    lowRatingTags: [
-      'Slow response to emails / queries',
-      'Need more proactive follow-ups',
-      'Escalations remained unresolved',
-      'Need more frequent status reviews'
-    ]
-  },
-  {
-    id: 'techSupport',
-    pillarGroup: 'Tech',
-    title: 'Tech & App Support (Platform Reliability & Usability): *',
-    description: 'Ease of use, app speed, uptime reliability, and technical assistance for the MantraCare employee mobile app and corporate portal:',
-    shortLabel: 'Tech & App Support',
-    category: 'Product & Technology',
-    icon: 'bx-laptop',
-    allowNotApplicable: false,
-    lowRatingTags: [
-      'Login / OTP verification issues',
-      'App performance / slow loading',
-      'Feature bugs or app crashes',
-      'Portal navigation was confusing'
-    ]
-  },
-  {
-    id: 'hotlineCallQuality',
-    pillarGroup: 'Hotline',
-    title: 'Hotline: Call Quality & Pickup Ratio: *',
-    description: 'Immediate call pickup speed, zero connection dropouts, audio clarity, and 24/7 helpline accessibility when employees call in:',
-    shortLabel: 'Hotline: Call Quality',
-    category: 'Helpline & Assistance',
-    icon: 'bx-phone-call',
-    allowNotApplicable: true,
-    lowRatingTags: [
-      'High wait time before call answered',
-      'Frequent dropped / disconnected calls',
-      'Audio line crackling or lag',
-      'Pickup delays during peak hours'
-    ]
-  },
-  {
-    id: 'hotlineCallSupport',
-    pillarGroup: 'Hotline',
-    title: 'Hotline: Counselor & Agent Call Support: *',
-    description: 'Empathy, active listening, problem handling, and professionalism displayed by helpline agents when handling employee situations:',
-    shortLabel: 'Hotline: Call Support',
-    category: 'Helpline & Assistance',
-    icon: 'bx-support',
-    allowNotApplicable: true,
-    lowRatingTags: [
-      'Agent sounded rushed or impatient',
-      'Lacked active empathy & understanding',
-      'Inadequate clinical / wellness guidance',
-      'Tone was perceived as unprofessional'
-    ]
-  },
-  {
-    id: 'hotlineOpsResponse',
-    pillarGroup: 'Hotline',
-    title: 'Hotline: Ops Response to Queries & Follow-ups: *',
-    description: 'Operational turnaround speed and efficiency in closing ticket escalations, scheduled callbacks, and resolving employee queries:',
-    shortLabel: 'Hotline: Ops Response',
-    category: 'Helpline & Assistance',
-    icon: 'bx-time-five',
-    allowNotApplicable: true,
-    lowRatingTags: [
-      'Scheduled callback was delayed / missed',
-      'Ticket escalation took days to resolve',
-      'Lack of clear status communication',
-      'Operations resolution was incomplete'
-    ]
-  },
-  {
-    id: 'oneOnOneSessions',
-    pillarGroup: '1-on-1',
-    title: '1-on-1 Individual Sessions: *',
-    description: 'Quality, punctuality, practitioner expertise, confidentiality, and employee satisfaction with individual 1-on-1 sessions:',
-    shortLabel: '1-on-1 Sessions',
-    category: 'Clinical & Wellness Care',
-    icon: 'bx-user-pin',
-    allowNotApplicable: true,
-    lowRatingTags: [
-      'Limited expert slot availability',
-      'Expert rescheduled / cancelled sessions',
-      'Consultation quality was inconsistent',
-      'Feedback from employees was mixed'
-    ]
-  },
-  {
-    id: 'webinarTopic',
-    pillarGroup: 'Webinars',
-    title: 'Webinars: Topic Relevance & Variety: *',
-    description: 'Alignment of webinar themes with workforce wellness priorities, mental health awareness, and employee interest:',
-    shortLabel: 'Webinars: Topic Relevance',
-    category: 'Engagement & Activities',
-    icon: 'bx-list-check',
-    allowNotApplicable: true, // SOW exclusion option
-    lowRatingTags: [
-      'Topics too generic or repetitive',
-      'Did not resonate with workforce needs',
-      'Need more specialized wellness themes',
-      'Too few topics to choose from'
-    ]
-  },
-  {
-    id: 'webinarContent',
-    pillarGroup: 'Webinars',
-    title: 'Webinars: Content Depth & Presentation Quality: *',
-    description: 'Practicality, visual presentation, depth of actionable health takeaways, and reference materials provided to attendees:',
-    shortLabel: 'Webinars: Content Quality',
-    category: 'Engagement & Activities',
-    icon: 'bx-slideshow',
-    allowNotApplicable: true, // SOW exclusion option
-    lowRatingTags: [
-      'Slides were text-heavy & hard to follow',
-      'Lack of actionable everyday tips',
-      'Content was too theoretical/basic',
-      'Resource guides / recordings delayed'
-    ]
-  },
-  {
-    id: 'webinarExpert',
-    pillarGroup: 'Webinars',
-    title: 'Webinars: Trainer / Expert Engagement & Q&A: *',
-    description: 'Speaker energy, subject mastery, audience engagement, and effectiveness in answering live employee questions:',
-    shortLabel: 'Webinars: Expert Engagement',
-    category: 'Engagement & Activities',
-    icon: 'bx-broadcast',
-    allowNotApplicable: true, // SOW exclusion option
-    lowRatingTags: [
-      'Speaker lacked dynamic engagement',
-      'Audience Q&A was rushed or skipped',
-      'Session started late or ran overtime',
-      'Could not answer complex attendee queries'
-    ]
-  }
-];
-
-const GENERAL_SUGGESTION_TAGS = [
-  'More interactive wellness webinars',
-  'Faster query response time',
-  'Enhanced app loading speed',
-  'Expanded specialist doctor network',
-  'Detailed monthly employee participation reports',
-  'Flexible trainer webinar scheduling',
-  'Custom corporate fitness challenges'
-];
+import {
+  STANDARD_RATING_OPTIONS,
+  NOT_APPLICABLE_OPTION,
+  PILLAR_QUESTIONS,
+  GENERAL_SUGGESTION_TAGS
+} from '../data/feedbackQuestions';
 
 const SEED_FEEDBACK_SUBMISSIONS = [
   {
@@ -208,13 +25,24 @@ const SEED_FEEDBACK_SUBMISSIONS = [
       wantsFollowUp: false
     },
     ratings: {
-      bdCommitment: 'Very satisfied',
+      onboardingDelivery: 'Very satisfied',
       csSupport: 'Very satisfied',
+      employeeAwareness: 'Very satisfied',
+      hotlineSupport: 'Very satisfied',
+      appExperience: 'Satisfied',
+      technicalSupport: 'Satisfied',
+      serviceExperience: 'Very satisfied',
+      utilizationReporting: 'Satisfied',
+      oneOnOneSessions: 'Very satisfied',
+      webinarTopicsVariety: 'Very satisfied',
+      issueResolution: 'Very satisfied',
+      overallSatisfaction: 'Very satisfied',
+      // Legacy compatibility
+      bdCommitment: 'Very satisfied',
       techSupport: 'Satisfied',
       hotlineCallQuality: 'Very satisfied',
       hotlineCallSupport: 'Very satisfied',
       hotlineOpsResponse: 'Satisfied',
-      oneOnOneSessions: 'Very satisfied',
       webinarTopic: 'Very satisfied',
       webinarContent: 'Very satisfied',
       webinarExpert: 'Very satisfied'
@@ -237,19 +65,31 @@ const SEED_FEEDBACK_SUBMISSIONS = [
       wantsFollowUp: true
     },
     ratings: {
-      bdCommitment: 'Satisfied',
+      onboardingDelivery: 'Satisfied',
       csSupport: 'Very satisfied',
+      employeeAwareness: 'Satisfied',
+      hotlineSupport: 'Satisfied',
+      appExperience: 'Neutral',
+      technicalSupport: 'Neutral',
+      serviceExperience: 'Satisfied',
+      utilizationReporting: 'Satisfied',
+      oneOnOneSessions: 'Satisfied',
+      webinarTopicsVariety: 'Satisfied',
+      issueResolution: 'Satisfied',
+      overallSatisfaction: 'Satisfied',
+      // Legacy compatibility
+      bdCommitment: 'Satisfied',
       techSupport: 'Neutral',
       hotlineCallQuality: 'Satisfied',
       hotlineCallSupport: 'Satisfied',
       hotlineOpsResponse: 'Satisfied',
-      oneOnOneSessions: 'Satisfied',
       webinarTopic: 'Satisfied',
       webinarContent: 'Satisfied',
       webinarExpert: 'Satisfied'
     },
     lowResponseRemarks: {
-      techSupport: 'Some employees had OTP login lag during initial app rollout.'
+      appExperience: 'Some employees had OTP login lag during initial app rollout.',
+      technicalSupport: 'Some employees had OTP login lag during initial app rollout.'
     }
   },
   {
@@ -268,13 +108,24 @@ const SEED_FEEDBACK_SUBMISSIONS = [
       wantsFollowUp: false
     },
     ratings: {
-      bdCommitment: 'Very satisfied',
+      onboardingDelivery: 'Very satisfied',
       csSupport: 'Very satisfied',
+      employeeAwareness: 'Very satisfied',
+      hotlineSupport: 'Very satisfied',
+      appExperience: 'Very satisfied',
+      technicalSupport: 'Very satisfied',
+      serviceExperience: 'Very satisfied',
+      utilizationReporting: 'Very satisfied',
+      oneOnOneSessions: 'Very satisfied',
+      webinarTopicsVariety: 'Very satisfied',
+      issueResolution: 'Very satisfied',
+      overallSatisfaction: 'Very satisfied',
+      // Legacy compatibility
+      bdCommitment: 'Very satisfied',
       techSupport: 'Very satisfied',
       hotlineCallQuality: 'Very satisfied',
       hotlineCallSupport: 'Very satisfied',
       hotlineOpsResponse: 'Very satisfied',
-      oneOnOneSessions: 'Very satisfied',
       webinarTopic: 'Very satisfied',
       webinarContent: 'Very satisfied',
       webinarExpert: 'Very satisfied'
@@ -297,19 +148,31 @@ const SEED_FEEDBACK_SUBMISSIONS = [
       wantsFollowUp: true
     },
     ratings: {
-      bdCommitment: 'Neutral',
+      onboardingDelivery: 'Neutral',
       csSupport: 'Dissatisfied',
+      employeeAwareness: 'Satisfied',
+      hotlineSupport: 'Satisfied',
+      appExperience: 'Satisfied',
+      technicalSupport: 'Satisfied',
+      serviceExperience: 'Satisfied',
+      utilizationReporting: 'Neutral',
+      oneOnOneSessions: 'Satisfied',
+      webinarTopicsVariety: 'Satisfied',
+      issueResolution: 'Dissatisfied',
+      overallSatisfaction: 'Neutral',
+      // Legacy compatibility
+      bdCommitment: 'Neutral',
       techSupport: 'Satisfied',
       hotlineCallQuality: 'Satisfied',
       hotlineCallSupport: 'Satisfied',
       hotlineOpsResponse: 'Neutral',
-      oneOnOneSessions: 'Satisfied',
       webinarTopic: 'Satisfied',
       webinarContent: 'Neutral',
       webinarExpert: 'Satisfied'
     },
     lowResponseRemarks: {
-      csSupport: 'Slow response to emails / queries; Need more proactive follow-ups'
+      csSupport: 'Slow response to emails / queries; Need more proactive follow-ups',
+      issueResolution: 'Slow response to emails / queries; Need more proactive follow-ups'
     }
   }
 ];
@@ -317,111 +180,97 @@ const SEED_FEEDBACK_SUBMISSIONS = [
 const ESCALATION_TIERS = [
   {
     tier: 'Tier 1',
-    tierLabel: 'Primary Frontline',
-    role: 'Customer Success SPOC',
-    shortRole: 'CS SPOC',
-    whoTheyAre: 'Your Primary SPOC',
-    whoTheyAreSubtitle: 'Dedicated Account Manager for all client requests',
-    sla: '24 hrs',
-    slaBadge: '⚡ 24 hrs Response',
+    tierHeader: 'Basic Support & First-Level Escalation (Tier 1)',
     themeColor: '#0284c7',
     lightBg: '#f0f9ff',
     border: '#bae6fd',
-    accentBorder: '#0284c7',
-    icon: 'bx-user-voice',
-    howCanTheyHelp: [
-      'Your single day-to-day point of contact for any and all requests',
-      'Assists with session bookings, counselor allocation & scheduling',
-      'Coordinates onboarding, HR portal access & employee wellness rollouts',
-      'Answers inquiries directly and resolves day-to-day operational issues'
+    role: 'Primary point of contact for day-to-day client requests',
+    whenToEscalate: [
+      'All incoming client requests',
+      'Routine operational and technical support',
+      'Employee queries and session scheduling',
+      'General programme information and reporting requests'
     ],
-    triggers: [
-      { label: 'All incoming client requests', tag: 'Routine' },
-      { label: 'Routine operational & technical support', tag: 'Standard' },
-      { label: 'Day-to-day session scheduling & assistance', tag: 'Operations' }
+    ackTat: 'Within 12 business hours',
+    actionPlanTat: 'Within 1 business days',
+    contacts: [
+      {
+        title: 'Assigned Client Success SPOC',
+        emailKey: 'csSpoc'
+      }
     ]
   },
   {
     tier: 'Tier 2',
-    tierLabel: 'Internal Escalation',
-    role: 'Customer Success Manager',
-    shortRole: 'CS Manager',
-    whoTheyAre: 'Manager of CS SPOC',
-    whoTheyAreSubtitle: 'CS Team Lead & Account Health Supervisor',
-    sla: '24 to 36 hrs',
-    slaBadge: '⏱️ 24 to 36 hrs',
+    tierHeader: 'Operational Escalation (Tier 2)',
     themeColor: '#6366f1',
     lightBg: '#eef2ff',
     border: '#c7d2fe',
-    accentBorder: '#6366f1',
-    icon: 'bx-shield-quarter',
-    howCanTheyHelp: [
-      'Addresses queries that your CS SPOC is unable to resolve or answer',
-      'Steps in immediately when your CS SPOC is unresponsive or missing SLA',
-      'Investigates recurring operational bottlenecks and provides recovery plans',
-      'Ensures SLA accountability, reviews feedback & addresses low ratings'
+    role: 'Manager responsible for resolving operational issues and supervising the CS SPOC',
+    whenToEscalate: [
+      'CS SPOC unresponsive beyond defined SLA',
+      'Issue unresolved beyond 1 business day',
+      'Repeated complaints or negative feedback',
+      'Operational bottlenecks affecting service delivery',
+      'Client expresses dissatisfaction or competitor interest'
     ],
-    triggers: [
-      { label: 'CS SPOC unable to handle query', severity: 'warning', tag: 'Unresolved' },
-      { label: 'CS SPOC unresponsive / not replying at all', severity: 'danger', tag: 'SLA Breach' },
-      { label: 'Issue remains unsolved after initial attempt', severity: 'warning', tag: 'Stalled' },
-      { label: 'Account closure threatened by client', severity: 'danger', tag: 'Churn Risk' },
-      { label: 'Potential switch to competitor signaled', severity: 'danger', tag: 'Competitor' },
-      { label: 'Bad review or negative feedback rating', severity: 'warning', tag: 'Low Rating' }
+    ackTat: 'Within 12 business hours',
+    actionPlanTat: 'Within 2 business day',
+    contacts: [
+      {
+        title: 'Customer Success Manager',
+        email: 'cs.manager@mantracare.com'
+      }
     ]
   },
   {
     tier: 'Tier 3',
-    tierLabel: 'Commercial Escalation',
-    role: 'Business Development SPOC',
-    shortRole: 'BD SPOC',
-    whoTheyAre: 'BD SPOC (Who Sold the Program to You)',
-    whoTheyAreSubtitle: 'Sales & Commercial Relationship Owner',
-    sla: '24 hrs',
-    slaBadge: '⚡ 24 hrs Response',
+    tierHeader: 'Senior Management Escalation (Tier 3)',
     themeColor: '#ea580c',
     lightBg: '#fff7ed',
     border: '#fed7aa',
-    accentBorder: '#ea580c',
-    icon: 'bx-briefcase-alt-2',
-    howCanTheyHelp: [
-      'Intervenes if there is no reply from the team or a communication breakdown',
-      'Audits actual delivered services against the sales pitch & signed SOW',
-      'Resolves mismatches in deliverables, feature access, or contractual terms',
-      'Facilitates commercial re-alignments, contract adjustments & renewals'
+    role: 'Responsible for service delivery, account health and major escalations',
+    whenToEscalate: [
+      'Repeated SLA breaches (2 or more within 30 days)',
+      'Major service delivery failures',
+      'No resolution despite Tier 2 intervention',
+      'Significant mismatch between agreed SOW and actual delivery',
+      'Client threatens account closure or non-renewal'
     ],
-    triggers: [
-      { label: 'No reply from anyone on the team', severity: 'danger', tag: 'Total Breakdown' },
-      { label: 'Direct client escalation on Customer Success', severity: 'danger', tag: 'CS Failure' },
-      { label: 'Service delivered mismatch vs sales pitch/SOW', severity: 'warning', tag: 'SOW Mismatch' },
-      { label: 'Delivery expectations & contract scope dispute', severity: 'warning', tag: 'Scope Dispute' }
+    ackTat: 'Within 12 business hours',
+    actionPlanTat: 'Within 2 business days',
+    contacts: [
+      {
+        title: 'Head of Client Success / Operations',
+        email: 'cs-operations@mantracare.com'
+      },
+      {
+        title: 'BD SPOC',
+        email: 'rahul.bd@mantracare.com'
+      }
     ]
   },
   {
     tier: 'Tier 4',
-    tierLabel: 'Executive & CXO',
-    role: 'Senior Management',
-    shortRole: 'Owner / CXO',
-    whoTheyAre: 'Company Owner & CXOs',
-    whoTheyAreSubtitle: 'Executive Leadership & Governance',
-    sla: '48 hrs',
-    slaBadge: '🛡️ 48 hrs Resolution',
-    themeColor: '#059669',
-    lightBg: '#ecfdf5',
-    border: '#a7f3d0',
-    accentBorder: '#059669',
-    icon: 'bx-crown',
-    howCanTheyHelp: [
-      'Direct C-Suite / Owner engagement for critical, unresolved enterprise issues',
-      'Executive-level mediation when previous support & commercial tiers fail',
-      'Authorizes strategic commercial concessions, policy exceptions & remedies',
-      'Implements organizational fixes to guarantee long-term service excellence'
+    tierHeader: 'Executive-Level Escalation (Tier 4)',
+    themeColor: '#dc2626',
+    lightBg: '#fef2f2',
+    border: '#fecaca',
+    role: 'Executive oversight for critical client relationships and business decisions',
+    whenToEscalate: [
+      'Formal contract termination threat or notice',
+      'Legal notice or significant contractual breach',
+      'Critical unresolved escalations from Tier 3',
+      'High-value enterprise account or strategic partnership at risk',
+      'Executive intervention required from client leadership'
     ],
-    triggers: [
-      { label: 'Enterprise contract termination or legal breach notice', severity: 'danger', tag: 'Contract Threat' },
-      { label: 'Unresolved critical escalations from CS Manager & BD SPOC', severity: 'danger', tag: 'Final Stage' },
-      { label: 'High-value enterprise revenue or strategic partner at risk', severity: 'danger', tag: 'Major Churn' },
-      { label: 'Company Owner & CXO-level intervention required', severity: 'warning', tag: 'Executive' }
+    ackTat: 'Within 6 business hours',
+    actionPlanTat: 'Within 3 business days',
+    contacts: [
+      {
+        title: 'Founder / CEO',
+        email: 'ceo@mantracare.com'
+      }
     ]
   }
 ];
@@ -1697,7 +1546,7 @@ export default function CsFeedback() {
         {/* Navigation Tabs */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.65rem', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
           <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
-            {/* Tab 1: Feedback Directory (Table) */}
+            {/* Tab 1: Feedback */}
             <button
               onClick={() => handleTabClick('submissions')}
               style={{
@@ -1717,7 +1566,7 @@ export default function CsFeedback() {
               }}
             >
               <i className="bx bx-table"></i>
-              <span>Feedback Directory</span>
+              <span>Feedback</span>
               <span style={{
                 background: activeTab === 'submissions' ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
                 color: activeTab === 'submissions' ? '#ffffff' : '#475569',
@@ -1729,7 +1578,7 @@ export default function CsFeedback() {
               </span>
             </button>
 
-            {/* Tab 2: Escalation Matrix */}
+            {/* Tab 2: Escalation */}
             <button
               onClick={() => handleTabClick('matrix')}
               style={{
@@ -1749,38 +1598,15 @@ export default function CsFeedback() {
               }}
             >
               <i className="bx bx-shield-quarter"></i>
-              <span>Escalation Matrix</span>
-            </button>
-
-            {/* Tab 3: Summary */}
-            <button
-              onClick={() => handleTabClick('summary')}
-              style={{
-                padding: '0.55rem 1.15rem',
-                borderRadius: '8px',
-                border: 'none',
-                background: activeTab === 'summary' ? '#034ea2' : '#ffffff',
-                color: activeTab === 'summary' ? '#ffffff' : '#475569',
-                fontWeight: '700',
-                fontSize: '0.88rem',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-                boxShadow: activeTab === 'summary' ? '0 2px 6px rgba(3, 78, 162, 0.25)' : 'none',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <i className="bx bx-bar-chart-alt-2"></i>
-              <span>Summary</span>
+              <span>Escalation</span>
             </button>
           </div>
 
-          {/* Action Buttons: Share Form & Open Form */}
+          {/* Action Buttons: Share Feedback & Share Form (Copy Icon) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={handleOpenShareModal}
+              onClick={handleDirectOpenForm}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1796,34 +1622,43 @@ export default function CsFeedback() {
                 transition: 'all 0.15s ease',
                 boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)'
               }}
-              title="Share form link with HR partner via modal"
+              title="Directly create entry for logged-in user & selected company and open form"
             >
-              <i className="bx bx-share-alt" style={{ fontSize: '1.15rem' }}></i>
-              <span>Share Form</span>
+              <i className="bx bx-share-alt" style={{ fontSize: '1.1rem' }}></i>
+              <span>Share Feedback</span>
             </button>
 
             <button
               type="button"
-              onClick={handleDirectOpenForm}
+              onClick={handleOpenShareModal}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.45rem',
-                background: '#eff6ff',
-                color: '#034ea2',
-                border: '1px solid #bfdbfe',
-                padding: '0.55rem 1.15rem',
+                justifyContent: 'center',
+                width: '38px',
+                height: '38px',
                 borderRadius: '8px',
-                fontSize: '0.86rem',
-                fontWeight: '700',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: '#475569',
+                fontSize: '1.15rem',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
-                boxShadow: '0 1px 3px rgba(3, 78, 162, 0.1)'
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
               }}
-              title="Directly create entry for logged-in user & selected company and open form"
+              title="Share Form / Copy Link"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#f0f9ff';
+                e.currentTarget.style.borderColor = '#0284c7';
+                e.currentTarget.style.color = '#0284c7';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#ffffff';
+                e.currentTarget.style.borderColor = '#cbd5e1';
+                e.currentTarget.style.color = '#475569';
+              }}
             >
-              <i className="bx bx-open-in-new" style={{ fontSize: '1.15rem' }}></i>
-              <span>Open Form</span>
+              <i className="bx bx-copy"></i>
             </button>
           </div>
         </div>
@@ -2536,67 +2371,163 @@ export default function CsFeedback() {
                     />
                   </div>
 
-                  {/* Suggestions / Feedback Textarea */}
-                  <div style={{ marginBottom: '0.85rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.25rem' }}>
-                      Do you have any suggestions or feedback for us to improve our services?
-                    </label>
-
-                    {/* Quick Suggestions Chips */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.45rem' }}>
-                      <span style={{ fontSize: '0.72rem', color: '#64748b', alignSelf: 'center' }}>Quick insert:</span>
-                      {GENERAL_SUGGESTION_TAGS.map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => handleAddGeneralSuggestionTag(tag)}
-                          style={{
-                            padding: '0.15rem 0.45rem',
-                            borderRadius: '10px',
-                            border: '1px solid #cbd5e1',
-                            background: '#f8fafc',
-                            color: '#334155',
-                            fontSize: '0.72rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = '#e0f2fe';
-                            e.currentTarget.style.borderColor = '#93c5fd';
-                            e.currentTarget.style.color = '#0284c7';
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f8fafc';
-                            e.currentTarget.style.borderColor = '#cbd5e1';
-                            e.currentTarget.style.color = '#334155';
-                          }}
-                        >
-                          + {tag}
-                        </button>
-                      ))}
+                  {/* OPEN FEEDBACK (OPTIONAL) */}
+                  <div style={{
+                    marginTop: '1.25rem',
+                    marginBottom: '1.25rem',
+                    padding: '1.25rem',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px'
+                  }}>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div style={{
+                        display: 'inline-block',
+                        fontSize: '0.68rem',
+                        fontWeight: '800',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        color: '#0284c7',
+                        background: '#e0f2fe',
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '4px',
+                        marginBottom: '0.35rem'
+                      }}>
+                        Optional
+                      </div>
+                      <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: '800', color: '#0f172a' }}>
+                        OPEN FEEDBACK (OPTIONAL)
+                      </h4>
+                      <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                        Provide qualitative perspective on program highlights and your top priority area.
+                      </p>
                     </div>
 
-                    <textarea
-                      rows={3}
-                      value={clientDetails.suggestions}
-                      onChange={(e) => setClientDetails({ ...clientDetails, suggestions: e.target.value })}
-                      placeholder="Share your overall experience regarding webinar variety, response times, session quality, or any new features you would like to see..."
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem 0.75rem',
-                        borderRadius: '6px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '0.88rem',
-                        color: '#1e293b',
-                        boxSizing: 'border-box',
-                        fontFamily: 'inherit',
-                        lineHeight: '1.45',
-                        resize: 'vertical',
-                        outline: 'none'
-                      }}
-                      onFocus={(e) => (e.target.style.borderColor = '#034ea2')}
-                      onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')}
-                    />
+                    {/* Question 1: What is working well? */}
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+                        What is working well?
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={clientDetails.workingWell || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setClientDetails(prev => ({
+                            ...prev,
+                            workingWell: val,
+                            suggestions: [
+                              val.trim() ? `What is working well: ${val.trim()}` : '',
+                              (prev.priorityImprovement || '').trim() ? `Priority improvement: ${(prev.priorityImprovement || '').trim()}` : ''
+                            ].filter(Boolean).join('\n\n')
+                          }));
+                        }}
+                        placeholder="Mention any standout services, positive employee feedback, helpful team members, or successful initiatives..."
+                        style={{
+                          width: '100%',
+                          padding: '0.55rem 0.75rem',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.85rem',
+                          color: '#1e293b',
+                          boxSizing: 'border-box',
+                          fontFamily: 'inherit',
+                          lineHeight: '1.45',
+                          resize: 'vertical',
+                          outline: 'none',
+                          background: '#ffffff'
+                        }}
+                        onFocus={(e) => (e.target.style.borderColor = '#034ea2')}
+                        onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')}
+                      />
+                    </div>
+
+                    {/* Question 2: What is the one improvement you would like us to prioritize? */}
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+                        What is the one improvement you would like us to prioritize?
+                      </label>
+
+                      {/* Quick Suggestions Chips */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.45rem' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b', alignSelf: 'center' }}>Quick insert:</span>
+                        {GENERAL_SUGGESTION_TAGS.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => {
+                              setClientDetails(prev => {
+                                const current = (prev.priorityImprovement || '').trim();
+                                const updated = current ? `${current}, ${tag}` : tag;
+                                return {
+                                  ...prev,
+                                  priorityImprovement: updated,
+                                  suggestions: [
+                                    (prev.workingWell || '').trim() ? `What is working well: ${(prev.workingWell || '').trim()}` : '',
+                                    `Priority improvement: ${updated}`
+                                  ].filter(Boolean).join('\n\n')
+                                };
+                              });
+                            }}
+                            style={{
+                              padding: '0.15rem 0.45rem',
+                              borderRadius: '10px',
+                              border: '1px solid #cbd5e1',
+                              background: '#ffffff',
+                              color: '#334155',
+                              fontSize: '0.72rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseOver={(e) => {
+                              e.currentTarget.style.backgroundColor = '#e0f2fe';
+                              e.currentTarget.style.borderColor = '#93c5fd';
+                              e.currentTarget.style.color = '#0284c7';
+                            }}
+                            onMouseOut={(e) => {
+                              e.currentTarget.style.backgroundColor = '#ffffff';
+                              e.currentTarget.style.borderColor = '#cbd5e1';
+                              e.currentTarget.style.color = '#334155';
+                            }}
+                          >
+                            + {tag}
+                          </button>
+                        ))}
+                      </div>
+
+                      <textarea
+                        rows={2}
+                        value={clientDetails.priorityImprovement || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setClientDetails(prev => ({
+                            ...prev,
+                            priorityImprovement: val,
+                            suggestions: [
+                              (prev.workingWell || '').trim() ? `What is working well: ${(prev.workingWell || '').trim()}` : '',
+                              val.trim() ? `Priority improvement: ${val.trim()}` : ''
+                            ].filter(Boolean).join('\n\n')
+                          }));
+                        }}
+                        placeholder="Describe the key area, feature, or operational process you would most like our team to improve or resolve..."
+                        style={{
+                          width: '100%',
+                          padding: '0.55rem 0.75rem',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.85rem',
+                          color: '#1e293b',
+                          boxSizing: 'border-box',
+                          fontFamily: 'inherit',
+                          lineHeight: '1.45',
+                          resize: 'vertical',
+                          outline: 'none',
+                          background: '#ffffff'
+                        }}
+                        onFocus={(e) => (e.target.style.borderColor = '#034ea2')}
+                        onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')}
+                      />
+                    </div>
                   </div>
 
                   {/* Follow-up Checkbox */}
@@ -3013,11 +2944,10 @@ export default function CsFeedback() {
                         borderRight: '1px solid #94a3b8',
                         background: '#f8fafc',
                         textAlign: 'left',
-                        fontSize: '0.8rem',
+                        fontSize: '0.82rem',
                         fontWeight: '700',
-                        color: '#475569',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em'
+                        color: '#0f172a',
+                        textTransform: 'none'
                       }}>
                         Support Protocol
                       </th>
@@ -3025,30 +2955,15 @@ export default function CsFeedback() {
                         <th
                           key={tier.tier}
                           style={{
-                            padding: '0.85rem 0.75rem',
+                            padding: '0.85rem 1rem',
                             borderRight: idx < ESCALATION_TIERS.length - 1 ? '1px solid #94a3b8' : 'none',
-                            textAlign: 'center',
-                            lineHeight: '1.3'
+                            textAlign: 'left',
+                            verticalAlign: 'top',
+                            lineHeight: '1.35'
                           }}
                         >
-                          <span style={{
-                            display: 'inline-block',
-                            fontSize: '0.68rem',
-                            fontWeight: '800',
-                            textTransform: 'uppercase',
-                            color: tier.themeColor,
-                            background: tier.lightBg,
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: '4px',
-                            marginBottom: '0.35rem'
-                          }}>
-                            {tier.tier}
-                          </span>
                           <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '0.9rem' }}>
-                            {tier.role}
-                          </div>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '500', marginTop: '0.15rem' }}>
-                            {tier.whoTheyAre}
+                            {tier.tierHeader}
                           </div>
                         </th>
                       ))}
@@ -3056,116 +2971,35 @@ export default function CsFeedback() {
                   </thead>
 
                   <tbody>
-                    {/* ROW 1: Reachout (Contact Action Button & Expected TAT) */}
-                    <tr style={{ borderBottom: '1px solid #94a3b8', verticalAlign: 'middle' }}>
-                      <td style={{
-                        padding: '0.85rem 1rem',
-                        fontWeight: '700',
-                        background: '#f8fafc',
-                        borderRight: '1px solid #94a3b8',
-                        color: '#334155',
-                        lineHeight: '1.4'
-                      }}>
-                        Reachout
-                        <div style={{ fontSize: '0.72rem', fontWeight: '500', color: '#64748b', marginTop: '0.15rem' }}>
-                          Connect with role owner
-                        </div>
-                      </td>
-                      {ESCALATION_TIERS.map((tier, idx) => (
-                        <td
-                          key={tier.tier}
-                          style={{
-                            padding: '0.75rem',
-                            borderRight: idx < ESCALATION_TIERS.length - 1 ? '1px solid #94a3b8' : 'none',
-                            textAlign: 'center'
-                          }}
-                        >
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenContactModal(tier)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.4rem',
-                                padding: '0.45rem 0.85rem',
-                                borderRadius: '6px',
-                                background: tier.lightBg,
-                                border: `1px solid ${tier.border}`,
-                                color: tier.themeColor,
-                                fontSize: '0.8rem',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
-                                boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-                              }}
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.background = tier.themeColor;
-                                e.currentTarget.style.color = '#ffffff';
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.background = tier.lightBg;
-                                e.currentTarget.style.color = tier.themeColor;
-                              }}
-                            >
-                              <i className="bx bx-envelope" style={{ fontSize: '0.95rem' }}></i>
-                              <span>Contact {tier.shortRole}</span>
-                            </button>
-                            <div style={{
-                              fontSize: '0.74rem',
-                              color: '#64748b',
-                              fontWeight: '500',
-                              marginTop: '0.15rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}>
-                              <span>Expected TAT {tier.sla}</span>
-                            </div>
-                          </div>
-                        </td>
-                      ))}
-                    </tr>
-
-                    {/* ROW 2: How can they help you */}
+                    {/* ROW 1: Role */}
                     <tr style={{ borderBottom: '1px solid #94a3b8', verticalAlign: 'top' }}>
                       <td style={{
                         padding: '0.85rem 1rem',
                         fontWeight: '700',
                         background: '#f8fafc',
                         borderRight: '1px solid #94a3b8',
-                        color: '#334155',
-                        lineHeight: '1.4'
+                        color: '#334155'
                       }}>
-                        How can they help you
-                        <div style={{ fontSize: '0.72rem', fontWeight: '500', color: '#64748b', marginTop: '0.15rem' }}>
-                          Direct assistance & resolution
-                        </div>
+                        Role
                       </td>
                       {ESCALATION_TIERS.map((tier, idx) => (
                         <td
                           key={tier.tier}
                           style={{
-                            padding: '0.85rem 0.75rem',
+                            padding: '0.85rem 1rem',
                             borderRight: idx < ESCALATION_TIERS.length - 1 ? '1px solid #94a3b8' : 'none',
-                            lineHeight: '1.45'
+                            lineHeight: '1.45',
+                            fontSize: '0.84rem',
+                            color: '#334155'
                           }}
                         >
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                            {tier.howCanTheyHelp.map((help, hIdx) => (
-                              <div key={hIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem', fontSize: '0.78rem', color: '#334155' }}>
-                                <i className="bx bx-check-circle" style={{ color: tier.themeColor, fontSize: '0.95rem', marginTop: '2px', flexShrink: 0 }}></i>
-                                <span>{help}</span>
-                              </div>
-                            ))}
-                          </div>
+                          {tier.role}
                         </td>
                       ))}
                     </tr>
 
-                    {/* ROW 3: When to Escalate (Triggers) */}
-                    <tr style={{ verticalAlign: 'top' }}>
+                    {/* ROW 2: When to Escalate */}
+                    <tr style={{ borderBottom: '1px solid #94a3b8', verticalAlign: 'top' }}>
                       <td style={{
                         padding: '0.85rem 1rem',
                         fontWeight: '700',
@@ -3174,52 +3008,134 @@ export default function CsFeedback() {
                         color: '#334155'
                       }}>
                         When to Escalate
-                        <div style={{ fontSize: '0.72rem', fontWeight: '500', color: '#64748b', marginTop: '0.15rem' }}>
-                          Triggers requiring handover
-                        </div>
                       </td>
                       {ESCALATION_TIERS.map((tier, idx) => (
                         <td
                           key={tier.tier}
                           style={{
-                            padding: '0.85rem 0.75rem',
+                            padding: '0.85rem 1rem',
                             borderRight: idx < ESCALATION_TIERS.length - 1 ? '1px solid #94a3b8' : 'none',
                             lineHeight: '1.45'
                           }}
                         >
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                            {tier.triggers.map((trig, tIdx) => {
-                              const isDanger = trig.severity === 'danger';
-                              const isWarning = trig.severity === 'warning';
-                              const chipBg = isDanger ? '#fef2f2' : isWarning ? '#fffbeb' : '#f0f9ff';
-                              const chipBorder = isDanger ? '#fee2e2' : isWarning ? '#fef3c7' : '#e0f2fe';
-                              const chipColor = isDanger ? '#991b1b' : isWarning ? '#92400e' : '#0369a1';
-                              const iconClass = isDanger ? 'bx-error-circle' : isWarning ? 'bx-alarm-exclamation' : 'bx-info-circle';
-
-                              return (
-                                <div
-                                  key={tIdx}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.35rem',
-                                    background: chipBg,
-                                    border: `1px solid ${chipBorder}`,
-                                    color: chipColor,
-                                    padding: '0.3rem 0.5rem',
-                                    borderRadius: '5px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: '500'
-                                  }}
-                                >
-                                  <i className={`bx ${iconClass}`} style={{ fontSize: '0.85rem', flexShrink: 0 }}></i>
-                                  <span>{trig.label}</span>
-                                </div>
-                              );
-                            })}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.82rem', color: '#334155' }}>
+                            {tier.whenToEscalate.map((item, iIdx) => (
+                              <div key={iIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+                                <span style={{ color: tier.themeColor, fontWeight: '700', fontSize: '0.9rem', lineHeight: '1.2' }}>•</span>
+                                <span>{item}</span>
+                              </div>
+                            ))}
                           </div>
                         </td>
                       ))}
+                    </tr>
+
+                    {/* ROW 3: Acknowledgement TAT */}
+                    <tr style={{ borderBottom: '1px solid #94a3b8', verticalAlign: 'top' }}>
+                      <td style={{
+                        padding: '0.85rem 1rem',
+                        fontWeight: '700',
+                        background: '#f8fafc',
+                        borderRight: '1px solid #94a3b8',
+                        color: '#334155'
+                      }}>
+                        Acknowledgement TAT
+                      </td>
+                      {ESCALATION_TIERS.map((tier, idx) => (
+                        <td
+                          key={tier.tier}
+                          style={{
+                            padding: '0.85rem 1rem',
+                            borderRight: idx < ESCALATION_TIERS.length - 1 ? '1px solid #94a3b8' : 'none',
+                            fontSize: '0.84rem',
+                            color: '#334155',
+                            fontWeight: '500'
+                          }}
+                        >
+                          {tier.ackTat}
+                        </td>
+                      ))}
+                    </tr>
+
+                    {/* ROW 4: Action Plan TAT */}
+                    <tr style={{ borderBottom: '1px solid #94a3b8', verticalAlign: 'top' }}>
+                      <td style={{
+                        padding: '0.85rem 1rem',
+                        fontWeight: '700',
+                        background: '#f8fafc',
+                        borderRight: '1px solid #94a3b8',
+                        color: '#334155'
+                      }}>
+                        Action Plan TAT
+                      </td>
+                      {ESCALATION_TIERS.map((tier, idx) => (
+                        <td
+                          key={tier.tier}
+                          style={{
+                            padding: '0.85rem 1rem',
+                            borderRight: idx < ESCALATION_TIERS.length - 1 ? '1px solid #94a3b8' : 'none',
+                            fontSize: '0.84rem',
+                            color: '#334155',
+                            fontWeight: '500'
+                          }}
+                        >
+                          {tier.actionPlanTat}
+                        </td>
+                      ))}
+                    </tr>
+
+                    {/* ROW 5: Point of Contact */}
+                    <tr style={{ verticalAlign: 'top' }}>
+                      <td style={{
+                        padding: '0.85rem 1rem',
+                        fontWeight: '700',
+                        background: '#f8fafc',
+                        borderRight: '1px solid #94a3b8',
+                        color: '#334155'
+                      }}>
+                        Point of Contact
+                      </td>
+                      {ESCALATION_TIERS.map((tier, idx) => {
+                        const csSpocEmail = clientDetails?.csSpocEmail || (
+                          clientDetails?.csSpocName
+                            ? `${clientDetails.csSpocName.toLowerCase().replace(/\s+/g, '.')}@mantracare.com`
+                            : 'karan.hinduja@mantracare.com'
+                        );
+
+                        return (
+                          <td
+                            key={tier.tier}
+                            style={{
+                              padding: '0.85rem 1rem',
+                              borderRight: idx < ESCALATION_TIERS.length - 1 ? '1px solid #94a3b8' : 'none',
+                              fontSize: '0.84rem',
+                              lineHeight: '1.5'
+                            }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                              {tier.contacts.map((c, cIdx) => {
+                                const targetEmail = c.emailKey === 'csSpoc' ? csSpocEmail : c.email;
+                                return (
+                                  <div key={cIdx} style={{ color: '#1e293b' }}>
+                                    <span style={{ fontWeight: '500' }}>{c.title}</span> &gt;{' '}
+                                    <a
+                                      href={`mailto:${targetEmail}`}
+                                      style={{
+                                        color: '#0284c7',
+                                        fontWeight: '700',
+                                        textDecoration: 'underline'
+                                      }}
+                                      title={`Email ${c.title} (${targetEmail})`}
+                                    >
+                                      Contact
+                                    </a>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </td>
+                        );
+                      })}
                     </tr>
                   </tbody>
                 </table>
@@ -4009,7 +3925,13 @@ export default function CsFeedback() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginBottom: '1.5rem' }}>
             {PILLAR_QUESTIONS.map((q, idx) => {
-              const ans = selectedInspectItem.ratings[q.id];
+              const ans = selectedInspectItem.ratings?.[q.id] || (
+                q.id === 'onboardingDelivery' ? selectedInspectItem.ratings?.bdCommitment :
+                q.id === 'technicalSupport' ? selectedInspectItem.ratings?.techSupport :
+                q.id === 'hotlineSupport' ? (selectedInspectItem.ratings?.hotlineCallQuality || selectedInspectItem.ratings?.hotlineCallSupport) :
+                q.id === 'webinarTopicsVariety' ? selectedInspectItem.ratings?.webinarTopic :
+                null
+              );
               const remark = selectedInspectItem.lowResponseRemarks?.[q.id];
 
               return (
@@ -4061,15 +3983,37 @@ export default function CsFeedback() {
             })}
           </div>
 
-          {/* Respondent Suggestions */}
-          {selectedInspectItem.clientDetails?.suggestions && (
+          {/* Respondent Suggestions & Open Feedback */}
+          {(selectedInspectItem.clientDetails?.workingWell || selectedInspectItem.clientDetails?.priorityImprovement || selectedInspectItem.clientDetails?.suggestions) && (
             <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
-                Client's Written Suggestions & Comments
+              <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#034ea2', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.65rem' }}>
+                Open Feedback (Optional)
               </div>
-              <div style={{ fontSize: '0.92rem', color: '#0f172a', fontStyle: 'italic', lineHeight: '1.5' }}>
-                "{selectedInspectItem.clientDetails.suggestions}"
-              </div>
+              {selectedInspectItem.clientDetails?.workingWell && (
+                <div style={{ marginBottom: '0.65rem' }}>
+                  <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#475569', marginBottom: '0.2rem' }}>
+                    What is working well?
+                  </div>
+                  <div style={{ fontSize: '0.88rem', color: '#0f172a', fontStyle: 'italic', lineHeight: '1.45', background: '#ffffff', padding: '0.55rem 0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                    "{selectedInspectItem.clientDetails.workingWell}"
+                  </div>
+                </div>
+              )}
+              {selectedInspectItem.clientDetails?.priorityImprovement && (
+                <div style={{ marginBottom: selectedInspectItem.clientDetails?.suggestions && !selectedInspectItem.clientDetails?.workingWell ? '0.65rem' : '0' }}>
+                  <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#475569', marginBottom: '0.2rem' }}>
+                    What is the one improvement you would like us to prioritize?
+                  </div>
+                  <div style={{ fontSize: '0.88rem', color: '#0f172a', fontStyle: 'italic', lineHeight: '1.45', background: '#ffffff', padding: '0.55rem 0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                    "{selectedInspectItem.clientDetails.priorityImprovement}"
+                  </div>
+                </div>
+              )}
+              {!selectedInspectItem.clientDetails?.workingWell && !selectedInspectItem.clientDetails?.priorityImprovement && selectedInspectItem.clientDetails?.suggestions && (
+                <div style={{ fontSize: '0.92rem', color: '#0f172a', fontStyle: 'italic', lineHeight: '1.5' }}>
+                  "{selectedInspectItem.clientDetails.suggestions}"
+                </div>
+              )}
             </div>
           )}
 
@@ -4227,13 +4171,19 @@ export default function CsFeedback() {
                     <span>Question-by-Question Score Breakdown</span>
                   </h4>
                   <span style={{ fontSize: '0.75rem', color: '#64748b', background: '#f1f5f9', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>
-                    10 Evaluation Pillars
+                    {PILLAR_QUESTIONS.length} Evaluation Dimensions
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {PILLAR_QUESTIONS.map((q, idx) => {
-                    const userSelection = ratingsMap[q.id];
+                    const userSelection = ratingsMap[q.id] || (
+                      q.id === 'onboardingDelivery' ? ratingsMap.bdCommitment :
+                      q.id === 'technicalSupport' ? ratingsMap.techSupport :
+                      q.id === 'hotlineSupport' ? (ratingsMap.hotlineCallQuality || ratingsMap.hotlineCallSupport) :
+                      q.id === 'webinarTopicsVariety' ? ratingsMap.webinarTopic :
+                      null
+                    );
                     const ptsEarned = scoreMap[userSelection];
                     const isNa = userSelection === 'Not a part of SOW / No session done';
 

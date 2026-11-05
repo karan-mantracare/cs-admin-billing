@@ -39,29 +39,24 @@ export default function ClientFeedbackWizard({ onClose, onSuccess, initialData =
 
   const [wantsFollowUp, setWantsFollowUp] = useState(false);
 
-  // Ratings for all 10 dimensions
-  const [ratings, setRatings] = useState({
-    bdCommitment: '',
-    csSupport: '',
-    techSupport: '',
-    hotlineCallQuality: '',
-    hotlineCallSupport: '',
-    hotlineOpsResponse: '',
-    oneOnOneSessions: '',
-    webinarTopic: '',
-    webinarContent: '',
-    webinarExpert: ''
+  // Ratings for all dimensions
+  const [ratings, setRatings] = useState(() => {
+    const initial = {};
+    PILLAR_QUESTIONS.forEach(q => { initial[q.id] = ''; });
+    return initial;
   });
 
   // Remarks / low rating notes
   const [lowResponseRemarks, setLowResponseRemarks] = useState({});
   const [suggestions, setSuggestions] = useState('');
+  const [workingWell, setWorkingWell] = useState('');
+  const [priorityImprovement, setPriorityImprovement] = useState('');
 
   // Step validation: Every question on current step must have an input selected
   const currentStepQuestions = useMemo(() => {
-    if (currentStep === 1) return PILLAR_QUESTIONS.slice(0, 3);
-    if (currentStep === 2) return PILLAR_QUESTIONS.slice(3, 7);
-    if (currentStep === 3) return PILLAR_QUESTIONS.slice(7, 10);
+    if (currentStep === 1) return PILLAR_QUESTIONS.slice(0, 4);
+    if (currentStep === 2) return PILLAR_QUESTIONS.slice(4, 8);
+    if (currentStep === 3) return PILLAR_QUESTIONS.slice(8, 12);
     return [];
   }, [currentStep]);
 
@@ -162,7 +157,12 @@ export default function ClientFeedbackWizard({ onClose, onSuccess, initialData =
           hrRole: designation.trim() || 'HR',
           csSpocName: respondent.csSpocName || 'Karan Hinduja',
           selectedDivision: respondent.division || 'Healthcare',
-          suggestions: suggestions.trim(),
+          workingWell: workingWell.trim(),
+          priorityImprovement: priorityImprovement.trim(),
+          suggestions: [
+            workingWell.trim() ? `What is working well: ${workingWell.trim()}` : '',
+            priorityImprovement.trim() ? `Priority improvement: ${priorityImprovement.trim()}` : ''
+          ].filter(Boolean).join('\n\n') || suggestions.trim(),
           wantsFollowUp: Boolean(wantsFollowUp)
         },
         ratings: { ...ratings },
@@ -399,17 +399,17 @@ export default function ClientFeedbackWizard({ onClose, onSuccess, initialData =
     );
   };
 
-  // Step 1: Questions 1, 2, 3 (Starts directly here!)
+  // Step 1: Questions 1, 2, 3, 4
   const renderStep1 = () => {
-    const stepQuestions = PILLAR_QUESTIONS.slice(0, 3);
+    const stepQuestions = PILLAR_QUESTIONS.slice(0, 4);
     return (
       <div style={{ padding: '1rem 0' }}>
         <div style={{ marginBottom: '1.25rem' }}>
           <h2 style={{ fontSize: '1rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.35rem 0' }}>
-            Part 1: Service Delivery & Platform Technology
+            Part 1: Onboarding, CS Support & Accessibility
           </h2>
           <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
-            Rate your satisfaction with delivery commitments, account management, and digital app experience.
+            Rate your satisfaction with program implementation, CS responsiveness, employee access, and hotline support.
           </p>
         </div>
         {stepQuestions.map((q, idx) => renderQuestion(q, idx + 1))}
@@ -417,117 +417,162 @@ export default function ClientFeedbackWizard({ onClose, onSuccess, initialData =
     );
   };
 
-  // Step 2: Questions 4, 5, 6, 7
+  // Step 2: Questions 5, 6, 7, 8
   const renderStep2 = () => {
-    const stepQuestions = PILLAR_QUESTIONS.slice(3, 7);
+    const stepQuestions = PILLAR_QUESTIONS.slice(4, 8);
     return (
       <div style={{ padding: '1rem 0' }}>
         <div style={{ marginBottom: '1.25rem' }}>
           <h2 style={{ fontSize: '1rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.35rem 0' }}>
-            Part 2: 24/7 Helpline & 1-on-1 Counseling Sessions
+            Part 2: Technology, Service Quality & Reporting
           </h2>
           <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
-            Assess call pickup speed, counselor empathy, operational tickets, and individual wellness sessions.
+            Assess mobile app usability, technical problem resolution, quality of healthcare services, and report insights.
           </p>
         </div>
-        {stepQuestions.map((q, idx) => renderQuestion(q, idx + 4))}
+        {stepQuestions.map((q, idx) => renderQuestion(q, idx + 5))}
       </div>
     );
   };
 
-  // Step 3: Questions 8, 9, 10
+  // Step 3: Questions 9, 10, 11, 12
   const renderStep3 = () => {
-    const stepQuestions = PILLAR_QUESTIONS.slice(7, 10);
+    const stepQuestions = PILLAR_QUESTIONS.slice(8, 12);
     return (
       <div style={{ padding: '1rem 0' }}>
         <div style={{ marginBottom: '1.25rem' }}>
           <h2 style={{ fontSize: '1rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.35rem 0' }}>
-            Part 3: Workforce Webinars & Interactive Training
+            Part 3: Sessions, Webinars, Escalation & Overall Value
           </h2>
           <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
-            Rate the topics, content depth, and trainer engagement during live wellness webinars.
+            Review 1-on-1 consultations, webinar topics, query escalations, and overall partnership satisfaction.
           </p>
         </div>
-        {stepQuestions.map((q, idx) => renderQuestion(q, idx + 8))}
+        {stepQuestions.map((q, idx) => renderQuestion(q, idx + 9))}
       </div>
     );
   };
 
-  // Step 4: Suggestions & Follow-up Call
+  // Step 4: Open Feedback (Optional) & Follow-up Call
   const renderStep4 = () => (
     <div style={{ padding: '1rem 0' }}>
       <div style={{ marginBottom: '1.25rem' }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.35rem 0' }}>
-          Part 4: Suggestions & Next Steps
+        <div style={{
+          display: 'inline-block',
+          fontSize: '0.72rem',
+          fontWeight: '800',
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+          color: '#0284c7',
+          background: '#e0f2fe',
+          padding: '0.15rem 0.55rem',
+          borderRadius: '4px',
+          marginBottom: '0.35rem'
+        }}>
+          Optional
+        </div>
+        <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0f172a', margin: '0 0 0.35rem 0' }}>
+          OPEN FEEDBACK (OPTIONAL)
         </h2>
         <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
-          Share any thoughts, requests, or areas where MantraCare can deliver greater value to your team.
+          Share qualitative highlights and key priority areas to help our team deliver maximum value.
         </p>
       </div>
 
-      <div style={{ marginBottom: '1.25rem' }}>
-        <div
+      {/* 1. What is working well? */}
+      <div style={{ marginBottom: '1.35rem' }}>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+          What is working well?
+        </label>
+        <textarea
+          rows="3"
+          placeholder="Share what services, team members, features, or initiatives have stood out positively..."
+          value={workingWell}
+          onChange={(e) => setWorkingWell(e.target.value)}
           style={{
-            fontSize: '0.78rem',
-            fontWeight: '600',
-            color: '#64748b',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            marginBottom: '0.5rem'
+            width: '100%',
+            padding: '0.75rem',
+            borderRadius: '8px',
+            border: '1.5px solid #cbd5e1',
+            fontSize: '0.85rem',
+            lineHeight: '1.5',
+            outline: 'none',
+            color: '#0f172a',
+            boxSizing: 'border-box',
+            fontFamily: 'inherit',
+            resize: 'vertical'
           }}
-        >
-          Quick suggestions (click to insert):
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+          onFocus={(e) => (e.target.style.borderColor = '#0284c7')}
+          onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')}
+        />
+      </div>
+
+      {/* 2. What is the one improvement you would like us to prioritize? */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+          What is the one improvement you would like us to prioritize?
+        </label>
+
+        {/* Quick suggestions chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.45rem' }}>
+          <span style={{ fontSize: '0.72rem', color: '#64748b', alignSelf: 'center' }}>Quick insert:</span>
           {GENERAL_SUGGESTION_TAGS.map((tag) => (
             <button
               key={tag}
               type="button"
-              onClick={() => handleAddGeneralSuggestion(tag)}
+              onClick={() => {
+                setPriorityImprovement((prev) => {
+                  const current = prev.trim();
+                  return current ? `${current}, ${tag}` : tag;
+                });
+              }}
               style={{
                 background: '#f8fafc',
                 border: '1px solid #cbd5e1',
                 borderRadius: '16px',
-                padding: '0.25rem 0.65rem',
-                fontSize: '0.75rem',
+                padding: '0.2rem 0.55rem',
+                fontSize: '0.72rem',
                 color: '#334155',
                 cursor: 'pointer',
                 fontWeight: '500',
                 transition: 'all 0.15s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#e2e8f0';
+                e.currentTarget.style.background = '#e0f2fe';
+                e.currentTarget.style.borderColor = '#93c5fd';
+                e.currentTarget.style.color = '#0284c7';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = '#f8fafc';
+                e.currentTarget.style.borderColor = '#cbd5e1';
+                e.currentTarget.style.color = '#334155';
               }}
             >
               + {tag}
             </button>
           ))}
         </div>
-      </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.35rem' }}>
-          Additional Comments / Recommendations:
-        </label>
         <textarea
-          rows="6"
-          placeholder="Share your detailed feedback, highlights, or requests for improvement..."
-          value={suggestions}
-          onChange={(e) => setSuggestions(e.target.value)}
+          rows="3"
+          placeholder="Describe the single most critical improvement, feature, or process enhancement you'd like our team to focus on..."
+          value={priorityImprovement}
+          onChange={(e) => setPriorityImprovement(e.target.value)}
           style={{
             width: '100%',
-            padding: '0.85rem',
-            borderRadius: '10px',
+            padding: '0.75rem',
+            borderRadius: '8px',
             border: '1.5px solid #cbd5e1',
             fontSize: '0.85rem',
             lineHeight: '1.5',
             outline: 'none',
             color: '#0f172a',
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            fontFamily: 'inherit',
+            resize: 'vertical'
           }}
+          onFocus={(e) => (e.target.style.borderColor = '#0284c7')}
+          onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')}
         />
       </div>
 
