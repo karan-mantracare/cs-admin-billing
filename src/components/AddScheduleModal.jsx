@@ -431,7 +431,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   const calculatePlanMonthDiff = (startStr, endStr) => {
     const d1 = parseFlexibleDate(startStr);
     const d2 = parseFlexibleDate(endStr);
-    if (!d1 || !d2) return 12;
+    if (!d1 || !d2) return null;
 
     const timeDiff = d2.getTime() - d1.getTime();
     if (timeDiff > 0) {
@@ -452,34 +452,45 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     return Math.max(1, months);
   };
 
-  let maxPaymentTerms = 12; // Default flexible payment terms
+  let maxPaymentTerms = null; // null when plan end is not available
   if (selectedOrder) {
     const planStart = selectedOrder.planStart || '';
     const planEnd = selectedOrder.planEnd || '';
-    if (planStart && planEnd && planStart !== 'Unknown Date') {
+    if (planStart && planEnd && planStart !== 'Unknown Date' && planEnd !== 'Unknown Date' && planEnd !== 'Ongoing') {
       maxPaymentTerms = calculatePlanMonthDiff(planStart, planEnd);
     }
   }
 
   const getFrequencyMonths = (freq, totalPlanMonths) => {
-    const total = Math.max(1, Number(totalPlanMonths) || 12);
+    if (freq === 'Annually' || freq === 'Annual') {
+      if (totalPlanMonths === null || totalPlanMonths === undefined) {
+        return 1;
+      }
+      return Math.max(1, Math.floor(Number(totalPlanMonths) / 12));
+    }
     if (freq === 'Bi Anually') {
       return 2;
     }
     if (freq === 'Monthly') {
-      return total;
+      if (totalPlanMonths === null || totalPlanMonths === undefined) {
+        return 1;
+      }
+      return Math.max(1, Number(totalPlanMonths) || 1);
     }
     if (freq === 'Quarterly') {
-      // User rule: max 4. Count Diff (Billing Start Date month - Plan End Month).
-      // If divisible by 3 without decimal then select that number else reach out to closest month before Plan End.
-      // E.g.: 7 / 3 = 2.33 -> 2
-      const quarters = Math.floor(total / 3);
+      if (totalPlanMonths === null || totalPlanMonths === undefined) {
+        return 4;
+      }
+      const quarters = Math.floor(Number(totalPlanMonths) / 3);
       return Math.min(4, Math.max(1, quarters));
     }
-    return total;
+    return totalPlanMonths ? Math.max(1, Number(totalPlanMonths)) : 1;
   };
 
   const getCadenceOffset = (index, freq, totalPlanMonths) => {
+    if (freq === 'Annually' || freq === 'Annual') {
+      return index * 12;
+    }
     if (freq === 'Quarterly') {
       return index * 3;
     }
@@ -518,9 +529,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     setPaymentTermError('');
   };
 
-  // Enforce frozen calculation when 'Same for all Contracts' is active
+  // Enforce calculation for fixed frequencies (Quarterly / Bi Anually) when 'Same for all Contracts' is active
   useEffect(() => {
-    if (contractScope === 'all_combined' && maxPaymentTerms > 0) {
+    if (contractScope === 'all_combined' && billingFrequency !== 'Monthly') {
       const calculatedTerms = getFrequencyMonths(billingFrequency, maxPaymentTerms);
       if (formData.paymentTerms !== String(calculatedTerms)) {
         setFormData(prev => ({ ...prev, paymentTerms: String(calculatedTerms) }));
@@ -567,7 +578,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         }
         const lastOffset = getCadenceOffset(terms - 1, cFreq, maxPaymentTerms);
         const lastInvoiceDate = getMonthlyDate(planStart, lastOffset);
-        const totalSpanMonths = cFreq === 'Quarterly' ? terms * 3 : (cFreq === 'Bi Anually' ? terms * Math.max(1, Math.floor((maxPaymentTerms || 12) / 2)) : terms);
+        const totalSpanMonths = (cFreq === 'Annually' || cFreq === 'Annual')
+          ? terms * 12
+          : (cFreq === 'Quarterly' ? terms * 3 : (cFreq === 'Bi Anually' ? terms * Math.max(1, Math.floor((maxPaymentTerms || 12) / 2)) : terms));
 
         if (lastInvoiceDate > planEnd || (maxPaymentTerms > 0 && totalSpanMonths > maxPaymentTerms) || (maxPaymentTerms > 0 && terms > maxPaymentTerms)) {
           return `The selected billing month (${terms} installments for "${c.companyName}") will cross the Plan End Date (${planEnd}).`;
@@ -580,7 +593,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       }
       const lastOffset = getCadenceOffset(terms - 1, billingFrequency, maxPaymentTerms);
       const lastInvoiceDate = getMonthlyDate(planStart, lastOffset);
-      const totalSpanMonths = billingFrequency === 'Quarterly' ? terms * 3 : (billingFrequency === 'Bi Anually' ? terms * Math.max(1, Math.floor((maxPaymentTerms || 12) / 2)) : terms);
+      const totalSpanMonths = (billingFrequency === 'Annually' || billingFrequency === 'Annual')
+        ? terms * 12
+        : (billingFrequency === 'Quarterly' ? terms * 3 : (billingFrequency === 'Bi Anually' ? terms * Math.max(1, Math.floor((maxPaymentTerms || 12) / 2)) : terms));
 
       if (lastInvoiceDate > planEnd || (maxPaymentTerms > 0 && totalSpanMonths > maxPaymentTerms) || (maxPaymentTerms > 0 && terms > maxPaymentTerms)) {
         return `The selected billing month (${terms} installments) will cross the Plan End Date (${planEnd}).`;
@@ -1141,7 +1156,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         if (i > idx && String(item.contractId) === String(targetContractId)) {
           const itemTermIndex = item.installmentNumber || (i + 1);
           const contractFreq = (targetContractId && contractFrequencies[targetContractId]) || billingFrequency;
-          const step = contractFreq === 'Quarterly' ? 3 : (contractFreq === 'Bi Anually' ? Math.max(1, Math.floor((maxPaymentTerms || 12) / 2)) : 1);
+          const step = (contractFreq === 'Annually' || contractFreq === 'Annual') ? 12 : (contractFreq === 'Quarterly' ? 3 : (contractFreq === 'Bi Anually' ? Math.max(1, Math.floor((maxPaymentTerms || 12) / 2)) : 1));
           const monthOffset = (itemTermIndex - baseTermIndex) * step;
           const cascadedDate = getMonthlyDate(val, monthOffset);
           const cascadedDue = getDueDate(cascadedDate, paymentDueDays);
@@ -1183,6 +1198,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       }
       if (contractScope === 'all_separate' && availableContracts.length > 1) {
         for (const c of availableContracts) {
+          const cFreq = contractFrequencies[c.id] || billingFrequency;
+          if (cFreq !== 'Monthly') {
+            const calculated = getFrequencyMonths(cFreq, maxPaymentTerms);
+            separateTerms[c.id] = String(calculated);
+          }
           const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : formData.paymentTerms);
           if (!t || t <= 0) {
             setPaymentTermError(`Billing month for "${c.companyName}" is required`);
@@ -1194,8 +1214,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           }
         }
       } else {
-        const calculated = getFrequencyMonths(billingFrequency, maxPaymentTerms);
-        formData.paymentTerms = String(calculated);
+        if (billingFrequency !== 'Monthly') {
+          const calculated = getFrequencyMonths(billingFrequency, maxPaymentTerms);
+          formData.paymentTerms = String(calculated);
+        }
         if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
           setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
           return;
@@ -1240,6 +1262,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       }
       if (contractScope === 'all_separate' && availableContracts.length > 1) {
         for (const c of availableContracts) {
+          const cFreq = contractFrequencies[c.id] || billingFrequency;
+          if (cFreq !== 'Monthly') {
+            const calculated = getFrequencyMonths(cFreq, maxPaymentTerms);
+            separateTerms[c.id] = String(calculated);
+          }
           const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : formData.paymentTerms);
           if (!t || t <= 0) {
             setPaymentTermError(`Billing month for "${c.companyName}" is required`);
@@ -1251,8 +1278,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           }
         }
       } else {
-        const calculated = getFrequencyMonths(billingFrequency, maxPaymentTerms);
-        formData.paymentTerms = String(calculated);
+        if (billingFrequency !== 'Monthly') {
+          const calculated = getFrequencyMonths(billingFrequency, maxPaymentTerms);
+          formData.paymentTerms = String(calculated);
+        }
         if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
           setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
           return;
@@ -2624,70 +2653,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                   gap: '0.6rem'
                 }}>
                   {/* Multi-Contract Schedule Mode Switcher */}
-                  {availableContracts.length > 1 ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <i className='bx bx-git-branch' style={{ color: '#0284c7' }}></i>
-                        Contract Schedule:
-                      </span>
-                      <div style={{ display: 'inline-flex', background: '#e2e8f0', padding: '2px', borderRadius: '6px', gap: '2px' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPaymentTermError('');
-                            setContractScope('all_separate');
-                            setSeparateTerms(prev => {
-                              const next = { ...prev };
-                              availableContracts.forEach(c => {
-                                if (next[c.id] === undefined) {
-                                  next[c.id] = formData.paymentTerms || '1';
-                                }
-                              });
-                              return next;
-                            });
-                          }}
-                          style={{
-                            padding: '0.25rem 0.65rem',
-                            borderRadius: '5px',
-                            border: 'none',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            background: contractScope === 'all_separate' ? '#ffffff' : 'transparent',
-                            color: contractScope === 'all_separate' ? '#0284c7' : '#64748b',
-                            boxShadow: contractScope === 'all_separate' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                          }}
-                        >
-                          Different Schedule for each Contract
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPaymentTermError('');
-                            setContractScope('all_combined');
-                          }}
-                          style={{
-                            padding: '0.25rem 0.65rem',
-                            borderRadius: '5px',
-                            border: 'none',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            background: contractScope === 'all_combined' ? '#ffffff' : 'transparent',
-                            color: contractScope === 'all_combined' ? '#0284c7' : '#64748b',
-                            boxShadow: contractScope === 'all_combined' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                          }}
-                        >
-                          Same for all Contracts
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <i className='bx bx-calendar' style={{ color: '#0284c7' }}></i>
-                      Schedule Configuration
-                    </div>
-                  )}
+                  <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <i className='bx bx-calendar' style={{ color: '#0284c7' }}></i>
+                    Schedule Configuration
+                  </div>
 
                   {/* Master Frequency Selector */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -2713,6 +2682,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                       <option value="Monthly">Monthly</option>
                       <option value="Quarterly">Quarterly</option>
                       <option value="Bi Anually">Bi Anually</option>
+                      <option value="Annually">Annually</option>
                     </select>
 
                     <span style={{
@@ -2721,14 +2691,36 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                       borderRadius: '4px',
                       fontWeight: '600',
                       border: '1px solid',
-                      background: billingFrequency === 'Bi Anually' ? '#f0fdf4' : (billingFrequency === 'Quarterly' ? '#faf5ff' : '#eff6ff'),
-                      color: billingFrequency === 'Bi Anually' ? '#16a34a' : (billingFrequency === 'Quarterly' ? '#7c3aed' : '#2563eb'),
-                      borderColor: billingFrequency === 'Bi Anually' ? '#bbf7d0' : (billingFrequency === 'Quarterly' ? '#e9d5ff' : '#bfdbfe')
+                      background: billingFrequency === 'Bi Anually' ? '#f0fdf4' : (billingFrequency === 'Quarterly' ? '#faf5ff' : (billingFrequency === 'Annually' ? '#fffbeb' : '#eff6ff')),
+                      color: billingFrequency === 'Bi Anually' ? '#16a34a' : (billingFrequency === 'Quarterly' ? '#7c3aed' : (billingFrequency === 'Annually' ? '#b45309' : '#2563eb')),
+                      borderColor: billingFrequency === 'Bi Anually' ? '#bbf7d0' : (billingFrequency === 'Quarterly' ? '#e9d5ff' : (billingFrequency === 'Annually' ? '#fde68a' : '#bfdbfe'))
                     }}>
-                      <i className='bx bx-lock-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
-                      {billingFrequency === 'Bi Anually' && 'Bi Anually: Billing Month = 2 (Frozen)'}
-                      {billingFrequency === 'Monthly' && `Monthly: Billing Month = ${maxPaymentTerms || 12} (${maxPaymentTerms || 12} mo diff, Frozen)`}
-                      {billingFrequency === 'Quarterly' && `Quarterly: Billing Month = ${getFrequencyMonths('Quarterly', maxPaymentTerms)} (Max 4, Frozen)`}
+                      {billingFrequency === 'Bi Anually' && (
+                        <>
+                          <i className='bx bx-lock-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
+                          Bi Anually: Billing Month = 2 (Fixed)
+                        </>
+                      )}
+                      {billingFrequency === 'Annually' && (
+                        <>
+                          <i className='bx bx-lock-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
+                          Annually: Billing Month = {getFrequencyMonths('Annually', maxPaymentTerms)} (Fixed)
+                        </>
+                      )}
+                      {billingFrequency === 'Monthly' && (
+                        <>
+                          <i className='bx bx-edit-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
+                          {maxPaymentTerms 
+                            ? `Monthly: Billing Month = ${formData.paymentTerms || maxPaymentTerms} (Max ${maxPaymentTerms} mo diff, Editable)`
+                            : `Monthly: Billing Month = ${formData.paymentTerms || 1} (Editable)`}
+                        </>
+                      )}
+                      {billingFrequency === 'Quarterly' && (
+                        <>
+                          <i className='bx bx-lock-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
+                          Quarterly: Billing Month = {getFrequencyMonths('Quarterly', maxPaymentTerms)} (Max 4, Fixed)
+                        </>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -2744,7 +2736,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                         <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                             Billing Month <span style={{ color: '#ef4444' }}>*</span>
-                            <Tooltip text="This will break the total value in the entered months. Frozen based on the selected Billing Frequency calculation." />
+                            <Tooltip text="This will break the total value in the entered months. For Monthly billing, you can edit the number of installments up to the Plan Term. Quarterly and Bi-Annual frequencies are fixed." />
                           </span>
                         </th>
                         <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700', textAlign: 'right' }}>Per Month / Installment</th>
@@ -2755,13 +2747,14 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                         const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
                         const cCurr = c.contractCurrency || currency || 'USD';
                         const isSeparate = availableContracts.length > 1 && contractScope === 'all_separate';
+                        const currentFreq = (isSeparate && contractFrequencies[c.id]) || billingFrequency;
+                        const isMonthly = currentFreq === 'Monthly';
                         const calculatedCombinedTerms = getFrequencyMonths(billingFrequency, maxPaymentTerms);
                         const termsVal = isSeparate
                           ? (separateTerms[c.id] !== undefined ? separateTerms[c.id] : String(getFrequencyMonths(contractFrequencies[c.id] || billingFrequency, maxPaymentTerms)))
-                          : String(calculatedCombinedTerms);
+                          : String(formData.paymentTerms || calculatedCombinedTerms || 1);
                         const months = Number(termsVal) || 1;
                         const perMonthVal = Number((cVal / months).toFixed(2));
-                        const currentFreq = (isSeparate && contractFrequencies[c.id]) || billingFrequency;
 
                         return (
                           <tr key={c.id || idx} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
@@ -2795,6 +2788,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                                   <option value="Monthly">Monthly</option>
                                   <option value="Quarterly">Quarterly</option>
                                   <option value="Bi Anually">Bi Anually</option>
+                                  <option value="Annually">Annually</option>
                                 </select>
                               ) : (
                                 <span style={{ fontSize: '0.78rem', fontWeight: '600', color: '#475569', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
@@ -2803,14 +2797,55 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                               )}
                             </td>
                             <td style={{ padding: '0.65rem 0.85rem', verticalAlign: 'middle' }}>
-                              {!isSeparate ? (
+                              {isMonthly ? (
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                                  <input 
+                                    type="number"
+                                    min="1"
+                                    max={maxPaymentTerms || undefined}
+                                    value={termsVal}
+                                    onChange={(e) => {
+                                      setPaymentTermError('');
+                                      const val = e.target.value;
+                                      if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
+                                        if (isSeparate) {
+                                          setSeparateTerms(prev => ({ ...prev, [c.id]: String(maxPaymentTerms) }));
+                                        } else {
+                                          setFormData(prev => ({ ...prev, paymentTerms: String(maxPaymentTerms) }));
+                                        }
+                                        setPaymentTermError(`Cannot exceed Difference of month count (${maxPaymentTerms} months)`);
+                                      } else {
+                                        if (isSeparate) {
+                                          setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
+                                        } else {
+                                          setFormData(prev => ({ ...prev, paymentTerms: val }));
+                                        }
+                                      }
+                                    }}
+                                    placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms}` : "1"}
+                                    style={{
+                                      width: '65px',
+                                      padding: '0.35rem 0.5rem',
+                                      borderRadius: '6px',
+                                      border: '1.5px solid #cbd5e1',
+                                      fontSize: '0.85rem',
+                                      fontWeight: '700',
+                                      color: '#0f172a',
+                                      background: '#ffffff',
+                                      textAlign: 'center',
+                                      boxSizing: 'border-box'
+                                    }}
+                                  />
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>mo</span>
+                                </div>
+                              ) : (
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                                   <input 
                                     type="number"
                                     value={termsVal}
                                     disabled
                                     readOnly
-                                    title={`Frozen: automatically calculated as ${termsVal} months for ${billingFrequency} billing`}
+                                    title={`Fixed: ${currentFreq} = ${termsVal} months`}
                                     style={{
                                       width: '65px',
                                       padding: '0.35rem 0.5rem',
@@ -2826,39 +2861,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                                     }}
                                   />
                                   <span style={{ fontSize: '0.75rem', color: '#64748b' }}>mo</span>
-                                  <i className='bx bx-lock-alt' style={{ color: '#0284c7', fontSize: '0.95rem' }} title={`Frozen: ${billingFrequency} = ${termsVal} months`}></i>
-                                </div>
-                              ) : (
-                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                                  <input 
-                                    type="number"
-                                    min="1"
-                                    max={maxPaymentTerms || undefined}
-                                    value={termsVal}
-                                    onChange={(e) => {
-                                      setPaymentTermError('');
-                                      const val = e.target.value;
-                                      if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
-                                        setSeparateTerms(prev => ({ ...prev, [c.id]: maxPaymentTerms }));
-                                        setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
-                                      } else {
-                                        setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
-                                      }
-                                    }}
-                                    placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms}` : "e.g. 6"}
-                                    style={{
-                                      width: '65px',
-                                      padding: '0.35rem 0.5rem',
-                                      borderRadius: '6px',
-                                      border: '1.5px solid #cbd5e1',
-                                      fontSize: '0.85rem',
-                                      fontWeight: '600',
-                                      color: '#0f172a',
-                                      textAlign: 'center',
-                                      boxSizing: 'border-box'
-                                    }}
-                                  />
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>mo</span>
+                                  <i className='bx bx-lock-alt' style={{ color: '#0284c7', fontSize: '0.95rem' }} title={`Fixed: ${currentFreq} = ${termsVal} months`}></i>
                                 </div>
                               )}
                             </td>

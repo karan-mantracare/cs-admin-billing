@@ -11,8 +11,8 @@ export const CHANGELOG_DATA = [
     highlights: [
       '2-Step Schedule Modal: Separated Order selection (Step 1) from schedule configuration (Step 2) to eliminate visual congestion',
       'Step 1 Exclusive Selectors: Corporate, Division, and Order dropdowns are displayed only on Step 1 and hidden on Step 2',
-      'Frozen Billing Month Calculation: For "Same for all Contracts", the Billing Month input is completely frozen (read-only) and strictly determined by the Billing Frequency formula',
-      'Automated Frequency Rules: Bi-Annually freezes to 2 installments, Monthly calculates total month span, Quarterly calculates up to 4 installments',
+      'Flexible Monthly & Fixed Billing Month Calculation: When Monthly frequency is selected, the billing month defaults to the difference between Billing Start date and Plan end date (or 1 if plan end is unavailable) and can be edited without exceeding the plan term. Annually, Quarterly, and Bi-Annual frequencies remain fixed',
+      'Automated Frequency Rules: Annually sets 1 installment per year, Bi-Annually freezes to 2 installments, Monthly calculates total month span, Quarterly calculates up to 4 installments',
       'Collapsible Order Value Dropdown: Total Order Value and plan terms are displayed in an expandable accordion dropdown with summary headers',
       'Contract Schedule Table: Replaced bulky tabs/cards with a structured table featuring Entity Name, Contract Value, Billing Frequency, Billing Month (with tooltip), and Per-Month calculations',
       'Streamlined Footers: Cancel button removed in favor of top-right "×"; Step 2 features Back, Direct Save, and Preview Schedule buttons',
