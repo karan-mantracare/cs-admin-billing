@@ -1605,21 +1605,32 @@ function ClientPayments() {
                 </div>
 
                 {/* Request Type Selector */}
-                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                  <label style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.4rem', display: 'block' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.85rem', 
+                  marginBottom: '1.25rem',
+                  flexWrap: 'wrap'
+                }}>
+                  <label style={{ 
+                    fontSize: '0.84rem', 
+                    fontWeight: '700', 
+                    color: '#0f172a', 
+                    margin: 0,
+                    whiteSpace: 'nowrap'
+                  }}>
                     Request Type <span style={{ color: '#ef4444' }}>*</span>
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                     <div
                       onClick={() => setRequestType('Change')}
                       style={{
-                        display: 'flex',
+                        display: 'inline-flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem',
-                        padding: '0.65rem 0.85rem',
-                        borderRadius: '8px',
-                        border: requestType === 'Change' ? '2px solid #0284c7' : '1px solid #cbd5e1',
+                        gap: '0.4rem',
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '6px',
+                        border: requestType === 'Change' ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
                         background: requestType === 'Change' ? '#f0f9ff' : '#ffffff',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease'
@@ -1638,9 +1649,9 @@ function ClientPayments() {
                         htmlFor="reqTypeChange" 
                         style={{ 
                           cursor: 'pointer', 
-                          fontSize: '0.85rem', 
+                          fontSize: '0.84rem', 
                           fontWeight: '600', 
-                          color: requestType === 'Change' ? '#0369a1' : '#334155', 
+                          color: requestType === 'Change' ? '#0369a1' : '#475569', 
                           margin: 0,
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -1648,7 +1659,7 @@ function ClientPayments() {
                           whiteSpace: 'nowrap'
                         }}
                       >
-                        <i className='bx bx-edit-alt' style={{ fontSize: '1rem' }}></i>
+                        <i className='bx bx-edit-alt' style={{ fontSize: '0.95rem' }}></i>
                         <span>Change</span>
                       </label>
                     </div>
@@ -1656,13 +1667,12 @@ function ClientPayments() {
                     <div
                       onClick={() => setRequestType('Delete')}
                       style={{
-                        display: 'flex',
+                        display: 'inline-flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem',
-                        padding: '0.65rem 0.85rem',
-                        borderRadius: '8px',
-                        border: requestType === 'Delete' ? '2px solid #dc2626' : '1px solid #cbd5e1',
+                        gap: '0.4rem',
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '6px',
+                        border: requestType === 'Delete' ? '1.5px solid #dc2626' : '1px solid #cbd5e1',
                         background: requestType === 'Delete' ? '#fef2f2' : '#ffffff',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease'
@@ -1681,9 +1691,9 @@ function ClientPayments() {
                         htmlFor="reqTypeDelete" 
                         style={{ 
                           cursor: 'pointer', 
-                          fontSize: '0.85rem', 
+                          fontSize: '0.84rem', 
                           fontWeight: '600', 
-                          color: requestType === 'Delete' ? '#b91c1c' : '#334155', 
+                          color: requestType === 'Delete' ? '#b91c1c' : '#475569', 
                           margin: 0,
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -1691,7 +1701,7 @@ function ClientPayments() {
                           whiteSpace: 'nowrap'
                         }}
                       >
-                        <i className='bx bx-trash' style={{ fontSize: '1rem' }}></i>
+                        <i className='bx bx-trash' style={{ fontSize: '0.95rem' }}></i>
                         <span>Delete</span>
                       </label>
                     </div>
