@@ -69,7 +69,7 @@ function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
 
 function ClientPayments() {
   const navigate = useNavigate();
-  const { clients } = useGlobal();
+  const { clients, showToast } = useGlobal();
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const initialClient = searchParams.get('client');
@@ -146,13 +146,118 @@ function ClientPayments() {
       const saved = localStorage.getItem('client_payment_records');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) ? parsed.filter(p => p != null) : [];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.filter(p => p != null);
+        }
       }
-      return [];
+      return [
+        {
+          id: 'rec-1',
+          entryDate: '2026-11-13',
+          paymentDate: '2026-11-12',
+          receivedBank: 'ICICI',
+          invoiceNumber: 'N/A',
+          orderId: '1793268669687',
+          paymentId: 'INV-1793271523891-1793258368607.9075-0',
+          amount: 150,
+          currency: 'INR',
+          amountInUSD: 174.42
+        }
+      ];
     } catch (e) {
       return [];
     }
   });
+
+  // Change Request Modal State for Payment Records
+  const [isChangeRequestModalOpen, setIsChangeRequestModalOpen] = useState(false);
+  const [selectedRecordForChange, setSelectedRecordForChange] = useState(null);
+  const [requestType, setRequestType] = useState('Change'); // 'Change' or 'Delete'
+  const [newValue, setNewValue] = useState('');
+  const [reasonForChange, setReasonForChange] = useState('');
+  const [reasonForDeletion, setReasonForDeletion] = useState('');
+
+  const handleOpenChangeRequestModal = (record) => {
+    setSelectedRecordForChange(record);
+    if (record.changeRequest) {
+      setRequestType(record.changeRequest.requestType || 'Change');
+      setNewValue(record.changeRequest.newValue || '');
+      setReasonForChange(record.changeRequest.requestType === 'Change' ? (record.changeRequest.reason || '') : '');
+      setReasonForDeletion(record.changeRequest.requestType === 'Delete' ? (record.changeRequest.reason || '') : '');
+    } else {
+      setRequestType('Change');
+      setNewValue('');
+      setReasonForChange('');
+      setReasonForDeletion('');
+    }
+    setIsChangeRequestModalOpen(true);
+  };
+
+  const handleSubmitChangeRequest = (e) => {
+    e.preventDefault();
+    if (!selectedRecordForChange) return;
+
+    if (requestType === 'Delete') {
+      if (!reasonForDeletion.trim()) {
+        alert("Please provide a reason for deletion.");
+        return;
+      }
+    } else {
+      if (!newValue.trim()) {
+        alert("Please provide the new value.");
+        return;
+      }
+      if (!reasonForChange.trim()) {
+        alert("Please provide a reason for the change.");
+        return;
+      }
+    }
+
+    const changeRequestData = {
+      requestType,
+      newValue: requestType === 'Change' ? newValue.trim() : null,
+      reason: requestType === 'Change' ? reasonForChange.trim() : reasonForDeletion.trim(),
+      submittedAt: new Date().toISOString().split('T')[0],
+      status: 'Pending'
+    };
+
+    setPaymentRecords(prev => prev.map(rec => {
+      const match = (rec.id && selectedRecordForChange.id && rec.id === selectedRecordForChange.id) ||
+        (rec.paymentId === selectedRecordForChange.paymentId && rec.entryDate === selectedRecordForChange.entryDate && String(rec.amount) === String(selectedRecordForChange.amount));
+      if (match) {
+        return {
+          ...rec,
+          changeRequest: changeRequestData
+        };
+      }
+      return rec;
+    }));
+
+    if (showToast) {
+      showToast(`Change request (${requestType}) submitted successfully!`, 4000);
+    }
+    setIsChangeRequestModalOpen(false);
+    setSelectedRecordForChange(null);
+  };
+
+  const handleWithdrawChangeRequest = () => {
+    if (!selectedRecordForChange) return;
+    setPaymentRecords(prev => prev.map(rec => {
+      const match = (rec.id && selectedRecordForChange.id && rec.id === selectedRecordForChange.id) ||
+        (rec.paymentId === selectedRecordForChange.paymentId && rec.entryDate === selectedRecordForChange.entryDate && String(rec.amount) === String(selectedRecordForChange.amount));
+      if (match) {
+        const copy = { ...rec };
+        delete copy.changeRequest;
+        return copy;
+      }
+      return rec;
+    }));
+    if (showToast) {
+      showToast("Change request withdrawn.", 3000);
+    }
+    setIsChangeRequestModalOpen(false);
+    setSelectedRecordForChange(null);
+  };
 
   // Sync to local storage
   useEffect(() => {
@@ -795,6 +900,7 @@ function ClientPayments() {
               <th>AMOUNT</th>
               <th>CURRENCY</th>
               <th>AMOUNT IN USD</th>
+              <th style={{ minWidth: '150px', textAlign: 'center' }}>ACTION</th>
             </tr>
           </thead>
           <tbody>
@@ -826,11 +932,59 @@ function ClientPayments() {
                 <td><strong>{Number(r.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
                 <td>{r.currency}</td>
                 <td><strong className="text-green">${Number(r.amountInUSD || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
+                <td style={{ textAlign: 'center' }}>
+                  {r.changeRequest ? (
+                    <button
+                      onClick={() => handleOpenChangeRequestModal(r)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.28rem 0.65rem',
+                        borderRadius: '6px',
+                        fontSize: '0.78rem',
+                        fontWeight: '600',
+                        border: r.changeRequest.requestType === 'Delete' ? '1px solid #fecaca' : '1px solid #bfdbfe',
+                        background: r.changeRequest.requestType === 'Delete' ? '#fef2f2' : '#eff6ff',
+                        color: r.changeRequest.requestType === 'Delete' ? '#dc2626' : '#2563eb',
+                        cursor: 'pointer'
+                      }}
+                      title={`Change Request: ${r.changeRequest.requestType}`}
+                    >
+                      <i className={`bx ${r.changeRequest.requestType === 'Delete' ? 'bx-trash' : 'bx-edit-alt'}`}></i>
+                      <span>{r.changeRequest.requestType === 'Delete' ? 'Delete Requested' : 'Change Requested'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleOpenChangeRequestModal(r)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.28rem 0.65rem',
+                        fontSize: '0.78rem',
+                        fontWeight: '600',
+                        borderRadius: '6px',
+                        color: '#0284c7',
+                        border: '1px solid #bae6fd',
+                        background: '#f0f9ff',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#e0f2fe'; e.currentTarget.style.borderColor = '#0284c7'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = '#bae6fd'; }}
+                      title="Request Change or Deletion"
+                    >
+                      <i className='bx bx-git-pull-request' style={{ fontSize: '0.95rem' }}></i>
+                      <span>Request Change</span>
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
             {filteredPaymentRecords.length === 0 && (
               <tr>
-                <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                <td colSpan="10" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                   No payment records found{activeLinkFilter?.orderId ? ` for Order #${activeLinkFilter.orderId}` : ''}.
                 </td>
               </tr>
@@ -1388,6 +1542,251 @@ function ClientPayments() {
           setPayments(prev => [...newRows, ...prev]);
         }} 
       />
+
+      {/* Change Request Modal for Payment Records */}
+      {isChangeRequestModalOpen && selectedRecordForChange && (
+        <div className="modal-overlay" onClick={() => setIsChangeRequestModalOpen(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a' }}>Request Change</h2>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>
+                  Payment Record for Order #{selectedRecordForChange.orderId}
+                </div>
+              </div>
+              <button 
+                type="button" 
+                className="close-btn" 
+                onClick={() => setIsChangeRequestModalOpen(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#64748b' }}
+              >
+                <i className='bx bx-x'></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitChangeRequest}>
+              <div className="modal-body" style={{ padding: '1.25rem 1.5rem' }}>
+                {/* Context Card */}
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  padding: '0.85rem 1rem',
+                  marginBottom: '1.25rem',
+                  fontSize: '0.82rem'
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div>
+                      <span style={{ color: '#64748b' }}>Payment ID: </span>
+                      <strong style={{ color: '#0f172a', wordBreak: 'break-all' }}>{selectedRecordForChange.paymentId}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b' }}>Order ID: </span>
+                      <strong style={{ color: '#0284c7' }}>#{selectedRecordForChange.orderId}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b' }}>Payment Date: </span>
+                      <strong style={{ color: '#0f172a' }}>{selectedRecordForChange.paymentDate}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b' }}>Amount: </span>
+                      <strong style={{ color: '#16a34a' }}>{selectedRecordForChange.amount} {selectedRecordForChange.currency}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b' }}>Received Bank: </span>
+                      <strong style={{ color: '#0f172a' }}>{selectedRecordForChange.receivedBank || '-'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b' }}>Invoice Number: </span>
+                      <strong style={{ color: '#0f172a' }}>{selectedRecordForChange.invoiceNumber || 'N/A'}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Request Type Selector */}
+                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.4rem', display: 'block' }}>
+                    Request Type <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div
+                      onClick={() => setRequestType('Change')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        padding: '0.65rem 0.85rem',
+                        borderRadius: '8px',
+                        border: requestType === 'Change' ? '2px solid #0284c7' : '1px solid #cbd5e1',
+                        background: requestType === 'Change' ? '#f0f9ff' : '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <input 
+                        type="radio" 
+                        name="requestType" 
+                        id="reqTypeChange"
+                        value="Change" 
+                        checked={requestType === 'Change'} 
+                        onChange={() => setRequestType('Change')} 
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <label htmlFor="reqTypeChange" style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', color: requestType === 'Change' ? '#0369a1' : '#334155', margin: 0 }}>
+                        <i className='bx bx-edit-alt' style={{ marginRight: '4px' }}></i> Change
+                      </label>
+                    </div>
+
+                    <div
+                      onClick={() => setRequestType('Delete')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        padding: '0.65rem 0.85rem',
+                        borderRadius: '8px',
+                        border: requestType === 'Delete' ? '2px solid #dc2626' : '1px solid #cbd5e1',
+                        background: requestType === 'Delete' ? '#fef2f2' : '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <input 
+                        type="radio" 
+                        name="requestType" 
+                        id="reqTypeDelete"
+                        value="Delete" 
+                        checked={requestType === 'Delete'} 
+                        onChange={() => setRequestType('Delete')} 
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <label htmlFor="reqTypeDelete" style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', color: requestType === 'Delete' ? '#b91c1c' : '#334155', margin: 0 }}>
+                        <i className='bx bx-trash' style={{ marginRight: '4px' }}></i> Delete
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Conditional Fields based on Request Type */}
+                {requestType === 'Delete' ? (
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.35rem', display: 'block' }}>
+                      Reason for deletion <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <textarea 
+                      className="form-control" 
+                      rows={3} 
+                      required 
+                      placeholder="Please state the reason why this payment record should be deleted..." 
+                      value={reasonForDeletion} 
+                      onChange={(e) => setReasonForDeletion(e.target.value)}
+                      style={{ fontSize: '0.85rem', resize: 'vertical' }}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div className="form-group" style={{ marginBottom: '1rem' }}>
+                      <label style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.35rem', display: 'block' }}>
+                        New Value <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        required 
+                        placeholder="Enter the new value (e.g. Correct Amount: 200 INR, Date: 2026-11-15, Bank: HDFC)" 
+                        value={newValue} 
+                        onChange={(e) => setNewValue(e.target.value)}
+                        style={{ fontSize: '0.85rem' }}
+                      />
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
+                        Specify the updated amount, currency, bank, or payment date that should replace the current value.
+                      </div>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '1rem' }}>
+                      <label style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.35rem', display: 'block' }}>
+                        Reason for change <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <textarea 
+                        className="form-control" 
+                        rows={3} 
+                        required 
+                        placeholder="Please state the reason for this change..." 
+                        value={reasonForChange} 
+                        onChange={(e) => setReasonForChange(e.target.value)}
+                        style={{ fontSize: '0.85rem', resize: 'vertical' }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Status Notice if request already exists */}
+                {selectedRecordForChange.changeRequest && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    background: '#fffbeb',
+                    border: '1px solid #fef3c7',
+                    borderRadius: '6px',
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.78rem',
+                    color: '#92400e',
+                    marginTop: '0.5rem'
+                  }}>
+                    <i className='bx bx-time' style={{ fontSize: '1rem', color: '#d97706' }}></i>
+                    <span>
+                      A <strong>{selectedRecordForChange.changeRequest.requestType}</strong> request is already pending review (submitted on {selectedRecordForChange.changeRequest.submittedAt}). Submitting again will update the request.
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', background: '#f8fafc' }}>
+                <div>
+                  {selectedRecordForChange.changeRequest && (
+                    <button
+                      type="button"
+                      onClick={handleWithdrawChangeRequest}
+                      style={{
+                        background: 'none',
+                        border: '1px solid #fecaca',
+                        borderRadius: '6px',
+                        padding: '0.45rem 0.85rem',
+                        fontSize: '0.82rem',
+                        color: '#dc2626',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem'
+                      }}
+                    >
+                      <i className='bx bx-trash'></i> Withdraw Request
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button 
+                    type="button" 
+                    className="btn-outline" 
+                    onClick={() => setIsChangeRequestModalOpen(false)}
+                    style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn-primary"
+                    style={{ padding: '0.45rem 1.25rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    <i className='bx bx-send'></i> Submit Request
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </main>
   );

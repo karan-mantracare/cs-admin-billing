@@ -1,5 +1,24 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-payment-records-change-request-modal-20261113',
+    date: '2026-11-13',
+    formattedDate: 'Nov 13, 2026',
+    page: 'Admin',
+    subPage: 'Accounts Receivable / Payment Records Change & Deletion Request',
+    summary: 'Added Action column to Payment Records with Change/Delete request modal and reason tracking',
+    details: 'Enhanced the Payment Records tab in Accounts Receivable with a dedicated Action column and "Request Change" workflow. Clicking the action button opens a structured request modal with payment context (Order ID, Payment ID, Amount, Currency, Payment Date, Bank). Users can select between "Change" and "Delete" request types. If Delete is selected, a required "Reason for deletion" field is displayed. If Change is selected, required "New Value" and "Reason for change" fields are presented. Submitting persists the request state against the payment record, renders a status badge ("Change Requested" or "Delete Requested"), and enables request review or withdrawal.',
+    plainLanguage: 'Finance and CS administrators can now request modifications or deletions directly from the Payment Records table. Clicking "Request Change" opens a clean form where users pick either Change (to specify new values and reasons) or Delete (to specify why a payment record should be deleted). The table instantly flags requested records with a color-coded status badge and allows reviewing or withdrawing requests.',
+    highlights: [
+      'New Action Column: Added ACTIONS column to the Payment Records ledger',
+      'Request Change Modal: Modal capturing request type, payment record context, and justifications',
+      'Delete Workflow: Dynamic form displaying required "Reason for deletion" when Delete is chosen',
+      'Change Workflow: Dynamic form displaying required "New Value" and "Reason for change" fields when Change is chosen',
+      'Status Badges & State Persistence: Renders "Change Requested" and "Delete Requested" badges on affected records with option to withdraw'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
     id: 'cl-webinar-session-settlement-modal-20261113',
     date: '2026-11-13',
     formattedDate: 'Nov 13, 2026',

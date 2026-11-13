@@ -27,6 +27,7 @@ The platform provides end-to-end tooling for enterprise healthcare and wellness 
   - **Quarterly & Bi-Annually**: Automated milestone generation (Quarterly up to 4 installments; Bi-Annually fixed at 2 installments).
 - **Validation & Disabling Controls**: Warns when installment count exceeds plan term, displaying error banners and disabling Preview/Save actions to prevent invalid billing commitments.
 - **Ledger Management**: Status indicators for Scheduled, Due, Paid, and Overdue milestones with one-click payment reminder copy tools and remarks preview tooltips.
+- **Payment Records & Change Request Workflow**: Dedicated ACTIONS column on Payment Records with modal workflow to submit, track, and withdraw "Change" or "Delete" requests with mandatory justifications.
 
 ### 2. Customer Success & Feedback Governance (`/cs/feedback`, `/feedback-form/:id`)
 - **12-Dimension Evaluation Rubric**: Comprehensive evaluation covering:
@@ -173,6 +174,12 @@ Admin-CS-Payment/
 ---
 
 ## 📋 Recent Highlights & Changelog
+
+### Nov 13, 2026: Payment Records Action Column & Change Request Workflow
+- Added an **ACTIONS** column to the Payment Records ledger table.
+- Added **Request Change** modal supporting both **Change** and **Delete** requests.
+- Dynamic field requirements: **Reason for deletion** (on Delete) or **New Value** + **Reason for change** (on Change).
+- Persistent request status badges ("Change Requested", "Delete Requested") with option to withdraw requests.
 
 ### Nov 13, 2026: Symmetrical Webinar Session Settlement Modal & Session Service
 - Replaced basic confirmation alerts with a realigned 5-row, 2-column symmetrical session details modal:
