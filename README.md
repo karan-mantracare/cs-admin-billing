@@ -60,8 +60,8 @@ The platform provides end-to-end tooling for enterprise healthcare and wellness 
     - **Row 2**: Session Time | Duration (with inline pencil edit toggle to update minutes)
     - **Row 3**: Session Type | Session Location
     - **Row 4**: Provider ID | Price (USD)
-    - **Row 5**: Session Language | Participant Count (editable number field up to 10 digits)
-  - Submitting the modal auto-saves the updated duration and attendee count, marks the session as Completed, and transitions the linked expense to Settled.
+    - **Row 5**: Session Service (dropdown: Therapy, Yoga, Mindfulness, Meditation) | Participant Count (editable number field up to 10 digits)
+  - Submitting the modal auto-saves the updated duration, selected service, and attendee count, marks the session as Completed, and transitions the linked expense to Settled.
 
 ### 4. Corporate Accounts & Divisions (`/corporate`)
 - Multi-tier corporate entity structure supporting parent enterprises and independent regional/functional divisions.
@@ -173,12 +173,13 @@ Admin-CS-Payment/
 
 ## 📋 Recent Highlights & Changelog
 
-### Nov 13, 2026: Symmetrical Webinar Session Settlement Modal
+### Nov 13, 2026: Symmetrical Webinar Session Settlement Modal & Session Service
 - Replaced basic confirmation alerts with a **5-row, 2-column symmetrical session details modal**.
-- Displays read-only summary fields for Date, Name, Time, Type, Location, Provider ID, Price USD, and Language.
+- Displays summary fields for Date, Name, Time, Type, Location, Provider ID, Price USD, and Participant Count.
+- Added **Session Service dropdown** with options: `Therapy`, `Yoga`, `Mindfulness`, `Meditation`.
 - Added **inline duration editing** via a pencil icon next to duration (e.g. `60 Mins`), revealing a numeric input and save action.
 - Added **participant count input** constrained up to 10 digits.
-- Completing the modal automatically updates event duration, sets attendee count, marks status as Completed, and marks expense as Settled.
+- Completing the modal automatically updates event duration, service, sets attendee count, marks status as Completed, and marks expense as Settled.
 
 ### Nov 06, 2026: Flexible Monthly & Annual Billing Schedules
 - **Flexible Monthly Billing**: Calculates start-to-end month span as default and allows user customization up to that maximum (defaults to 1 if plan end is unavailable).

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useGlobal } from '../context/GlobalContext';
-import LanguageDropdown from './LanguageDropdown';
 
 function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setModalData, isLocked, setIsLocked, status, onSubmit, isHrRole }) {
   const [tempParticipantCount, setTempParticipantCount] = useState('');
@@ -129,12 +128,28 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>Language *</label>
-                    <LanguageDropdown 
-                      value={modalData.language} 
-                      onChange={(val) => setModalData(prev => ({ ...prev, language: val }))} 
+                    <label>Session Service *</label>
+                    <select
+                      className="form-control"
+                      required
+                      name="service"
+                      value={modalData.service || modalData.sessionService || (['Therapy', 'Yoga', 'Mindfulness', 'Meditation'].includes(modalData.language) ? modalData.language : 'Mindfulness')}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setModalData(prev => ({ ...prev, service: val, sessionService: val, language: val }));
+                      }}
                       disabled={isLocked}
-                    />
+                      style={{
+                        background: '#ffffff',
+                        fontSize: '0.88rem',
+                        fontWeight: '500'
+                      }}
+                    >
+                      <option value="Therapy">Therapy</option>
+                      <option value="Yoga">Yoga</option>
+                      <option value="Mindfulness">Mindfulness</option>
+                      <option value="Meditation">Meditation</option>
+                    </select>
                   </div>
                   {modalData.sessionType === 'onsite' && (
                     <div className="form-group full-width">

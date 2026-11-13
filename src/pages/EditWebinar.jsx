@@ -67,6 +67,7 @@ function EditWebinar() {
   const [settleParticipantCount, setSettleParticipantCount] = useState('');
   const [settleDuration, setSettleDuration] = useState('60');
   const [isDurationEditing, setIsDurationEditing] = useState(false);
+  const [settleService, setSettleService] = useState('Mindfulness');
   const [confirmDirectSettleId, setConfirmDirectSettleId] = useState(null);
 
   const [revokingExpenseId, setRevokingExpenseId] = useState(null);
@@ -444,7 +445,9 @@ function EditWebinar() {
                                   expertExp: req.expertExp || '',
                                   budget: req.budget || '',
                                   remarks: req.remarks || '',
-                                  language: req.language || '',
+                                  service: req.service || req.sessionService || req.language || 'Mindfulness',
+                                  sessionService: req.service || req.sessionService || req.language || 'Mindfulness',
+                                  language: req.service || req.sessionService || req.language || 'Mindfulness',
                                   participantCount: currentEvent.participantCount || '',
                                   duration: req.duration || '',
                                   status: req.status,
@@ -480,6 +483,10 @@ function EditWebinar() {
                                 const numDur = String(rawDur).replace(/[^0-9]/g, '') || '60';
                                 setSettleDuration(numDur);
                                 setIsDurationEditing(false);
+                                const existingService = req.service || req.sessionService || currentEvent?.service || currentEvent?.sessionService || req.language || currentEvent?.language || 'Mindfulness';
+                                const validServices = ['Therapy', 'Yoga', 'Mindfulness', 'Meditation'];
+                                const matchedService = validServices.find(s => s.toLowerCase() === String(existingService).toLowerCase()) || 'Mindfulness';
+                                setSettleService(matchedService);
                                 setIsConfirmSettleOpen(true);
                               }}
                               disabled={isSettled}
@@ -531,7 +538,9 @@ function EditWebinar() {
                     expertExp: lastReq.expertExp || '',
                     budget: lastReq.budget || '',
                     remarks: lastReq.remarks || '',
-                    language: lastReq.language || '',
+                    service: lastReq.service || lastReq.sessionService || lastReq.language || 'Mindfulness',
+                    sessionService: lastReq.service || lastReq.sessionService || lastReq.language || 'Mindfulness',
+                    language: lastReq.service || lastReq.sessionService || lastReq.language || 'Mindfulness',
                     participantCount: currentEvent.participantCount || '',
                     duration: lastReq.duration || '',
                     status: status === 'rejected' ? 'rejected' : '',
@@ -548,7 +557,9 @@ function EditWebinar() {
                     expertExp: '',
                     budget: '',
                     remarks: '',
-                    language: '',
+                    service: 'Mindfulness',
+                    sessionService: 'Mindfulness',
+                    language: 'Mindfulness',
                     participantCount: currentEvent?.participantCount || '',
                     duration: '',
                     status: status === 'rejected' ? 'rejected' : '',
@@ -783,7 +794,9 @@ function EditWebinar() {
                     expertExp: parseInt(data.expertExp) || 0,
                     budget: parseFloat(data.budget) || 0,
                     remarks: data.remarks || '',
-                    language: data.language || 'English',
+                    service: data.service || data.sessionService || data.language || 'Mindfulness',
+                    sessionService: data.service || data.sessionService || data.language || 'Mindfulness',
+                    language: data.service || data.sessionService || data.language || 'Mindfulness',
                     duration: data.duration || '',
                     status: 'pending_expense_approval',
                     rejectionReason: null
@@ -801,7 +814,9 @@ function EditWebinar() {
                 expertExp: parseInt(data.expertExp) || 0,
                 budget: parseFloat(data.budget) || 0,
                 remarks: data.remarks || '',
-                language: data.language || 'English',
+                service: data.service || data.sessionService || data.language || 'Mindfulness',
+                sessionService: data.service || data.sessionService || data.language || 'Mindfulness',
+                language: data.service || data.sessionService || data.language || 'Mindfulness',
                 duration: data.duration || '',
                 status: 'pending_expense_approval',
                 assignedExpert: null,
@@ -821,6 +836,9 @@ function EditWebinar() {
               budget: parseFloat(data.budget) || 0,
               remarks: data.remarks || '',
               otherCosts: parseFloat(data.otherCosts) || 0,
+              service: data.service || data.sessionService || 'Mindfulness',
+              sessionService: data.service || data.sessionService || 'Mindfulness',
+              language: data.service || data.sessionService || 'Mindfulness',
               participantCount: data.participantCount !== undefined ? data.participantCount : (currentEvent.participantCount || 0),
               status: 'pending_expense_approval',
               orderName: data.orderName,
@@ -843,6 +861,9 @@ function EditWebinar() {
               budget: parseFloat(data.budget) || 0,
               remarks: data.remarks || '',
               otherCosts: parseFloat(data.otherCosts) || 0,
+              service: data.service || data.sessionService || 'Mindfulness',
+              sessionService: data.service || data.sessionService || 'Mindfulness',
+              language: data.service || data.sessionService || 'Mindfulness',
               orderName: data.orderName,
               requirements: 'Generated from Edit Webinar flow.',
               status: 'pending_expense_approval'
@@ -1281,14 +1302,18 @@ function EditWebinar() {
               if (req && currentEvent) {
                 const parsedCount = parseInt(settleParticipantCount, 10) || 0;
                 const durationVal = settleDuration ? `${settleDuration} Mins` : (req.duration || currentEvent?.duration || '60 Mins');
+                const serviceVal = settleService || 'Mindfulness';
                 const existingReqs = currentEvent.expertRequests || [];
                 const updatedReqs = existingReqs.length > 0
-                  ? existingReqs.map(r => r.id === targetReqId ? { ...r, status: 'completed', participantCount: parsedCount, duration: durationVal } : r)
-                  : [{ ...req, status: 'completed', participantCount: parsedCount, duration: durationVal }];
+                  ? existingReqs.map(r => r.id === targetReqId ? { ...r, status: 'completed', participantCount: parsedCount, duration: durationVal, service: serviceVal, sessionService: serviceVal, language: serviceVal } : r)
+                  : [{ ...req, status: 'completed', participantCount: parsedCount, duration: durationVal, service: serviceVal, sessionService: serviceVal, language: serviceVal }];
 
                 updateEventDetails(currentEvent.id, {
                   participantCount: parsedCount,
                   duration: durationVal,
+                  service: serviceVal,
+                  sessionService: serviceVal,
+                  language: serviceVal,
                   expertRequests: updatedReqs,
                   status: 'completed'
                 });
@@ -1468,16 +1493,29 @@ function EditWebinar() {
                     />
                   </div>
 
-                  {/* Row 5 - Session Language | Participant Count */}
+                  {/* Row 5 - Session Service | Participant Count */}
                   <div className="form-group">
-                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Language</label>
-                    <input 
-                      type="text" 
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Service</label>
+                    <select 
                       className="form-control" 
-                      readOnly 
-                      value={selectedSettleRequest?.language || currentEvent?.language || 'English'} 
-                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
-                    />
+                      value={settleService} 
+                      onChange={(e) => setSettleService(e.target.value)}
+                      style={{ 
+                        background: '#ffffff', 
+                        color: '#0f172a', 
+                        fontSize: '0.85rem', 
+                        fontWeight: '500', 
+                        border: '1px solid #cbd5e1', 
+                        borderRadius: '6px', 
+                        padding: '0.45rem 0.75rem', 
+                        cursor: 'pointer' 
+                      }}
+                    >
+                      <option value="Therapy">Therapy</option>
+                      <option value="Yoga">Yoga</option>
+                      <option value="Mindfulness">Mindfulness</option>
+                      <option value="Meditation">Meditation</option>
+                    </select>
                   </div>
                   <div className="form-group">
                     <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#0f172a' }}>
