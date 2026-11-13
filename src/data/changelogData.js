@@ -1,9 +1,67 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-webinar-session-settlement-modal-20261113',
+    date: '2026-11-13',
+    formattedDate: 'Nov 13, 2026',
+    page: 'CS',
+    subPage: 'Webinar Session Editor / Session Settlement & Symmetrical Summary Modal',
+    summary: 'Replaced settlement confirmation with a 5-row, 2-column symmetrical session details modal with editable Duration and Participant Count',
+    details: 'Upgraded the action triggered when clicking the checkmark/tick button in the Expert Details table. Instead of a basic confirmation prompt, a structured 5-row modal appears with exact 2-column symmetry. It displays non-editable summary fields for Session Date, Session Name, Session Time, Session Type, Session Location, Provider ID, Price (USD), and Session Language. Duration is presented with an inline edit pencil toggle that expands into a number input with "Mins" unit and checkmark button. Participant Count is directly editable as a number input restricted up to 10 digits. Confirming the modal automatically updates event and request details, marks the session completed, and settles the corresponding expense.',
+    plainLanguage: 'When administrators click the green tick in the Expert Details table to settle a session, they now see a comprehensive, well-structured modal showing all key session info across five neat 2-column rows. Most session details are displayed as read-only for accuracy, while Duration can be quickly edited by clicking the pencil icon next to "60 Mins", and Participant Count is readily editable as a number up to 10 digits. Submitting the modal completes the session and settles the expense in one smooth action.',
+    highlights: [
+      '5-Row Symmetrical 2-Column Layout: Perfectly balanced grid displaying Row 1 (Session Date | Session Name), Row 2 (Session Time | Duration), Row 3 (Session Type | Session Location), Row 4 (Provider ID | Price USD), and Row 5 (Session Language | Participant Count)',
+      'Inline Duration Editing: Displays duration (e.g., 60 Mins) with an edit pencil icon; clicking toggles active numeric input with a Mins suffix and quick [✓] save button',
+      'Participant Count Input: Clean editable number input with a 10-digit upper boundary constraint',
+      'Provider ID Attribution: Auto-resolves assigned expert provider IDs (e.g., P-101) directly into the summary table',
+      'One-Click Status & Expense Settlement: Automatically updates event duration, sets participant count, completes event status, and marks expense as Settled with confirmation toast'
+    ],
+    path: '/edit',
+    linkText: 'Webinar Session Editor'
+  },
+  {
+    id: 'cl-billing-schedule-monthly-flex-and-annual-20261106',
+    date: '2026-11-06',
+    formattedDate: 'Nov 06, 2026',
+    page: 'Admin',
+    subPage: 'Add Billing Schedule / Flexible Monthly, Annual Payment & Schedule Simplification',
+    summary: 'Enabled editable monthly installments capped at plan month difference, added Annually frequency option, and removed redundant switcher toggle',
+    details: 'Enhanced Step 2 of the Add Invoice Schedule wizard to provide flexible installment counts for Monthly billing while preserving automated calculations for fixed intervals. When Monthly is chosen, Billing Month defaults to the exact month difference between Billing Start Date and Plan End Date (or 1 if plan end is unavailable), and allows user editing capped at that difference. Added a new "Annually" frequency option providing 1 installment per year on a 12-month cadence. Removed the "Same for all Contracts" switcher to present a clean, unified per-contract schedule table where all contracts can be configured individually or batch-updated.',
+    plainLanguage: 'In the billing schedule setup, selecting Monthly now automatically calculates the month difference between the start and end dates and selects it as the default, while allowing users to customize the number of installments up to that maximum. If no plan end date exists, it defaults to 1. An "Annually" payment option is now available across master and per-contract selectors. The redundant "Same for all Contracts" button was removed in favor of a clean, consistent schedule configuration table.',
+    highlights: [
+      'Dynamic Month Difference Calculation: Automatically derives month span between Billing Start Date and Plan End Date as default for Monthly billing (defaults to 1 if plan end is unavailable)',
+      'Editable Monthly Installments: Users can edit the installment count freely between 1 and the calculated month difference without exceeding the plan term',
+      'Annual Payment Frequency: Added "Annually" billing frequency setting 1 installment per year on a 12-month schedule cadence',
+      'Strict Capping & Warning: Values exceeding the plan month span are immediately clamped with validation error banners',
+      'Removed Switcher Toggle: Eliminated the "Same for all Contracts" toggle button to maintain a clean, consistent per-contract schedule table',
+      'Clear Visual Badges: Differentiates editable Monthly configuration from fixed Annually, Bi-Annually, and Quarterly intervals'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
+    id: 'cl-cs-feedback-12-questions-and-escalation-20261105',
+    date: '2026-11-05',
+    formattedDate: 'Nov 05, 2026',
+    page: 'CS',
+    subPage: 'Feedback & Escalation / 12-Dimension Evaluation Rubric & 4-Tier Escalation Protocol',
+    summary: 'Upgraded to a 12-dimension feedback rubric, 4-tier escalation matrix with role-specific reachout mailto links, and two-part open feedback fields',
+    details: 'Completely overhauled the CS Feedback and Escalation system. Expanded the evaluation questionnaire to 12 distinct dimensions with individual diagnostic tags and scoring criteria. Modernized the Escalation matrix into a 4-tier Support Protocol table detailing Tier 1 (Basic Support & First-Level), Tier 2 (Operational), Tier 3 (Senior Management), and Tier 4 (Executive-Level) with explicit triggers, acknowledgment TATs, action plan TATs, and direct mailto links for role points of contact. Replaced generic comments with two dedicated open feedback textareas for "What is working well?" and "What is the one improvement you would like us to prioritize?" with quick-insert tags. Renamed navigation tabs to "Feedback" and "Escalation", hid the "Summary" tab, and styled the Share Form button as a compact copy icon.',
+    plainLanguage: 'The client feedback experience and escalation framework have been upgraded to enterprise standards. The questionnaire now includes 12 comprehensive questions covering implementation, CS support, employee access, helpline, app usability, technical troubleshooting, service quality, reporting, 1-on-1 sessions, webinars, issue resolution, and overall satisfaction. A dedicated 4-tier Escalation Protocol table provides clear resolution SLAs and direct email contact links for role owners. Clients can share structured qualitative feedback in two separate boxes: one for highlights and another for priority improvements with quick-tag suggestions.',
+    highlights: [
+      '12 Evaluation Dimensions: Comprehensive rubric covering Onboarding, CS Support, Employee Awareness, Hotline, Mobile App, Tech Support, Service Quality, Utilization, 1-on-1 Sessions, Webinars, Issue Resolution, and Overall Satisfaction',
+      '4-Tier Escalation Protocol: Detailed matrix covering Tier 1 (Client Success SPOC), Tier 2 (CS Manager), Tier 3 (Head of Operations & BD SPOC), and Tier 4 (Founder / CEO) with defined triggers and resolution TATs',
+      'Direct Role Reachout Links: Formatted "<Role> > Contact" mailto links connecting clients directly to assigned SPOCs and leadership',
+      'Two-Part Open Feedback: Dedicated textareas for "What is working well?" and "What is the one improvement you would like us to prioritize?" with clickable suggestion tags',
+      'Refined Navigation: Renamed tabs to "Feedback" and "Escalation", hid the redundant Summary tab, and added a sleek 38px Copy Icon button for sharing forms'
+    ],
+    path: '/cs/feedback',
+    linkText: 'CS Feedback'
+  },
+  {
     id: 'cl-add-schedule-modal-stepper-and-table-redesign-20261031',
     date: '2026-10-31',
     formattedDate: 'Oct 31, 2026',
-    page: 'Accounts Receivable',
+    page: 'Admin',
     subPage: 'Add Billing Schedule / 2-Step Wizard & Table Redesign',
     summary: 'Streamlined Add Invoice Schedule into a 2-step modal with Next navigation, collapsible Total Order Value dropdown, and per-contract table',
     details: 'Redesigned the Add Invoice Schedule modal to eliminate congestion. Step 1 focuses solely on Corporate, Division, and Order selection with a single "Next" action button. On clicking Next, Step 2 reveals an expandable "Total Order Value" summary dropdown, master and per-contract Billing Frequency selectors, and a responsive "Billing Month per Contract" table. For "Same for all Contracts" (and single contract), the Billing Month is strictly frozen (disabled & read-only with lock indicator) so users cannot manually edit it; it is strictly and automatically driven by the established Billing Frequency formula (Bi-Annually = 2, Monthly = start-to-end month span, Quarterly = max 4 milestones). Step 2 footer provides clear Back and Preview Schedule actions.',
@@ -25,7 +83,7 @@ export const CHANGELOG_DATA = [
     id: 'cl-billing-schedule-frequency-and-month-calc-20261031',
     date: '2026-10-31',
     formattedDate: 'Oct 31, 2026',
-    page: 'Accounts Receivable',
+    page: 'Admin',
     subPage: 'Add Billing Schedule / Billing Frequency & Month Calculator',
     summary: 'Added Billing Month tooltip and automated Monthly, Quarterly, and Bi-Annually frequency calculations',
     details: 'Enhanced the Add Schedule modal in Accounts Receivable with a dedicated Tooltip on "Billing Month" ("This will break the total value in the entered months") and introduced an interactive Billing Frequency dropdown with options for Monthly, Quarterly, and Bi Anually. If Bi Anually is selected, Billing Month automatically sets to 2. If Monthly is selected, Billing Month resolves to the exact month difference between Billing Start Date and Plan End Date. If Quarterly is selected, Billing Month calculates up to a maximum of 4 installments, dividing the month span by 3 without decimals or floor-snapping to the closest quarterly milestone before Plan End.',

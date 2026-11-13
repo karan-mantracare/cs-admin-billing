@@ -25,7 +25,7 @@ function Home() {
       tag: 'Active Workflow',
       color: '#034ea2',
       bg: '#eff6ff',
-      desc: '10-pillar client feedback questionnaire, directory table, real-time score derivation, and escalation matrix.'
+      desc: '12-dimension client feedback questionnaire, directory table, real-time score derivation, and 4-tier escalation protocol.'
     },
     {
       title: 'Client Cadence & Governance',
@@ -52,7 +52,7 @@ function Home() {
       tag: 'Active Tool',
       color: '#6366f1',
       bg: '#e0e7ff',
-      desc: 'Create and configure webinar events, define budget and remarks, set trainers, and manage client attendees.'
+      desc: 'Create and configure webinar events, allocate experts, settle expenses via symmetrical session modal, and track participants.'
     }
   ];
 
@@ -73,7 +73,7 @@ function Home() {
       tag: 'Active Workflow',
       color: '#0284c7',
       bg: '#e0f2fe',
-      desc: 'Full invoicing ledger, schedule preview with instant remarks tooltip, multi-currency conversion, and copy message.'
+      desc: 'Full invoicing ledger, flexible monthly & annual billing schedules, multi-currency conversion, and payment reminders.'
     },
     {
       title: 'Expert Assignment',
