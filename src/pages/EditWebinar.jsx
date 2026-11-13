@@ -65,6 +65,8 @@ function EditWebinar() {
   const [settleReqId, setSettleReqId] = useState(null);
   const [selectedSettleRequest, setSelectedSettleRequest] = useState(null);
   const [settleParticipantCount, setSettleParticipantCount] = useState('');
+  const [settleDuration, setSettleDuration] = useState('60');
+  const [isDurationEditing, setIsDurationEditing] = useState(false);
   const [confirmDirectSettleId, setConfirmDirectSettleId] = useState(null);
 
   const [revokingExpenseId, setRevokingExpenseId] = useState(null);
@@ -474,6 +476,10 @@ function EditWebinar() {
                                       ? String(currentEvent.participantCount)
                                       : '');
                                 setSettleParticipantCount(existingCount);
+                                const rawDur = req.duration || currentEvent?.duration || '60';
+                                const numDur = String(rawDur).replace(/[^0-9]/g, '') || '60';
+                                setSettleDuration(numDur);
+                                setIsDurationEditing(false);
                                 setIsConfirmSettleOpen(true);
                               }}
                               disabled={isSettled}
@@ -1274,13 +1280,15 @@ function EditWebinar() {
               const req = currentEvent?.expertRequests?.find(r => r.id === targetReqId) || selectedSettleRequest || currentEvent;
               if (req && currentEvent) {
                 const parsedCount = parseInt(settleParticipantCount, 10) || 0;
+                const durationVal = settleDuration ? `${settleDuration} Mins` : (req.duration || currentEvent?.duration || '60 Mins');
                 const existingReqs = currentEvent.expertRequests || [];
                 const updatedReqs = existingReqs.length > 0
-                  ? existingReqs.map(r => r.id === targetReqId ? { ...r, status: 'completed', participantCount: parsedCount } : r)
-                  : [{ ...req, status: 'completed', participantCount: parsedCount }];
+                  ? existingReqs.map(r => r.id === targetReqId ? { ...r, status: 'completed', participantCount: parsedCount, duration: durationVal } : r)
+                  : [{ ...req, status: 'completed', participantCount: parsedCount, duration: durationVal }];
 
                 updateEventDetails(currentEvent.id, {
                   participantCount: parsedCount,
+                  duration: durationVal,
                   expertRequests: updatedReqs,
                   status: 'completed'
                 });
@@ -1333,16 +1341,73 @@ function EditWebinar() {
                   </div>
                   <div className="form-group">
                     <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Duration</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      readOnly 
-                      value={(() => {
-                        const dur = selectedSettleRequest?.duration || currentEvent?.duration || '60';
-                        return String(dur).toLowerCase().includes('min') ? dur : `${dur} Mins`;
-                      })()} 
-                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
-                    />
+                    {isDurationEditing ? (
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <input 
+                          type="number" 
+                          min="1"
+                          max="999"
+                          className="form-control" 
+                          value={settleDuration} 
+                          onChange={(e) => setSettleDuration(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setIsDurationEditing(false); } }}
+                          style={{ 
+                            background: '#ffffff', 
+                            color: '#0f172a', 
+                            fontSize: '0.85rem', 
+                            fontWeight: '600', 
+                            border: '1.5px solid #6366f1', 
+                            borderRadius: '6px', 
+                            paddingRight: '4.5rem' 
+                          }} 
+                          autoFocus
+                          placeholder="e.g. 60"
+                        />
+                        <div style={{ position: 'absolute', right: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '500' }}>Mins</span>
+                          <button 
+                            type="button" 
+                            onClick={() => setIsDurationEditing(false)} 
+                            title="Done" 
+                            style={{ 
+                              background: '#e0e7ff', 
+                              border: 'none', 
+                              borderRadius: '4px', 
+                              color: '#4338ca', 
+                              padding: '2px 5px', 
+                              cursor: 'pointer', 
+                              display: 'flex', 
+                              alignItems: 'center' 
+                            }}
+                          >
+                            <i className='bx bx-check' style={{ fontSize: '1rem', fontWeight: '700' }}></i>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        onClick={() => setIsDurationEditing(true)}
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between', 
+                          background: '#f8fafc', 
+                          border: '1px solid #cbd5e1', 
+                          borderRadius: '6px', 
+                          padding: '0.42rem 0.75rem', 
+                          cursor: 'pointer',
+                          transition: 'border-color 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6366f1'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                        title="Click to edit duration"
+                      >
+                        <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: '500' }}>
+                          {settleDuration || '60'} Mins
+                        </span>
+                        <i className='bx bx-edit' style={{ color: '#6366f1', fontSize: '1.05rem', cursor: 'pointer' }} title="Edit duration"></i>
+                      </div>
+                    )}
                   </div>
 
                   {/* Row 3 - Session Type | Session Location */}
@@ -1367,14 +1432,28 @@ function EditWebinar() {
                     />
                   </div>
 
-                  {/* Row 4 - Session Language | Price (USD) */}
+                  {/* Row 4 - Provider ID | Price(USD) */}
                   <div className="form-group">
-                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Language</label>
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Provider ID</label>
                     <input 
                       type="text" 
                       className="form-control" 
                       readOnly 
-                      value={selectedSettleRequest?.language || currentEvent?.language || 'English'} 
+                      value={(() => {
+                        const expertList = [
+                          { providerId: 'P-101', name: 'Dr. Sarah Jenkins' },
+                          { providerId: 'P-102', name: 'Dr. Michael Chen' },
+                          { providerId: 'P-103', name: 'Jane Doe, LCSW' },
+                          { providerId: 'P-104', name: 'John Smith, Ph.D' },
+                          { providerId: 'P-105', name: 'Alice Williams, M.A.' },
+                          { providerId: 'P-106', name: 'Dr. Robert Kiyosaki' },
+                          { providerId: 'P-107', name: 'Maria Garcia, MD' },
+                          { providerId: 'P-108', name: 'Priya Sharma, MSc' }
+                        ];
+                        const expertName = selectedSettleRequest?.assignedExpert || currentEvent?.assignedExpert;
+                        const matched = expertList.find(e => e.name === expertName);
+                        return selectedSettleRequest?.providerId || currentEvent?.providerId || matched?.providerId || (expertName ? 'P-101' : (selectedSettleRequest?.id ? `P-${selectedSettleRequest.id}` : 'P-101'));
+                      })()} 
                       style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
                     />
                   </div>
@@ -1389,9 +1468,19 @@ function EditWebinar() {
                     />
                   </div>
 
-                  {/* Row 5 - Paticipant Count - number field upto 10 numbers */}
-                  <div className="form-group full-width" style={{ gridColumn: '1 / -1', marginTop: '0.35rem' }}>
-                    <label style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a' }}>
+                  {/* Row 5 - Session Language | Participant Count */}
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Language</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      readOnly 
+                      value={selectedSettleRequest?.language || currentEvent?.language || 'English'} 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#0f172a' }}>
                       Participant Count <span style={{ color: '#ef4444' }}>*</span>
                     </label>
                     <input 
@@ -1400,7 +1489,7 @@ function EditWebinar() {
                       max="9999999999"
                       className="form-control" 
                       required 
-                      placeholder="Enter participant count (up to 10 digits)" 
+                      placeholder="Enter count (up to 10 digits)" 
                       value={settleParticipantCount} 
                       onChange={(e) => {
                         const val = e.target.value;
@@ -1416,17 +1505,14 @@ function EditWebinar() {
                       style={{ 
                         background: '#ffffff', 
                         color: '#0f172a', 
-                        fontSize: '0.9rem', 
+                        fontSize: '0.85rem', 
                         fontWeight: '600', 
                         border: '1.5px solid #6366f1',
                         borderRadius: '6px',
-                        padding: '0.5rem 0.75rem'
+                        padding: '0.45rem 0.75rem'
                       }} 
                       autoFocus
                     />
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
-                      Only the participant count can be edited (numbers only, up to 10 digits)
-                    </span>
                   </div>
                 </div>
               </div>
