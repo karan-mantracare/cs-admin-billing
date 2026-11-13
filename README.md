@@ -56,11 +56,12 @@ The platform provides end-to-end tooling for enterprise healthcare and wellness 
 - **Webinar Event Orchestration**: Configure corporate workshops, set dates/times, assign experts, establish session budgets, and track attendance.
 - **Expert Details Settlement Flow**:
   - When clicking the checkmark/tick action in the Expert Details table, a structured **5-Row Symmetrical 2-Column Modal** appears:
-    - **Row 1**: Session Date | Session Name
-    - **Row 2**: Session Time | Duration (with inline pencil edit toggle to update minutes)
-    - **Row 3**: Session Type (Static: "Webinar")
+    - **Row 1**: Session Date | Approved on
+    - **Row 2**: Session Name | Session Time
+    - **Row 3**: Session Type (Static: "Webinar") | Duration (with inline pencil edit toggle)
     - **Row 4**: Provider ID | Price (USD)
     - **Row 5**: Session Service (dropdown: Therapy, Yoga, Mindfulness, Meditation) | Participant Count (editable number field up to 10 digits)
+  - Features a dedicated **Payout Disclaimer**: *"When you click on confirm & settle the provider will be paid for this session."*
   - Submitting the modal auto-saves the updated duration, selected service, and attendee count, marks the session as Completed, and transitions the linked expense to Settled.
 
 ### 4. Corporate Accounts & Divisions (`/corporate`)
@@ -174,12 +175,13 @@ Admin-CS-Payment/
 ## 📋 Recent Highlights & Changelog
 
 ### Nov 13, 2026: Symmetrical Webinar Session Settlement Modal & Session Service
-- Replaced basic confirmation alerts with a structured session details modal.
-- Displays summary fields for Date, Name, Time, Session Type (fixed static "Webinar"), Provider ID, Price USD, and Participant Count.
-- Removed obsolete **Session Location** field and set **Session Type** to static value `"Webinar"`.
-- Added **Session Service dropdown** with options: `Therapy`, `Yoga`, `Mindfulness`, `Meditation`.
-- Added **inline duration editing** via a pencil icon next to duration (e.g. `60 Mins`), revealing a numeric input and save action.
-- Added **participant count input** constrained up to 10 digits.
+- Replaced basic confirmation alerts with a realigned 5-row, 2-column symmetrical session details modal:
+  - **Row 1**: Session Date | Approved on
+  - **Row 2**: Session Name | Session Time
+  - **Row 3**: Session Type (Static: "Webinar") | Duration (with inline edit pencil)
+  - **Row 4**: Provider ID | Price (USD)
+  - **Row 5**: Session Service (dropdown: Therapy, Yoga, Mindfulness, Meditation) | Participant Count (editable up to 10 digits)
+- Added **Payout Disclaimer banner**: *"When you click on confirm & settle the provider will be paid for this session."*
 - Completing the modal automatically updates event duration, service, sets attendee count, marks status as Completed, and marks expense as Settled.
 
 ### Nov 06, 2026: Flexible Monthly & Annual Billing Schedules

@@ -1331,7 +1331,7 @@ function EditWebinar() {
             }}>
               <div className="modal-body" style={{ padding: '1.25rem 1.5rem' }}>
                 <div className="form-grid" style={{ marginBottom: '0.5rem' }}>
-                  {/* Row 1 - Session Date | Session Name */}
+                  {/* Row 1 - Session Date | Approved on */}
                   <div className="form-group">
                     <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Date</label>
                     <input 
@@ -1343,6 +1343,22 @@ function EditWebinar() {
                     />
                   </div>
                   <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Approved on</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      readOnly 
+                      value={(() => {
+                        const targetReqId = settleReqId || selectedSettleRequest?.id;
+                        const exp = expenses.find(e => e.expertRequestId === targetReqId);
+                        return selectedSettleRequest?.approvedOn || exp?.approvedOn || exp?.date || selectedSettleRequest?.sessionDate || currentEvent?.submittedOn || '12/11/2026';
+                      })()} 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
+                    />
+                  </div>
+
+                  {/* Row 2 - Session Name | Session Time */}
+                  <div className="form-group">
                     <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Name</label>
                     <input 
                       type="text" 
@@ -1352,8 +1368,6 @@ function EditWebinar() {
                       style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
                     />
                   </div>
-
-                  {/* Row 2 - Session Time | Duration */}
                   <div className="form-group">
                     <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Time</label>
                     <input 
@@ -1362,6 +1376,18 @@ function EditWebinar() {
                       readOnly 
                       value={selectedSettleRequest?.sessionTime || currentEvent?.sessionTime || 'TBD'} 
                       style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
+                    />
+                  </div>
+
+                  {/* Row 3 - Session Type | Duration */}
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Type</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      readOnly 
+                      value="Webinar" 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem', fontWeight: '500' }} 
                     />
                   </div>
                   <div className="form-group">
@@ -1433,18 +1459,6 @@ function EditWebinar() {
                         <i className='bx bx-edit' style={{ color: '#6366f1', fontSize: '1.05rem', cursor: 'pointer' }} title="Edit duration"></i>
                       </div>
                     )}
-                  </div>
-
-                  {/* Row 3 - Session Type */}
-                  <div className="form-group full-width" style={{ gridColumn: 'span 2' }}>
-                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Type</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      readOnly 
-                      value="Webinar" 
-                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem', fontWeight: '500' }} 
-                    />
                   </div>
 
                   {/* Row 4 - Provider ID | Price(USD) */}
@@ -1542,6 +1556,23 @@ function EditWebinar() {
                       autoFocus
                     />
                   </div>
+                </div>
+
+                {/* Disclaimer Notice */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '8px',
+                  padding: '0.65rem 0.85rem',
+                  marginTop: '0.85rem'
+                }}>
+                  <i className='bx bx-info-circle' style={{ color: '#2563eb', fontSize: '1.2rem', flexShrink: 0 }}></i>
+                  <span style={{ fontSize: '0.82rem', color: '#1e40af', lineHeight: '1.45' }}>
+                    <strong>Disclaimer:</strong> When you click on confirm & settle the provider will be paid for this session.
+                  </span>
                 </div>
               </div>
               <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', background: '#f8fafc' }}>
