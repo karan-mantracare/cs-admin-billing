@@ -176,9 +176,9 @@ Admin-CS-Payment/
 ## 📋 Recent Highlights & Changelog
 
 ### Nov 13, 2026: Payment Records Action Column & Change Request Workflow
-- Added an **ACTIONS** column to the Payment Records ledger table.
-- Added **Request Change** modal supporting both **Change** and **Delete** requests.
-- Dynamic field requirements: **Reason for deletion** (on Delete) or **New Value** + **Reason for change** (on Change).
+- Added an **ACTIONS** column to the Payment Records ledger table with an edit pencil icon and non-wrapping button.
+- Added **Request Change** modal supporting both horizontal **Change** and **Delete** request type cards.
+- Dynamic field requirements: **Reason for deletion** (on Delete) or **Update Amount** (numeric field) + **Reason for change** (on Change).
 - Persistent request status badges ("Change Requested", "Delete Requested") with option to withdraw requests.
 
 ### Nov 13, 2026: Symmetrical Webinar Session Settlement Modal & Session Service

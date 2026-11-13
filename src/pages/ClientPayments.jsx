@@ -204,7 +204,7 @@ function ClientPayments() {
       }
     } else {
       if (!newValue.trim()) {
-        alert("Please provide the new value.");
+        alert("Please provide the updated amount.");
         return;
       }
       if (!reasonForChange.trim()) {
@@ -969,13 +969,14 @@ function ClientPayments() {
                         border: '1px solid #bae6fd',
                         background: '#f0f9ff',
                         cursor: 'pointer',
+                        whiteSpace: 'nowrap',
                         transition: 'all 0.15s ease'
                       }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = '#e0f2fe'; e.currentTarget.style.borderColor = '#0284c7'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = '#bae6fd'; }}
                       title="Request Change or Deletion"
                     >
-                      <i className='bx bx-git-pull-request' style={{ fontSize: '0.95rem' }}></i>
+                      <i className='bx bx-edit' style={{ fontSize: '0.95rem' }}></i>
                       <span>Request Change</span>
                     </button>
                   )}
@@ -1614,7 +1615,8 @@ function ClientPayments() {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.6rem',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
                         padding: '0.65rem 0.85rem',
                         borderRadius: '8px',
                         border: requestType === 'Change' ? '2px solid #0284c7' : '1px solid #cbd5e1',
@@ -1630,10 +1632,24 @@ function ClientPayments() {
                         value="Change" 
                         checked={requestType === 'Change'} 
                         onChange={() => setRequestType('Change')} 
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', margin: 0 }}
                       />
-                      <label htmlFor="reqTypeChange" style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', color: requestType === 'Change' ? '#0369a1' : '#334155', margin: 0 }}>
-                        <i className='bx bx-edit-alt' style={{ marginRight: '4px' }}></i> Change
+                      <label 
+                        htmlFor="reqTypeChange" 
+                        style={{ 
+                          cursor: 'pointer', 
+                          fontSize: '0.85rem', 
+                          fontWeight: '600', 
+                          color: requestType === 'Change' ? '#0369a1' : '#334155', 
+                          margin: 0,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        <i className='bx bx-edit-alt' style={{ fontSize: '1rem' }}></i>
+                        <span>Change</span>
                       </label>
                     </div>
 
@@ -1642,7 +1658,8 @@ function ClientPayments() {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.6rem',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
                         padding: '0.65rem 0.85rem',
                         borderRadius: '8px',
                         border: requestType === 'Delete' ? '2px solid #dc2626' : '1px solid #cbd5e1',
@@ -1658,10 +1675,24 @@ function ClientPayments() {
                         value="Delete" 
                         checked={requestType === 'Delete'} 
                         onChange={() => setRequestType('Delete')} 
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', margin: 0 }}
                       />
-                      <label htmlFor="reqTypeDelete" style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', color: requestType === 'Delete' ? '#b91c1c' : '#334155', margin: 0 }}>
-                        <i className='bx bx-trash' style={{ marginRight: '4px' }}></i> Delete
+                      <label 
+                        htmlFor="reqTypeDelete" 
+                        style={{ 
+                          cursor: 'pointer', 
+                          fontSize: '0.85rem', 
+                          fontWeight: '600', 
+                          color: requestType === 'Delete' ? '#b91c1c' : '#334155', 
+                          margin: 0,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        <i className='bx bx-trash' style={{ fontSize: '1rem' }}></i>
+                        <span>Delete</span>
                       </label>
                     </div>
                   </div>
@@ -1687,20 +1718,19 @@ function ClientPayments() {
                   <>
                     <div className="form-group" style={{ marginBottom: '1rem' }}>
                       <label style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.35rem', display: 'block' }}>
-                        New Value <span style={{ color: '#ef4444' }}>*</span>
+                        Update Amount <span style={{ color: '#ef4444' }}>*</span>
                       </label>
                       <input 
-                        type="text" 
+                        type="number" 
+                        step="any"
+                        min="0"
                         className="form-control" 
                         required 
-                        placeholder="Enter the new value (e.g. Correct Amount: 200 INR, Date: 2026-11-15, Bank: HDFC)" 
+                        placeholder="Enter updated amount" 
                         value={newValue} 
                         onChange={(e) => setNewValue(e.target.value)}
                         style={{ fontSize: '0.85rem' }}
                       />
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
-                        Specify the updated amount, currency, bank, or payment date that should replace the current value.
-                      </div>
                     </div>
 
                     <div className="form-group" style={{ marginBottom: '1rem' }}>
