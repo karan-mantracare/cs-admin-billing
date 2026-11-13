@@ -109,23 +109,14 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
               {!isHrRole && (
                 <>
                   <div className="form-group">
-                    <label>Session Type *</label>
-                    <select 
+                    <label>Session Type</label>
+                    <input 
+                      type="text" 
                       className="form-control" 
-                      required 
-                      name="sessionType" 
-                      value={modalData.sessionType} 
-                      onChange={handleChange} 
-                      disabled={isLocked}
-                      style={{
-                        color: modalData.sessionType === 'onsite' ? 'var(--orange)' : modalData.sessionType === 'online' ? 'var(--primary)' : '',
-                        fontWeight: modalData.sessionType ? '500' : 'normal'
-                      }}
-                    >
-                      <option value="">Select Type</option>
-                      <option value="online" style={{ color: 'var(--primary)', fontWeight: '500' }}>Online</option>
-                      <option value="onsite" style={{ color: 'var(--orange)', fontWeight: '500' }}>Onsite</option>
-                    </select>
+                      readOnly 
+                      value="Webinar" 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.88rem', fontWeight: '500' }} 
+                    />
                   </div>
                   <div className="form-group">
                     <label>Session Service *</label>
@@ -151,12 +142,6 @@ function ApprovalModal({ isOpen, onClose, pageTitle, pageDate, modalData, setMod
                       <option value="Meditation">Meditation</option>
                     </select>
                   </div>
-                  {modalData.sessionType === 'onsite' && (
-                    <div className="form-group full-width">
-                      <label>Session Location (Full Address) *</label>
-                      <textarea className="form-control" rows="2" name="sessionLocation" value={modalData.sessionLocation} onChange={handleChange} required disabled={isLocked}></textarea>
-                    </div>
-                  )}
                 </>
               )}
             </div>

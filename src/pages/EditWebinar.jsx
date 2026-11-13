@@ -1435,25 +1435,15 @@ function EditWebinar() {
                     )}
                   </div>
 
-                  {/* Row 3 - Session Type | Session Location */}
-                  <div className="form-group">
+                  {/* Row 3 - Session Type */}
+                  <div className="form-group full-width" style={{ gridColumn: 'span 2' }}>
                     <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Type</label>
                     <input 
                       type="text" 
                       className="form-control" 
                       readOnly 
-                      value={selectedSettleRequest?.sessionType || currentEvent?.sessionType || 'Online'} 
-                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem', textTransform: 'capitalize' }} 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Location</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      readOnly 
-                      value={selectedSettleRequest?.location || currentEvent?.location || 'Online'} 
-                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
+                      value="Webinar" 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem', fontWeight: '500' }} 
                     />
                   </div>
 
