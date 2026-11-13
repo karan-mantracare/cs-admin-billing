@@ -63,6 +63,8 @@ function EditWebinar() {
 
   const [isConfirmSettleOpen, setIsConfirmSettleOpen] = useState(false);
   const [settleReqId, setSettleReqId] = useState(null);
+  const [selectedSettleRequest, setSelectedSettleRequest] = useState(null);
+  const [settleParticipantCount, setSettleParticipantCount] = useState('');
   const [confirmDirectSettleId, setConfirmDirectSettleId] = useState(null);
 
   const [revokingExpenseId, setRevokingExpenseId] = useState(null);
@@ -465,6 +467,13 @@ function EditWebinar() {
                               onClick={() => {
                                 if (isSettled) return;
                                 setSettleReqId(req.id);
+                                setSelectedSettleRequest(req);
+                                const existingCount = req.participantCount !== undefined && req.participantCount !== null && req.participantCount !== ''
+                                  ? String(req.participantCount)
+                                  : (currentEvent?.participantCount !== undefined && currentEvent?.participantCount !== null && currentEvent?.participantCount !== ''
+                                      ? String(currentEvent.participantCount)
+                                      : '');
+                                setSettleParticipantCount(existingCount);
                                 setIsConfirmSettleOpen(true);
                               }}
                               disabled={isSettled}
@@ -1249,28 +1258,199 @@ function EditWebinar() {
         </div>
       )}
 
-      <ConfirmModal
-        isOpen={isConfirmSettleOpen}
-        onClose={() => { setIsConfirmSettleOpen(false); setSettleReqId(null); }}
-        title="Confirm Settlement"
-        message="Mark expert as present and settle the related expense?"
-        confirmText="Confirm"
-        onConfirm={() => {
-          if (settleReqId) {
-            const req = currentEvent?.expertRequests?.find(r => r.id === settleReqId);
-            if (req) {
-              const updatedReqs = currentEvent.expertRequests.map(r => r.id === req.id ? { ...r, status: 'completed' } : r);
-              updateEventDetails(currentEvent.id, { expertRequests: updatedReqs, status: 'completed' });
-              
-              const exp = expenses.find(e => e.expertRequestId === req.id);
-              if (exp) {
-                updateExpenseStatus(exp.id, 'Settled');
+      {/* Settle / Mark Present Modal */}
+      {isConfirmSettleOpen && (
+        <div className="modal-overlay" onClick={() => { setIsConfirmSettleOpen(false); setSettleReqId(null); setSelectedSettleRequest(null); }}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '560px' }}>
+            <div className="modal-header">
+              <h2>Confirm Session Settlement</h2>
+              <button className="close-btn" onClick={() => { setIsConfirmSettleOpen(false); setSettleReqId(null); setSelectedSettleRequest(null); }}>
+                <i className='bx bx-x'></i>
+              </button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const targetReqId = settleReqId || selectedSettleRequest?.id;
+              const req = currentEvent?.expertRequests?.find(r => r.id === targetReqId) || selectedSettleRequest || currentEvent;
+              if (req && currentEvent) {
+                const parsedCount = parseInt(settleParticipantCount, 10) || 0;
+                const existingReqs = currentEvent.expertRequests || [];
+                const updatedReqs = existingReqs.length > 0
+                  ? existingReqs.map(r => r.id === targetReqId ? { ...r, status: 'completed', participantCount: parsedCount } : r)
+                  : [{ ...req, status: 'completed', participantCount: parsedCount }];
+
+                updateEventDetails(currentEvent.id, {
+                  participantCount: parsedCount,
+                  expertRequests: updatedReqs,
+                  status: 'completed'
+                });
+                setStatus('completed');
+
+                const exp = expenses.find(expItem => expItem.expertRequestId === targetReqId);
+                if (exp) {
+                  updateExpenseStatus(exp.id, 'Settled');
+                }
+                showToast("Expert marked as present. Expense settled.", "success");
+                setIsConfirmSettleOpen(false);
+                setSettleReqId(null);
+                setSelectedSettleRequest(null);
               }
-              showToast("Expert marked as present. Expense settled.", "success");
-            }
-          }
-        }}
-      />
+            }}>
+              <div className="modal-body" style={{ padding: '1.25rem 1.5rem' }}>
+                <div className="form-grid" style={{ marginBottom: '0.5rem' }}>
+                  {/* Row 1 - Session Date | Session Name */}
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Date</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      readOnly 
+                      value={selectedSettleRequest?.sessionDate || currentEvent?.sessionDate || pageDate || '-'} 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Name</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      readOnly 
+                      value={selectedSettleRequest?.sessionName || currentEvent?.sessionName || pageTitle || '-'} 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
+                    />
+                  </div>
+
+                  {/* Row 2 - Session Time | Duration */}
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Time</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      readOnly 
+                      value={selectedSettleRequest?.sessionTime || currentEvent?.sessionTime || 'TBD'} 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Duration</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      readOnly 
+                      value={(() => {
+                        const dur = selectedSettleRequest?.duration || currentEvent?.duration || '60';
+                        return String(dur).toLowerCase().includes('min') ? dur : `${dur} Mins`;
+                      })()} 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
+                    />
+                  </div>
+
+                  {/* Row 3 - Session Type | Session Location */}
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Type</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      readOnly 
+                      value={selectedSettleRequest?.sessionType || currentEvent?.sessionType || 'Online'} 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem', textTransform: 'capitalize' }} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Location</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      readOnly 
+                      value={selectedSettleRequest?.location || currentEvent?.location || 'Online'} 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
+                    />
+                  </div>
+
+                  {/* Row 4 - Session Language | Price (USD) */}
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Session Language</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      readOnly 
+                      value={selectedSettleRequest?.language || currentEvent?.language || 'English'} 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem' }} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Price (USD)</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      readOnly 
+                      value={`$${selectedSettleRequest?.expertCost !== undefined && selectedSettleRequest?.expertCost !== '' ? selectedSettleRequest.expertCost : (selectedSettleRequest?.budget || currentEvent?.expertCost || currentEvent?.budget || 0)}`} 
+                      style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed', fontSize: '0.85rem', fontWeight: '600' }} 
+                    />
+                  </div>
+
+                  {/* Row 5 - Paticipant Count - number field upto 10 numbers */}
+                  <div className="form-group full-width" style={{ gridColumn: '1 / -1', marginTop: '0.35rem' }}>
+                    <label style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a' }}>
+                      Participant Count <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      max="9999999999"
+                      className="form-control" 
+                      required 
+                      placeholder="Enter participant count (up to 10 digits)" 
+                      value={settleParticipantCount} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val.length <= 10) {
+                          setSettleParticipantCount(val);
+                        }
+                      }}
+                      onInput={(e) => {
+                        if (e.target.value.length > 10) {
+                          e.target.value = e.target.value.slice(0, 10);
+                        }
+                      }}
+                      style={{ 
+                        background: '#ffffff', 
+                        color: '#0f172a', 
+                        fontSize: '0.9rem', 
+                        fontWeight: '600', 
+                        border: '1.5px solid #6366f1',
+                        borderRadius: '6px',
+                        padding: '0.5rem 0.75rem'
+                      }} 
+                      autoFocus
+                    />
+                    <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
+                      Only the participant count can be edited (numbers only, up to 10 digits)
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', background: '#f8fafc' }}>
+                <button 
+                  type="button" 
+                  className="btn-outline" 
+                  onClick={() => { setIsConfirmSettleOpen(false); setSettleReqId(null); setSelectedSettleRequest(null); }}
+                  style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-primary"
+                  style={{ padding: '0.45rem 1.25rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <i className='bx bx-check-circle'></i> Confirm & Settle
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Revoke Reason Modal */}
       {revokingExpenseId !== null && (
         <div className="modal-overlay" onClick={() => { setRevokingExpenseId(null); setRevokeReason(''); }}>
