@@ -283,12 +283,39 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
   const filteredCorps = Array.isArray(corporates) ? corporates.filter(c => c && c.toLowerCase().includes(corpSearch.toLowerCase())) : [];
   const filteredDivs = Array.isArray(divisions) ? divisions.filter(d => d && d.toLowerCase().includes(divSearch.toLowerCase())) : [];
   
-  const safeOrders = Array.isArray(orders) ? orders : [];
+  const safeOrders = (Array.isArray(orders) && orders.length > 0) ? orders : (() => {
+    try {
+      return JSON.parse(localStorage.getItem('division_orders') || '[]');
+    } catch(e) {
+      return [];
+    }
+  })();
+
   const filteredOrders = safeOrders.filter(o => {
-    const oCorp = o.corporate || o.clientName;
-    const oDiv = o.division || o.divisionName;
-    const matchDiv = !formData.division || !oDiv || oDiv === formData.division;
-    const matchCorp = !formData.corporate || !oCorp || oCorp === formData.corporate || (matchDiv && (!oCorp || oCorp === 'N/A'));
+    const oCorp = (o.corporate || o.clientName || '').trim();
+    const oDivName = (o.divisionName || o.division || '').trim();
+    const oDivId = (o.divisionId || '').trim();
+    const selDiv = (formData.division || '').trim();
+    const selCorp = (formData.corporate || '').trim();
+
+    // Check division match (case-insensitive, by name or id)
+    const matchDiv = !selDiv || 
+      oDivName.toLowerCase() === selDiv.toLowerCase() || 
+      (oDivId && oDivId.toLowerCase() === selDiv.toLowerCase());
+
+    // Check corporate match
+    const matchCorp = !selCorp || 
+      !oCorp || 
+      oCorp === 'N/A' || 
+      oCorp.toLowerCase() === 'corporate client' || 
+      oCorp.toLowerCase() === 'client name' ||
+      oCorp.toLowerCase() === selCorp.toLowerCase();
+
+    // When a division is selected and matches, the order definitely belongs to this division!
+    if (selDiv && matchDiv) {
+      return true;
+    }
+
     return matchCorp && matchDiv;
   });
 
@@ -2327,9 +2354,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                     <div 
                       key={idx}
                       onClick={() => {
+                        const targetDiv = String(div || '').trim().toLowerCase();
                         const divOrders = safeOrders.filter(o => {
-                          const oDiv = o.division || o.divisionName;
-                          return oDiv === div;
+                          const oDivName = (o.divisionName || o.division || '').trim().toLowerCase();
+                          const oDivId = (o.divisionId || '').trim().toLowerCase();
+                          return oDivName === targetDiv || (oDivId && oDivId === targetDiv);
                         });
                         let autoOrder = null;
                         if (divOrders.length === 1) {
@@ -2337,12 +2366,14 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                         }
                         const autoPs = autoOrder ? (autoOrder.planStart || 'Unknown Date') : '';
                         const autoPn = autoOrder ? (autoOrder.plan || autoOrder.planName || autoOrder.product || `Order #${autoOrder.id}`) : '';
+                        const orderMonths = autoOrder ? calculatePlanMonthDiff(autoOrder.planStart, autoOrder.planEnd) : null;
+                        const terms = autoOrder ? getFrequencyMonths(billingFrequency, orderMonths) : 1;
                         setFormData(prev => ({ 
                           ...prev, 
                           division: div, 
                           orderId: autoOrder ? String(autoOrder.id) : '', 
                           orderName: autoOrder ? `${autoPs} & ${autoPn}` : '', 
-                          paymentTerms: prev.paymentTerms || '1', 
+                          paymentTerms: autoOrder ? String(terms) : (prev.paymentTerms || '1'), 
                           amount: autoOrder?.billingDetails?.contractValue || autoOrder?.amount || '' 
                         })); 
                         setIsDivDropdownOpen(false);
@@ -2395,7 +2426,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                   }));
                   return;
                 }
-                const matched = filteredOrders.find(o => String(o.id) === val);
+                const matched = safeOrders.find(o => String(o.id) === val) || filteredOrders.find(o => String(o.id) === val);
                 if (matched) {
                   const ps = matched.planStart || 'Unknown Date';
                   const pn = matched.plan || matched.planName || matched.product || `Order #${matched.id}`;

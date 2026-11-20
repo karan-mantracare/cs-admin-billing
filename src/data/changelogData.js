@@ -1,5 +1,23 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-add-schedule-division-order-matching-20261120',
+    date: '2026-11-20',
+    formattedDate: 'Nov 20, 2026',
+    page: 'Admin',
+    subPage: 'Add Invoice Schedule / Division Order Discovery & Auto-Resolution',
+    summary: 'Resolved issue where orders existing in a division were not found when selecting Corporate & Division in Add Schedule modal',
+    details: 'Fixed a strict corporate matching check in AddScheduleModal that caused orders belonging to a selected division (e.g., 20-11) to be hidden if the corporate or client name field contained generic values or naming variations. When a division is selected, orders matching that division by name or ID are now immediately discovered and displayed. In addition, single-order divisions auto-select the order and populate its details automatically.',
+    plainLanguage: 'Fixed an issue where selecting a division in the Add Invoice Schedule modal reported "No existing orders found" even though the order existed in that division. All orders under the selected division now appear immediately in the dropdown and auto-select if only one order exists.',
+    highlights: [
+      'Division-First Order Resolution: Guarantees orders belonging to a chosen division are never filtered out by corporate name discrepancies',
+      'Case-Insensitive & ID Matching: Matches divisions by name or divisionId resiliently',
+      'One-Click Auto-Selection: Auto-populates order details, plan dates, and billing terms when a division has one order',
+      'Real-Time Storage Fallback: Ensures live division_orders are always accessible during schedule creation'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
     id: 'cl-payment-summary-modal-action-icons-20261120',
     date: '2026-11-20',
     formattedDate: 'Nov 20, 2026',

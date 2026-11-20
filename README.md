@@ -175,6 +175,11 @@ Admin-CS-Payment/
 
 ## 📋 Recent Highlights & Changelog
 
+### Nov 20, 2026: Add Invoice Schedule Division Order Discovery & Auto-Resolution
+- Fixed an issue where selecting a Division in the Add Invoice Schedule modal displayed *"No existing orders found for this division"* due to overly strict corporate name matching against orders.
+- Ensured orders matching a selected division (by name or ID) are immediately found and listed in the Order dropdown.
+- Single-order divisions now automatically select the order and pre-fill plan dates, order names, and billing terms.
+
 ### Nov 20, 2026: Payment Summary Modal Action Icons & Schedule Builder Integration
 - Replaced the bulky "View Payment Schedule" and "View Billing Schedule" text buttons with sleek, color-coded icon action buttons with browser tooltips.
 - Added a new **Create Billing Schedule** (`bx-calendar-plus`) icon button directly in the Payment Summary footer that launches schedule configuration for the active order.
