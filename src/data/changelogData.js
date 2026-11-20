@@ -1,5 +1,23 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-contract-billing-start-date-schedule-calculation-20261120',
+    date: '2026-11-20',
+    formattedDate: 'Nov 20, 2026',
+    page: 'Admin',
+    subPage: 'Add Invoice Schedule / Contract Billing Start Date & Installment Calculation',
+    summary: 'Calculated billing schedule installments and max terms from Contract Billing Start Date to Order End Date',
+    details: 'Resolved an issue in AddScheduleModal where multi-contract schedules hardcoded the order planStart date (e.g., 2026-11-01) for all contracts rather than honoring each individual contract billingDate (e.g., 2027-03-01 for 2011 2nd corp). Each contract now calculates its effective month difference as (Contract Billing Start Date to Order End Date), correctly defaulting 2011 2nd corp to 8 monthly installments instead of 12. In addition, the generated invoices in the schedule preview now strictly start from the contract billingDate (01/03/2027 to 01/10/2027), ensuring installments never precede the contract effective billing date or cross the order plan end date.',
+    plainLanguage: 'Fixed an issue where a contract with a later billing start date (e.g., March 1, 2027) was defaulted to 12 billing months using the order start date (November 1, 2026) and generated preview invoices starting in November. The system now calculates each contract billing schedule based on its own billing start date up to the order end date (e.g., 8 months from March to October), and begins the preview invoices on the contract billing start date.',
+    highlights: [
+      'Contract-Specific Month Duration: Billing schedule length is calculated as (Contract Billing Date to Order End Date), e.g., 8 months for March to October',
+      'Accurate Invoice By Dates: Preview invoices for each contract start on its own billing start date instead of falling back to order planStart',
+      'Dynamic Max Terms Validation: Independent month limits per contract row in Step 2 table prevents crossing order planEnd',
+      'Division Contracts Enrichment: Auto-retrieves billingDate and paymentDueDays from division_contracts in localStorage for all linked and mapped contracts'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
     id: 'cl-add-schedule-division-order-matching-20261120',
     date: '2026-11-20',
     formattedDate: 'Nov 20, 2026',

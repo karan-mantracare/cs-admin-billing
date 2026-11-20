@@ -356,6 +356,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         billFrom: unlinkedContract.billFrom || 'MCC',
         receivingBankName: unlinkedContract.receivingBankName || '',
         bankDetailsLink: unlinkedContract.bankDetailsLink || '',
+        billingDate: unlinkedContract.billingDate || unlinkedContract.startDate || '',
+        paymentDueDays: unlinkedContract.paymentDueDays || 15,
         selected: true
       }]
     },
@@ -370,87 +372,23 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       billFrom: unlinkedContract.billFrom || 'MCC',
       receivingBankName: unlinkedContract.receivingBankName || '',
       bankDetailsLink: unlinkedContract.bankDetailsLink || '',
+      billingDate: unlinkedContract.billingDate || unlinkedContract.startDate || '',
+      paymentDueDays: unlinkedContract.paymentDueDays || 15,
       selected: true
     }]
   } : null);
-
-  const availableContracts = React.useMemo(() => {
-    if (!selectedOrder) return [];
-    const splits = (selectedOrder.billingDetails?.billingSplits || []).filter(s => s && s.selected !== false);
-    if (splits.length > 0) return splits;
-    const directContracts = selectedOrder.contractDetails?.contracts || selectedOrder.contracts || [];
-    if (directContracts.length > 0) {
-      return directContracts.map((c, i) => ({
-        id: c.id || String(i + 1),
-        companyName: c.companyName || c.clientName || `Contract #${i + 1}`,
-        taxDetails: c.taxDetails || c.taxId || '',
-        contractValue: c.contractValue || c.amount || 0,
-        contractCurrency: c.contractCurrency || selectedOrder.billingDetails?.clientCurrency || 'USD',
-        amountInUSD: c.amountInUSD || c.amount || 0,
-        percentage: c.percentage || 0,
-        billFrom: c.billFrom || 'MCC',
-        receivingBankName: c.receivingBankName || '',
-        bankDetailsLink: c.bankDetailsLink || '',
-        selected: true
-      }));
-    }
-    // Also check division_contracts stored in localStorage linked to this order
-    try {
-      const allDivContracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
-      const orderLinkedContracts = allDivContracts.filter(c => 
-        (selectedOrder.id && String(c.orderId) === String(selectedOrder.id)) ||
-        (selectedOrder.orderName && c.orderName === selectedOrder.orderName)
-      );
-      if (orderLinkedContracts.length > 0) {
-        return orderLinkedContracts.map((c, i) => ({
-          id: c.id || String(i + 1),
-          companyName: c.companyName || c.clientName || `Contract #${i + 1}`,
-          taxDetails: c.taxDetails || c.taxId || '',
-          contractValue: c.contractValue || c.amount || 0,
-          contractCurrency: c.contractCurrency || selectedOrder.billingDetails?.clientCurrency || 'USD',
-          amountInUSD: c.amountInUSD || c.amount || 0,
-          percentage: c.percentage || 0,
-          billFrom: c.billFrom || 'MCC',
-          receivingBankName: c.receivingBankName || '',
-          bankDetailsLink: c.bankDetailsLink || '',
-          selected: true
-        }));
-      }
-    } catch (e) {}
-
-    return [];
-  }, [selectedOrder]);
-
-  // Initialize separate terms for each available contract
-  useEffect(() => {
-    if (isOpen) {
-      setSeparateTerms(prev => {
-        let changed = false;
-        const next = { ...prev };
-        availableContracts.forEach(c => {
-          if (availableContracts.length === 1) {
-            if (next[c.id] !== (formData.paymentTerms || '1')) {
-              next[c.id] = formData.paymentTerms || '1';
-              changed = true;
-            }
-          } else if (next[c.id] === undefined) {
-            next[c.id] = formData.paymentTerms || '1';
-            changed = true;
-          }
-        });
-        return changed ? next : prev;
-      });
-    }
-  }, [isOpen, availableContracts, formData.paymentTerms]);
-
-  const activeSingleContract = (contractScope !== 'all_combined' && contractScope !== 'all_separate')
-    ? availableContracts.find(c => String(c.id) === String(contractScope))
-    : null;
 
   const parseFlexibleDate = (dateStr) => {
     if (!dateStr || dateStr === 'Unknown Date') return null;
     if (typeof dateStr !== 'string') return new Date(dateStr);
     const trimmed = dateStr.trim();
+    // YYYY-MM-DD or YYYY/MM/DD
+    const ymdMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    if (ymdMatch) {
+      const [, year, month, day] = ymdMatch;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+    // DD-MM-YYYY or DD/MM/YYYY
     const dmyMatch = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
     if (dmyMatch) {
       const [, day, month, year] = dmyMatch;
@@ -458,6 +396,15 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     }
     const d = new Date(trimmed);
     return isNaN(d.getTime()) ? null : d;
+  };
+
+  const toStandardIsoDate = (dateStr) => {
+    const d = parseFlexibleDate(dateStr);
+    if (!d) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   };
 
   const calculatePlanMonthDiff = (startStr, endStr) => {
@@ -492,6 +439,76 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       maxPaymentTerms = calculatePlanMonthDiff(planStart, planEnd);
     }
   }
+
+  const getContractStartDate = (contract) => {
+    const raw = contract?.billingDate || contract?.billingStartDate || contract?.startDate || contract?.contractStart || selectedOrder?.planStart || '';
+    return toStandardIsoDate(raw) || raw;
+  };
+
+  const getContractEndDate = (contract) => {
+    const raw = contract?.billingEndDate || contract?.endDate || contract?.contractEnd || selectedOrder?.planEnd || '';
+    return toStandardIsoDate(raw) || raw;
+  };
+
+  const getContractMaxTerms = (contract) => {
+    const start = getContractStartDate(contract);
+    const end = getContractEndDate(contract);
+    if (start && end && start !== 'Unknown Date' && end !== 'Unknown Date' && end !== 'Ongoing') {
+      const diff = calculatePlanMonthDiff(start, end);
+      if (diff !== null && diff > 0) return diff;
+    }
+    return maxPaymentTerms;
+  };
+
+  const availableContracts = React.useMemo(() => {
+    if (!selectedOrder) return [];
+
+    let allDivContracts = [];
+    try {
+      allDivContracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+    } catch (e) {}
+
+    const enrichContract = (c, i) => {
+      const matched = allDivContracts.find(dc => 
+        (c.id && String(dc.id) === String(c.id)) || 
+        (c.companyName && dc.companyName === c.companyName)
+      );
+      return {
+        id: c.id || matched?.id || String(i + 1),
+        companyName: c.companyName || matched?.companyName || c.clientName || `Contract #${i + 1}`,
+        taxDetails: c.taxDetails || matched?.taxDetails || c.taxId || '',
+        contractValue: c.contractValue !== undefined ? c.contractValue : (matched?.contractValue || c.amount || 0),
+        contractCurrency: c.contractCurrency || matched?.contractCurrency || selectedOrder.billingDetails?.clientCurrency || 'USD',
+        amountInUSD: c.amountInUSD !== undefined ? c.amountInUSD : (matched?.amountInUSD || c.amount || 0),
+        percentage: c.percentage !== undefined ? c.percentage : (matched?.percentage || 0),
+        billFrom: c.billFrom || matched?.billFrom || selectedOrder.billingDetails?.billFrom || 'MCC',
+        receivingBankName: c.receivingBankName || matched?.receivingBankName || '',
+        bankDetailsLink: c.bankDetailsLink || matched?.bankDetailsLink || '',
+        billingDate: c.billingDate || matched?.billingDate || c.billingStartDate || c.startDate || c.contractStart || '',
+        paymentDueDays: c.paymentDueDays || matched?.paymentDueDays || 15,
+        selected: true
+      };
+    };
+
+    const splits = (selectedOrder.billingDetails?.billingSplits || []).filter(s => s && s.selected !== false);
+    if (splits.length > 0) return splits.map((s, i) => enrichContract(s, i));
+
+    const directContracts = selectedOrder.contractDetails?.contracts || selectedOrder.contracts || [];
+    if (directContracts.length > 0) {
+      return directContracts.map((c, i) => enrichContract(c, i));
+    }
+
+    // Also check division_contracts stored in localStorage linked to this order
+    const orderLinkedContracts = allDivContracts.filter(c => 
+      (selectedOrder.id && String(c.orderId) === String(selectedOrder.id)) ||
+      (selectedOrder.orderName && c.orderName === selectedOrder.orderName)
+    );
+    if (orderLinkedContracts.length > 0) {
+      return orderLinkedContracts.map((c, i) => enrichContract(c, i));
+    }
+
+    return [];
+  }, [selectedOrder]);
 
   const getFrequencyMonths = (freq, totalPlanMonths) => {
     if (freq === 'Annually' || freq === 'Annual') {
@@ -533,6 +550,36 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     return index;
   };
 
+  // Initialize separate terms for each available contract
+  useEffect(() => {
+    if (isOpen) {
+      setSeparateTerms(prev => {
+        let changed = false;
+        const next = { ...prev };
+        availableContracts.forEach(c => {
+          const cMax = getContractMaxTerms(c);
+          const cFreq = contractFrequencies[c.id] || billingFrequency;
+          const defaultContractTerms = String(getFrequencyMonths(cFreq, cMax));
+
+          if (availableContracts.length === 1) {
+            if (next[c.id] !== (formData.paymentTerms || defaultContractTerms)) {
+              next[c.id] = formData.paymentTerms || defaultContractTerms;
+              changed = true;
+            }
+          } else if (next[c.id] === undefined) {
+            next[c.id] = defaultContractTerms;
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [isOpen, availableContracts, formData.paymentTerms, billingFrequency, contractFrequencies]);
+
+  const activeSingleContract = (contractScope !== 'all_combined' && contractScope !== 'all_separate')
+    ? availableContracts.find(c => String(c.id) === String(contractScope))
+    : null;
+
   const handleFrequencyChange = (newFreq) => {
     setBillingFrequency(newFreq);
     const calculatedTerms = getFrequencyMonths(newFreq, maxPaymentTerms);
@@ -540,7 +587,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     setSeparateTerms(prev => {
       const next = { ...prev };
       availableContracts.forEach(c => {
-        next[c.id] = String(calculatedTerms);
+        const cMax = getContractMaxTerms(c);
+        next[c.id] = String(getFrequencyMonths(newFreq, cMax));
       });
       return next;
     });
@@ -556,7 +604,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
   const handleContractFrequencyChange = (contractId, newFreq) => {
     setContractFrequencies(prev => ({ ...prev, [contractId]: newFreq }));
-    const calculatedTerms = getFrequencyMonths(newFreq, maxPaymentTerms);
+    const targetC = availableContracts.find(c => String(c.id) === String(contractId));
+    const cMax = targetC ? getContractMaxTerms(targetC) : maxPaymentTerms;
+    const calculatedTerms = getFrequencyMonths(newFreq, cMax);
     setSeparateTerms(prev => ({ ...prev, [contractId]: String(calculatedTerms) }));
     setPaymentTermError('');
   };
@@ -573,64 +623,72 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
   // --- Monthly Back-to-Back Date Helpers ---
   const getMonthlyDate = (baseDateStr, monthOffset) => {
-    let d = baseDateStr ? new Date(baseDateStr) : new Date();
+    let d = parseFlexibleDate(baseDateStr) || (baseDateStr ? new Date(baseDateStr) : new Date());
     if (isNaN(d.getTime())) d = new Date();
     
     const startDay = d.getDate();
-    const res = new Date(d);
-    res.setMonth(res.getMonth() + monthOffset);
+    const res = new Date(d.getFullYear(), d.getMonth() + monthOffset, startDay);
     
     if (res.getDate() !== startDay) {
       res.setDate(0);
     }
-    return res.toISOString().split('T')[0];
+    const y = res.getFullYear();
+    const m = String(res.getMonth() + 1).padStart(2, '0');
+    const day = String(res.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   };
 
   const getDueDate = (invoiceDateStr, dueDays) => {
-    const d = new Date(invoiceDateStr);
+    const d = parseFlexibleDate(invoiceDateStr) || new Date(invoiceDateStr);
     if (isNaN(d.getTime())) return invoiceDateStr;
-    d.setDate(d.getDate() + (Number(dueDays) || 30));
-    return d.toISOString().split('T')[0];
+    const res = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (Number(dueDays) || 30));
+    const y = res.getFullYear();
+    const m = String(res.getMonth() + 1).padStart(2, '0');
+    const day = String(res.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   };
 
   const checkPlanEndCrossError = () => {
     if (!selectedOrder) return '';
-    const planStart = selectedOrder.planStart;
-    const planEnd = selectedOrder.planEnd;
-    if (!planStart || !planEnd || planStart === 'Unknown Date') return '';
-
     const isSeparate = availableContracts.length > 1 && contractScope === 'all_separate';
 
     if (isSeparate) {
       for (const c of availableContracts) {
         const cFreq = contractFrequencies[c.id] || billingFrequency;
-        const terms = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : formData.paymentTerms) || 0;
+        const cStart = getContractStartDate(c);
+        const cEnd = getContractEndDate(c);
+        const cMax = getContractMaxTerms(c);
+        const terms = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : getFrequencyMonths(cFreq, cMax)) || 0;
         if (!terms || terms <= 0) {
           return `Billing month for "${c.companyName}" is required.`;
         }
-        const lastOffset = getCadenceOffset(terms - 1, cFreq, maxPaymentTerms);
-        const lastInvoiceDate = getMonthlyDate(planStart, lastOffset);
+        const lastOffset = getCadenceOffset(terms - 1, cFreq, cMax);
+        const lastInvoiceDate = getMonthlyDate(cStart, lastOffset);
         const totalSpanMonths = (cFreq === 'Annually' || cFreq === 'Annual')
           ? terms * 12
-          : (cFreq === 'Quarterly' ? terms * 3 : (cFreq === 'Bi Anually' ? terms * Math.max(1, Math.floor((maxPaymentTerms || 12) / 2)) : terms));
+          : (cFreq === 'Quarterly' ? terms * 3 : (cFreq === 'Bi Anually' ? terms * Math.max(1, Math.floor((cMax || 12) / 2)) : terms));
 
-        if (lastInvoiceDate > planEnd || (maxPaymentTerms > 0 && totalSpanMonths > maxPaymentTerms) || (maxPaymentTerms > 0 && terms > maxPaymentTerms)) {
-          return `The selected billing month (${terms} installments for "${c.companyName}") will cross the Plan End Date (${planEnd}).`;
+        if (cEnd && (lastInvoiceDate > cEnd || (cMax > 0 && totalSpanMonths > cMax) || (cMax > 0 && terms > cMax))) {
+          return `The selected billing month (${terms} installments for "${c.companyName}") will cross the Plan End Date (${cEnd}).`;
         }
       }
     } else {
+      const targetC = activeSingleContract || (availableContracts.length === 1 ? availableContracts[0] : null);
+      const start = targetC ? getContractStartDate(targetC) : (selectedOrder.planStart || '');
+      const end = targetC ? getContractEndDate(targetC) : (selectedOrder.planEnd || '');
+      const maxTerms = targetC ? getContractMaxTerms(targetC) : maxPaymentTerms;
       const terms = Number(formData.paymentTerms) || 0;
       if (!terms || terms <= 0) {
         return 'Billing month is required.';
       }
-      const lastOffset = getCadenceOffset(terms - 1, billingFrequency, maxPaymentTerms);
-      const lastInvoiceDate = getMonthlyDate(planStart, lastOffset);
+      const lastOffset = getCadenceOffset(terms - 1, billingFrequency, maxTerms);
+      const lastInvoiceDate = getMonthlyDate(start, lastOffset);
       const totalSpanMonths = (billingFrequency === 'Annually' || billingFrequency === 'Annual')
         ? terms * 12
-        : (billingFrequency === 'Quarterly' ? terms * 3 : (billingFrequency === 'Bi Anually' ? terms * Math.max(1, Math.floor((maxPaymentTerms || 12) / 2)) : terms));
+        : (billingFrequency === 'Quarterly' ? terms * 3 : (billingFrequency === 'Bi Anually' ? terms * Math.max(1, Math.floor((maxTerms || 12) / 2)) : terms));
 
-      if (lastInvoiceDate > planEnd || (maxPaymentTerms > 0 && totalSpanMonths > maxPaymentTerms) || (maxPaymentTerms > 0 && terms > maxPaymentTerms)) {
-        return `The selected billing month (${terms} installments) will cross the Plan End Date (${planEnd}).`;
+      if (end && (lastInvoiceDate > end || (maxTerms > 0 && totalSpanMonths > maxTerms) || (maxTerms > 0 && terms > maxTerms))) {
+        return `The selected billing month (${terms} installments) will cross the Plan End Date (${end}).`;
       }
     }
 
@@ -764,21 +822,26 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       const targetContract = activeSplits.find(c => String(c.id) === String(contractScope));
       if (!targetContract) return [];
 
-      const terms = Number(separateTerms[targetContract.id] !== undefined ? separateTerms[targetContract.id] : defaultTerms) || 1;
+      const contractStart = getContractStartDate(targetContract);
+      const cMax = getContractMaxTerms(targetContract);
+      const cFreq = contractFrequencies[targetContract.id] || billingFrequency;
+      const defaultContractTerms = getFrequencyMonths(cFreq, cMax);
+      const terms = Number(separateTerms[targetContract.id] !== undefined ? separateTerms[targetContract.id] : (formData.paymentTerms || defaultContractTerms)) || 1;
       const contractVal = Number(targetContract.contractValue) || Number(targetContract.amountInUSD) || 0;
       const contractUsd = Number(targetContract.amountInUSD) || contractVal || 0;
       const curr = targetContract.contractCurrency || defaultCurrency;
       const entityName = targetContract.companyName || 'Entity';
       const taxId = targetContract.taxId || targetContract.taxDetails || '';
       const billFrom = targetContract.billFrom || selectedOrder.billingDetails?.billFrom || 'Unknown';
+      const cPaymentDueDays = Number(targetContract.paymentDueDays) || paymentDueDays;
 
       const termSplits = recalculateSplits(terms, pinnedPercentages);
       termSplits.forEach((termSplit, i) => {
         const termPct = termSplit.percentage;
         const termValue = Number(((contractVal * termPct) / 100).toFixed(2));
         const termUsd = Number(((contractUsd * termPct) / 100).toFixed(2));
-        const invoiceByDateStr = customDates[i]?.invoiceDate || getMonthlyDate(planStart, getCadenceOffset(i, billingFrequency, maxPaymentTerms));
-        const dueByDateStr = customDates[i]?.dueByDate || getDueDate(invoiceByDateStr, paymentDueDays);
+        const invoiceByDateStr = customDates[i]?.invoiceDate || getMonthlyDate(contractStart, getCadenceOffset(i, cFreq, cMax));
+        const dueByDateStr = customDates[i]?.dueByDate || getDueDate(invoiceByDateStr, cPaymentDueDays);
         const remarkVal = customRemarks[i] || '';
 
         invoices.push({
@@ -820,24 +883,28 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     if (contractScope === 'all_separate') {
       activeSplits.forEach((contract, cIdx) => {
         const isMulti = activeSplits.length > 1;
+        const contractStart = getContractStartDate(contract);
+        const cMax = getContractMaxTerms(contract);
+        const contractFreq = contractFrequencies[contract.id] || billingFrequency;
+        const defaultContractTerms = getFrequencyMonths(contractFreq, cMax);
         const terms = isMulti
-          ? (Number(separateTerms[contract.id] !== undefined ? separateTerms[contract.id] : defaultTerms) || 1)
-          : (Number(formData.paymentTerms) || Number(separateTerms[contract.id]) || defaultTerms);
+          ? (Number(separateTerms[contract.id] !== undefined ? separateTerms[contract.id] : defaultContractTerms) || 1)
+          : (Number(formData.paymentTerms) || Number(separateTerms[contract.id]) || defaultContractTerms);
         const contractVal = Number(contract.contractValue) || Number(contract.amountInUSD) || 0;
         const contractUsd = Number(contract.amountInUSD) || contractVal || 0;
         const curr = contract.contractCurrency || defaultCurrency;
         const entityName = contract.companyName || `Entity #${cIdx + 1}`;
         const taxId = contract.taxId || contract.taxDetails || '';
         const billFrom = contract.billFrom || selectedOrder.billingDetails?.billFrom || 'Unknown';
+        const cPaymentDueDays = Number(contract.paymentDueDays) || paymentDueDays;
 
         const termSplits = recalculateSplits(terms, {});
         termSplits.forEach((termSplit, i) => {
           const termPct = termSplit.percentage;
           const termValue = Number(((contractVal * termPct) / 100).toFixed(2));
           const termUsd = Number(((contractUsd * termPct) / 100).toFixed(2));
-          const contractFreq = contractFrequencies[contract.id] || billingFrequency;
-          const invoiceByDateStr = customDates[`${contract.id}-${i}`]?.invoiceDate || getMonthlyDate(planStart, getCadenceOffset(i, contractFreq, maxPaymentTerms));
-          const dueByDateStr = customDates[`${contract.id}-${i}`]?.dueByDate || getDueDate(invoiceByDateStr, paymentDueDays);
+          const invoiceByDateStr = customDates[`${contract.id}-${i}`]?.invoiceDate || getMonthlyDate(contractStart, getCadenceOffset(i, contractFreq, cMax));
+          const dueByDateStr = customDates[`${contract.id}-${i}`]?.dueByDate || getDueDate(invoiceByDateStr, cPaymentDueDays);
           const remarkVal = customRemarks[`${contract.id}-${i}`] || customRemarks[i] || '';
 
           invoices.push({
@@ -1234,27 +1301,30 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       if (contractScope === 'all_separate' && availableContracts.length > 1) {
         for (const c of availableContracts) {
           const cFreq = contractFrequencies[c.id] || billingFrequency;
+          const cMax = getContractMaxTerms(c);
           if (cFreq !== 'Monthly') {
-            const calculated = getFrequencyMonths(cFreq, maxPaymentTerms);
+            const calculated = getFrequencyMonths(cFreq, cMax);
             separateTerms[c.id] = String(calculated);
           }
-          const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : formData.paymentTerms);
+          const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : getFrequencyMonths(cFreq, cMax));
           if (!t || t <= 0) {
             setPaymentTermError(`Billing month for "${c.companyName}" is required`);
             return;
           }
-          if (maxPaymentTerms > 0 && t > maxPaymentTerms) {
-            setPaymentTermError(`Billing month for "${c.companyName}" cannot exceed Plan Term (${maxPaymentTerms} months)`);
+          if (cMax > 0 && t > cMax) {
+            setPaymentTermError(`Billing month for "${c.companyName}" cannot exceed Plan Term (${cMax} months)`);
             return;
           }
         }
       } else {
+        const targetC = activeSingleContract || (availableContracts.length === 1 ? availableContracts[0] : null);
+        const maxTerms = targetC ? getContractMaxTerms(targetC) : maxPaymentTerms;
         if (billingFrequency !== 'Monthly') {
-          const calculated = getFrequencyMonths(billingFrequency, maxPaymentTerms);
+          const calculated = getFrequencyMonths(billingFrequency, maxTerms);
           formData.paymentTerms = String(calculated);
         }
-        if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
-          setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+        if (formData.paymentTerms && maxTerms > 0 && Number(formData.paymentTerms) > maxTerms) {
+          setPaymentTermError(`Cannot exceed Plan Term (${maxTerms} months)`);
           return;
         }
         if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
@@ -1301,27 +1371,30 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       if (contractScope === 'all_separate' && availableContracts.length > 1) {
         for (const c of availableContracts) {
           const cFreq = contractFrequencies[c.id] || billingFrequency;
+          const cMax = getContractMaxTerms(c);
           if (cFreq !== 'Monthly') {
-            const calculated = getFrequencyMonths(cFreq, maxPaymentTerms);
+            const calculated = getFrequencyMonths(cFreq, cMax);
             separateTerms[c.id] = String(calculated);
           }
-          const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : formData.paymentTerms);
+          const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : getFrequencyMonths(cFreq, cMax));
           if (!t || t <= 0) {
             setPaymentTermError(`Billing month for "${c.companyName}" is required`);
             return;
           }
-          if (maxPaymentTerms > 0 && t > maxPaymentTerms) {
-            setPaymentTermError(`Billing month for "${c.companyName}" cannot exceed Plan Term (${maxPaymentTerms} months)`);
+          if (cMax > 0 && t > cMax) {
+            setPaymentTermError(`Billing month for "${c.companyName}" cannot exceed Plan Term (${cMax} months)`);
             return;
           }
         }
       } else {
+        const targetC = activeSingleContract || (availableContracts.length === 1 ? availableContracts[0] : null);
+        const maxTerms = targetC ? getContractMaxTerms(targetC) : maxPaymentTerms;
         if (billingFrequency !== 'Monthly') {
-          const calculated = getFrequencyMonths(billingFrequency, maxPaymentTerms);
+          const calculated = getFrequencyMonths(billingFrequency, maxTerms);
           formData.paymentTerms = String(calculated);
         }
-        if (formData.paymentTerms && maxPaymentTerms > 0 && Number(formData.paymentTerms) > maxPaymentTerms) {
-          setPaymentTermError(`Cannot exceed Plan Term (${maxPaymentTerms} months)`);
+        if (formData.paymentTerms && maxTerms > 0 && Number(formData.paymentTerms) > maxTerms) {
+          setPaymentTermError(`Cannot exceed Plan Term (${maxTerms} months)`);
           return;
         }
         if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
@@ -2376,6 +2449,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                           paymentTerms: autoOrder ? String(terms) : (prev.paymentTerms || '1'), 
                           amount: autoOrder?.billingDetails?.contractValue || autoOrder?.amount || '' 
                         })); 
+                        setSeparateTerms({});
                         setIsDivDropdownOpen(false);
                         setDivSearch('');
                       }}
@@ -2424,6 +2498,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                     orderName: unlinkedContract.orderName || (unlinkedContract.companyName ? `[Unlinked Contract] ${unlinkedContract.companyName}` : 'Unlinked Contract'),
                     amount: unlinkedContract.contractValue || unlinkedContract.amount || prev.amount
                   }));
+                  setSeparateTerms({});
                   return;
                 }
                 const matched = safeOrders.find(o => String(o.id) === val) || filteredOrders.find(o => String(o.id) === val);
@@ -2439,15 +2514,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                     paymentTerms: String(terms),
                     amount: matched.billingDetails?.contractValue || matched.amount || prev.amount
                   }));
-                  setSeparateTerms(prev => {
-                    const next = { ...prev };
-                    availableContracts.forEach(c => {
-                      next[c.id] = String(terms);
-                    });
-                    return next;
-                  });
+                  setSeparateTerms({});
                 } else {
                   setFormData(prev => ({ ...prev, orderId: '', orderName: '' }));
+                  setSeparateTerms({});
                 }
               }}
               disabled={!formData.division}
@@ -2755,9 +2825,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                       {billingFrequency === 'Monthly' && (
                         <>
                           <i className='bx bx-edit-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
-                          {maxPaymentTerms 
-                            ? `Monthly: Billing Month = ${formData.paymentTerms || maxPaymentTerms} (Max ${maxPaymentTerms} mo diff, Editable)`
-                            : `Monthly: Billing Month = ${formData.paymentTerms || 1} (Editable)`}
+                          {availableContracts.length > 1
+                            ? `Monthly: Multi-Contract Terms (Editable)`
+                            : (maxPaymentTerms 
+                                ? `Monthly: Billing Month = ${formData.paymentTerms || maxPaymentTerms} (Max ${maxPaymentTerms} mo diff, Editable)`
+                                : `Monthly: Billing Month = ${formData.paymentTerms || 1} (Editable)`)}
                         </>
                       )}
                       {billingFrequency === 'Quarterly' && (
@@ -2781,7 +2853,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                         <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                             Billing Month <span style={{ color: '#ef4444' }}>*</span>
-                            <Tooltip text="This will break the total value in the entered months. For Monthly billing, you can edit the number of installments up to the Plan Term. Quarterly and Bi-Annual frequencies are fixed." />
+                            <Tooltip text="This will break the total value in the entered months. For Monthly billing, you can edit the number of installments up to the difference between Billing Start Date and Order End Date. Quarterly and Bi-Annual frequencies are fixed." />
                           </span>
                         </th>
                         <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700', textAlign: 'right' }}>Per Month / Installment</th>
@@ -2792,11 +2864,13 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                         const cVal = Number(c.contractValue) || Number(c.amountInUSD) || 0;
                         const cCurr = c.contractCurrency || currency || 'USD';
                         const isSeparate = availableContracts.length > 1 && contractScope === 'all_separate';
+                        const cMax = getContractMaxTerms(c);
                         const currentFreq = (isSeparate && contractFrequencies[c.id]) || billingFrequency;
                         const isMonthly = currentFreq === 'Monthly';
-                        const calculatedCombinedTerms = getFrequencyMonths(billingFrequency, maxPaymentTerms);
+                        const calculatedCombinedTerms = getFrequencyMonths(billingFrequency, cMax);
+                        const defaultContractTerms = String(getFrequencyMonths(currentFreq, cMax));
                         const termsVal = isSeparate
-                          ? (separateTerms[c.id] !== undefined ? separateTerms[c.id] : String(getFrequencyMonths(contractFrequencies[c.id] || billingFrequency, maxPaymentTerms)))
+                          ? (separateTerms[c.id] !== undefined ? separateTerms[c.id] : defaultContractTerms)
                           : String(formData.paymentTerms || calculatedCombinedTerms || 1);
                         const months = Number(termsVal) || 1;
                         const perMonthVal = Number((cVal / months).toFixed(2));
@@ -2847,21 +2921,27 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                                   <input 
                                     type="number"
                                     min="1"
-                                    max={maxPaymentTerms || undefined}
+                                    max={cMax || undefined}
                                     value={termsVal}
                                     onChange={(e) => {
                                       setPaymentTermError('');
                                       const val = e.target.value;
-                                      if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
-                                        setSeparateTerms(prev => ({ ...prev, [c.id]: String(maxPaymentTerms) }));
-                                        setFormData(prev => ({ ...prev, paymentTerms: String(maxPaymentTerms) }));
-                                        setPaymentTermError(`Cannot exceed Difference of month count (${maxPaymentTerms} months)`);
+                                      if (cMax > 0 && Number(val) > cMax) {
+                                        if (isSeparate) {
+                                          setSeparateTerms(prev => ({ ...prev, [c.id]: String(cMax) }));
+                                        } else {
+                                          setFormData(prev => ({ ...prev, paymentTerms: String(cMax) }));
+                                        }
+                                        setPaymentTermError(`Cannot exceed Difference of month count (${cMax} months) for "${c.companyName}"`);
                                       } else {
-                                        setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
-                                        setFormData(prev => ({ ...prev, paymentTerms: val }));
+                                        if (isSeparate) {
+                                          setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
+                                        } else {
+                                          setFormData(prev => ({ ...prev, paymentTerms: val }));
+                                        }
                                       }
                                     }}
-                                    placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms}` : "1"}
+                                    placeholder={cMax > 0 ? `Max ${cMax}` : "1"}
                                     style={{
                                       width: '65px',
                                       padding: '0.35rem 0.5rem',
@@ -2884,7 +2964,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                                     value={termsVal}
                                     disabled
                                     readOnly
-                                    title={`Fixed: ${currentFreq} = ${termsVal} months`}
+                                    title={`Fixed: ${currentFreq} = ${termsVal} installments`}
                                     style={{
                                       width: '65px',
                                       padding: '0.35rem 0.5rem',
@@ -2900,7 +2980,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                                     }}
                                   />
                                   <span style={{ fontSize: '0.75rem', color: '#64748b' }}>mo</span>
-                                  <i className='bx bx-lock-alt' style={{ color: '#0284c7', fontSize: '0.95rem' }} title={`Fixed: ${currentFreq} = ${termsVal} months`}></i>
+                                  <i className='bx bx-lock-alt' style={{ color: '#0284c7', fontSize: '0.95rem' }} title={`Fixed: ${currentFreq} = ${termsVal} installments`}></i>
                                 </div>
                               )}
                             </td>
@@ -2928,7 +3008,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                           <span style={{ fontSize: '0.78rem', color: '#0284c7', background: '#eff6ff', padding: '0.2rem 0.55rem', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
                             {contractsList.reduce((sum, c) => {
                               const isSep = availableContracts.length > 1 && contractScope === 'all_separate';
-                              const m = Number(isSep ? (separateTerms[c.id] !== undefined ? separateTerms[c.id] : (formData.paymentTerms || 1)) : (formData.paymentTerms || 1)) || 1;
+                              const cMax = getContractMaxTerms(c);
+                              const curFreq = (isSep && contractFrequencies[c.id]) || billingFrequency;
+                              const def = getFrequencyMonths(curFreq, cMax);
+                              const m = Number(isSep ? (separateTerms[c.id] !== undefined ? separateTerms[c.id] : def) : (formData.paymentTerms || def)) || 1;
                               return sum + m;
                             }, 0)} Total Scheduled Invoices
                           </span>

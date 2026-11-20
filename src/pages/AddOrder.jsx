@@ -342,6 +342,8 @@ function AddOrder() {
             billFrom: c.billFrom,
             receivingBankName: c.receivingBankName,
             bankDetailsLink: c.bankDetailsLink,
+            billingDate: c.billingDate || '',
+            paymentDueDays: c.paymentDueDays || 15,
             selected: true
           };
         })
