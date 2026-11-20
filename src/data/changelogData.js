@@ -1,5 +1,23 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-quarterly-unlocked-installments-input-20261120',
+    date: '2026-11-20',
+    formattedDate: 'Nov 20, 2026',
+    page: 'Admin',
+    subPage: 'Add Invoice Schedule / Unlocked Quarterly & Multi-Cadence Installment Editing',
+    summary: 'Unlocked Quarterly installment count input, allowing users to freely edit installments up to the calculated maximum',
+    details: 'Previously, non-monthly frequencies like Quarterly were locked with a read-only input, disabled state, and lock icon. The installment count for Quarterly (and Bi-Annually / Annually) is now fully open and editable. The maximum count (e.g. 2 quarterly installments for an 8-month contract, or 4 for 12 months) is dynamically calculated and enforced as the upper ceiling without preventing users from adjusting the installment count down to 1 or any number within the permitted limit.',
+    plainLanguage: 'Quarterly billing months are no longer locked! You can now freely edit the number of installments in Step 2. The input enforces the maximum limit (such as 2 quarters for an 8-month contract) while allowing you to choose 1, 2, or any valid count.',
+    highlights: [
+      'Unlocked Quarterly Inputs: Removed read-only/disabled constraints and lock icons across Quarterly, Bi-Annual, and Annual cadences',
+      'Dynamic Upper Ceiling Enforcement: Prevents exceeding the maximum possible installments for that frequency (e.g., maximum 2 for an 8-month contract)',
+      'Immediate Installment Recalculation: Adjusting installments immediately recalculates per-installment amounts and schedules accurately in preview',
+      'Top Status Pill Consistency: Updated schedule configuration badge to indicate editable terms with edit icon'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
     id: 'cl-contract-billing-start-date-schedule-calculation-20261120',
     date: '2026-11-20',
     formattedDate: 'Nov 20, 2026',

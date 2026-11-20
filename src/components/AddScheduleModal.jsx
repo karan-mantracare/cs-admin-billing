@@ -611,16 +611,6 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     setPaymentTermError('');
   };
 
-  // Enforce calculation for fixed frequencies (Quarterly / Bi Anually) when 'Same for all Contracts' is active
-  useEffect(() => {
-    if (contractScope === 'all_combined' && billingFrequency !== 'Monthly') {
-      const calculatedTerms = getFrequencyMonths(billingFrequency, maxPaymentTerms);
-      if (formData.paymentTerms !== String(calculatedTerms)) {
-        setFormData(prev => ({ ...prev, paymentTerms: String(calculatedTerms) }));
-      }
-    }
-  }, [contractScope, billingFrequency, maxPaymentTerms]);
-
   // --- Monthly Back-to-Back Date Helpers ---
   const getMonthlyDate = (baseDateStr, monthOffset) => {
     let d = parseFlexibleDate(baseDateStr) || (baseDateStr ? new Date(baseDateStr) : new Date());
@@ -658,18 +648,16 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         const cStart = getContractStartDate(c);
         const cEnd = getContractEndDate(c);
         const cMax = getContractMaxTerms(c);
-        const terms = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : getFrequencyMonths(cFreq, cMax)) || 0;
+        const maxAllowed = getFrequencyMonths(cFreq, cMax);
+        const terms = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : maxAllowed) || 0;
         if (!terms || terms <= 0) {
           return `Billing month for "${c.companyName}" is required.`;
         }
         const lastOffset = getCadenceOffset(terms - 1, cFreq, cMax);
         const lastInvoiceDate = getMonthlyDate(cStart, lastOffset);
-        const totalSpanMonths = (cFreq === 'Annually' || cFreq === 'Annual')
-          ? terms * 12
-          : (cFreq === 'Quarterly' ? terms * 3 : (cFreq === 'Bi Anually' ? terms * Math.max(1, Math.floor((cMax || 12) / 2)) : terms));
 
-        if (cEnd && (lastInvoiceDate > cEnd || (cMax > 0 && totalSpanMonths > cMax) || (cMax > 0 && terms > cMax))) {
-          return `The selected billing month (${terms} installments for "${c.companyName}") will cross the Plan End Date (${cEnd}).`;
+        if (cEnd && (lastInvoiceDate > cEnd || (maxAllowed > 0 && terms > maxAllowed))) {
+          return `The selected billing installments (${terms} for "${c.companyName}") exceeds maximum permitted (${maxAllowed}) or will cross the Plan End Date (${cEnd}).`;
         }
       }
     } else {
@@ -677,18 +665,16 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       const start = targetC ? getContractStartDate(targetC) : (selectedOrder.planStart || '');
       const end = targetC ? getContractEndDate(targetC) : (selectedOrder.planEnd || '');
       const maxTerms = targetC ? getContractMaxTerms(targetC) : maxPaymentTerms;
+      const maxAllowed = getFrequencyMonths(billingFrequency, maxTerms);
       const terms = Number(formData.paymentTerms) || 0;
       if (!terms || terms <= 0) {
         return 'Billing month is required.';
       }
       const lastOffset = getCadenceOffset(terms - 1, billingFrequency, maxTerms);
       const lastInvoiceDate = getMonthlyDate(start, lastOffset);
-      const totalSpanMonths = (billingFrequency === 'Annually' || billingFrequency === 'Annual')
-        ? terms * 12
-        : (billingFrequency === 'Quarterly' ? terms * 3 : (billingFrequency === 'Bi Anually' ? terms * Math.max(1, Math.floor((maxTerms || 12) / 2)) : terms));
 
-      if (end && (lastInvoiceDate > end || (maxTerms > 0 && totalSpanMonths > maxTerms) || (maxTerms > 0 && terms > maxTerms))) {
-        return `The selected billing month (${terms} installments) will cross the Plan End Date (${end}).`;
+      if (end && (lastInvoiceDate > end || (maxAllowed > 0 && terms > maxAllowed))) {
+        return `The selected billing installments (${terms}) exceeds maximum permitted (${maxAllowed}) or will cross the Plan End Date (${end}).`;
       }
     }
 
@@ -1302,33 +1288,27 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         for (const c of availableContracts) {
           const cFreq = contractFrequencies[c.id] || billingFrequency;
           const cMax = getContractMaxTerms(c);
-          if (cFreq !== 'Monthly') {
-            const calculated = getFrequencyMonths(cFreq, cMax);
-            separateTerms[c.id] = String(calculated);
-          }
-          const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : getFrequencyMonths(cFreq, cMax));
+          const maxAllowed = getFrequencyMonths(cFreq, cMax);
+          const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : maxAllowed);
           if (!t || t <= 0) {
             setPaymentTermError(`Billing month for "${c.companyName}" is required`);
             return;
           }
-          if (cMax > 0 && t > cMax) {
-            setPaymentTermError(`Billing month for "${c.companyName}" cannot exceed Plan Term (${cMax} months)`);
+          if (maxAllowed > 0 && t > maxAllowed) {
+            setPaymentTermError(`Billing installments for "${c.companyName}" cannot exceed maximum ${cFreq} installments (${maxAllowed})`);
             return;
           }
         }
       } else {
         const targetC = activeSingleContract || (availableContracts.length === 1 ? availableContracts[0] : null);
         const maxTerms = targetC ? getContractMaxTerms(targetC) : maxPaymentTerms;
-        if (billingFrequency !== 'Monthly') {
-          const calculated = getFrequencyMonths(billingFrequency, maxTerms);
-          formData.paymentTerms = String(calculated);
-        }
-        if (formData.paymentTerms && maxTerms > 0 && Number(formData.paymentTerms) > maxTerms) {
-          setPaymentTermError(`Cannot exceed Plan Term (${maxTerms} months)`);
-          return;
-        }
+        const maxAllowed = getFrequencyMonths(billingFrequency, maxTerms);
         if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
           setPaymentTermError('Billing month is required');
+          return;
+        }
+        if (formData.paymentTerms && maxAllowed > 0 && Number(formData.paymentTerms) > maxAllowed) {
+          setPaymentTermError(`Cannot exceed maximum ${billingFrequency} installments (${maxAllowed})`);
           return;
         }
         availableContracts.forEach(c => {
@@ -1372,33 +1352,27 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         for (const c of availableContracts) {
           const cFreq = contractFrequencies[c.id] || billingFrequency;
           const cMax = getContractMaxTerms(c);
-          if (cFreq !== 'Monthly') {
-            const calculated = getFrequencyMonths(cFreq, cMax);
-            separateTerms[c.id] = String(calculated);
-          }
-          const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : getFrequencyMonths(cFreq, cMax));
+          const maxAllowed = getFrequencyMonths(cFreq, cMax);
+          const t = Number(separateTerms[c.id] !== undefined ? separateTerms[c.id] : maxAllowed);
           if (!t || t <= 0) {
             setPaymentTermError(`Billing month for "${c.companyName}" is required`);
             return;
           }
-          if (cMax > 0 && t > cMax) {
-            setPaymentTermError(`Billing month for "${c.companyName}" cannot exceed Plan Term (${cMax} months)`);
+          if (maxAllowed > 0 && t > maxAllowed) {
+            setPaymentTermError(`Billing installments for "${c.companyName}" cannot exceed maximum ${cFreq} installments (${maxAllowed})`);
             return;
           }
         }
       } else {
         const targetC = activeSingleContract || (availableContracts.length === 1 ? availableContracts[0] : null);
         const maxTerms = targetC ? getContractMaxTerms(targetC) : maxPaymentTerms;
-        if (billingFrequency !== 'Monthly') {
-          const calculated = getFrequencyMonths(billingFrequency, maxTerms);
-          formData.paymentTerms = String(calculated);
-        }
-        if (formData.paymentTerms && maxTerms > 0 && Number(formData.paymentTerms) > maxTerms) {
-          setPaymentTermError(`Cannot exceed Plan Term (${maxTerms} months)`);
-          return;
-        }
+        const maxAllowed = getFrequencyMonths(billingFrequency, maxTerms);
         if (!formData.paymentTerms || Number(formData.paymentTerms) <= 0) {
           setPaymentTermError('Billing month is required');
+          return;
+        }
+        if (formData.paymentTerms && maxAllowed > 0 && Number(formData.paymentTerms) > maxAllowed) {
+          setPaymentTermError(`Cannot exceed maximum ${billingFrequency} installments (${maxAllowed})`);
           return;
         }
         availableContracts.forEach(c => {
@@ -2812,14 +2786,18 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                     }}>
                       {billingFrequency === 'Bi Anually' && (
                         <>
-                          <i className='bx bx-lock-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
-                          Bi Anually: Billing Month = 2 (Fixed)
+                          <i className='bx bx-edit-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
+                          {availableContracts.length > 1
+                            ? `Bi Anually: Multi-Contract Terms (Editable)`
+                            : `Bi Anually: Billing Month = ${formData.paymentTerms || getFrequencyMonths('Bi Anually', maxPaymentTerms)} (Max ${getFrequencyMonths('Bi Anually', maxPaymentTerms)}, Editable)`}
                         </>
                       )}
                       {billingFrequency === 'Annually' && (
                         <>
-                          <i className='bx bx-lock-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
-                          Annually: Billing Month = {getFrequencyMonths('Annually', maxPaymentTerms)} (Fixed)
+                          <i className='bx bx-edit-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
+                          {availableContracts.length > 1
+                            ? `Annually: Multi-Contract Terms (Editable)`
+                            : `Annually: Billing Month = ${formData.paymentTerms || getFrequencyMonths('Annually', maxPaymentTerms)} (Max ${getFrequencyMonths('Annually', maxPaymentTerms)}, Editable)`}
                         </>
                       )}
                       {billingFrequency === 'Monthly' && (
@@ -2834,8 +2812,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                       )}
                       {billingFrequency === 'Quarterly' && (
                         <>
-                          <i className='bx bx-lock-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
-                          Quarterly: Billing Month = {getFrequencyMonths('Quarterly', maxPaymentTerms)} (Max 4, Fixed)
+                          <i className='bx bx-edit-alt' style={{ marginRight: '3px', verticalAlign: 'middle' }}></i>
+                          {availableContracts.length > 1
+                            ? `Quarterly: Multi-Contract Terms (Editable)`
+                            : `Quarterly: Billing Month = ${formData.paymentTerms || getFrequencyMonths('Quarterly', maxPaymentTerms)} (Max ${getFrequencyMonths('Quarterly', maxPaymentTerms)}, Editable)`}
                         </>
                       )}
                     </span>
@@ -2853,7 +2833,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                         <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                             Billing Month <span style={{ color: '#ef4444' }}>*</span>
-                            <Tooltip text="This will break the total value in the entered months. For Monthly billing, you can edit the number of installments up to the difference between Billing Start Date and Order End Date. Quarterly and Bi-Annual frequencies are fixed." />
+                            <Tooltip text="This will break the total value in the entered months. You can edit the number of installments up to the maximum permitted for each billing frequency and plan duration." />
                           </span>
                         </th>
                         <th style={{ padding: '0.65rem 0.85rem', fontWeight: '700', textAlign: 'right' }}>Per Month / Installment</th>
@@ -2866,12 +2846,11 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                         const isSeparate = availableContracts.length > 1 && contractScope === 'all_separate';
                         const cMax = getContractMaxTerms(c);
                         const currentFreq = (isSeparate && contractFrequencies[c.id]) || billingFrequency;
-                        const isMonthly = currentFreq === 'Monthly';
-                        const calculatedCombinedTerms = getFrequencyMonths(billingFrequency, cMax);
-                        const defaultContractTerms = String(getFrequencyMonths(currentFreq, cMax));
+                        const maxAllowedTerms = getFrequencyMonths(currentFreq, cMax);
+                        const defaultContractTerms = String(maxAllowedTerms);
                         const termsVal = isSeparate
                           ? (separateTerms[c.id] !== undefined ? separateTerms[c.id] : defaultContractTerms)
-                          : String(formData.paymentTerms || calculatedCombinedTerms || 1);
+                          : String(formData.paymentTerms || defaultContractTerms || 1);
                         const months = Number(termsVal) || 1;
                         const perMonthVal = Number((cVal / months).toFixed(2));
 
@@ -2916,73 +2895,46 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                               )}
                             </td>
                             <td style={{ padding: '0.65rem 0.85rem', verticalAlign: 'middle' }}>
-                              {isMonthly ? (
-                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                                  <input 
-                                    type="number"
-                                    min="1"
-                                    max={cMax || undefined}
-                                    value={termsVal}
-                                    onChange={(e) => {
-                                      setPaymentTermError('');
-                                      const val = e.target.value;
-                                      if (cMax > 0 && Number(val) > cMax) {
-                                        if (isSeparate) {
-                                          setSeparateTerms(prev => ({ ...prev, [c.id]: String(cMax) }));
-                                        } else {
-                                          setFormData(prev => ({ ...prev, paymentTerms: String(cMax) }));
-                                        }
-                                        setPaymentTermError(`Cannot exceed Difference of month count (${cMax} months) for "${c.companyName}"`);
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <input 
+                                  type="number"
+                                  min="1"
+                                  max={maxAllowedTerms || undefined}
+                                  value={termsVal}
+                                  onChange={(e) => {
+                                    setPaymentTermError('');
+                                    const val = e.target.value;
+                                    if (maxAllowedTerms > 0 && Number(val) > maxAllowedTerms) {
+                                      if (isSeparate) {
+                                        setSeparateTerms(prev => ({ ...prev, [c.id]: String(maxAllowedTerms) }));
                                       } else {
-                                        if (isSeparate) {
-                                          setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
-                                        } else {
-                                          setFormData(prev => ({ ...prev, paymentTerms: val }));
-                                        }
+                                        setFormData(prev => ({ ...prev, paymentTerms: String(maxAllowedTerms) }));
                                       }
-                                    }}
-                                    placeholder={cMax > 0 ? `Max ${cMax}` : "1"}
-                                    style={{
-                                      width: '65px',
-                                      padding: '0.35rem 0.5rem',
-                                      borderRadius: '6px',
-                                      border: '1.5px solid #cbd5e1',
-                                      fontSize: '0.85rem',
-                                      fontWeight: '700',
-                                      color: '#0f172a',
-                                      background: '#ffffff',
-                                      textAlign: 'center',
-                                      boxSizing: 'border-box'
-                                    }}
-                                  />
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>mo</span>
-                                </div>
-                              ) : (
-                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                                  <input 
-                                    type="number"
-                                    value={termsVal}
-                                    disabled
-                                    readOnly
-                                    title={`Fixed: ${currentFreq} = ${termsVal} installments`}
-                                    style={{
-                                      width: '65px',
-                                      padding: '0.35rem 0.5rem',
-                                      borderRadius: '6px',
-                                      border: '1px solid #cbd5e1',
-                                      fontSize: '0.85rem',
-                                      fontWeight: '700',
-                                      color: '#334155',
-                                      background: '#f1f5f9',
-                                      textAlign: 'center',
-                                      cursor: 'not-allowed',
-                                      boxSizing: 'border-box'
-                                    }}
-                                  />
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>mo</span>
-                                  <i className='bx bx-lock-alt' style={{ color: '#0284c7', fontSize: '0.95rem' }} title={`Fixed: ${currentFreq} = ${termsVal} installments`}></i>
-                                </div>
-                              )}
+                                      setPaymentTermError(`Cannot exceed maximum ${currentFreq} installments (${maxAllowedTerms}) for "${c.companyName}"`);
+                                    } else {
+                                      if (isSeparate) {
+                                        setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
+                                      } else {
+                                        setFormData(prev => ({ ...prev, paymentTerms: val }));
+                                      }
+                                    }
+                                  }}
+                                  placeholder={maxAllowedTerms > 0 ? `Max ${maxAllowedTerms}` : "1"}
+                                  style={{
+                                    width: '65px',
+                                    padding: '0.35rem 0.5rem',
+                                    borderRadius: '6px',
+                                    border: '1.5px solid #cbd5e1',
+                                    fontSize: '0.85rem',
+                                    fontWeight: '700',
+                                    color: '#0f172a',
+                                    background: '#ffffff',
+                                    textAlign: 'center',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>mo</span>
+                              </div>
                             </td>
                             <td style={{ padding: '0.65rem 0.85rem', verticalAlign: 'middle', textAlign: 'right' }}>
                               <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#059669' }}>
