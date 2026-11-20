@@ -6,6 +6,25 @@ import AddScheduleModal from '../components/AddScheduleModal';
 import EditPaymentModal from '../components/EditPaymentModal';
 import BillingMessageModal, { BillingMessageContent } from '../components/BillingMessageModal';
 import UniversalFilter from '../components/UniversalFilter';
+import { getPrimaryCS } from '../utils/roleUtils';
+
+const DEFAULT_BILLING_COLUMNS = [
+  { id: 'clientName', label: 'Client Name' },
+  { id: 'orderId', label: 'Order ID' },
+  { id: 'csResponsible', label: 'CS Responsible' },
+  { id: 'billingCompany', label: 'Billing Company' },
+  { id: 'amountDueUsd', label: 'Amount Due $' },
+  { id: 'amountDue', label: 'Amount Due' },
+  { id: 'currency', label: 'Currency' },
+  { id: 'invoiceByDate', label: 'Invoice By Date' },
+  { id: 'dueByDate', label: 'Due By Date' },
+  { id: 'invoiceDate', label: 'Invoice Date' },
+  { id: 'invoiceLink', label: 'Invoice Link' },
+  { id: 'totalPaid', label: 'Total Paid $' },
+  { id: 'dueAmount', label: 'Due (Amount)' },
+  { id: 'overdueDays', label: 'Overdue Days' },
+  { id: 'actions', label: 'Actions' }
+];
 // Custom Multi-Select Dropdown Component
 function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -363,6 +382,52 @@ function ClientPayments() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15);
 
+  // Column Visibility Management
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try {
+      const saved = localStorage.getItem('client_payments_visible_cols');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return DEFAULT_BILLING_COLUMNS.map(c => c.id);
+  });
+  const [showColumnManager, setShowColumnManager] = useState(false);
+  const columnManagerRef = useRef(null);
+
+  useEffect(() => {
+    localStorage.setItem('client_payments_visible_cols', JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (columnManagerRef.current && !columnManagerRef.current.contains(e.target)) {
+        setShowColumnManager(false);
+      }
+    };
+    if (showColumnManager) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showColumnManager]);
+
+  const getCsForPayment = (p) => {
+    if (p.csResponsible) return p.csResponsible;
+    if (p.orderId && p.orderId !== 'Null') {
+      try {
+        const orders = JSON.parse(localStorage.getItem('division_orders') || '[]');
+        const o = orders.find(ord => String(ord.id) === String(p.orderId));
+        if (o) {
+          if (o.csResponsible) return o.csResponsible;
+          const cs = getPrimaryCS(o.divisionId, o.divisionName, o.clientName || p.clientName);
+          if (cs) return cs;
+        }
+      } catch (e) {}
+    }
+    return getPrimaryCS(null, null, p.clientName) || 'Unassigned';
+  };
+
   // Close active modals on Escape key press
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -405,11 +470,13 @@ function ClientPayments() {
 
     // Free text search
     const query = String(advancedFilters.searchText || '').toLowerCase();
+    const csVal = getCsForPayment(p);
     const matchesSearch = !query || 
       String(p.clientName || '').toLowerCase().includes(query) || 
       String(p.orderId || '').toLowerCase().includes(query) ||
       String(p.billingCompany || '').toLowerCase().includes(query) ||
-      String(p.clientBillingEntity || '').toLowerCase().includes(query);
+      String(p.clientBillingEntity || '').toLowerCase().includes(query) ||
+      String(csVal || '').toLowerCase().includes(query);
     
     // Conditions
     let matchesConditions = true;
@@ -419,7 +486,7 @@ function ClientPayments() {
          continue;
        }
 
-       const fieldVal = String(p[cond.fieldId] || '');
+       const fieldVal = cond.fieldId === 'csResponsible' ? String(csVal || '') : String(p[cond.fieldId] || '');
        if (cond.operator === 'Is') {
           if (fieldVal !== cond.value) matchesConditions = false;
        } else if (cond.operator === 'Is not') {
@@ -580,6 +647,7 @@ function ClientPayments() {
               fields={[
                 { id: 'clientName', label: 'Client Name', type: 'text' },
                 { id: 'orderId', label: 'Order ID', type: 'text' },
+                { id: 'csResponsible', label: 'CS Responsible', type: 'text' },
                 { id: 'invoiceId', label: 'Invoice ID', type: 'text' },
                 { id: 'corporateName', label: 'Corporate Name', type: 'text' },
                 { id: 'billingCompany', label: 'Billing Company', type: 'text' },
@@ -612,44 +680,182 @@ function ClientPayments() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #cbd5e1', marginBottom: '1.5rem', gap: '0.25rem' }}>
-        <button 
-          style={{ 
-            padding: '0.65rem 1.25rem', 
-            background: 'none', 
-            border: 'none', 
-            borderBottom: activeTab === 'billing' ? '2px solid #0ea5e9' : '2px solid transparent',
-            color: activeTab === 'billing' ? '#0ea5e9' : '#64748b',
-            fontWeight: activeTab === 'billing' ? '600' : '500',
-            fontSize: '0.9rem',
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: '0.5rem'
-          }}
-          onClick={() => setActiveTab('billing')}
-        >
-          <i className='bx bx-table'></i>
-          Billing and Payment
-          <span style={{ background: activeTab === 'billing' ? '#0ea5e9' : '#e2e8f0', color: activeTab === 'billing' ? 'white' : '#64748b', borderRadius: '10px', padding: '0.1rem 0.5rem', fontSize: '0.72rem', fontWeight: '700' }}>{payments.length}</span>
-        </button>
-        <button 
-          style={{ 
-            padding: '0.65rem 1.25rem', 
-            background: 'none', 
-            border: 'none', 
-            borderBottom: activeTab === 'records' ? '2px solid #0ea5e9' : '2px solid transparent',
-            color: activeTab === 'records' ? '#0ea5e9' : '#64748b',
-            fontWeight: activeTab === 'records' ? '600' : '500',
-            fontSize: '0.9rem',
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: '0.5rem'
-          }}
-          onClick={() => setActiveTab('records')}
-        >
-          <i className='bx bx-money-withdraw'></i>
-          Payment Records
-          <span style={{ background: activeTab === 'records' ? '#0ea5e9' : '#e2e8f0', color: activeTab === 'records' ? 'white' : '#64748b', borderRadius: '10px', padding: '0.1rem 0.5rem', fontSize: '0.72rem', fontWeight: '700' }}>{paymentRecords.length}</span>
-        </button>
+      {/* Tabs and Controls */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #cbd5e1', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.25rem' }}>
+          <button 
+            style={{ 
+              padding: '0.65rem 1.25rem', 
+              background: 'none', 
+              border: 'none', 
+              borderBottom: activeTab === 'billing' ? '2px solid #0ea5e9' : '2px solid transparent',
+              color: activeTab === 'billing' ? '#0ea5e9' : '#64748b',
+              fontWeight: activeTab === 'billing' ? '600' : '500',
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '0.5rem'
+            }}
+            onClick={() => setActiveTab('billing')}
+          >
+            <i className='bx bx-table'></i>
+            Billing and Payment
+            <span style={{ background: activeTab === 'billing' ? '#0ea5e9' : '#e2e8f0', color: activeTab === 'billing' ? 'white' : '#64748b', borderRadius: '10px', padding: '0.1rem 0.5rem', fontSize: '0.72rem', fontWeight: '700' }}>{payments.length}</span>
+          </button>
+          <button 
+            style={{ 
+              padding: '0.65rem 1.25rem', 
+              background: 'none', 
+              border: 'none', 
+              borderBottom: activeTab === 'records' ? '2px solid #0ea5e9' : '2px solid transparent',
+              color: activeTab === 'records' ? '#0ea5e9' : '#64748b',
+              fontWeight: activeTab === 'records' ? '600' : '500',
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '0.5rem'
+            }}
+            onClick={() => setActiveTab('records')}
+          >
+            <i className='bx bx-money-withdraw'></i>
+            Payment Records
+            <span style={{ background: activeTab === 'records' ? '#0ea5e9' : '#e2e8f0', color: activeTab === 'records' ? 'white' : '#64748b', borderRadius: '10px', padding: '0.1rem 0.5rem', fontSize: '0.72rem', fontWeight: '700' }}>{paymentRecords.length}</span>
+          </button>
+        </div>
+
+        {/* Right side controls: Item count & Columns Button */}
+        {activeTab === 'billing' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.35rem', position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.85rem' }}>
+              <span style={{ height: '14px', width: '1px', background: '#cbd5e1', display: 'inline-block' }}></span>
+              <span><strong style={{ color: '#0f172a' }}>{filteredPayments.length}</strong> {filteredPayments.length === 1 ? 'item' : 'items'}</span>
+            </div>
+            
+            <div ref={columnManagerRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setShowColumnManager(prev => !prev)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  background: showColumnManager ? '#f1f5f9' : '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '0.4rem 0.75rem',
+                  fontSize: '0.82rem',
+                  fontWeight: '600',
+                  color: '#334155',
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <i className='bx bx-columns' style={{ fontSize: '1rem', color: '#475569' }}></i>
+                <span>Columns</span>
+              </button>
+
+              {showColumnManager && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  width: '240px',
+                  background: '#ffffff',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
+                  border: '1px solid #cbd5e1',
+                  zIndex: 1000,
+                  overflow: 'hidden'
+                }}>
+                  {/* Dark Popover Header matching reference image */}
+                  <div style={{
+                    background: '#0a192f',
+                    padding: '0.65rem 0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    borderBottom: '1px solid #1e293b'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', fontWeight: '700' }}>
+                        COLUMNS
+                      </div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#ffffff' }}>
+                        {visibleColumns.length}/{DEFAULT_BILLING_COLUMNS.length} visible
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVisibleColumns(DEFAULT_BILLING_COLUMNS.map(c => c.id));
+                      }}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.12)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '4px',
+                        padding: '0.2rem 0.55rem',
+                        color: '#93c5fd',
+                        fontSize: '0.72rem',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Show all
+                    </button>
+                  </div>
+
+                  {/* Checkbox items */}
+                  <div style={{ maxHeight: '280px', overflowY: 'auto', padding: '0.4rem 0' }}>
+                    {DEFAULT_BILLING_COLUMNS.map(col => {
+                      const isChecked = visibleColumns.includes(col.id);
+                      return (
+                        <div
+                          key={col.id}
+                          onClick={() => {
+                            if (isChecked) {
+                              if (visibleColumns.length <= 1) return; // Keep at least one
+                              setVisibleColumns(prev => prev.filter(id => id !== col.id));
+                            } else {
+                              setVisibleColumns(prev => [...prev, col.id]);
+                            }
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.65rem',
+                            padding: '0.45rem 0.85rem',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            fontSize: '0.82rem',
+                            color: '#1e293b',
+                            fontWeight: '500',
+                            transition: 'background 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <div style={{
+                            width: '18px',
+                            height: '18px',
+                            borderRadius: '4px',
+                            backgroundColor: isChecked ? '#0c2340' : '#ffffff',
+                            border: isChecked ? '1px solid #0c2340' : '1.5px solid #cbd5e1',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            {isChecked && <i className='bx bx-check' style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}></i>}
+                          </div>
+                          <span>{col.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Active Link Filter Banner */}
@@ -727,163 +933,204 @@ function ClientPayments() {
         <table className="data-table" style={{ minWidth: '1600px' }}>
           <thead>
             <tr>
-              <th>CLIENT NAME</th>
-              <th>ORDER ID</th>
-              <th>BILLING COMPANY</th>
-              <th>AMOUNT DUE $</th>
-              <th>AMOUNT DUE</th>
-              <th>CURRENCY</th>
-              <th>INVOICE BY DATE</th>
-              <th>DUE BY DATE</th>
-              <th>INVOICE DATE</th>
-              <th>INVOICE LINK</th>
-              <th>TOTAL PAID $</th>
-              <th>DUE (AMOUNT)</th>
-              <th>OVERDUE DAYS</th>
-              <th style={{ minWidth: '140px' }}>ACTIONS</th>
+              {visibleColumns.includes('clientName') && <th>CLIENT NAME</th>}
+              {visibleColumns.includes('orderId') && <th>ORDER ID</th>}
+              {visibleColumns.includes('csResponsible') && <th>CS RESPONSIBLE</th>}
+              {visibleColumns.includes('billingCompany') && <th>BILLING COMPANY</th>}
+              {visibleColumns.includes('amountDueUsd') && <th>AMOUNT DUE $</th>}
+              {visibleColumns.includes('amountDue') && <th>AMOUNT DUE</th>}
+              {visibleColumns.includes('currency') && <th>CURRENCY</th>}
+              {visibleColumns.includes('invoiceByDate') && <th>INVOICE BY DATE</th>}
+              {visibleColumns.includes('dueByDate') && <th>DUE BY DATE</th>}
+              {visibleColumns.includes('invoiceDate') && <th>INVOICE DATE</th>}
+              {visibleColumns.includes('invoiceLink') && <th>INVOICE LINK</th>}
+              {visibleColumns.includes('totalPaid') && <th>TOTAL PAID $</th>}
+              {visibleColumns.includes('dueAmount') && <th>DUE (AMOUNT)</th>}
+              {visibleColumns.includes('overdueDays') && <th>OVERDUE DAYS</th>}
+              {visibleColumns.includes('actions') && <th style={{ minWidth: '140px' }}>ACTIONS</th>}
             </tr>
           </thead>
           <tbody>
-            {paginatedPayments.map((p) => (
+            {paginatedPayments.map((p) => {
+              const csPerson = getCsForPayment(p);
+              return (
               <tr key={p.id}>
-                <td className="event-name">
-                  <span
-                    onClick={() => {
-                      const clientObj = getClientInfo(p.clientName);
-                      const clientId = clientObj?.id || p.clientId || '1';
-                      navigate(`/corporate/edit?id=${clientId}`, { state: { client: clientObj } });
-                    }}
-                    style={{ color: '#0284c7', cursor: 'pointer', fontWeight: '600' }}
-                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                    title={`Edit Corporate / Client: ${p.clientName}`}
-                  >
-                    {p.clientName}
-                  </span>
-                </td>
-                <td>
-                  {p.orderId && p.orderId !== 'Null' ? (
+                {visibleColumns.includes('clientName') && (
+                  <td className="event-name">
                     <span
                       onClick={() => {
-                        navigate(`/corporate/division/order/edit/${p.orderId}`, { 
-                          state: { 
-                            edit: true, 
-                            orderId: p.orderId, 
-                            clientName: p.clientName 
-                          } 
-                        });
+                        const clientObj = getClientInfo(p.clientName);
+                        const clientId = clientObj?.id || p.clientId || '1';
+                        navigate(`/corporate/edit?id=${clientId}`, { state: { client: clientObj } });
                       }}
-                      style={{ color: '#0284c7', cursor: 'pointer', fontWeight: '700' }}
+                      style={{ color: '#0284c7', cursor: 'pointer', fontWeight: '600' }}
                       onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
                       onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                      title={`Edit Order #${p.orderId}`}
+                      title={`Edit Corporate / Client: ${p.clientName}`}
                     >
-                      {p.orderId}
+                      {p.clientName}
                     </span>
-                  ) : (
-                    <span style={{ color: '#94a3b8', fontStyle: 'italic', background: '#f8fafc', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px dashed #cbd5e1', fontSize: '0.78rem' }}>
-                      Null
-                    </span>
-                  )}
-                </td>
-                <td>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <span style={{ background: '#f1f5f9', color: '#0f172a', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600' }}>
-                      {p.clientBillingEntity || p.billingCompany}
-                    </span>
-                    {p.splitPercentage && p.splitPercentage < 100 && (
-                      <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.35rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700' }}>
-                        {p.splitPercentage}%
+                  </td>
+                )}
+                {visibleColumns.includes('orderId') && (
+                  <td>
+                    {p.orderId && p.orderId !== 'Null' ? (
+                      <span
+                        onClick={() => {
+                          navigate(`/corporate/division/order/edit/${p.orderId}`, { 
+                            state: { 
+                              edit: true, 
+                              orderId: p.orderId, 
+                              clientName: p.clientName 
+                            } 
+                          });
+                        }}
+                        style={{ color: '#0284c7', cursor: 'pointer', fontWeight: '700' }}
+                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                        title={`Edit Order #${p.orderId}`}
+                      >
+                        {p.orderId}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontStyle: 'italic', background: '#f8fafc', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px dashed #cbd5e1', fontSize: '0.78rem' }}>
+                        Null
                       </span>
                     )}
-                  </div>
-                </td>
-                <td><strong className="text-blue">${Number(p.amountDueUsd || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
-                <td>{Number(p.amountDue || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
-                <td>{p.currency}</td>
-                <td>{p.invoiceByDate}</td>
-                <td>{p.dueByDate}</td>
-                <td>{p.invoiceDate}</td>
-                <td>
-                  {p.invoiceLink ? (
-                    <a href="#" style={{ color: 'var(--primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                      <i className='bx bxs-file-pdf'></i> {p.invoiceLink}
-                    </a>
-                  ) : (
-                    <span className="text-muted">-</span>
-                  )}
-                </td>
-                <td><strong className="text-green">${Number(p.totalPaid || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
-                <td>
-                  <span style={{ color: p.dueAmount > 0 ? 'var(--red)' : 'var(--text-main)', fontWeight: p.dueAmount > 0 ? '600' : '400' }}>
-                    ${Number(p.dueAmount || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}
-                  </span>
-                </td>
-                <td>
-                  {(() => {
-                    let s = p.status;
-                    let text = s;
-                    
-                    const today = new Date();
-                    today.setHours(0,0,0,0);
-
-                    if (s === 'To be Raised' && p.dueByDate && p.invoiceByDate) {
-                      const due = new Date(p.dueByDate);
-                      due.setHours(0,0,0,0);
+                  </td>
+                )}
+                {visibleColumns.includes('csResponsible') && (
+                  <td>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span style={{ background: '#f8fafc', color: '#1e293b', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.82rem', fontWeight: '600', border: '1px solid #e2e8f0' }}>
+                        {csPerson}
+                      </span>
+                    </div>
+                  </td>
+                )}
+                {visibleColumns.includes('billingCompany') && (
+                  <td>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span style={{ background: '#f1f5f9', color: '#0f172a', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600' }}>
+                        {p.clientBillingEntity || p.billingCompany}
+                      </span>
+                      {p.splitPercentage && p.splitPercentage < 100 && (
+                        <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.35rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700' }}>
+                          {p.splitPercentage}%
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                )}
+                {visibleColumns.includes('amountDueUsd') && (
+                  <td><strong className="text-blue">${Number(p.amountDueUsd || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
+                )}
+                {visibleColumns.includes('amountDue') && (
+                  <td>{Number(p.amountDue || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
+                )}
+                {visibleColumns.includes('currency') && (
+                  <td>{p.currency}</td>
+                )}
+                {visibleColumns.includes('invoiceByDate') && (
+                  <td>{p.invoiceByDate}</td>
+                )}
+                {visibleColumns.includes('dueByDate') && (
+                  <td>{p.dueByDate}</td>
+                )}
+                {visibleColumns.includes('invoiceDate') && (
+                  <td>{p.invoiceDate}</td>
+                )}
+                {visibleColumns.includes('invoiceLink') && (
+                  <td>
+                    {p.invoiceLink ? (
+                      <a href="#" style={{ color: 'var(--primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                        <i className='bx bxs-file-pdf'></i> {p.invoiceLink}
+                      </a>
+                    ) : (
+                      <span className="text-muted">-</span>
+                    )}
+                  </td>
+                )}
+                {visibleColumns.includes('totalPaid') && (
+                  <td><strong className="text-green">${Number(p.totalPaid || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
+                )}
+                {visibleColumns.includes('dueAmount') && (
+                  <td>
+                    <span style={{ color: p.dueAmount > 0 ? 'var(--red)' : 'var(--text-main)', fontWeight: p.dueAmount > 0 ? '600' : '400' }}>
+                      ${Number(p.dueAmount || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                    </span>
+                  </td>
+                )}
+                {visibleColumns.includes('overdueDays') && (
+                  <td>
+                    {(() => {
+                      let s = p.status;
+                      let text = s;
                       
-                      if (today > due) {
-                        const invoiceBy = new Date(p.invoiceByDate);
-                        invoiceBy.setHours(0,0,0,0);
-                        const diffTime = today.getTime() - invoiceBy.getTime();
+                      const today = new Date();
+                      today.setHours(0,0,0,0);
+
+                      if (s === 'To be Raised' && p.dueByDate && p.invoiceByDate) {
+                        const due = new Date(p.dueByDate);
+                        due.setHours(0,0,0,0);
+                        
+                        if (today > due) {
+                          const invoiceBy = new Date(p.invoiceByDate);
+                          invoiceBy.setHours(0,0,0,0);
+                          const diffTime = today.getTime() - invoiceBy.getTime();
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          
+                          s = 'Invoice Pending';
+                          text = `Invoice Pending ${diffDays > 0 ? diffDays : 0} Days`;
+                        }
+                      } else if (s !== 'Received' && s !== 'To be Raised' && p.dueByDate) {
+                        const due = new Date(p.dueByDate);
+                        due.setHours(0,0,0,0);
+                        
+                        const diffTime = today.getTime() - due.getTime();
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                         
-                        s = 'Invoice Pending';
-                        text = `Invoice Pending ${diffDays > 0 ? diffDays : 0} Days`;
+                        if (diffDays > 0) {
+                          s = 'Overdue';
+                          text = `${diffDays} Days`;
+                        }
                       }
-                    } else if (s !== 'Received' && s !== 'To be Raised' && p.dueByDate) {
-                      const due = new Date(p.dueByDate);
-                      due.setHours(0,0,0,0);
-                      
-                      const diffTime = today.getTime() - due.getTime();
-                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                      
-                      if (diffDays > 0) {
-                        s = 'Overdue';
-                        text = `${diffDays} Days`;
-                      }
-                    }
 
-                    const cfg = {
-                      'To be Raised': { bg: '#fef9c3', color: '#a16207', icon: 'bx-time' },
-                      'Pending':      { bg: '#e0f2fe', color: '#0369a1', icon: 'bx-loader-circle' },
-                      'Partial':      { bg: '#fff7ed', color: '#c2410c', icon: 'bx-minus-circle' },
-                      'Received':     { bg: '#dcfce7', color: '#15803d', icon: 'bx-check-circle' },
-                      'Overdue':      { bg: '#fee2e2', color: '#b91c1c', icon: 'bx-error' },
-                      'Invoice Pending': { bg: '#ffedd5', color: '#c2410c', icon: 'bx-file-blank' },
-                    }[s] || { bg: '#f1f5f9', color: '#475569', icon: 'bx-circle' };
-                    return (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: cfg.bg, color: cfg.color, padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                        <i className={`bx ${cfg.icon}`}></i>{text}
-                      </span>
-                    );
-                  })()}
-                </td>
-                <td className="actions" style={{ gap: '0.35rem' }}>
-                  <button className="action-btn edit" title="Edit" style={{ border: '1px solid #e2e8f0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#fff', cursor: p.status !== 'To be Raised' ? 'not-allowed' : 'pointer', color: '#64748b', opacity: p.status !== 'To be Raised' ? 0.4 : 1 }} disabled={p.status !== 'To be Raised'} onClick={() => setEditingPaymentId(p.id)}>
-                    <i className='bx bx-pencil'></i>
-                  </button>
-                  <button title="Add Payment" style={{ border: '1px solid #bbf7d0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#f0fdf4', cursor: 'pointer', color: '#16a34a', display: 'inline-flex', alignItems: 'center' }} onClick={() => setActivePaymentId(p.id)}>
-                    <i className='bx bx-money'></i>
-                  </button>
-                  <button title="Upload Invoice" style={{ border: '1px solid #bfdbfe', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#eff6ff', cursor: 'pointer', color: '#2563eb', display: 'inline-flex', alignItems: 'center' }} onClick={() => setActiveUploadId(p.id)}>
-                    <i className='bx bx-file-blank'></i>
-                  </button>
-                </td>
+                      const cfg = {
+                        'To be Raised': { bg: '#fef9c3', color: '#a16207', icon: 'bx-time' },
+                        'Pending':      { bg: '#e0f2fe', color: '#0369a1', icon: 'bx-loader-circle' },
+                        'Partial':      { bg: '#fff7ed', color: '#c2410c', icon: 'bx-minus-circle' },
+                        'Received':     { bg: '#dcfce7', color: '#15803d', icon: 'bx-check-circle' },
+                        'Overdue':      { bg: '#fee2e2', color: '#b91c1c', icon: 'bx-error' },
+                        'Invoice Pending': { bg: '#ffedd5', color: '#c2410c', icon: 'bx-file-blank' },
+                      }[s] || { bg: '#f1f5f9', color: '#475569', icon: 'bx-circle' };
+                      return (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: cfg.bg, color: cfg.color, padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                          <i className={`bx ${cfg.icon}`}></i>{text}
+                        </span>
+                      );
+                    })()}
+                  </td>
+                )}
+                {visibleColumns.includes('actions') && (
+                  <td className="actions" style={{ gap: '0.35rem' }}>
+                    <button className="action-btn edit" title="Edit" style={{ border: '1px solid #e2e8f0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#fff', cursor: p.status !== 'To be Raised' ? 'not-allowed' : 'pointer', color: '#64748b', opacity: p.status !== 'To be Raised' ? 0.4 : 1 }} disabled={p.status !== 'To be Raised'} onClick={() => setEditingPaymentId(p.id)}>
+                      <i className='bx bx-pencil'></i>
+                    </button>
+                    <button title="Add Payment" style={{ border: '1px solid #bbf7d0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#f0fdf4', cursor: 'pointer', color: '#16a34a', display: 'inline-flex', alignItems: 'center' }} onClick={() => setActivePaymentId(p.id)}>
+                      <i className='bx bx-money'></i>
+                    </button>
+                    <button title="Upload Invoice" style={{ border: '1px solid #bfdbfe', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#eff6ff', cursor: 'pointer', color: '#2563eb', display: 'inline-flex', alignItems: 'center' }} onClick={() => setActiveUploadId(p.id)}>
+                      <i className='bx bx-file-blank'></i>
+                    </button>
+                  </td>
+                )}
               </tr>
-            ))}
+            );
+            })}
             {filteredPayments.length === 0 && (
               <tr>
-                <td colSpan="14" style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                <td colSpan={visibleColumns.length || 15} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
                   {activeLinkFilter ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                       <i className='bx bx-search-alt' style={{ fontSize: '2rem', color: '#94a3b8' }}></i>
