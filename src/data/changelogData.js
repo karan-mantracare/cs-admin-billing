@@ -1,5 +1,23 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-payment-summary-modal-action-icons-20261120',
+    date: '2026-11-20',
+    formattedDate: 'Nov 20, 2026',
+    page: 'Admin',
+    subPage: 'Payment Summary Modal / Action Icons & Create Schedule Integration',
+    summary: 'Replaced text buttons with compact action icons, added Create Billing Schedule icon, and made View Billing Schedule conditional',
+    details: 'Modernized the action footer of the Payment Summary modal across Edit Order and Division views by replacing the text-heavy "View Payment Schedule" and "View Billing Schedule" buttons with sleek, color-coded icon buttons with tooltips. Added a new "Create Billing Schedule" icon button (calendar-plus) that directly initiates the schedule builder for the active order. Made the "View Billing Schedule" icon (receipt) conditionally visible only when a billing schedule has actually been created for the order.',
+    plainLanguage: 'The Payment Summary modal now uses sleek icon buttons instead of large text blocks in the footer. A new green "Create Billing Schedule" icon lets you instantly start scheduling billing for the order. The "View Billing Schedule" icon now only appears after a billing schedule has been created.',
+    highlights: [
+      'Compact Action Icons: Replaced bulky text buttons with clean, tooltip-enabled icon buttons for View Payment Schedule and View Billing Schedule',
+      'Create Billing Schedule Action: Added a dedicated calendar-plus icon button to launch the schedule builder directly from Payment Summary',
+      'Conditional Visibility: "View Billing Schedule" icon is only displayed when an existing billing schedule is detected for the order',
+      'Cross-Page Integration: Fully wired across Edit Order (AddOrder.jsx) and Edit Division order tables'
+    ],
+    path: '/edit-order',
+    linkText: 'Order Management'
+  },
+  {
     id: 'cl-invoice-schedule-preview-terms-sync-20261120',
     date: '2026-11-20',
     formattedDate: 'Nov 20, 2026',

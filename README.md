@@ -175,6 +175,11 @@ Admin-CS-Payment/
 
 ## 📋 Recent Highlights & Changelog
 
+### Nov 20, 2026: Payment Summary Modal Action Icons & Schedule Builder Integration
+- Replaced the bulky "View Payment Schedule" and "View Billing Schedule" text buttons with sleek, color-coded icon action buttons with browser tooltips.
+- Added a new **Create Billing Schedule** (`bx-calendar-plus`) icon button directly in the Payment Summary footer that launches schedule configuration for the active order.
+- Made the **View Billing Schedule** (`bx-receipt`) icon conditionally visible only when an existing billing schedule is detected for that order.
+
 ### Nov 20, 2026: Invoice Schedule Preview Installment Terms Synchronization
 - Fixed an issue where setting Billing Month to multiple installments (e.g., 5 months) in Step 2 of the schedule modal rendered only 1 invoice in the preview modal.
 - Ensured 2-way synchronization between `formData.paymentTerms` and per-contract `separateTerms` across single-contract and multi-contract flows.

@@ -1999,6 +1999,9 @@ function AddOrder() {
         contractValue={formData.billingDetails?.amountInUSD || formData.amount}
         orderId={effectiveOrderId}
         divisionId={formData.divisionId || location.state?.divisionId}
+        corporate={formData.clientName || location.state?.clientName}
+        division={formData.divisionName || location.state?.divisionName}
+        orderName={formData.orderName || (formData.divisionName ? `${formData.divisionName} | ${formData.planStart || 'Order'} - ${formData.plan || effectiveOrderId}` : `Order #${effectiveOrderId}`)}
         onViewPaymentSchedule={() => {
           if (!effectiveOrderId) {
             showToast('Please complete the order completion process first.', 5000);
@@ -2014,6 +2017,22 @@ function AddOrder() {
           }
           setIsPaymentSummaryOpen(false);
           navigate('/client-payments', { state: { filterOrderId: effectiveOrderId } });
+        }}
+        onCreateBillingSchedule={() => {
+          if (!effectiveOrderId) {
+            showToast('Please complete the order completion process first.', 5000);
+            return;
+          }
+          setIsPaymentSummaryOpen(false);
+          navigate('/client-payments', {
+            state: {
+              openAddSchedule: true,
+              corporate: formData.clientName || location.state?.clientName || '',
+              division: formData.divisionName || location.state?.divisionName || '',
+              orderId: effectiveOrderId,
+              orderName: formData.orderName || (formData.divisionName ? `${formData.divisionName} | ${formData.planStart || 'Order'} - ${formData.plan || effectiveOrderId}` : `Order #${effectiveOrderId}`)
+            }
+          });
         }}
       />
       <PaymentScheduleModal

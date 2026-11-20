@@ -2719,6 +2719,9 @@ function EditDivision() {
         contractValue={selectedOrder?.billingDetails?.amountInUSD || selectedOrder?.amount || 0}
         orderId={selectedOrder?.id}
         divisionId={division.id}
+        corporate={formData.clientName}
+        division={formData.divisionName}
+        orderName={selectedOrder?.orderName || `${formData.divisionName} | ${selectedOrder?.planStart || 'Order'} - ${selectedOrder?.plan || selectedOrder?.id}`}
         onViewPaymentSchedule={() => {
           setIsPaymentSummaryOpen(false);
           setIsPaymentScheduleOpen(true);
@@ -2726,6 +2729,18 @@ function EditDivision() {
         onViewBillingSchedule={() => {
           setIsPaymentSummaryOpen(false);
           navigate('/client-payments', { state: { filterOrderId: selectedOrder?.id } });
+        }}
+        onCreateBillingSchedule={() => {
+          setIsPaymentSummaryOpen(false);
+          navigate('/client-payments', {
+            state: {
+              openAddSchedule: true,
+              corporate: formData.clientName,
+              division: formData.divisionName,
+              orderId: selectedOrder?.id,
+              orderName: selectedOrder?.orderName || `${formData.divisionName} | ${selectedOrder?.planStart || 'Order'} - ${selectedOrder?.plan || selectedOrder?.id}`
+            }
+          });
         }}
       />
       <PaymentScheduleModal 

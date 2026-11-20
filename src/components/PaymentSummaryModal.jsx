@@ -1,22 +1,42 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
 
-function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, divisionId, onViewPaymentSchedule, onViewBillingSchedule }) {
+function PaymentSummaryModal({ 
+  isOpen, 
+  onClose, 
+  contractValue, 
+  orderId, 
+  divisionId, 
+  corporate,
+  division,
+  orderName,
+  onViewPaymentSchedule, 
+  onViewBillingSchedule,
+  onCreateBillingSchedule 
+}) {
+  const navigate = useNavigate();
   const { showToast } = useGlobal();
   const [totalReceived, setTotalReceived] = useState(0);
   const [totalBillsRaised, setTotalBillsRaised] = useState(0);
   const [billsCount, setBillsCount] = useState(0);
   const [sessionAlert, setSessionAlert] = useState(false);
+  const [hasBillingSchedule, setHasBillingSchedule] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      let foundSchedule = false;
+
       try {
         const savedPayments = localStorage.getItem('client_payments');
         if (savedPayments) {
           const payments = JSON.parse(savedPayments);
           const orderPayments = payments.filter(p =>
-            String(p.orderId) === String(orderId)
+            p && String(p.orderId) === String(orderId)
           );
+          if (orderPayments.length > 0) {
+            foundSchedule = true;
+          }
           const sum = orderPayments.reduce((acc, curr) => acc + (Number(curr.totalPaid) || 0), 0);
           setTotalReceived(sum);
 
@@ -29,17 +49,24 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, division
         console.error('Failed to parse client payments', e);
       }
 
-      // Check session limit
+      // Check session limit and order-level schedule flags
       try {
         const savedOrders = localStorage.getItem('division_orders');
         if (savedOrders) {
           const orders = JSON.parse(savedOrders);
           const currentOrder = orders.find(o => String(o.id) === String(orderId));
-          if (currentOrder && currentOrder.contractDetails?.checkSessions) {
-            const limit = Number(currentOrder.contractDetails.sessionLimits) || 0;
-            const used = Number(currentOrder.sessionCount) || 0;
-            if (used > limit && limit > 0) {
-              setSessionAlert(true);
+          if (currentOrder) {
+            if (currentOrder.hasBillingSchedule || currentOrder.billingSchedule || currentOrder.scheduleCreated || currentOrder.billingDetails?.hasSchedule) {
+              foundSchedule = true;
+            }
+            if (currentOrder.contractDetails?.checkSessions) {
+              const limit = Number(currentOrder.contractDetails.sessionLimits) || 0;
+              const used = Number(currentOrder.sessionCount) || 0;
+              if (used > limit && limit > 0) {
+                setSessionAlert(true);
+              } else {
+                setSessionAlert(false);
+              }
             } else {
               setSessionAlert(false);
             }
@@ -50,6 +77,8 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, division
       } catch(e) {
         console.error('Failed to parse division orders', e);
       }
+
+      setHasBillingSchedule(foundSchedule);
     }
   }, [isOpen, orderId]);
 
@@ -58,6 +87,42 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, division
   const contractValNum = Number(contractValue) || 0;
   const paymentDue = Math.max(0, contractValNum - totalReceived);
   const paidPct = contractValNum > 0 ? Math.min(100, (totalReceived / contractValNum) * 100) : 0;
+
+  const handleCreateBillingSchedule = () => {
+    if (onCreateBillingSchedule) {
+      onCreateBillingSchedule();
+      return;
+    }
+    if (onClose) onClose();
+    navigate('/client-payments', {
+      state: {
+        openAddSchedule: true,
+        orderId: orderId || '',
+        corporate: corporate || '',
+        division: division || '',
+        orderName: orderName || (orderId ? `Order #${orderId}` : '')
+      }
+    });
+  };
+
+  const handleViewBillingSchedule = () => {
+    const targetId = divisionId || orderId || '1';
+    const isFilled = localStorage.getItem('onboardingFiled_' + targetId);
+    if (!isFilled) {
+      showToast('Onboarding form not filled.', 3000, 'error');
+    } else if (onViewBillingSchedule) {
+      onViewBillingSchedule();
+    } else {
+      if (onClose) onClose();
+      navigate('/client-payments', { state: { filterOrderId: orderId } });
+    }
+  };
+
+  const handleViewPaymentSchedule = () => {
+    if (onViewPaymentSchedule) {
+      onViewPaymentSchedule();
+    }
+  };
 
   const Row = ({ icon, label, value, valueColor, noBorder }) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: noBorder ? 'none' : '1px solid #f1f5f9' }}>
@@ -116,23 +181,115 @@ function PaymentSummaryModal({ isOpen, onClose, contractValue, orderId, division
           </div>
         )}
 
-        {/* Footer */}
-        <div style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
-          <button onClick={onViewPaymentSchedule} style={{ padding: '0.5rem 1rem', background: 'white', border: '1px solid #cbd5e1', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', lineHeight: '1.2' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'white'}>
-            <i className='bx bx-calendar' style={{ fontSize: '1rem', color: '#334155' }}></i>
-            <div style={{ textAlign: 'center' }}>View Payment<br/>Schedule</div>
+        {/* Footer Actions */}
+        <div style={{
+          padding: '0.85rem 1.5rem',
+          borderTop: '1px solid #f1f5f9',
+          display: 'flex',
+          gap: '0.85rem',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f8fafc'
+        }}>
+          {/* View Payment Schedule Icon */}
+          <button
+            type="button"
+            onClick={handleViewPaymentSchedule}
+            title="View Payment Schedule"
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#334155',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#f1f5f9';
+              e.currentTarget.style.borderColor = '#94a3b8';
+              e.currentTarget.style.color = '#0f172a';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#ffffff';
+              e.currentTarget.style.borderColor = '#cbd5e1';
+              e.currentTarget.style.color = '#334155';
+            }}
+          >
+            <i className='bx bx-calendar' style={{ fontSize: '1.25rem' }}></i>
           </button>
-          <button onClick={() => {
-            const targetId = divisionId || orderId || '1';
-            const isFilled = localStorage.getItem('onboardingFiled_' + targetId);
-            if (!isFilled) {
-              showToast('Onboarding form not filled.', 3000, 'error');
-            } else {
-              onViewBillingSchedule();
-            }
-          }} style={{ padding: '0.5rem 1rem', background: 'white', border: '1px solid #cbd5e1', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', lineHeight: '1.2' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'white'}>
-            <i className='bx bx-receipt' style={{ fontSize: '1rem', color: '#334155' }}></i>
-            <div style={{ textAlign: 'center' }}>View Billing<br/>Schedule</div>
+
+          {/* View Billing Schedule Icon (only visible when a billing schedule has been created) */}
+          {hasBillingSchedule && (
+            <button
+              type="button"
+              onClick={handleViewBillingSchedule}
+              title="View Billing Schedule"
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '8px',
+                border: '1px solid #bfdbfe',
+                background: '#eff6ff',
+                color: '#0284c7',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 1px 2px rgba(2, 132, 199, 0.1)',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#dbeafe';
+                e.currentTarget.style.borderColor = '#0284c7';
+                e.currentTarget.style.color = '#0369a1';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#eff6ff';
+                e.currentTarget.style.borderColor = '#bfdbfe';
+                e.currentTarget.style.color = '#0284c7';
+              }}
+            >
+              <i className='bx bx-receipt' style={{ fontSize: '1.25rem' }}></i>
+            </button>
+          )}
+
+          {/* Create Billing Schedule Icon */}
+          <button
+            type="button"
+            onClick={handleCreateBillingSchedule}
+            title="Create Billing Schedule"
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '8px',
+              border: '1px solid #a7f3d0',
+              background: '#ecfdf5',
+              color: '#059669',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 1px 2px rgba(5, 150, 105, 0.1)',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#d1fae5';
+              e.currentTarget.style.borderColor = '#059669';
+              e.currentTarget.style.color = '#047857';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#ecfdf5';
+              e.currentTarget.style.borderColor = '#a7f3d0';
+              e.currentTarget.style.color = '#059669';
+            }}
+          >
+            <i className='bx bx-calendar-plus' style={{ fontSize: '1.25rem' }}></i>
           </button>
         </div>
       </div>
