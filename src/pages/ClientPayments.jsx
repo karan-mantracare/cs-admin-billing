@@ -359,7 +359,6 @@ function ClientPayments() {
   });
   const [showPastPayments, setShowPastPayments] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState(null);
-  const [showViewReceivedDropdown, setShowViewReceivedDropdown] = useState(false);
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15);
@@ -377,7 +376,6 @@ function ClientPayments() {
           setActivePaymentId(null);
           setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' });
           setEditingRecordId(null);
-          setShowViewReceivedDropdown(false);
         }
       }
     };
@@ -1343,7 +1341,7 @@ function ClientPayments() {
             }} onClick={(e) => e.stopPropagation()}>
               <div style={{ background: 'linear-gradient(135deg, #059669, #10b981)', padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ margin: 0, fontSize: '1rem', color: 'white', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><i className='bx bx-money'></i> {editingRecordId ? 'Edit Payment' : 'Add Payment'}</h2>
-                <button onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' }); setEditingRecordId(null); setShowViewReceivedDropdown(false); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                <button onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' }); setEditingRecordId(null); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
               </div>
               <div style={{ padding: '1.25rem' }}>
               
@@ -1561,115 +1559,40 @@ function ClientPayments() {
               })()}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ position: 'relative' }}>
-                  <button 
-                    type="button"
-                    onClick={() => setShowViewReceivedDropdown(prev => !prev)}
-                    style={{ 
-                      padding: '0.55rem 0.95rem', 
-                      background: '#f0f9ff', 
-                      color: '#0284c7', 
-                      border: '1px solid #bae6fd', 
-                      borderRadius: '6px', 
-                      cursor: 'pointer', 
-                      fontWeight: '600', 
-                      fontSize: '0.85rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.45rem',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                    }}
-                    title="View payments received for this order or invoice"
-                  >
-                    <i className='bx bx-receipt' style={{ fontSize: '1.1rem' }}></i>
-                    <span>View Payment Received</span>
-                    <i className={`bx bx-chevron-${showViewReceivedDropdown ? 'up' : 'down'}`} style={{ fontSize: '1rem' }}></i>
-                  </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setActivePaymentId(null);
+                    setActiveTab('records');
+                    setActiveLinkFilter({
+                      orderId: targetRow.orderId,
+                      invoiceId: targetRow.id,
+                      type: 'received'
+                    });
+                  }}
+                  style={{ 
+                    width: '38px',
+                    height: '38px',
+                    padding: 0,
+                    background: '#f0f9ff', 
+                    color: '#0284c7', 
+                    border: '1px solid #bae6fd', 
+                    borderRadius: '6px', 
+                    cursor: 'pointer', 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#e0f2fe'; e.currentTarget.style.borderColor = '#7dd3fc'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = '#bae6fd'; }}
+                  title="View Payment Received (Filter by Invoice ID)"
+                >
+                  <i className='bx bx-receipt' style={{ fontSize: '1.3rem' }}></i>
+                </button>
 
-                  {showViewReceivedDropdown && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: 'calc(100% + 6px)',
-                      left: 0,
-                      background: '#ffffff',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                      zIndex: 100,
-                      minWidth: '250px',
-                      padding: '0.4rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.3rem'
-                    }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowViewReceivedDropdown(false);
-                          setActivePaymentId(null);
-                          setActiveTab('records');
-                          setActiveLinkFilter({
-                            orderId: targetRow.orderId,
-                            invoiceId: null,
-                            type: 'received'
-                          });
-                        }}
-                        style={{
-                          padding: '0.55rem 0.75rem',
-                          background: '#f8fafc',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '6px',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.15rem'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#eff6ff'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
-                      >
-                        <span style={{ fontWeight: '600', fontSize: '0.82rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <i className='bx bx-folder' style={{ color: '#0284c7' }}></i> Filter by Order ID
-                        </span>
-                        <span style={{ fontSize: '0.74rem', color: '#64748b' }}>Order #{targetRow.orderId || 'N/A'} (all invoices)</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowViewReceivedDropdown(false);
-                          setActivePaymentId(null);
-                          setActiveTab('records');
-                          setActiveLinkFilter({
-                            orderId: targetRow.orderId,
-                            invoiceId: targetRow.id,
-                            type: 'received'
-                          });
-                        }}
-                        style={{
-                          padding: '0.55rem 0.75rem',
-                          background: '#f8fafc',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '6px',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.15rem'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#eff6ff'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
-                      >
-                        <span style={{ fontWeight: '600', fontSize: '0.82rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <i className='bx bx-file' style={{ color: '#059669' }}></i> Filter by Invoice ID
-                        </span>
-                        <span style={{ fontSize: '0.74rem', color: '#64748b', wordBreak: 'break-all' }}>{targetRow.id}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <button style={{ padding: '0.55rem 1.25rem', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => {
+                <button style={{ padding: '0.55rem 1.25rem', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '38px' }} onClick={() => {
                   const amountVal = Number(paymentForm.amount);
                   if (!paymentForm.paymentDate || !amountVal) {
                     alert("Please provide valid date and amount inputs.");
