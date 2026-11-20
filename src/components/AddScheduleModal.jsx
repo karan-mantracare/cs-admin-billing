@@ -407,28 +407,50 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     return `${y}-${m}-${day}`;
   };
 
+  // --- Monthly Back-to-Back Date Helpers ---
+  const getMonthlyDate = (baseDateStr, monthOffset) => {
+    let d = parseFlexibleDate(baseDateStr) || (baseDateStr ? new Date(baseDateStr) : new Date());
+    if (isNaN(d.getTime())) d = new Date();
+    
+    const startDay = d.getDate();
+    const res = new Date(d.getFullYear(), d.getMonth() + monthOffset, startDay);
+    
+    if (res.getDate() !== startDay) {
+      res.setDate(0);
+    }
+    const y = res.getFullYear();
+    const m = String(res.getMonth() + 1).padStart(2, '0');
+    const day = String(res.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const getDueDate = (invoiceDateStr, dueDays) => {
+    const d = parseFlexibleDate(invoiceDateStr) || new Date(invoiceDateStr);
+    if (isNaN(d.getTime())) return invoiceDateStr;
+    const res = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (Number(dueDays) || 30));
+    const y = res.getFullYear();
+    const m = String(res.getMonth() + 1).padStart(2, '0');
+    const day = String(res.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
   const calculatePlanMonthDiff = (startStr, endStr) => {
-    const d1 = parseFlexibleDate(startStr);
-    const d2 = parseFlexibleDate(endStr);
-    if (!d1 || !d2) return null;
+    const sIso = toStandardIsoDate(startStr);
+    const eIso = toStandardIsoDate(endStr);
+    if (!sIso || !eIso) return null;
+    if (sIso > eIso) return 1;
 
-    const timeDiff = d2.getTime() - d1.getTime();
-    if (timeDiff > 0) {
-      const daysDiff = timeDiff / (1000 * 3600 * 24);
-      const calculated = Math.round(daysDiff / 30.44);
-      if (calculated > 0) return calculated;
+    // Count how many monthly billing occurrences fit between start and end
+    let count = 0;
+    while (count < 120) {
+      const invDate = getMonthlyDate(sIso, count);
+      if (invDate <= eIso) {
+        count++;
+      } else {
+        break;
+      }
     }
-
-    let yearDiff = d2.getFullYear() - d1.getFullYear();
-    let monthDiff = d2.getMonth() - d1.getMonth();
-    let months = yearDiff * 12 + monthDiff;
-    if (months < 0) {
-      months = ((months % 12) + 12) % 12;
-    }
-    if (d2.getDate() >= 27 || d2.getDate() >= d1.getDate() - 1) {
-      months += 1;
-    }
-    return Math.max(1, months);
+    return Math.max(1, count);
   };
 
   let maxPaymentTerms = null; // null when plan end is not available
@@ -609,33 +631,6 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     const calculatedTerms = getFrequencyMonths(newFreq, cMax);
     setSeparateTerms(prev => ({ ...prev, [contractId]: String(calculatedTerms) }));
     setPaymentTermError('');
-  };
-
-  // --- Monthly Back-to-Back Date Helpers ---
-  const getMonthlyDate = (baseDateStr, monthOffset) => {
-    let d = parseFlexibleDate(baseDateStr) || (baseDateStr ? new Date(baseDateStr) : new Date());
-    if (isNaN(d.getTime())) d = new Date();
-    
-    const startDay = d.getDate();
-    const res = new Date(d.getFullYear(), d.getMonth() + monthOffset, startDay);
-    
-    if (res.getDate() !== startDay) {
-      res.setDate(0);
-    }
-    const y = res.getFullYear();
-    const m = String(res.getMonth() + 1).padStart(2, '0');
-    const day = String(res.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
-
-  const getDueDate = (invoiceDateStr, dueDays) => {
-    const d = parseFlexibleDate(invoiceDateStr) || new Date(invoiceDateStr);
-    if (isNaN(d.getTime())) return invoiceDateStr;
-    const res = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (Number(dueDays) || 30));
-    const y = res.getFullYear();
-    const m = String(res.getMonth() + 1).padStart(2, '0');
-    const day = String(res.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
   };
 
   const checkPlanEndCrossError = () => {
