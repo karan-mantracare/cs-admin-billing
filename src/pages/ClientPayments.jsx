@@ -359,6 +359,7 @@ function ClientPayments() {
   });
   const [showPastPayments, setShowPastPayments] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState(null);
+  const [showViewReceivedDropdown, setShowViewReceivedDropdown] = useState(false);
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15);
@@ -376,6 +377,7 @@ function ClientPayments() {
           setActivePaymentId(null);
           setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' });
           setEditingRecordId(null);
+          setShowViewReceivedDropdown(false);
         }
       }
     };
@@ -451,13 +453,60 @@ function ClientPayments() {
   });
 
   const filteredPaymentRecords = paymentRecords.filter(r => {
-    if (activeLinkFilter?.orderId) {
-      const targetOrder = String(activeLinkFilter.orderId).toLowerCase();
-      const rOrder = String(r.orderId || '').toLowerCase();
-      if (rOrder !== targetOrder && !rOrder.includes(targetOrder)) {
-        return false;
+    // 1. Link Filter (from URL query, activeLinkFilter or View Payment Received)
+    if (activeLinkFilter) {
+      if (activeLinkFilter.orderId) {
+        const targetOrder = String(activeLinkFilter.orderId).toLowerCase();
+        const rOrder = String(r.orderId || '').toLowerCase();
+        if (rOrder !== targetOrder && !rOrder.includes(targetOrder)) {
+          return false;
+        }
+      }
+      if (activeLinkFilter.invoiceId) {
+        const targetInv = String(activeLinkFilter.invoiceId).toLowerCase();
+        const rInv = String(r.paymentId || r.id || '').toLowerCase();
+        if (rInv !== targetInv && !rInv.includes(targetInv)) {
+          return false;
+        }
       }
     }
+
+    // 2. Free text search
+    const query = String(advancedFilters.searchText || '').toLowerCase();
+    if (query) {
+      const matchesSearch = 
+        String(r.orderId || '').toLowerCase().includes(query) ||
+        String(r.paymentId || '').toLowerCase().includes(query) ||
+        String(r.invoiceNumber || '').toLowerCase().includes(query) ||
+        String(r.receivedBank || '').toLowerCase().includes(query) ||
+        String(r.currency || '').toLowerCase().includes(query) ||
+        String(r.amount || '').toLowerCase().includes(query);
+      if (!matchesSearch) return false;
+    }
+
+    // 3. Advanced Conditions
+    for (const cond of advancedFilters.conditions) {
+      if (!cond.value || (Array.isArray(cond.value) && !cond.value[0] && !cond.value[1])) {
+        continue;
+      }
+      let fieldVal = '';
+      if (cond.fieldId === 'invoiceId' || cond.fieldId === 'paymentId') {
+        fieldVal = String(r.paymentId || '');
+      } else {
+        fieldVal = String(r[cond.fieldId] || '');
+      }
+
+      if (cond.operator === 'Is') {
+        if (fieldVal !== cond.value) return false;
+      } else if (cond.operator === 'Is not') {
+        if (fieldVal === cond.value) return false;
+      } else if (cond.operator === 'Contains') {
+        if (!fieldVal.toLowerCase().includes((cond.value || '').toLowerCase())) return false;
+      } else if (cond.operator === 'Not Contains') {
+        if (fieldVal.toLowerCase().includes((cond.value || '').toLowerCase())) return false;
+      }
+    }
+
     return true;
   });
 
@@ -533,6 +582,7 @@ function ClientPayments() {
               fields={[
                 { id: 'clientName', label: 'Client Name', type: 'text' },
                 { id: 'orderId', label: 'Order ID', type: 'text' },
+                { id: 'invoiceId', label: 'Invoice ID', type: 'text' },
                 { id: 'corporateName', label: 'Corporate Name', type: 'text' },
                 { id: 'billingCompany', label: 'Billing Company', type: 'text' },
                 { id: 'status', label: 'Status', type: 'select', options: ['To be Raised', 'Pending', 'Partial', 'Received', 'Overdue', 'Invoice Pending'] },
@@ -617,19 +667,34 @@ function ClientPayments() {
           marginBottom: '1.25rem',
           fontSize: '0.85rem'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
             <i className={`bx ${activeLinkFilter.type === 'received' ? 'bx-check-circle' : 'bx-time-five'}`} style={{ fontSize: '1.3rem', color: activeLinkFilter.type === 'received' ? '#16a34a' : '#d97706' }}></i>
-            <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <span style={{ fontWeight: '600', color: '#0f172a' }}>
-                Filtered by {activeLinkFilter.type === 'received' ? 'Amount Received' : 'Amount Due'}:
+                Filtered by {activeLinkFilter.type === 'received' ? 'Payments Received' : 'Amount Due'}:
               </span>
               {activeLinkFilter.orderId && (
-                <span style={{ marginLeft: '0.5rem', padding: '0.2rem 0.55rem', background: '#ffffff', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: '700', color: '#0284c7' }}>
+                <span style={{ padding: '0.2rem 0.55rem', background: '#ffffff', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: '700', color: '#0284c7' }}>
                   Order #{activeLinkFilter.orderId}
                 </span>
               )}
-              <span style={{ marginLeft: '0.6rem', color: '#64748b', fontSize: '0.82rem' }}>
-                ({filteredPayments.length} matching schedule record{filteredPayments.length !== 1 ? 's' : ''})
+              {activeLinkFilter.invoiceId && (
+                <span style={{ padding: '0.2rem 0.55rem', background: '#ecfdf5', borderRadius: '4px', border: '1px solid #a7f3d0', fontWeight: '700', color: '#047857' }} title={activeLinkFilter.invoiceId}>
+                  Invoice: {activeLinkFilter.invoiceId}
+                </span>
+              )}
+              {activeLinkFilter.invoiceId && activeLinkFilter.orderId && (
+                <button
+                  type="button"
+                  onClick={() => setActiveLinkFilter(prev => ({ ...prev, invoiceId: null }))}
+                  style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.8rem', fontWeight: '600' }}
+                  title="Switch to viewing all records for this order"
+                >
+                  View all for Order #{activeLinkFilter.orderId}
+                </button>
+              )}
+              <span style={{ color: '#64748b', fontSize: '0.82rem' }}>
+                ({activeTab === 'records' ? filteredPaymentRecords.length : filteredPayments.length} record{((activeTab === 'records' ? filteredPaymentRecords.length : filteredPayments.length) !== 1) ? 's' : ''})
               </span>
             </div>
           </div>
@@ -933,7 +998,7 @@ function ClientPayments() {
               <th>RECEIVED BANK</th>
               <th>INVOICE NUMBER</th>
               <th>ORDER ID</th>
-              <th>BILLING & PAYMENT ID</th>
+              <th>INVOICE ID</th>
               <th>AMOUNT</th>
               <th>CURRENCY</th>
               <th>AMOUNT IN USD</th>
@@ -965,7 +1030,17 @@ function ClientPayments() {
                     {r.orderId}
                   </span>
                 </td>
-                <td><span style={{ background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>{r.paymentId}</span></td>
+                <td>
+                  <span 
+                    style={{ background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer', color: '#0369a1', fontWeight: '500' }}
+                    title={`Click to filter by Invoice ID: ${r.paymentId}`}
+                    onClick={() => {
+                      setActiveLinkFilter({ orderId: r.orderId, invoiceId: r.paymentId, type: 'received' });
+                    }}
+                  >
+                    {r.paymentId}
+                  </span>
+                </td>
                 <td><strong>{Number(r.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
                 <td>{r.currency}</td>
                 <td><strong className="text-green">${Number(r.amountInUSD || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
@@ -1268,7 +1343,7 @@ function ClientPayments() {
             }} onClick={(e) => e.stopPropagation()}>
               <div style={{ background: 'linear-gradient(135deg, #059669, #10b981)', padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ margin: 0, fontSize: '1rem', color: 'white', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><i className='bx bx-money'></i> {editingRecordId ? 'Edit Payment' : 'Add Payment'}</h2>
-                <button onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' }); setEditingRecordId(null); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                <button onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' }); setEditingRecordId(null); setShowViewReceivedDropdown(false); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
               </div>
               <div style={{ padding: '1.25rem' }}>
               
@@ -1485,9 +1560,116 @@ function ClientPayments() {
                 );
               })()}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                <button style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' }); setShowPastPayments(false); setEditingRecordId(null); }}>Cancel</button>
-                <button style={{ padding: '0.5rem 1rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => {
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ position: 'relative' }}>
+                  <button 
+                    type="button"
+                    onClick={() => setShowViewReceivedDropdown(prev => !prev)}
+                    style={{ 
+                      padding: '0.55rem 0.95rem', 
+                      background: '#f0f9ff', 
+                      color: '#0284c7', 
+                      border: '1px solid #bae6fd', 
+                      borderRadius: '6px', 
+                      cursor: 'pointer', 
+                      fontWeight: '600', 
+                      fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                    }}
+                    title="View payments received for this order or invoice"
+                  >
+                    <i className='bx bx-receipt' style={{ fontSize: '1.1rem' }}></i>
+                    <span>View Payment Received</span>
+                    <i className={`bx bx-chevron-${showViewReceivedDropdown ? 'up' : 'down'}`} style={{ fontSize: '1rem' }}></i>
+                  </button>
+
+                  {showViewReceivedDropdown && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 6px)',
+                      left: 0,
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                      zIndex: 100,
+                      minWidth: '250px',
+                      padding: '0.4rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.3rem'
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowViewReceivedDropdown(false);
+                          setActivePaymentId(null);
+                          setActiveTab('records');
+                          setActiveLinkFilter({
+                            orderId: targetRow.orderId,
+                            invoiceId: null,
+                            type: 'received'
+                          });
+                        }}
+                        style={{
+                          padding: '0.55rem 0.75rem',
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '6px',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.15rem'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#eff6ff'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                      >
+                        <span style={{ fontWeight: '600', fontSize: '0.82rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <i className='bx bx-folder' style={{ color: '#0284c7' }}></i> Filter by Order ID
+                        </span>
+                        <span style={{ fontSize: '0.74rem', color: '#64748b' }}>Order #{targetRow.orderId || 'N/A'} (all invoices)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowViewReceivedDropdown(false);
+                          setActivePaymentId(null);
+                          setActiveTab('records');
+                          setActiveLinkFilter({
+                            orderId: targetRow.orderId,
+                            invoiceId: targetRow.id,
+                            type: 'received'
+                          });
+                        }}
+                        style={{
+                          padding: '0.55rem 0.75rem',
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '6px',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.15rem'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#eff6ff'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                      >
+                        <span style={{ fontWeight: '600', fontSize: '0.82rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <i className='bx bx-file' style={{ color: '#059669' }}></i> Filter by Invoice ID
+                        </span>
+                        <span style={{ fontSize: '0.74rem', color: '#64748b', wordBreak: 'break-all' }}>{targetRow.id}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button style={{ padding: '0.55rem 1.25rem', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => {
                   const amountVal = Number(paymentForm.amount);
                   if (!paymentForm.paymentDate || !amountVal) {
                     alert("Please provide valid date and amount inputs.");
