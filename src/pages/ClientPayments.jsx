@@ -131,8 +131,40 @@ function ClientPayments() {
     try {
       const saved = localStorage.getItem('client_payments');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) ? parsed.filter(p => p != null) : [];
+        let parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Heal payments if linked paymentRecords have USD amounts
+          try {
+            const recordsSaved = localStorage.getItem('client_payment_records');
+            if (recordsSaved) {
+              const recs = JSON.parse(recordsSaved);
+              if (Array.isArray(recs)) {
+                parsed = parsed.map(p => {
+                  const matchingRecs = recs.filter(r => r && r.paymentId === p.id);
+                  if (matchingRecs.length > 0) {
+                    const actualPaidUsd = matchingRecs.reduce((sum, r) => {
+                      const usd = (r.currency === 'USD' && Number(r.amount) >= 10 && Number(r.amountInUSD) < 2) 
+                        ? Number(r.amount) 
+                        : (Number(r.amountInUSD) || 0);
+                      return sum + usd;
+                    }, 0);
+                    if (actualPaidUsd > 0 && Math.abs(p.totalPaid - actualPaidUsd) > 0.01) {
+                      const newDue = Math.max(0, p.amountDueUsd - actualPaidUsd);
+                      return {
+                        ...p,
+                        totalPaid: Number(actualPaidUsd.toFixed(2)),
+                        dueAmount: Number(newDue.toFixed(2)),
+                        status: newDue <= 0 ? 'Received' : 'Partial'
+                      };
+                    }
+                  }
+                  return p;
+                });
+              }
+            }
+          } catch (e) {}
+          return parsed.filter(p => p != null);
+        }
       }
       return [];
     } catch (e) {
@@ -147,7 +179,12 @@ function ClientPayments() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.filter(p => p != null);
+          return parsed.filter(p => p != null).map(r => {
+            if (r.currency === 'USD' && Number(r.amount) >= 10 && Number(r.amountInUSD) < 2) {
+              return { ...r, amountInUSD: Number(r.amount) };
+            }
+            return r;
+          });
         }
       }
       return [
@@ -1282,27 +1319,78 @@ function ClientPayments() {
                       </div>
                     )}
                     <div style={{ textAlign: 'left' }}>
-                      <button style={{ background: 'none', border: 'none', color: '#0ea5e9', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', padding: 0 }} onClick={() => setPaymentForm(prev => ({ ...prev, isChangeCurrency: true }))}>Change Currency</button>
+                      <button style={{ background: 'none', border: 'none', color: '#0ea5e9', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', padding: 0 }} onClick={() => {
+                        const exchangeRate = targetRow.amountDue > 0 ? (targetRow.amountDueUsd / targetRow.amountDue) : 1;
+                        const num = Number(paymentForm.amount);
+                        let autoEx = '';
+                        if (num && !isNaN(num)) {
+                          autoEx = (num / exchangeRate).toFixed(2);
+                        }
+                        setPaymentForm(prev => ({ 
+                          ...prev, 
+                          isChangeCurrency: true,
+                          changedCurrency: 'USD',
+                          exchangedAmount: autoEx
+                        }));
+                      }}>Change Currency</button>
                     </div>
                   </>
                 ) : (
                   <>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Amount</label>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Payment Amount ({paymentForm.changedCurrency})</label>
                       <input 
                         type="number" 
-                        placeholder="e.g. 1500" 
+                        placeholder="e.g. 100" 
                         style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
                         value={paymentForm.amount}
-                        onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const num = Number(val);
+                          const exchangeRate = targetRow.amountDue > 0 ? (targetRow.amountDueUsd / targetRow.amountDue) : 1;
+                          let autoExchanged = '';
+                          if (num && !isNaN(num)) {
+                            if (paymentForm.changedCurrency === 'USD') {
+                              autoExchanged = (num / exchangeRate).toFixed(2);
+                            } else if (paymentForm.changedCurrency === targetRow.currency) {
+                              autoExchanged = num.toFixed(2);
+                            } else {
+                              autoExchanged = (num * exchangeRate).toFixed(2);
+                            }
+                          }
+                          setPaymentForm(prev => ({ 
+                            ...prev, 
+                            amount: val,
+                            exchangedAmount: autoExchanged
+                          }));
+                        }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Currency</label>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Payment Currency</label>
                       <select 
                         style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
                         value={paymentForm.changedCurrency}
-                        onChange={(e) => setPaymentForm(prev => ({ ...prev, changedCurrency: e.target.value }))}
+                        onChange={(e) => {
+                          const nextCurr = e.target.value;
+                          const num = Number(paymentForm.amount);
+                          const exchangeRate = targetRow.amountDue > 0 ? (targetRow.amountDueUsd / targetRow.amountDue) : 1;
+                          let autoExchanged = '';
+                          if (num && !isNaN(num)) {
+                            if (nextCurr === 'USD') {
+                              autoExchanged = (num / exchangeRate).toFixed(2);
+                            } else if (nextCurr === targetRow.currency) {
+                              autoExchanged = num.toFixed(2);
+                            } else {
+                              autoExchanged = (num * exchangeRate).toFixed(2);
+                            }
+                          }
+                          setPaymentForm(prev => ({ 
+                            ...prev, 
+                            changedCurrency: nextCurr,
+                            exchangedAmount: autoExchanged
+                          }));
+                        }}
                       >
                         <option value="USD">USD</option>
                         <option value="EUR">EUR</option>
@@ -1311,15 +1399,26 @@ function ClientPayments() {
                       </select>
                     </div>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Exchanged (to {targetRow.currency})</label>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Deducted from Invoice ({targetRow.currency})</label>
                       <input 
                         type="number" 
-                        placeholder="e.g. 1350" 
+                        placeholder={`e.g. ${targetRow.currency === 'EUR' ? '86.00' : '100'}`}
                         style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box' }} 
                         value={paymentForm.exchangedAmount}
                         onChange={(e) => setPaymentForm(prev => ({ ...prev, exchangedAmount: e.target.value }))}
                       />
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginTop: '0.25rem' }}>
+                        Auto-calculated: 1 {targetRow.currency} = ${(targetRow.amountDue > 0 ? (targetRow.amountDueUsd / targetRow.amountDue) : 1).toFixed(4)} USD
+                      </span>
                     </div>
+                    {paymentForm.amount && !isNaN(Number(paymentForm.amount)) && (
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Amount in USD</label>
+                        <div style={{ padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '0.9rem', color: '#059669', boxSizing: 'border-box', fontWeight: '700' }}>
+                          ${(paymentForm.changedCurrency === 'USD' ? Number(paymentForm.amount) : (Number(paymentForm.exchangedAmount || 0) * (targetRow.amountDueUsd / targetRow.amountDue))).toFixed(2)}
+                        </div>
+                      </div>
+                    )}
                     <div style={{ textAlign: 'left' }}>
                       <button style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', padding: 0 }} onClick={() => setPaymentForm(prev => ({ ...prev, isChangeCurrency: false }))}>Cancel Change</button>
                     </div>
@@ -1359,7 +1458,8 @@ function ClientPayments() {
                                   amount: pp.amount,
                                   isChangeCurrency: pp.currency !== targetRow.currency,
                                   changedCurrency: pp.currency,
-                                  exchangedAmount: pp.baseDeductAmount || pp.amount
+                                  exchangedAmount: pp.baseDeductAmount || pp.amount,
+                                  receivedBank: pp.receivedBank || ''
                                 });
                               }}></i>
                               <i className='bx bx-trash' style={{ cursor: 'pointer', color: '#ef4444', fontSize: '1.1rem' }} onClick={() => {
@@ -1386,19 +1486,42 @@ function ClientPayments() {
               })()}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                <button style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '' }); setShowPastPayments(false); setEditingRecordId(null); }}>Cancel</button>
+                <button style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' }); setShowPastPayments(false); setEditingRecordId(null); }}>Cancel</button>
                 <button style={{ padding: '0.5rem 1rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }} onClick={() => {
                   const amountVal = Number(paymentForm.amount);
-                  const baseDeductAmount = paymentForm.isChangeCurrency ? Number(paymentForm.exchangedAmount) : amountVal;
-
-                  if (!paymentForm.paymentDate || !amountVal || (paymentForm.isChangeCurrency && !baseDeductAmount)) {
+                  if (!paymentForm.paymentDate || !amountVal) {
                     alert("Please provide valid date and amount inputs.");
                     return;
                   }
-                  
-                  // Simple exchange logic based on row data to derive USD amount
-                  const exchangeRate = targetRow.amountDueUsd / targetRow.amountDue;
-                  const amountInUSD = isNaN(exchangeRate) ? baseDeductAmount : (baseDeductAmount * exchangeRate);
+
+                  const exchangeRate = targetRow.amountDue > 0 ? (targetRow.amountDueUsd / targetRow.amountDue) : 1;
+                  const payCurrency = paymentForm.isChangeCurrency ? paymentForm.changedCurrency : targetRow.currency;
+
+                  let baseDeductAmount = amountVal;
+                  let amountInUSD = amountVal;
+
+                  if (paymentForm.isChangeCurrency) {
+                    let enteredExchanged = Number(paymentForm.exchangedAmount);
+                    // If user entered a rate (e.g. 0.80 or 0.86) instead of total converted amount
+                    if (enteredExchanged > 0 && enteredExchanged < 2 && amountVal >= 10) {
+                      enteredExchanged = amountVal * enteredExchanged;
+                    }
+
+                    if (payCurrency === 'USD') {
+                      amountInUSD = amountVal;
+                      baseDeductAmount = (enteredExchanged && enteredExchanged > 0) ? enteredExchanged : (amountVal / exchangeRate);
+                    } else if (payCurrency === targetRow.currency) {
+                      baseDeductAmount = amountVal;
+                      amountInUSD = targetRow.currency === 'USD' ? amountVal : (amountVal * exchangeRate);
+                    } else {
+                      baseDeductAmount = (enteredExchanged && enteredExchanged > 0) ? enteredExchanged : amountVal;
+                      amountInUSD = baseDeductAmount * exchangeRate;
+                    }
+                  } else {
+                    // Paid in invoice currency
+                    baseDeductAmount = amountVal;
+                    amountInUSD = targetRow.currency === 'USD' ? amountVal : (amountVal * exchangeRate);
+                  }
                   
                   const isEditing = editingRecordId != null;
                   const oldRecord = isEditing ? paymentRecords.find(r => r.id === editingRecordId) : null;
@@ -1413,9 +1536,9 @@ function ClientPayments() {
                     orderId: targetRow.orderId,
                     paymentId: targetRow.id,
                     amount: amountVal,
-                    currency: paymentForm.isChangeCurrency ? paymentForm.changedCurrency : targetRow.currency,
+                    currency: payCurrency,
                     receivedBank: paymentForm.receivedBank || '-',
-                    baseDeductAmount: baseDeductAmount,
+                    baseDeductAmount: Number(baseDeductAmount.toFixed(2)),
                     amountInUSD: Number(amountInUSD.toFixed(2))
                   };
                   
