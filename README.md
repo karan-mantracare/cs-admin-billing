@@ -175,6 +175,11 @@ Admin-CS-Payment/
 
 ## 📋 Recent Highlights & Changelog
 
+### Nov 20, 2026: Invoice Schedule Preview Installment Terms Synchronization
+- Fixed an issue where setting Billing Month to multiple installments (e.g., 5 months) in Step 2 of the schedule modal rendered only 1 invoice in the preview modal.
+- Ensured 2-way synchronization between `formData.paymentTerms` and per-contract `separateTerms` across single-contract and multi-contract flows.
+- Guaranteed preview accurately calculates and displays all configured invoice installment rows with auto-balanced split percentages.
+
 ### Nov 13, 2026: Payment Records Action Column & Change Request Workflow
 - Added an **ACTIONS** column to the Payment Records ledger table with an edit pencil icon and non-wrapping button.
 - Added **Request Change** modal supporting both horizontal **Change** and **Delete** request type cards.

@@ -396,12 +396,17 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
 
   // Initialize separate terms for each available contract
   useEffect(() => {
-    if (isOpen && availableContracts.length > 1) {
+    if (isOpen) {
       setSeparateTerms(prev => {
         let changed = false;
         const next = { ...prev };
         availableContracts.forEach(c => {
-          if (next[c.id] === undefined) {
+          if (availableContracts.length === 1) {
+            if (next[c.id] !== (formData.paymentTerms || '1')) {
+              next[c.id] = formData.paymentTerms || '1';
+              changed = true;
+            }
+          } else if (next[c.id] === undefined) {
             next[c.id] = formData.paymentTerms || '1';
             changed = true;
           }
@@ -732,7 +737,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
       const targetContract = activeSplits.find(c => String(c.id) === String(contractScope));
       if (!targetContract) return [];
 
-      const terms = defaultTerms;
+      const terms = Number(separateTerms[targetContract.id] !== undefined ? separateTerms[targetContract.id] : defaultTerms) || 1;
       const contractVal = Number(targetContract.contractValue) || Number(targetContract.amountInUSD) || 0;
       const contractUsd = Number(targetContract.amountInUSD) || contractVal || 0;
       const curr = targetContract.contractCurrency || defaultCurrency;
@@ -787,7 +792,10 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
     // CASE 2: All Separate (Each contract gets its own schedule with its own installments)
     if (contractScope === 'all_separate') {
       activeSplits.forEach((contract, cIdx) => {
-        const terms = Number(separateTerms[contract.id] !== undefined ? separateTerms[contract.id] : defaultTerms) || 1;
+        const isMulti = activeSplits.length > 1;
+        const terms = isMulti
+          ? (Number(separateTerms[contract.id] !== undefined ? separateTerms[contract.id] : defaultTerms) || 1)
+          : (Number(formData.paymentTerms) || Number(separateTerms[contract.id]) || defaultTerms);
         const contractVal = Number(contract.contractValue) || Number(contract.amountInUSD) || 0;
         const contractUsd = Number(contract.amountInUSD) || contractVal || 0;
         const curr = contract.contractCurrency || defaultCurrency;
@@ -1226,6 +1234,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           setPaymentTermError('Billing month is required');
           return;
         }
+        availableContracts.forEach(c => {
+          separateTerms[c.id] = String(formData.paymentTerms);
+        });
       }
       const invoices = generateInvoices();
       if (!invoices || invoices.length === 0) {
@@ -1290,6 +1301,9 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           setPaymentTermError('Billing month is required');
           return;
         }
+        availableContracts.forEach(c => {
+          separateTerms[c.id] = String(formData.paymentTerms);
+        });
       }
       const invoices = generateInvoices();
       if (!invoices || invoices.length === 0) {
@@ -2808,18 +2822,12 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                                       setPaymentTermError('');
                                       const val = e.target.value;
                                       if (maxPaymentTerms > 0 && Number(val) > maxPaymentTerms) {
-                                        if (isSeparate) {
-                                          setSeparateTerms(prev => ({ ...prev, [c.id]: String(maxPaymentTerms) }));
-                                        } else {
-                                          setFormData(prev => ({ ...prev, paymentTerms: String(maxPaymentTerms) }));
-                                        }
+                                        setSeparateTerms(prev => ({ ...prev, [c.id]: String(maxPaymentTerms) }));
+                                        setFormData(prev => ({ ...prev, paymentTerms: String(maxPaymentTerms) }));
                                         setPaymentTermError(`Cannot exceed Difference of month count (${maxPaymentTerms} months)`);
                                       } else {
-                                        if (isSeparate) {
-                                          setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
-                                        } else {
-                                          setFormData(prev => ({ ...prev, paymentTerms: val }));
-                                        }
+                                        setSeparateTerms(prev => ({ ...prev, [c.id]: val }));
+                                        setFormData(prev => ({ ...prev, paymentTerms: val }));
                                       }
                                     }}
                                     placeholder={maxPaymentTerms > 0 ? `Max ${maxPaymentTerms}` : "1"}

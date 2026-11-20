@@ -1,5 +1,23 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-invoice-schedule-preview-terms-sync-20261120',
+    date: '2026-11-20',
+    formattedDate: 'Nov 20, 2026',
+    page: 'Admin',
+    subPage: 'Add Invoice Schedule / Preview Installment Terms Synchronization',
+    summary: 'Fixed issue where customized billing months (e.g. 5 installments) were not reflected in invoice schedule preview',
+    details: 'Resolved a state synchronization issue in AddScheduleModal where editing the Billing Month for single or unlinked contracts in Step 2 updated formData.paymentTerms without synchronizing per-contract separateTerms. Consequently, generateInvoices fell back to stale or initial 1-month terms when entering the preview modal. Now, separateTerms and formData.paymentTerms are strictly synchronized across single-contract and multi-contract flows, ensuring invoice preview accurately renders all configured installment rows with balanced split percentages.',
+    plainLanguage: 'Fixed an issue where configuring a schedule with multiple installments (e.g., 5 billing months) showed only 1 invoice row in the preview modal. The preview table now correctly generates and displays all configured invoice installments and equal split percentages.',
+    highlights: [
+      'Installment Terms Synchronization: Guaranteed 2-way sync between customized billing months and invoice generation terms',
+      'Preview Accuracy: Invoice Schedule Preview generates the full count of installments (e.g., 5 monthly invoices instead of 1)',
+      'Unlinked & Single Contract Support: Correctly applies customized monthly schedules to single and unlinked contract configurations',
+      'Direct Save & Preview Consistency: Synchronizes terms across both Direct Save and full Preview Schedule actions'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
     id: 'cl-payment-records-change-request-modal-20261113',
     date: '2026-11-13',
     formattedDate: 'Nov 13, 2026',
