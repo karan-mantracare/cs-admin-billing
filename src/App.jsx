@@ -24,6 +24,7 @@ import CsFeedback from './pages/CsFeedback';
 import UserPage from './pages/UserPage';
 import AcceptInvite from './pages/AcceptInvite';
 import ClientCadence from './pages/ClientCadence';
+import SensitiveCases from './pages/SensitiveCases';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -135,6 +136,7 @@ function App() {
                       location.pathname.startsWith('/client-pl') || 
                       location.pathname.startsWith('/profitability') || 
                       location.pathname.startsWith('/expert') || 
+                      location.pathname.startsWith('/sensitive-cases') || 
                       location.pathname.startsWith('/providers') || 
                       location.pathname.startsWith('/users') || 
                       location.pathname.startsWith('/products') || 
@@ -327,6 +329,8 @@ function App() {
         <Route path="/client-pl" element={<ExpenseTracker />} />
         <Route path="/profitability" element={<ExpenseTracker />} />
         <Route path="/expense-approval" element={<ExpenseApproval />} />
+        <Route path="/corporate/sensitive-cases" element={<SensitiveCases />} />
+        <Route path="/sensitive-cases" element={<SensitiveCases />} />
 
         {/* Sidebar Modules with Project Summary and Live Workspaces */}
         <Route path="/orders/*" element={<ModuleSummaryPage defaultModule="Orders" />} />

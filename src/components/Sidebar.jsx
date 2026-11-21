@@ -201,6 +201,7 @@ function Sidebar({ isOpen, onClose }) {
         { label: 'Expense Approval', path: '/expense-approval', icon: 'bx-dollar-circle', isProjectModule: true },
         { label: 'Accounts Receivable', path: '/client-payments', icon: 'bx-dollar-circle', isProjectModule: true },
         { label: 'Expert Assignment', path: '/expert-assignment', icon: 'bx-group', isProjectModule: true },
+        { label: 'Sensitive Cases', path: '/corporate/sensitive-cases', icon: 'bx-shield-quarter', isProjectModule: true },
       ]
     },
     {
