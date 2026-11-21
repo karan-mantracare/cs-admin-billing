@@ -8,6 +8,10 @@ function Home() {
   const [changelogFilter, setChangelogFilter] = useState('All');
   const [changelogSearch, setChangelogSearch] = useState('');
 
+  // Always collapsed by default per requirements
+  const [isCsOpen, setIsCsOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+
   const csModules = [
     {
       title: 'CS Calendar',
@@ -182,188 +186,318 @@ function Home() {
       </div>
 
       {/* Section 1: Customer Success (CS) Portal */}
-      <div style={{ marginBottom: '3rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
-                <i className='bx bx-calendar-check'></i>
-              </div>
-              <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '700', color: '#0f172a' }}>
-                Customer Success (CS) Workflows
-              </h2>
+      <div style={{
+        marginBottom: '1.5rem',
+        background: 'white',
+        borderRadius: '16px',
+        border: '1px solid #e2e8f0',
+        padding: '1.25rem 1.5rem',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        transition: 'all 0.2s ease'
+      }}>
+        <div
+          onClick={() => setIsCsOpen(!isCsOpen)}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            cursor: 'pointer',
+            userSelect: 'none'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flexShrink: 0 }}>
+              <i className='bx bx-calendar-check'></i>
             </div>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-              Active modules powering client engagement, webinars, and HR session approvals.
-            </p>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', color: '#0f172a' }}>
+                  Customer Success (CS) Workflows
+                </h2>
+                <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.55rem', borderRadius: '999px', background: '#e0f2fe', color: '#0284c7' }}>
+                  {csModules.length} Modules
+                </span>
+                <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '999px', background: isCsOpen ? '#f1f5f9' : '#fef3c7', color: isCsOpen ? '#64748b' : '#92400e' }}>
+                  {isCsOpen ? 'Expanded' : 'Collapsed'}
+                </span>
+              </div>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                Active modules powering client engagement, webinars, and HR session approvals.
+              </p>
+            </div>
           </div>
 
-          <button
-            onClick={() => navigate('/cs')}
-            style={{
-              background: 'none',
-              border: '1px solid #cbd5e1',
-              padding: '0.45rem 1rem',
-              borderRadius: '6px',
-              color: '#0284c7',
-              fontSize: '0.85rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem'
-            }}
-          >
-            <span>View CS Overview</span>
-            <i className='bx bx-right-arrow-alt'></i>
-          </button>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
-          {csModules.map((item) => (
-            <div
-              key={item.title}
-              onClick={() => navigate(item.path)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => navigate('/cs')}
               style={{
-                background: 'white',
-                borderRadius: '12px',
-                padding: '1.5rem',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                background: 'none',
+                border: '1px solid #cbd5e1',
+                padding: '0.45rem 0.9rem',
+                borderRadius: '6px',
+                color: '#0284c7',
+                fontSize: '0.82rem',
+                fontWeight: '600',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
                 display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between'
+                alignItems: 'center',
+                gap: '0.35rem',
+                transition: 'all 0.15s ease'
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 16px -2px rgba(0, 0, 0, 0.08)';
-                e.currentTarget.style.borderColor = item.color;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
-                e.currentTarget.style.borderColor = '#e2e8f0';
-              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#f0f9ff'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
             >
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: item.bg, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>
-                    <i className={`bx ${item.icon}`}></i>
-                  </div>
-                  <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.2rem 0.6rem', borderRadius: '999px', background: '#dcfce7', color: '#15803d' }}>
-                    {item.tag}
-                  </span>
-                </div>
-                <h3 style={{ margin: '0 0 0.45rem 0', fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>
-                  {item.title}
-                </h3>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
-                  {item.desc}
-                </p>
-              </div>
+              <span>View CS Overview</span>
+              <i className='bx bx-right-arrow-alt'></i>
+            </button>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: item.color, fontWeight: '600', fontSize: '0.85rem', marginTop: '1.25rem' }}>
-                <span>Launch {item.title}</span>
-                <i className='bx bx-right-arrow-alt' style={{ fontSize: '1.1rem' }}></i>
-              </div>
-            </div>
-          ))}
+            <button
+              type="button"
+              onClick={() => setIsCsOpen(!isCsOpen)}
+              style={{
+                background: isCsOpen ? '#f8fafc' : '#0284c7',
+                border: isCsOpen ? '1px solid #cbd5e1' : 'none',
+                padding: '0.45rem 0.85rem',
+                borderRadius: '6px',
+                color: isCsOpen ? '#334155' : 'white',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                boxShadow: isCsOpen ? 'none' : '0 1px 3px rgba(2, 132, 199, 0.3)',
+                transition: 'all 0.15s ease'
+              }}
+              title={isCsOpen ? 'Collapse CS Workflows' : 'Expand CS Workflows'}
+            >
+              <span>{isCsOpen ? 'Collapse' : 'Expand'}</span>
+              <i className={`bx ${isCsOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.15rem' }}></i>
+            </button>
+          </div>
         </div>
+
+        {isCsOpen && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '1.25rem',
+            marginTop: '1.25rem',
+            paddingTop: '1.25rem',
+            borderTop: '1px solid #f1f5f9'
+          }}>
+            {csModules.map((item) => (
+              <div
+                key={item.title}
+                onClick={() => navigate(item.path)}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 16px -2px rgba(0, 0, 0, 0.08)';
+                  e.currentTarget.style.borderColor = item.color;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                  e.currentTarget.style.borderColor = '#e2e8f0';
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: item.bg, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>
+                      <i className={`bx ${item.icon}`}></i>
+                    </div>
+                    <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.2rem 0.6rem', borderRadius: '999px', background: '#dcfce7', color: '#15803d' }}>
+                      {item.tag}
+                    </span>
+                  </div>
+                  <h3 style={{ margin: '0 0 0.45rem 0', fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>
+                    {item.title}
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
+                    {item.desc}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: item.color, fontWeight: '600', fontSize: '0.85rem', marginTop: '1.25rem' }}>
+                  <span>Launch {item.title}</span>
+                  <i className='bx bx-right-arrow-alt' style={{ fontSize: '1.1rem' }}></i>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Section 2: Admin Portal Workflows */}
-      <div style={{ marginBottom: '2.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
-                <i className='bx bx-shield-quarter'></i>
-              </div>
-              <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '700', color: '#0f172a' }}>
-                Admin Portal Workflows
-              </h2>
+      <div style={{
+        marginBottom: '2rem',
+        background: 'white',
+        borderRadius: '16px',
+        border: '1px solid #e2e8f0',
+        padding: '1.25rem 1.5rem',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        transition: 'all 0.2s ease'
+      }}>
+        <div
+          onClick={() => setIsAdminOpen(!isAdminOpen)}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            cursor: 'pointer',
+            userSelect: 'none'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flexShrink: 0 }}>
+              <i className='bx bx-shield-quarter'></i>
             </div>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-              Active modules powering enterprise client operations, billing & invoicing, and financial approvals.
-            </p>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', color: '#0f172a' }}>
+                  Admin Portal Workflows
+                </h2>
+                <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.55rem', borderRadius: '999px', background: '#dcfce7', color: '#16a34a' }}>
+                  {adminModules.length} Modules
+                </span>
+                <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '999px', background: isAdminOpen ? '#f1f5f9' : '#fef3c7', color: isAdminOpen ? '#64748b' : '#92400e' }}>
+                  {isAdminOpen ? 'Expanded' : 'Collapsed'}
+                </span>
+              </div>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                Active modules powering enterprise client operations, billing & invoicing, and financial approvals.
+              </p>
+            </div>
           </div>
 
-          <button
-            onClick={() => navigate('/admin')}
-            style={{
-              background: '#0284c7',
-              border: 'none',
-              padding: '0.45rem 1rem',
-              borderRadius: '6px',
-              color: 'white',
-              fontSize: '0.85rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              boxShadow: '0 1px 3px rgba(2, 132, 199, 0.3)'
-            }}
-          >
-            <span>Launch Admin Portal</span>
-            <i className='bx bx-right-arrow-alt'></i>
-          </button>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
-          {adminModules.map((item) => (
-            <div
-              key={item.title}
-              onClick={() => navigate(item.path)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => navigate('/admin')}
               style={{
-                background: 'white',
-                borderRadius: '12px',
-                padding: '1.5rem',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                background: '#0284c7',
+                border: 'none',
+                padding: '0.45rem 0.9rem',
+                borderRadius: '6px',
+                color: 'white',
+                fontSize: '0.82rem',
+                fontWeight: '600',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
                 display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 16px -2px rgba(0, 0, 0, 0.08)';
-                e.currentTarget.style.borderColor = item.color;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
-                e.currentTarget.style.borderColor = '#e2e8f0';
+                alignItems: 'center',
+                gap: '0.35rem',
+                boxShadow: '0 1px 3px rgba(2, 132, 199, 0.3)',
+                transition: 'all 0.15s ease'
               }}
             >
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: item.bg, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>
-                    <i className={`bx ${item.icon}`}></i>
-                  </div>
-                  <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.2rem 0.6rem', borderRadius: '999px', background: '#dcfce7', color: '#15803d' }}>
-                    {item.tag}
-                  </span>
-                </div>
-                <h3 style={{ margin: '0 0 0.45rem 0', fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>
-                  {item.title}
-                </h3>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
-                  {item.desc}
-                </p>
-              </div>
+              <span>Launch Admin Portal</span>
+              <i className='bx bx-right-arrow-alt'></i>
+            </button>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: item.color, fontWeight: '600', fontSize: '0.85rem', marginTop: '1.25rem' }}>
-                <span>Launch Module</span>
-                <i className='bx bx-right-arrow-alt' style={{ fontSize: '1.1rem' }}></i>
-              </div>
-            </div>
-          ))}
+            <button
+              type="button"
+              onClick={() => setIsAdminOpen(!isAdminOpen)}
+              style={{
+                background: isAdminOpen ? '#f8fafc' : '#16a34a',
+                border: isAdminOpen ? '1px solid #cbd5e1' : 'none',
+                padding: '0.45rem 0.85rem',
+                borderRadius: '6px',
+                color: isAdminOpen ? '#334155' : 'white',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                boxShadow: isAdminOpen ? 'none' : '0 1px 3px rgba(22, 163, 74, 0.3)',
+                transition: 'all 0.15s ease'
+              }}
+              title={isAdminOpen ? 'Collapse Admin Workflows' : 'Expand Admin Workflows'}
+            >
+              <span>{isAdminOpen ? 'Collapse' : 'Expand'}</span>
+              <i className={`bx ${isAdminOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.15rem' }}></i>
+            </button>
+          </div>
         </div>
+
+        {isAdminOpen && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '1.25rem',
+            marginTop: '1.25rem',
+            paddingTop: '1.25rem',
+            borderTop: '1px solid #f1f5f9'
+          }}>
+            {adminModules.map((item) => (
+              <div
+                key={item.title}
+                onClick={() => navigate(item.path)}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 16px -2px rgba(0, 0, 0, 0.08)';
+                  e.currentTarget.style.borderColor = item.color;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                  e.currentTarget.style.borderColor = '#e2e8f0';
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: item.bg, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>
+                      <i className={`bx ${item.icon}`}></i>
+                    </div>
+                    <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.2rem 0.6rem', borderRadius: '999px', background: '#dcfce7', color: '#15803d' }}>
+                      {item.tag}
+                    </span>
+                  </div>
+                  <h3 style={{ margin: '0 0 0.45rem 0', fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>
+                    {item.title}
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
+                    {item.desc}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: item.color, fontWeight: '600', fontSize: '0.85rem', marginTop: '1.25rem' }}>
+                  <span>Launch Module</span>
+                  <i className='bx bx-right-arrow-alt' style={{ fontSize: '1.1rem' }}></i>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Section 3: Project Change Log Table */}
