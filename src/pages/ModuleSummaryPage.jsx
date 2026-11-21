@@ -150,8 +150,8 @@ function ModuleSummaryPage({ defaultModule = 'Admin Portal', defaultSubmodule = 
       desc: 'Dedicated doctor and therapist matching, session allocation limits, and corporate capacity management.'
     },
     {
-      title: 'Client P&L',
-      category: 'Profitability Analysis',
+      title: 'Client Report',
+      category: 'Client Reporting & P&L',
       path: '/expense-tracker',
       icon: 'bx-pie-chart-alt',
       badge: 'Live & Active',

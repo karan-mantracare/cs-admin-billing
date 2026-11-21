@@ -336,8 +336,8 @@ function ExpenseTracker() {
       {/* Page Header */}
       <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', fontWeight: '700' }}>Client P&amp;L</h1>
-          <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>Revenue vs. cost breakdown per client order</p>
+          <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', fontWeight: '700' }}>Client Report</h1>
+          <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>Client order revenue, expenses, and profitability breakdown</p>
         </div>
         <button className="btn-outline" style={{ borderColor: 'var(--red)', color: 'var(--red)', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => {
           if (window.confirm('Are you sure you want to delete all expenses on this page?')) {

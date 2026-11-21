@@ -191,7 +191,7 @@ function Sidebar({ isOpen, onClose }) {
         { label: 'Engagement Category', path: '/corporate/engagement-category', icon: 'bx-purchase-tag' },
         { label: 'Engagement Activity', path: '/corporate/engagement-activity', icon: 'bx-play-circle' },
         { label: 'Engagement Template', path: '/corporate/engagement-template', icon: 'bx-file' },
-        { label: 'Profitability', path: '/expense-tracker', icon: 'bx-pie-chart-alt', isProjectModule: true },
+        { label: 'Client Report', path: '/expense-tracker', icon: 'bx-pie-chart-alt', isProjectModule: true },
         { label: 'Plans', path: '/corporate/plans', icon: 'bx-clipboard' },
         { label: 'Dedicated Providers', path: '/corporate/dedicated-providers', icon: 'bx-user-check' },
         { label: 'Insurance Partners', path: '/corporate/insurance-partners', icon: 'bx-user' },

@@ -125,7 +125,7 @@ function Home() {
       desc: 'Corporate event expense claims validation, budget vs. actual spend checks, and manager sign-off queues.'
     },
     {
-      title: 'Client P&L (Profitability)',
+      title: 'Client Report',
       icon: 'bx-pie-chart-alt',
       path: '/expense-tracker',
       tag: 'Active Workflow',
