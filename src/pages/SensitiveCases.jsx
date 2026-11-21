@@ -1,21 +1,27 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
 
 // Default initial mock data for Manager Referrals
 const INITIAL_MANAGER_REFERRALS = [
   {
     id: 'MR-1041',
+    divisionId: 'DIV-101',
     corporate: 'TechCorp Solutions',
     division: 'Engineering',
-    employeeName: 'Rahul Verma',
-    employeeId: 'EMP-8821',
-    employeeEmail: 'rahul.v@techcorp.com',
-    referringManager: 'Amitabh Sen',
+    managerName: 'Amitabh Sen',
     managerEmail: 'amitabh.s@techcorp.com',
     managerTitle: 'VP of Engineering',
-    category: 'Performance Drop & Severe Stress',
+    memberName: 'Rahul Verma',
+    employeeId: 'EMP-8821',
+    memberEmail: 'rahul.v@techcorp.com',
+    memberPhone: '+1 (555) 019-2831',
+    primaryReason: 'Performance Decline & Stress',
+    urgencyLevel: 'High',
     severity: 'High',
     status: 'In Counseling',
+    remarks: 'Employee undergoing sprint velocity rehabilitation',
+    isHighestPriority: true,
     referredDate: '2026-11-18',
     assignedClinician: 'Dr. Neha Kapoor (Senior Clinical Psychologist)',
     consentProvided: true,
@@ -30,17 +36,22 @@ const INITIAL_MANAGER_REFERRALS = [
   },
   {
     id: 'MR-1042',
+    divisionId: 'DIV-102',
     corporate: 'Nova FinTech Solutions',
     division: 'Product & Design',
-    employeeName: 'Ananya Deshmukh',
-    employeeId: 'EMP-4310',
-    employeeEmail: 'ananya.d@novafintech.com',
-    referringManager: 'Rohit Kulkarni',
+    managerName: 'Rohit Kulkarni',
     managerEmail: 'rohit.k@novafintech.com',
     managerTitle: 'Director of Product',
-    category: 'Severe Burnout & Anxiety',
+    memberName: 'Ananya Deshmukh',
+    employeeId: 'EMP-4310',
+    memberEmail: 'ananya.d@novafintech.com',
+    memberPhone: '+1 (555) 431-9022',
+    primaryReason: 'Severe Burnout & Exhaustion',
+    urgencyLevel: 'Critical / Urgent',
     severity: 'Urgent',
     status: 'Assessment Scheduled',
+    remarks: 'Panic episodes reported; intake scheduled for Nov 22',
+    isHighestPriority: true,
     referredDate: '2026-11-19',
     assignedClinician: 'Dr. Rajesh Nair (Psychiatrist / Lead)',
     consentProvided: true,
@@ -53,17 +64,22 @@ const INITIAL_MANAGER_REFERRALS = [
   },
   {
     id: 'MR-1043',
+    divisionId: 'DIV-103',
     corporate: 'Global Health Corp',
     division: 'Customer Operations',
-    employeeName: 'Vikram Malhotra',
-    employeeId: 'EMP-2905',
-    employeeEmail: 'vikram.m@globalhealth.com',
-    referringManager: 'Pooja Bhatia',
+    managerName: 'Pooja Bhatia',
     managerEmail: 'pooja.b@globalhealth.com',
     managerTitle: 'Head of Customer Success',
-    category: 'Attendance & Unexplained Absenteeism',
+    memberName: 'Vikram Malhotra',
+    employeeId: 'EMP-2905',
+    memberEmail: 'vikram.m@globalhealth.com',
+    memberPhone: '+1 (555) 782-1144',
+    primaryReason: 'Attendance / Absenteeism',
+    urgencyLevel: 'Moderate / Medium',
     severity: 'Medium',
     status: 'Contacted',
+    remarks: 'Outreach email sent; waiting for employee availability',
+    isHighestPriority: false,
     referredDate: '2026-11-17',
     assignedClinician: 'Sunita Rao (Lead Counselor)',
     consentProvided: true,
@@ -76,17 +92,22 @@ const INITIAL_MANAGER_REFERRALS = [
   },
   {
     id: 'MR-1044',
+    divisionId: 'DIV-101',
     corporate: 'TechCorp Solutions',
     division: 'Cloud Infrastructure',
-    employeeName: 'Sneha Chawla',
-    employeeId: 'EMP-7193',
-    employeeEmail: 'sneha.c@techcorp.com',
-    referringManager: 'Vikram Joshi',
+    managerName: 'Vikram Joshi',
     managerEmail: 'vikram.j@techcorp.com',
     managerTitle: 'Principal Cloud Architect',
-    category: 'Workplace Conflict & Isolation',
+    memberName: 'Sneha Chawla',
+    employeeId: 'EMP-7193',
+    memberEmail: 'sneha.c@techcorp.com',
+    memberPhone: '+1 (555) 912-3301',
+    primaryReason: 'Workplace Conflict & Isolation',
+    urgencyLevel: 'Routine / Low',
     severity: 'Low',
     status: 'New Referral',
+    remarks: 'Requires mediation and interpersonal communication coaching',
+    isHighestPriority: false,
     referredDate: '2026-11-20',
     assignedClinician: 'Pending Assignment',
     consentProvided: true,
@@ -98,17 +119,22 @@ const INITIAL_MANAGER_REFERRALS = [
   },
   {
     id: 'MR-1045',
+    divisionId: 'DIV-204',
     corporate: 'Apex Logistics',
     division: 'Supply Chain Ops',
-    employeeName: 'Karan Mehra',
-    employeeId: 'EMP-1149',
-    employeeEmail: 'karan.m@apexlogistics.com',
-    referringManager: 'Deepak Saxena',
+    managerName: 'Deepak Saxena',
     managerEmail: 'deepak.s@apexlogistics.com',
     managerTitle: 'VP Logistics',
-    category: 'Grief & Bereavement Support',
+    memberName: 'Karan Mehra',
+    employeeId: 'EMP-1149',
+    memberEmail: 'karan.m@apexlogistics.com',
+    memberPhone: '+1 (555) 674-8833',
+    primaryReason: 'Grief & Personal Loss',
+    urgencyLevel: 'Moderate / Medium',
     severity: 'Medium',
     status: 'Closed',
+    remarks: '4 sessions completed; employee fully reintegrated',
+    isHighestPriority: false,
     referredDate: '2026-10-15',
     assignedClinician: 'Dr. Radhika Iyer',
     consentProvided: true,
@@ -240,6 +266,22 @@ export default function SensitiveCases() {
     } catch {}
   }, [managerReferrals]);
 
+  // Listen for storage events so external referrals immediately show up
+  useEffect(() => {
+    const handleStorageUpdate = () => {
+      try {
+        const saved = localStorage.getItem('sensitive_cases_manager_referrals');
+        if (saved) setManagerReferrals(JSON.parse(saved));
+      } catch {}
+    };
+    window.addEventListener('storage', handleStorageUpdate);
+    window.addEventListener('referrals-updated', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+      window.removeEventListener('referrals-updated', handleStorageUpdate);
+    };
+  }, []);
+
   // Persistence for Critical Cases
   const [criticalCases, setCriticalCases] = useState(() => {
     try {
@@ -271,6 +313,30 @@ export default function SensitiveCases() {
   const [viewingCase, setViewingCase] = useState(null); // { type: 'referral' | 'critical', data: Object }
   const [newNoteText, setNewNoteText] = useState('');
 
+  // Editable remarks state
+  const [editingRemarksId, setEditingRemarksId] = useState(null);
+  const [editingRemarksVal, setEditingRemarksVal] = useState('');
+
+  const handleSaveRemarks = (caseId) => {
+    setManagerReferrals(prev => prev.map(item => {
+      if (item.id === caseId) {
+        return { ...item, remarks: editingRemarksVal.trim() };
+      }
+      return item;
+    }));
+    setEditingRemarksId(null);
+  };
+
+  // Toggle Highest Priority
+  const handleToggleHighestPriority = (caseId) => {
+    setManagerReferrals(prev => prev.map(item => {
+      if (item.id === caseId) {
+        return { ...item, isHighestPriority: !item.isHighestPriority };
+      }
+      return item;
+    }));
+  };
+
   // Extract all distinct corporate clients
   const availableCorporates = useMemo(() => {
     const set = new Set();
@@ -290,17 +356,22 @@ export default function SensitiveCases() {
     return managerReferrals.filter(item => {
       if (corporateFilter !== 'All' && item.corporate !== corporateFilter) return false;
       if (statusFilter !== 'All' && item.status !== statusFilter) return false;
-      if (severityFilter !== 'All' && item.severity !== severityFilter) return false;
+      if (severityFilter !== 'All' && (item.urgencyLevel !== severityFilter && item.severity !== severityFilter)) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
+        const manager = (item.managerName || item.referringManager || '').toLowerCase();
+        const member = (item.memberName || item.employeeName || '').toLowerCase();
+        const reason = (item.primaryReason || item.category || '').toLowerCase();
+        const divId = (item.divisionId || '').toLowerCase();
+        const remarks = (item.remarks || '').toLowerCase();
+
         const match =
           item.id.toLowerCase().includes(q) ||
-          item.employeeName.toLowerCase().includes(q) ||
-          item.employeeId.toLowerCase().includes(q) ||
-          item.corporate.toLowerCase().includes(q) ||
-          item.referringManager.toLowerCase().includes(q) ||
-          item.category.toLowerCase().includes(q) ||
-          item.assignedClinician.toLowerCase().includes(q);
+          member.includes(q) ||
+          manager.includes(q) ||
+          reason.includes(q) ||
+          divId.includes(q) ||
+          remarks.includes(q);
         if (!match) return false;
       }
       return true;
@@ -332,13 +403,13 @@ export default function SensitiveCases() {
   const metrics = useMemo(() => {
     const totalRef = managerReferrals.length;
     const activeRef = managerReferrals.filter(r => r.status !== 'Closed').length;
-    const urgentRef = managerReferrals.filter(r => r.severity === 'Urgent').length;
+    const highestPriorityCount = managerReferrals.filter(r => r.isHighestPriority).length;
 
     const totalCrit = criticalCases.length;
     const activeCrit = criticalCases.filter(c => c.status === 'Immediate Action Required' || c.status === 'Intervention Ongoing').length;
     const sosCount = criticalCases.filter(c => c.riskLevel.includes('SOS')).length;
 
-    return { totalRef, activeRef, urgentRef, totalCrit, activeCrit, sosCount };
+    return { totalRef, activeRef, highestPriorityCount, totalCrit, activeCrit, sosCount };
   }, [managerReferrals, criticalCases]);
 
   // Reset page when tab changes
@@ -433,25 +504,25 @@ export default function SensitiveCases() {
 
   // Form State for New Manager Referral
   const [newReferralForm, setNewReferralForm] = useState({
+    divisionId: 'DIV-101',
     corporate: 'TechCorp Solutions',
-    division: 'Engineering',
-    employeeName: '',
-    employeeId: '',
-    employeeEmail: '',
-    referringManager: '',
+    managerName: '',
     managerEmail: '',
-    managerTitle: '',
-    category: 'Severe Burnout & Anxiety',
-    severity: 'Medium',
-    description: '',
-    assignedClinician: 'Dr. Neha Kapoor (Senior Clinical Psychologist)',
+    memberName: '',
+    memberPhone: '',
+    memberEmail: '',
+    employeeId: '',
+    primaryReason: 'Severe Burnout & Exhaustion',
+    urgencyLevel: 'High',
+    remarks: 'Manual referral entry by Admin',
+    isHighestPriority: false,
     consentProvided: true
   });
 
   const handleCreateReferral = (e) => {
     e.preventDefault();
-    if (!newReferralForm.employeeName || !newReferralForm.referringManager) {
-      alert('Please fill out employee name and referring manager.');
+    if (!newReferralForm.memberName || !newReferralForm.managerName) {
+      alert('Please fill out Member Name and Manager Name.');
       return;
     }
 
@@ -461,12 +532,12 @@ export default function SensitiveCases() {
       id: newId,
       status: 'New Referral',
       referredDate: new Date().toISOString().split('T')[0],
-      notesCount: 1,
+      assignedClinician: 'Dr. Neha Kapoor (Senior Clinical Psychologist)',
       timeline: [
         {
           date: new Date().toISOString().replace('T', ' ').substring(0, 16),
-          user: `${newReferralForm.referringManager} (Manager)`,
-          action: 'Manager referral created in system.'
+          user: `${newReferralForm.managerName} (Manager)`,
+          action: `Manager referral created for ${newReferralForm.memberName} under Division ${newReferralForm.divisionId}.`
         }
       ]
     };
@@ -474,18 +545,18 @@ export default function SensitiveCases() {
     setManagerReferrals(prev => [newEntry, ...prev]);
     setIsAddReferralOpen(false);
     setNewReferralForm({
+      divisionId: 'DIV-101',
       corporate: 'TechCorp Solutions',
-      division: 'Engineering',
-      employeeName: '',
-      employeeId: '',
-      employeeEmail: '',
-      referringManager: '',
+      managerName: '',
       managerEmail: '',
-      managerTitle: '',
-      category: 'Severe Burnout & Anxiety',
-      severity: 'Medium',
-      description: '',
-      assignedClinician: 'Dr. Neha Kapoor (Senior Clinical Psychologist)',
+      memberName: '',
+      memberPhone: '',
+      memberEmail: '',
+      employeeId: '',
+      primaryReason: 'Severe Burnout & Exhaustion',
+      urgencyLevel: 'High',
+      remarks: 'Manual referral entry by Admin',
+      isHighestPriority: false,
       consentProvided: true
     });
   };
@@ -626,7 +697,7 @@ export default function SensitiveCases() {
             {metrics.totalRef}
           </div>
           <div style={{ fontSize: '0.78rem', color: '#059669', fontWeight: '600', marginTop: '0.2rem' }}>
-            {metrics.activeRef} Active &bull; {metrics.urgentRef} Urgent
+            {metrics.activeRef} Active &bull; {metrics.highestPriorityCount} Highest Priority
           </div>
         </div>
 
@@ -744,7 +815,7 @@ export default function SensitiveCases() {
             <i className='bx bx-search' style={{ position: 'absolute', left: '0.75rem', color: '#94a3b8', fontSize: '1.1rem' }}></i>
             <input
               type="text"
-              placeholder={`Search ${activeTab === 'referrals' ? 'employee, manager, case ID...' : 'case ID, trigger, risk level...'}`}
+              placeholder={`Search ${activeTab === 'referrals' ? 'member, manager, division, reason...' : 'case ID, trigger, risk level...'}`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -824,7 +895,7 @@ export default function SensitiveCases() {
             {/* Severity / Risk Filter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600' }}>
-                {activeTab === 'referrals' ? 'Severity:' : 'Risk Level:'}
+                {activeTab === 'referrals' ? 'Urgency:' : 'Risk Level:'}
               </span>
               <select
                 value={severityFilter}
@@ -843,10 +914,10 @@ export default function SensitiveCases() {
                 <option value="All">All Levels</option>
                 {activeTab === 'referrals' ? (
                   <>
-                    <option value="Urgent">Urgent</option>
+                    <option value="Critical / Urgent">Critical / Urgent</option>
                     <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
+                    <option value="Moderate / Medium">Moderate / Medium</option>
+                    <option value="Routine / Low">Routine / Low</option>
                   </>
                 ) : (
                   <>
@@ -889,79 +960,117 @@ export default function SensitiveCases() {
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.04em' }}>
-                  <th style={{ padding: '0.8rem 1rem' }}>CASE ID</th>
-                  <th style={{ padding: '0.8rem 1rem' }}>CORPORATE &amp; DIVISION</th>
-                  <th style={{ padding: '0.8rem 1rem' }}>EMPLOYEE</th>
-                  <th style={{ padding: '0.8rem 1rem' }}>REFERRING MANAGER</th>
-                  <th style={{ padding: '0.8rem 1rem' }}>REASON / CONCERN</th>
-                  <th style={{ padding: '0.8rem 1rem' }}>ASSIGNED CLINICIAN</th>
-                  <th style={{ padding: '0.8rem 1rem' }}>SEVERITY</th>
+                  <th style={{ padding: '0.8rem 1rem', width: '50px' }}>S. NO.</th>
+                  <th style={{ padding: '0.8rem 1rem' }}>DIVISION ID</th>
+                  <th style={{ padding: '0.8rem 1rem' }}>MANAGER NAME</th>
+                  <th style={{ padding: '0.8rem 1rem' }}>MEMBER NAME</th>
+                  <th style={{ padding: '0.8rem 1rem' }}>PRIMARY REASON</th>
+                  <th style={{ padding: '0.8rem 1rem' }}>URGENCY LEVEL</th>
                   <th style={{ padding: '0.8rem 1rem' }}>STATUS</th>
-                  <th style={{ padding: '0.8rem 1rem' }}>DATE</th>
-                  <th style={{ padding: '0.8rem 1rem', textAlign: 'center' }}>ACTIONS</th>
+                  <th style={{ padding: '0.8rem 1rem', minWidth: '170px' }}>REMARKS</th>
+                  <th style={{ padding: '0.8rem 1rem', textAlign: 'center' }}>ACTION</th>
+                  <th style={{ padding: '0.8rem 1rem', textAlign: 'center' }}>HIGHEST PRIORITY</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredReferrals.map((row) => (
-                  <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>
-                    <td style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#0284c7' }}>
-                      {row.id}
+                {filteredReferrals.map((row, idx) => (
+                  <tr
+                    key={row.id}
+                    style={{
+                      borderBottom: '1px solid #f1f5f9',
+                      background: row.isHighestPriority ? '#fffbeb' : 'transparent',
+                      transition: 'background 0.15s ease'
+                    }}
+                  >
+                    {/* S. No. */}
+                    <td style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#64748b' }}>
+                      {idx + 1}
                     </td>
+
+                    {/* Division ID (Hyperlinked to Division) */}
                     <td style={{ padding: '0.85rem 1rem' }}>
-                      <div style={{ fontWeight: '600', color: '#0f172a' }}>{row.corporate}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{row.division}</div>
+                      <Link
+                        to={`/corporate/division/edit?id=${encodeURIComponent(row.divisionId || 'DIV-101')}`}
+                        style={{
+                          color: '#0284c7',
+                          fontWeight: '700',
+                          textDecoration: 'underline',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}
+                        title={`Go to Division: ${row.divisionId || 'DIV-101'}`}
+                      >
+                        <span>{row.divisionId || 'DIV-101'}</span>
+                        <i className='bx bx-link-external' style={{ fontSize: '0.8rem' }}></i>
+                      </Link>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.15rem' }}>
+                        {row.corporate || 'TechCorp Solutions'}
+                      </div>
                     </td>
+
+                    {/* Manager Name */}
                     <td style={{ padding: '0.85rem 1rem' }}>
-                      <div style={{ fontWeight: '600', color: '#1e293b' }}>{row.employeeName}</div>
-                      <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{row.employeeId}</div>
+                      <div style={{ fontWeight: '600', color: '#0f172a' }}>
+                        {row.managerName || row.referringManager}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                        {row.managerEmail || row.managerTitle}
+                      </div>
                     </td>
+
+                    {/* Member Name */}
                     <td style={{ padding: '0.85rem 1rem' }}>
-                      <div style={{ fontWeight: '500', color: '#334155' }}>{row.referringManager}</div>
-                      <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{row.managerTitle}</div>
+                      <div style={{ fontWeight: '700', color: '#1e293b' }}>
+                        {row.memberName || row.employeeName}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                        {row.employeeId ? `ID: ${row.employeeId}` : (row.memberEmail || '')}
+                      </div>
                     </td>
+
+                    {/* Primary Reason */}
                     <td style={{ padding: '0.85rem 1rem', maxWidth: '220px' }}>
                       <span style={{
                         background: '#f1f5f9',
                         color: '#334155',
                         borderRadius: '4px',
-                        padding: '0.2rem 0.45rem',
+                        padding: '0.25rem 0.5rem',
                         fontSize: '0.78rem',
-                        fontWeight: '500',
+                        fontWeight: '600',
                         display: 'inline-block'
                       }}>
-                        {row.category}
+                        {row.primaryReason || row.category}
                       </span>
                     </td>
-                    <td style={{ padding: '0.85rem 1rem', color: '#475569', fontSize: '0.8rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <i className='bx bx-user-check' style={{ color: '#0284c7' }}></i>
-                        <span>{row.assignedClinician}</span>
-                      </div>
-                    </td>
+
+                    {/* Urgency Level */}
                     <td style={{ padding: '0.85rem 1rem' }}>
                       <span style={{
-                        padding: '0.2rem 0.55rem',
+                        padding: '0.25rem 0.6rem',
                         borderRadius: '12px',
-                        fontSize: '0.73rem',
+                        fontSize: '0.74rem',
                         fontWeight: '700',
                         background:
-                          row.severity === 'Urgent' ? '#fee2e2' :
-                          row.severity === 'High' ? '#ffedd5' :
-                          row.severity === 'Medium' ? '#fef3c7' : '#e0f2fe',
+                          (row.urgencyLevel?.includes('Urgent') || row.severity === 'Urgent') ? '#fee2e2' :
+                          (row.urgencyLevel?.includes('High') || row.severity === 'High') ? '#ffedd5' :
+                          (row.urgencyLevel?.includes('Medium') || row.severity === 'Medium') ? '#fef3c7' : '#e0f2fe',
                         color:
-                          row.severity === 'Urgent' ? '#b91c1c' :
-                          row.severity === 'High' ? '#c2410c' :
-                          row.severity === 'Medium' ? '#b45309' : '#0369a1'
+                          (row.urgencyLevel?.includes('Urgent') || row.severity === 'Urgent') ? '#b91c1c' :
+                          (row.urgencyLevel?.includes('High') || row.severity === 'High') ? '#c2410c' :
+                          (row.urgencyLevel?.includes('Medium') || row.severity === 'Medium') ? '#b45309' : '#0369a1'
                       }}>
-                        {row.severity}
+                        {row.urgencyLevel || row.severity}
                       </span>
                     </td>
+
+                    {/* Status (Dropdown) */}
                     <td style={{ padding: '0.85rem 1rem' }}>
                       <select
                         value={row.status}
                         onChange={(e) => handleUpdateCaseStatus(row.id, e.target.value, false)}
                         style={{
-                          padding: '0.25rem 0.5rem',
+                          padding: '0.3rem 0.55rem',
                           borderRadius: '6px',
                           fontSize: '0.76rem',
                           fontWeight: '600',
@@ -984,9 +1093,77 @@ export default function SensitiveCases() {
                         <option value="Closed">Closed</option>
                       </select>
                     </td>
-                    <td style={{ padding: '0.85rem 1rem', color: '#64748b', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
-                      {row.referredDate}
+
+                    {/* Remarks (Editable) */}
+                    <td style={{ padding: '0.85rem 1rem', minWidth: '170px' }}>
+                      {editingRemarksId === row.id ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <input
+                            type="text"
+                            autoFocus
+                            value={editingRemarksVal}
+                            onChange={(e) => setEditingRemarksVal(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveRemarks(row.id);
+                              if (e.key === 'Escape') setEditingRemarksId(null);
+                            }}
+                            placeholder="Add remarks..."
+                            style={{
+                              padding: '0.3rem 0.5rem',
+                              fontSize: '0.8rem',
+                              borderRadius: '4px',
+                              border: '1px solid #0284c7',
+                              outline: 'none',
+                              width: '100%',
+                              color: '#0f172a'
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveRemarks(row.id)}
+                            style={{ background: '#059669', color: 'white', border: 'none', borderRadius: '4px', padding: '0.3rem 0.45rem', cursor: 'pointer' }}
+                            title="Save"
+                          >
+                            <i className='bx bx-check'></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingRemarksId(null)}
+                            style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '0.3rem 0.45rem', cursor: 'pointer' }}
+                            title="Cancel"
+                          >
+                            <i className='bx bx-x'></i>
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => {
+                            setEditingRemarksId(row.id);
+                            setEditingRemarksVal(row.remarks || '');
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.4rem',
+                            cursor: 'pointer',
+                            padding: '0.2rem 0.35rem',
+                            borderRadius: '4px',
+                            transition: 'background 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          title="Click to edit Remarks"
+                        >
+                          <span style={{ fontSize: '0.8rem', color: row.remarks ? '#334155' : '#94a3b8', fontStyle: row.remarks ? 'normal' : 'italic' }}>
+                            {row.remarks || 'Add remarks...'}
+                          </span>
+                          <i className='bx bx-pencil' style={{ color: '#94a3b8', fontSize: '0.85rem', flexShrink: 0 }}></i>
+                        </div>
+                      )}
                     </td>
+
+                    {/* Action (View Icon) */}
                     <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
                       <button
                         onClick={() => setViewingCase({ type: 'referral', data: row })}
@@ -995,18 +1172,38 @@ export default function SensitiveCases() {
                           color: '#0284c7',
                           border: '1px solid #bae6fd',
                           borderRadius: '6px',
-                          padding: '0.35rem 0.65rem',
-                          fontSize: '0.78rem',
-                          fontWeight: '600',
-                          cursor: 'pointer',
+                          width: '32px',
+                          height: '32px',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '0.3rem'
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          fontSize: '1.1rem',
+                          transition: 'all 0.15s ease'
                         }}
+                        title="View Case Details"
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#e0f2fe'; e.currentTarget.style.borderColor = '#7dd3fc'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = '#bae6fd'; }}
                       >
                         <i className='bx bx-show'></i>
-                        <span>Details</span>
                       </button>
+                    </td>
+
+                    {/* Check Box (Mark as Highest Priority) */}
+                    <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                      <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} title="Toggle Highest Priority">
+                        <input
+                          type="checkbox"
+                          checked={!!row.isHighestPriority}
+                          onChange={() => handleToggleHighestPriority(row.id)}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            accentColor: '#dc2626',
+                            cursor: 'pointer'
+                          }}
+                        />
+                      </label>
                     </td>
                   </tr>
                 ))}
@@ -1221,28 +1418,28 @@ export default function SensitiveCases() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1.25rem' }}>
                 <div>
                   <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>
-                    {viewingCase.type === 'critical' ? 'Employee Identifier' : 'Employee Name'}
+                    {viewingCase.type === 'critical' ? 'Employee Identifier' : 'Member Name'}
                   </span>
                   <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>
-                    {viewingCase.type === 'critical' ? viewingCase.data.employeeAlias : `${viewingCase.data.employeeName} (${viewingCase.data.employeeId})`}
+                    {viewingCase.type === 'critical' ? viewingCase.data.employeeAlias : `${viewingCase.data.memberName || viewingCase.data.employeeName} (${viewingCase.data.employeeId || 'N/A'})`}
                   </div>
                 </div>
 
                 <div>
                   <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>
-                    {viewingCase.type === 'critical' ? 'Risk Level' : 'Severity'}
+                    {viewingCase.type === 'critical' ? 'Risk Level' : 'Urgency Level'}
                   </span>
                   <div style={{ fontSize: '0.9rem', fontWeight: '700', color: viewingCase.type === 'critical' ? '#dc2626' : '#0284c7' }}>
-                    {viewingCase.type === 'critical' ? viewingCase.data.riskLevel : viewingCase.data.severity}
+                    {viewingCase.type === 'critical' ? viewingCase.data.riskLevel : (viewingCase.data.urgencyLevel || viewingCase.data.severity)}
                   </div>
                 </div>
 
                 <div>
                   <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>
-                    {viewingCase.type === 'critical' ? 'Assigned Crisis Lead' : 'Assigned Clinician'}
+                    {viewingCase.type === 'critical' ? 'Corporate & Location' : 'Division ID'}
                   </span>
                   <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
-                    {viewingCase.type === 'critical' ? viewingCase.data.assignedCrisisLead : viewingCase.data.assignedClinician}
+                    {viewingCase.type === 'critical' ? `${viewingCase.data.corporate} • ${viewingCase.data.location}` : (viewingCase.data.divisionId || 'DIV-101')}
                   </div>
                 </div>
 
@@ -1257,10 +1454,10 @@ export default function SensitiveCases() {
               {/* Case Summary / Description */}
               <div style={{ marginBottom: '1.25rem' }}>
                 <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '0.85rem', color: '#334155', fontWeight: '700' }}>
-                  {viewingCase.type === 'critical' ? 'Immediate Incident Summary & Observations' : 'Manager Observation & Reason for Referral'}
+                  {viewingCase.type === 'critical' ? 'Immediate Incident Summary & Observations' : 'Primary Concern & Details'}
                 </h4>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569', background: '#ffffff', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', lineHeight: 1.5 }}>
-                  {viewingCase.data.description || viewingCase.data.summary}
+                  {viewingCase.data.description || viewingCase.data.summary || viewingCase.data.primaryReason}
                 </p>
               </div>
 
@@ -1373,12 +1570,12 @@ export default function SensitiveCases() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Department / Division</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Division ID</label>
                   <input
                     type="text"
-                    value={newReferralForm.division}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, division: e.target.value })}
-                    placeholder="e.g. Engineering, Sales"
+                    value={newReferralForm.divisionId}
+                    onChange={(e) => setNewReferralForm({ ...newReferralForm, divisionId: e.target.value })}
+                    placeholder="e.g. DIV-101"
                     style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
                   />
                 </div>
@@ -1386,23 +1583,23 @@ export default function SensitiveCases() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginBottom: '0.85rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Employee Name *</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Manager Name *</label>
                   <input
                     type="text"
                     required
-                    value={newReferralForm.employeeName}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, employeeName: e.target.value })}
-                    placeholder="Full employee name"
+                    value={newReferralForm.managerName}
+                    onChange={(e) => setNewReferralForm({ ...newReferralForm, managerName: e.target.value })}
+                    placeholder="Full manager name"
                     style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Employee ID / Code</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Manager Email</label>
                   <input
-                    type="text"
-                    value={newReferralForm.employeeId}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, employeeId: e.target.value })}
-                    placeholder="e.g. EMP-1092"
+                    type="email"
+                    value={newReferralForm.managerEmail}
+                    onChange={(e) => setNewReferralForm({ ...newReferralForm, managerEmail: e.target.value })}
+                    placeholder="manager@company.com"
                     style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
                   />
                 </div>
@@ -1410,23 +1607,23 @@ export default function SensitiveCases() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginBottom: '0.85rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Referring Manager Name *</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Member Name *</label>
                   <input
                     type="text"
                     required
-                    value={newReferralForm.referringManager}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, referringManager: e.target.value })}
-                    placeholder="Manager / HR Lead name"
+                    value={newReferralForm.memberName}
+                    onChange={(e) => setNewReferralForm({ ...newReferralForm, memberName: e.target.value })}
+                    placeholder="Team member name"
                     style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Manager Title / Role</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Member Email</label>
                   <input
-                    type="text"
-                    value={newReferralForm.managerTitle}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, managerTitle: e.target.value })}
-                    placeholder="e.g. VP Engineering, HR BP"
+                    type="email"
+                    value={newReferralForm.memberEmail}
+                    onChange={(e) => setNewReferralForm({ ...newReferralForm, memberEmail: e.target.value })}
+                    placeholder="member@company.com"
                     style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
                   />
                 </div>
@@ -1434,42 +1631,43 @@ export default function SensitiveCases() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginBottom: '0.85rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Primary Concern / Category</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Primary Reason</label>
                   <select
-                    value={newReferralForm.category}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, category: e.target.value })}
+                    value={newReferralForm.primaryReason}
+                    onChange={(e) => setNewReferralForm({ ...newReferralForm, primaryReason: e.target.value })}
                     style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
                   >
-                    <option value="Severe Burnout & Anxiety">Severe Burnout & Anxiety</option>
-                    <option value="Performance Drop & Severe Stress">Performance Drop & Severe Stress</option>
-                    <option value="Attendance & Unexplained Absenteeism">Attendance & Unexplained Absenteeism</option>
+                    <option value="Performance Decline & Stress">Performance Decline & Stress</option>
+                    <option value="Severe Burnout & Exhaustion">Severe Burnout & Exhaustion</option>
+                    <option value="Anxiety & Panic Episodes">Anxiety & Panic Episodes</option>
+                    <option value="Attendance / Absenteeism">Attendance / Absenteeism</option>
                     <option value="Workplace Conflict & Isolation">Workplace Conflict & Isolation</option>
-                    <option value="Grief & Bereavement Support">Grief & Bereavement Support</option>
-                    <option value="Substance Concern">Substance Concern</option>
+                    <option value="Grief & Personal Loss">Grief & Personal Loss</option>
+                    <option value="Substance / Behavioral Concern">Substance / Behavioral Concern</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Severity Level</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Urgency Level</label>
                   <select
-                    value={newReferralForm.severity}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, severity: e.target.value })}
+                    value={newReferralForm.urgencyLevel}
+                    onChange={(e) => setNewReferralForm({ ...newReferralForm, urgencyLevel: e.target.value })}
                     style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
                   >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
+                    <option value="Routine / Low">Routine / Low</option>
+                    <option value="Moderate / Medium">Moderate / Medium</option>
                     <option value="High">High</option>
-                    <option value="Urgent">Urgent</option>
+                    <option value="Critical / Urgent">Critical / Urgent</option>
                   </select>
                 </div>
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Manager Observations &amp; Specific Details</label>
-                <textarea
-                  rows="3"
-                  value={newReferralForm.description}
-                  onChange={(e) => setNewReferralForm({ ...newReferralForm, description: e.target.value })}
-                  placeholder="Provide context on observed behavioral changes, performance decline, or employee feedback..."
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Remarks</label>
+                <input
+                  type="text"
+                  value={newReferralForm.remarks}
+                  onChange={(e) => setNewReferralForm({ ...newReferralForm, remarks: e.target.value })}
+                  placeholder="Clinical remarks or follow-up notes..."
                   style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
                 />
               </div>
@@ -1478,11 +1676,11 @@ export default function SensitiveCases() {
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.82rem', color: '#334155', fontWeight: '600' }}>
                   <input
                     type="checkbox"
-                    checked={newReferralForm.consentProvided}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, consentProvided: e.target.checked })}
-                    style={{ width: '16px', height: '16px', accentColor: '#0284c7' }}
+                    checked={newReferralForm.isHighestPriority}
+                    onChange={(e) => setNewReferralForm({ ...newReferralForm, isHighestPriority: e.target.checked })}
+                    style={{ width: '16px', height: '16px', accentColor: '#dc2626' }}
                   />
-                  <span>Employee has verbally consented to this confidential EAP Manager Referral</span>
+                  <span>Mark as Highest Priority</span>
                 </label>
               </div>
 

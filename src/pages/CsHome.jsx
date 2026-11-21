@@ -1,20 +1,23 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGlobal } from '../context/GlobalContext';
+import { getAllCorporateDivisions } from '../utils/cadenceDivisionUtils';
 
 export default function CsHome() {
   const navigate = useNavigate();
+  const { clients } = useGlobal();
 
-  // Get logged-in user name
-  const [userName] = useState(() => {
+  // Get logged-in user details
+  const [currentUser] = useState(() => {
     try {
       const stored = localStorage.getItem('logged_in_user');
-      if (stored) {
-        const u = JSON.parse(stored);
-        if (u.name) return u.name.split(' ')[0];
-      }
+      if (stored) return JSON.parse(stored);
     } catch {}
-    return 'Karan';
+    return { name: 'Karan', company: 'TechCorp Solutions' };
   });
+
+  const userName = currentUser?.name ? currentUser.name.split(' ')[0] : 'Karan';
+  const userCompany = currentUser?.company || localStorage.getItem('selected_company') || 'TechCorp Solutions';
 
   // Accordion state for FAQs (open item ID: 1..8 or null)
   const [openFaq, setOpenFaq] = useState(null);
@@ -22,8 +25,83 @@ export default function CsHome() {
   // Video tutorial modal state
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
-  // Quick link report download state
-  const [reportSuccessToast, setReportSuccessToast] = useState(false);
+  // Toast message state
+  const [toastMessage, setToastMessage] = useState(null);
+
+  // Division selection modal state for Referral Link
+  const [isDivisionModalOpen, setIsDivisionModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState('copy'); // 'copy' | 'open'
+  const [selectedDivisionId, setSelectedDivisionId] = useState('');
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // Extract divisions mapped to the active company / user
+  const mappedDivisions = useMemo(() => {
+    const all = getAllCorporateDivisions(clients);
+    const matched = all.filter(d => 
+      (d.corporateName && d.corporateName.toLowerCase() === userCompany.toLowerCase()) ||
+      (d.clientName && d.clientName.toLowerCase() === userCompany.toLowerCase())
+    );
+    if (matched.length > 0) {
+      return matched.map((m, idx) => ({
+        id: m.divisionId || m.id || `DIV-${101 + idx}`,
+        name: m.divisionName || m.name || `Division ${idx + 1}`,
+        corporate: m.corporateName || userCompany
+      }));
+    }
+    // Default fallback divisions for the company
+    return [
+      { id: 'DIV-101', name: 'Engineering & Technology', corporate: userCompany },
+      { id: 'DIV-102', name: 'Global Operations & Support', corporate: userCompany },
+      { id: 'DIV-103', name: 'Sales & Product Strategy', corporate: userCompany }
+    ];
+  }, [clients, userCompany]);
+
+  // Handle Copy Referral Link button click
+  const handleCopyReferralLinkClick = () => {
+    if (mappedDivisions.length === 1) {
+      // Auto select if only 1 division mapped
+      const singleDiv = mappedDivisions[0];
+      const link = `${window.location.origin}/referral-form?divisionId=${encodeURIComponent(singleDiv.id)}`;
+      navigator.clipboard.writeText(link);
+      showToast(`Manager Referral link for ${singleDiv.name} (${singleDiv.id}) copied to clipboard!`);
+    } else {
+      // Multiple divisions mapped: ask user to select division
+      setSelectedDivisionId(mappedDivisions[0]?.id || '');
+      setPendingAction('copy');
+      setIsDivisionModalOpen(true);
+    }
+  };
+
+  // Handle Open Referral Form button click
+  const handleOpenReferralFormClick = () => {
+    if (mappedDivisions.length === 1) {
+      const singleDiv = mappedDivisions[0];
+      const link = `${window.location.origin}/referral-form?divisionId=${encodeURIComponent(singleDiv.id)}`;
+      window.open(link, '_blank');
+    } else {
+      setSelectedDivisionId(mappedDivisions[0]?.id || '');
+      setPendingAction('open');
+      setIsDivisionModalOpen(true);
+    }
+  };
+
+  // Confirm division choice in modal
+  const handleConfirmDivisionAction = () => {
+    const chosenDiv = mappedDivisions.find(d => d.id === selectedDivisionId) || mappedDivisions[0];
+    const link = `${window.location.origin}/referral-form?divisionId=${encodeURIComponent(chosenDiv.id)}`;
+
+    if (pendingAction === 'copy') {
+      navigator.clipboard.writeText(link);
+      showToast(`Manager Referral link for ${chosenDiv.name} (${chosenDiv.id}) copied to clipboard!`);
+    } else {
+      window.open(link, '_blank');
+    }
+    setIsDivisionModalOpen(false);
+  };
 
   // 6 Quick Link Shortcuts
   const quickLinks = [
@@ -44,8 +122,7 @@ export default function CsHome() {
       iconColor: '#0284c7',
       iconBg: '#e0f2fe',
       onClick: () => {
-        setReportSuccessToast(true);
-        setTimeout(() => setReportSuccessToast(false), 4000);
+        showToast('Generating Monthly Corporate Utilization Report (PDF/Excel)...');
       }
     },
     {
@@ -145,8 +222,8 @@ export default function CsHome() {
   return (
     <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: '4rem' }}>
       
-      {/* Toast Notification for Report Download */}
-      {reportSuccessToast && (
+      {/* Toast Notification */}
+      {toastMessage && (
         <div style={{
           position: 'fixed',
           top: '1.5rem',
@@ -161,10 +238,11 @@ export default function CsHome() {
           alignItems: 'center',
           gap: '0.65rem',
           fontSize: '0.88rem',
-          fontWeight: '500'
+          fontWeight: '500',
+          animation: 'fadeIn 0.2s ease-in-out'
         }}>
           <i className='bx bx-check-circle' style={{ color: '#10b981', fontSize: '1.3rem' }}></i>
-          <span>Generating Monthly Corporate Utilization Report (PDF/Excel)...</span>
+          <span>{toastMessage}</span>
         </div>
       )}
 
@@ -242,24 +320,83 @@ export default function CsHome() {
 
         {/* Section 1: SHORTCUTS / Quick Links */}
         <div style={{ marginBottom: '3rem' }}>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <span style={{
-              fontSize: '0.74rem',
-              fontWeight: '700',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: '#0284c7',
-              display: 'block',
-              marginBottom: '0.2rem'
-            }}>
-              Shortcuts
-            </span>
-            <h2 style={{ margin: '0 0 0.25rem 0', fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.01em' }}>
-              Quick Links
-            </h2>
-            <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
-              Jump straight to the tools you use most.
-            </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <span style={{
+                fontSize: '0.74rem',
+                fontWeight: '700',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: '#0284c7',
+                display: 'block',
+                marginBottom: '0.2rem'
+              }}>
+                Shortcuts
+              </span>
+              <h2 style={{ margin: '0 0 0.25rem 0', fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.01em' }}>
+                Quick Links
+              </h2>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
+                Jump straight to the tools you use most.
+              </p>
+            </div>
+
+            {/* 2 Icons Opposite Quick Links */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              {/* 1. Copy Manager Referral Link Icon Button */}
+              <button
+                type="button"
+                onClick={handleCopyReferralLinkClick}
+                title="Copy Manager Referral Link"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  padding: '0.55rem 0.95rem',
+                  background: 'white',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  color: '#0369a1',
+                  fontWeight: '600',
+                  fontSize: '0.84rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0284c7'; e.currentTarget.style.background = '#f0f9ff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'white'; }}
+              >
+                <i className='bx bx-copy' style={{ fontSize: '1.15rem', color: '#0284c7' }}></i>
+                <span>Copy Referral Link</span>
+              </button>
+
+              {/* 2. Open Manager Referral Form Icon Button */}
+              <button
+                type="button"
+                onClick={handleOpenReferralFormClick}
+                title="Open Manager Referral Form"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  padding: '0.55rem 0.95rem',
+                  background: '#0284c7',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontWeight: '600',
+                  fontSize: '0.84rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 5px rgba(2, 132, 199, 0.25)',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#0369a1'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#0284c7'}
+              >
+                <i className='bx bx-link-external' style={{ fontSize: '1.15rem' }}></i>
+                <span>Open Referral Form</span>
+              </button>
+            </div>
           </div>
 
           <div style={{
@@ -566,6 +703,130 @@ export default function CsHome() {
         </div>
 
       </div>
+
+      {/* MODAL: Select Division for Manager Referral */}
+      {isDivisionModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backdropFilter: 'blur(3px)'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '14px',
+            width: '90%',
+            maxWidth: '520px',
+            overflow: 'hidden',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.25)'
+          }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+              color: 'white',
+              padding: '1rem 1.25rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: '700', fontSize: '0.98rem' }}>
+                <i className='bx bx-shield-quarter'></i>
+                <span>Select Division for Manager Referral Link</span>
+              </div>
+              <button
+                onClick={() => setIsDivisionModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.3rem', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.88rem', color: '#475569', lineHeight: 1.5 }}>
+                Your organization has multiple active corporate divisions. Select the division to map this referral link to:
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginBottom: '1.5rem' }}>
+                {mappedDivisions.map(div => {
+                  const isSelected = selectedDivisionId === div.id;
+                  return (
+                    <div
+                      key={div.id}
+                      onClick={() => setSelectedDivisionId(div.id)}
+                      style={{
+                        padding: '0.85rem 1rem',
+                        borderRadius: '8px',
+                        border: isSelected ? '2px solid #0284c7' : '1px solid #cbd5e1',
+                        background: isSelected ? '#f0f9ff' : '#ffffff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: '700', color: isSelected ? '#0284c7' : '#0f172a', fontSize: '0.92rem' }}>
+                          {div.name}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.15rem' }}>
+                          Division ID: <strong style={{ color: '#0369a1' }}>{div.id}</strong> &bull; {div.corporate}
+                        </div>
+                      </div>
+                      <i className={`bx ${isSelected ? 'bxs-check-circle text-blue' : 'bx-circle'}`} style={{ fontSize: '1.3rem', color: isSelected ? '#0284c7' : '#94a3b8' }}></i>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsDivisionModalOpen(false)}
+                  style={{
+                    padding: '0.55rem 1.15rem',
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    fontSize: '0.85rem',
+                    color: '#475569',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDivisionAction}
+                  style={{
+                    padding: '0.55rem 1.35rem',
+                    background: '#0284c7',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: '700',
+                    fontSize: '0.85rem',
+                    color: 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem'
+                  }}
+                >
+                  <i className={`bx ${pendingAction === 'copy' ? 'bx-copy' : 'bx-link-external'}`}></i>
+                  <span>{pendingAction === 'copy' ? 'Copy Referral Link' : 'Open Referral Form'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: Video Walkthrough Tutorial Modal */}
       {isVideoModalOpen && (

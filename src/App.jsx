@@ -26,6 +26,7 @@ import UserPage from './pages/UserPage';
 import AcceptInvite from './pages/AcceptInvite';
 import ClientCadence from './pages/ClientCadence';
 import SensitiveCases from './pages/SensitiveCases';
+import ManagerReferralPage from './pages/ManagerReferralPage';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -118,7 +119,9 @@ function App() {
     location.pathname.startsWith('/client-onboarding') ||
     location.pathname.startsWith('/feedback-form') ||
     location.pathname.startsWith('/client-feedback') ||
-    location.pathname.startsWith('/cs/feedback-form');
+    location.pathname.startsWith('/cs/feedback-form') ||
+    location.pathname.startsWith('/referral-form') ||
+    location.pathname.startsWith('/manager-referral');
 
   const isCsRoute = location.pathname.startsWith('/cs') || 
                     location.pathname.startsWith('/calendar') || 
@@ -323,6 +326,8 @@ function App() {
         <Route path="/client-feedback" element={<ClientFeedbackPage />} />
         <Route path="/cs/feedback-form/:id" element={<ClientFeedbackPage />} />
         <Route path="/cs/feedback-form" element={<ClientFeedbackPage />} />
+        <Route path="/referral-form" element={<ManagerReferralPage />} />
+        <Route path="/manager-referral" element={<ManagerReferralPage />} />
         <Route path="/client-payments" element={<ClientPayments />} />
         <Route path="/billing-and-payments" element={<ClientPayments />} />
         <Route path="/accounts-receivable" element={<ClientPayments />} />
