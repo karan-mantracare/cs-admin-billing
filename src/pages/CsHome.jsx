@@ -36,6 +36,7 @@ export default function CsHome() {
   // Report for Sensitive Cases modal state
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportForm, setReportForm] = useState({
+    source: 'Hotline Call', // 'Hotline Call' | '1 on 1 Session'
     date: new Date().toISOString().split('T')[0],
     callerName: '',
     divisionId: '',
@@ -110,7 +111,9 @@ export default function CsHome() {
     const activeDivId = reportForm.divisionId || mappedDivisions[0]?.id;
     if (!activeDivId) errs.divisionId = 'Please select a Division';
     if (!reportForm.callTime.trim()) errs.callTime = 'Call Time is required';
-    if (!reportForm.callerNumber.trim()) errs.callerNumber = 'Caller Number is required';
+    if (reportForm.source !== '1 on 1 Session' && !reportForm.callerNumber.trim()) {
+      errs.callerNumber = 'Caller Number is required';
+    }
     if (reportForm.answeredBy === 'Other' && !reportForm.answeredByName.trim()) {
       errs.answeredByName = 'Name is required when "Other" is selected';
     }
@@ -134,10 +137,11 @@ export default function CsHome() {
     const newCaseRecord = {
       id: newCaseId,
       caseId: newCaseId,
+      source: reportForm.source,
       date: reportForm.date,
       reportedAt: `${reportForm.date} ${reportForm.callTime}`,
       callerName: reportForm.callerName.trim(),
-      callerNumber: reportForm.callerNumber.trim(),
+      callerNumber: reportForm.source === '1 on 1 Session' ? 'N/A (1 on 1 Session)' : reportForm.callerNumber.trim(),
       callTime: reportForm.callTime.trim(),
       divisionId: divisionObj?.id || activeDivId,
       divisionName: divisionObj?.name || activeDivId,
@@ -150,15 +154,15 @@ export default function CsHome() {
       urgencyLevel: reportForm.urgencyLevel,
       riskLevel: reportForm.urgencyLevel,
       remarks: reportForm.remarks.trim(),
-      summary: reportForm.remarks.trim() || `Inbound sensitive case call from ${reportForm.callerName.trim()} regarding ${reportForm.primaryReason} (${reportForm.urgencyLevel} priority). Answered by ${staffName}.`,
+      summary: reportForm.remarks.trim() || `Inbound sensitive case (${reportForm.source}) from ${reportForm.callerName.trim()} regarding ${reportForm.primaryReason} (${reportForm.urgencyLevel} priority). Answered by ${staffName}.`,
       status: reportForm.urgencyLevel === 'Emergency' ? 'Immediate Action Required' : (reportForm.urgencyLevel === 'Severe' ? 'Intervention Ongoing' : 'New Report'),
-      triggerSource: `Inbound Call (${staffName})`,
+      triggerSource: reportForm.source,
       assignedCrisisLead: 'MantraCare Crisis Team',
       timeline: [
         {
           date: new Date().toISOString().replace('T', ' ').substring(0, 16),
           user: staffName,
-          action: `Sensitive case logged via CS Dashboard. Caller: ${reportForm.callerName.trim()} (${reportForm.callerNumber.trim()}), Urgency: ${reportForm.urgencyLevel}.`
+          action: `Incident recorded via ${reportForm.source} under Division ${divisionObj?.name || activeDivId}.`
         }
       ]
     };
@@ -463,6 +467,7 @@ export default function CsHome() {
                 type="button"
                 onClick={() => {
                   setReportForm({
+                    source: 'Hotline Call',
                     date: new Date().toISOString().split('T')[0],
                     callerName: '',
                     divisionId: mappedDivisions[0]?.id || '',
@@ -1000,6 +1005,66 @@ export default function CsHome() {
             {/* Modal Form */}
             <form onSubmit={handleReportSubmit} style={{ padding: '1.5rem' }}>
               
+              {/* Top Row: Source Selection Radio */}
+              <div style={{
+                marginBottom: '1.15rem',
+                padding: '0.85rem 1rem',
+                background: '#f8fafc',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.45rem' }}>
+                  Source <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.75rem', flexWrap: 'wrap' }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    cursor: 'pointer',
+                    fontSize: '0.88rem',
+                    fontWeight: reportForm.source === 'Hotline Call' ? '700' : '500',
+                    color: reportForm.source === 'Hotline Call' ? '#dc2626' : '#475569'
+                  }}>
+                    <input
+                      type="radio"
+                      name="sensitiveCaseSource"
+                      value="Hotline Call"
+                      checked={reportForm.source === 'Hotline Call'}
+                      onChange={() => setReportForm({ ...reportForm, source: 'Hotline Call' })}
+                      style={{ accentColor: '#dc2626', width: '17px', height: '17px', cursor: 'pointer' }}
+                    />
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <i className='bx bx-phone-call'></i>
+                      <span>Hotline Call</span>
+                    </span>
+                  </label>
+
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    cursor: 'pointer',
+                    fontSize: '0.88rem',
+                    fontWeight: reportForm.source === '1 on 1 Session' ? '700' : '500',
+                    color: reportForm.source === '1 on 1 Session' ? '#0284c7' : '#475569'
+                  }}>
+                    <input
+                      type="radio"
+                      name="sensitiveCaseSource"
+                      value="1 on 1 Session"
+                      checked={reportForm.source === '1 on 1 Session'}
+                      onChange={() => setReportForm({ ...reportForm, source: '1 on 1 Session', callerNumber: '' })}
+                      style={{ accentColor: '#0284c7', width: '17px', height: '17px', cursor: 'pointer' }}
+                    />
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <i className='bx bx-user-voice'></i>
+                      <span>1 on 1 Session</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
               {/* Row 1: Date & Call Time */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
@@ -1072,12 +1137,17 @@ export default function CsHome() {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
-                    Caller Number <span style={{ color: '#dc2626' }}>*</span>
+                    Caller Number {reportForm.source === '1 on 1 Session' ? (
+                      <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '500' }}>(Disabled for 1 on 1 Session)</span>
+                    ) : (
+                      <span style={{ color: '#dc2626' }}>*</span>
+                    )}
                   </label>
                   <input
                     type="tel"
-                    placeholder="e.g. +91 98765 43210"
-                    value={reportForm.callerNumber}
+                    disabled={reportForm.source === '1 on 1 Session'}
+                    placeholder={reportForm.source === '1 on 1 Session' ? "Disabled (1 on 1 Session)" : "e.g. +91 98765 43210"}
+                    value={reportForm.source === '1 on 1 Session' ? '' : reportForm.callerNumber}
                     onChange={(e) => setReportForm({ ...reportForm, callerNumber: e.target.value })}
                     style={{
                       width: '100%',
@@ -1085,7 +1155,9 @@ export default function CsHome() {
                       borderRadius: '8px',
                       border: reportErrors.callerNumber ? '1px solid #dc2626' : '1px solid #cbd5e1',
                       fontSize: '0.85rem',
-                      color: '#0f172a',
+                      color: reportForm.source === '1 on 1 Session' ? '#94a3b8' : '#0f172a',
+                      background: reportForm.source === '1 on 1 Session' ? '#f1f5f9' : 'white',
+                      cursor: reportForm.source === '1 on 1 Session' ? 'not-allowed' : 'text',
                       boxSizing: 'border-box'
                     }}
                   />

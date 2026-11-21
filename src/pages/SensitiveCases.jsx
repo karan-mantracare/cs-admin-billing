@@ -154,11 +154,12 @@ const INITIAL_MANAGER_REFERRALS = [
 const INITIAL_CRITICAL_CASES = [
   {
     id: 'CRIT-801',
+    source: 'Hotline Call',
     corporate: 'TechCorp Solutions',
     location: 'Bangalore, India',
     employeeAlias: 'Confidential EMP-9182',
     employeeDepartment: 'Security Engineering',
-    triggerSource: '24/7 Crisis Hotline',
+    triggerSource: 'Hotline Call',
     criticalCategory: 'Suicidal Ideation / Immediate Risk',
     riskLevel: 'Critical / SOS',
     escalationProtocol: 'Level 3 - Crisis Clinician & Emergency Contact',
@@ -178,11 +179,12 @@ const INITIAL_CRITICAL_CASES = [
   },
   {
     id: 'CRIT-802',
+    source: '1 on 1 Session',
     corporate: 'Nova FinTech Solutions',
     location: 'Mumbai, India',
     employeeAlias: 'Confidential EMP-3329',
     employeeDepartment: 'Trading Desk',
-    triggerSource: 'Therapist SOS Escalation',
+    triggerSource: '1 on 1 Session',
     criticalCategory: 'Acute Psychotic Breakdown & Panic',
     riskLevel: 'Critical / SOS',
     escalationProtocol: 'Level 2 - Clinical Lead & Corporate HR SPOC',
@@ -192,7 +194,7 @@ const INITIAL_CRITICAL_CASES = [
     status: 'Stabilized & Monitored',
     emergencyContactNotified: true,
     hospitalizationNeeded: false,
-    summary: 'During a virtual session, therapist detected severe dissociation, acute hyperventilation, and disoriented speech. Session transitioned to emergency protocol.',
+    summary: 'During a 1 on 1 session, therapist detected severe dissociation, acute hyperventilation, and disoriented speech. Session transitioned to emergency protocol.',
     timeline: [
       { date: '2026-11-20 18:15', user: 'Ananya Sen (Counselor)', action: 'Triggered red flag alert during active session.' },
       { date: '2026-11-20 18:24', user: 'Dr. Radhika Iyer', action: 'Supervising psychiatrist joined call. Acute grounding techniques administered.' },
@@ -201,11 +203,12 @@ const INITIAL_CRITICAL_CASES = [
   },
   {
     id: 'CRIT-803',
+    source: 'Hotline Call',
     corporate: 'Global Health Corp',
     location: 'Delhi NCR, India',
     employeeAlias: 'Confidential EMP-6611',
     employeeDepartment: 'Medical Billing Operations',
-    triggerSource: 'Manager Emergency Alert',
+    triggerSource: 'Hotline Call',
     criticalCategory: 'Domestic Violence & Safety Threat',
     riskLevel: 'Severe',
     escalationProtocol: 'Level 2 - Crisis Counseling & Legal/Safe Space Support',
@@ -224,11 +227,12 @@ const INITIAL_CRITICAL_CASES = [
   },
   {
     id: 'CRIT-804',
+    source: '1 on 1 Session',
     corporate: 'Apex Logistics',
     location: 'Singapore Hub',
     employeeAlias: 'Confidential EMP-1094',
     employeeDepartment: 'Fleet Operations',
-    triggerSource: 'Assessment High Risk Score',
+    triggerSource: '1 on 1 Session',
     criticalCategory: 'Severe Depression & Substance Dependency Risk',
     riskLevel: 'High',
     escalationProtocol: 'Level 1 - Urgent Specialized Clinical Assessment',
@@ -238,7 +242,7 @@ const INITIAL_CRITICAL_CASES = [
     status: 'Resolved',
     emergencyContactNotified: false,
     hospitalizationNeeded: false,
-    summary: 'Standard PHQ-9 and GAD-7 screening showed red-flag scores on Item 9. Immediate clinical review triggered.',
+    summary: 'Standard PHQ-9 and GAD-7 screening showed red-flag scores on Item 9. Immediate clinical review triggered during 1 on 1 session.',
     timeline: [
       { date: '2026-11-18 09:30', user: 'Assessment Engine', action: 'Automated threshold trigger: PHQ-9 score > 22.' },
       { date: '2026-11-18 09:44', user: 'Dr. Neha Kapoor', action: 'Direct outreach performed. Full clinical risk assessment determined low imminent self-harm risk.' },
@@ -1308,9 +1312,9 @@ export default function SensitiveCases() {
                 <thead>
                   <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.04em' }}>
                     <th style={{ padding: '0.8rem 1rem' }}>CASE ID</th>
+                    <th style={{ padding: '0.8rem 1rem' }}>SOURCE</th>
                     <th style={{ padding: '0.8rem 1rem' }}>CORPORATE &amp; LOCATION</th>
                     <th style={{ padding: '0.8rem 1rem' }}>CONFIDENTIAL IDENTIFIER</th>
-                    <th style={{ padding: '0.8rem 1rem' }}>TRIGGER / SOURCE</th>
                     <th style={{ padding: '0.8rem 1rem' }}>CRITICAL RISK CATEGORY</th>
                     <th style={{ padding: '0.8rem 1rem' }}>RISK LEVEL</th>
                     <th style={{ padding: '0.8rem 1rem' }}>ASSIGNED CRISIS LEAD</th>
@@ -1326,18 +1330,36 @@ export default function SensitiveCases() {
                         {row.id}
                       </td>
                       <td style={{ padding: '0.85rem 1rem' }}>
+                        {(() => {
+                          const src = row.source || (row.triggerSource?.toLowerCase().includes('session') ? '1 on 1 Session' : 'Hotline Call');
+                          const isSession = src === '1 on 1 Session';
+                          return (
+                            <span style={{
+                              fontSize: '0.74rem',
+                              fontWeight: '700',
+                              padding: '0.22rem 0.55rem',
+                              borderRadius: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              background: isSession ? '#eff6ff' : '#fef2f2',
+                              color: isSession ? '#1d4ed8' : '#b91c1c',
+                              border: isSession ? '1px solid #bfdbfe' : '1px solid #fecaca',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              <i className={`bx ${isSession ? 'bx-user-voice' : 'bx-phone-call'}`} style={{ fontSize: '0.88rem' }}></i>
+                              <span>{src}</span>
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td style={{ padding: '0.85rem 1rem' }}>
                         <div style={{ fontWeight: '600', color: '#0f172a' }}>{row.corporate}</div>
                         <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{row.location}</div>
                       </td>
                       <td style={{ padding: '0.85rem 1rem' }}>
                         <div style={{ fontWeight: '600', color: '#1e293b' }}>{row.employeeAlias || row.callerName || 'Confidential'}</div>
                         <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{row.employeeDepartment || row.divisionName || row.divisionId || ''}</div>
-                      </td>
-                      <td style={{ padding: '0.85rem 1rem' }}>
-                        <span style={{ fontSize: '0.78rem', color: '#334155', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <i className='bx bx-bell' style={{ color: '#ef4444' }}></i>
-                          {row.triggerSource || (row.answeredBy ? `Inbound (${row.answeredBy})` : 'Crisis Alert')}
-                        </span>
                       </td>
                       <td style={{ padding: '0.85rem 1rem', maxWidth: '240px' }}>
                         <span style={{
@@ -1690,6 +1712,13 @@ export default function SensitiveCases() {
                           </h5>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', fontSize: '0.84rem' }}>
                             <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Source</span>
+                              <strong style={{ color: '#dc2626', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <i className={`bx ${(viewingCase.data.source === '1 on 1 Session' || viewingCase.data.triggerSource?.includes('Session')) ? 'bx-user-voice' : 'bx-phone-call'}`}></i>
+                                <span>{viewingCase.data.source || (viewingCase.data.triggerSource?.includes('Session') ? '1 on 1 Session' : 'Hotline Call')}</span>
+                              </strong>
+                            </div>
+                            <div>
                               <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Date</span>
                               <strong style={{ color: '#0f172a' }}>{viewingCase.data.date || viewingCase.data.reportedAt?.split(' ')[0] || '2026-11-21'}</strong>
                             </div>
@@ -1703,7 +1732,7 @@ export default function SensitiveCases() {
                             </div>
                             <div>
                               <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Caller Number</span>
-                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.callerNumber || '+91 98765 43210'}</strong>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.callerNumber || 'N/A (1 on 1 Session)'}</strong>
                             </div>
                             <div>
                               <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Division</span>
