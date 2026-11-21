@@ -44,16 +44,36 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
     const initialCompany = getInitialCompany();
     let initialKeySpocs = [];
     if (Array.isArray(initialData.keySpocs) && initialData.keySpocs.length > 0) {
-      initialKeySpocs = initialData.keySpocs.map((s, idx) => ({ id: s.id || (Date.now() + idx), ...s }));
+      initialKeySpocs = initialData.keySpocs.map((s, idx) => ({
+        id: s.id || (Date.now() + idx),
+        spocType: s.spocType || (idx === 0 ? 'Primary SPOC' : 'Secondary SPOC'),
+        ...s
+      }));
     } else if (initialData.keySpoc && (initialData.keySpoc.name || initialData.keySpoc.email || initialData.keySpoc.contact)) {
-      initialKeySpocs = [{ id: Date.now(), name: initialData.keySpoc.name || '', email: initialData.keySpoc.email || '', contact: initialData.keySpoc.contact || '', designation: initialData.keySpoc.designation || '' }];
+      initialKeySpocs = [{
+        id: Date.now(),
+        name: initialData.keySpoc.name || '',
+        email: initialData.keySpoc.email || '',
+        contact: initialData.keySpoc.contact || '',
+        designation: initialData.keySpoc.designation || '',
+        spocType: initialData.keySpoc.spocType || 'Primary SPOC'
+      }];
     } else {
-      initialKeySpocs = [{ id: Date.now(), name: '', email: '', contact: '', designation: '' }];
+      initialKeySpocs = [{
+        id: Date.now(),
+        name: '',
+        email: '',
+        contact: '',
+        designation: '',
+        spocType: 'Primary SPOC'
+      }];
     }
+
+    const primaryContact = initialKeySpocs.find(s => s.spocType === 'Primary SPOC') || initialKeySpocs[0];
 
     return {
       keySpocs: initialKeySpocs,
-      keySpoc: initialKeySpocs[0] || { name: '', email: '', contact: '', designation: '' },
+      keySpoc: primaryContact || { name: '', email: '', contact: '', designation: '' },
       escalationSpocs: initialData.escalationSpocs?.length ? initialData.escalationSpocs : [{ id: Date.now(), name: '', email: '', contact: '', designation: '' }],
       billingDetails: {
         companies: [initialCompany],
@@ -80,10 +100,12 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
     // Submit logic goes here
     setIsSubmitted(true);
     
+    const primaryContact = formData.keySpocs.find(s => s.spocType === 'Primary SPOC') || formData.keySpocs[0] || formData.keySpoc || { name: '', email: '', contact: '' };
+
     const dataToSave = {
       ...formData,
       keySpocs: formData.keySpocs,
-      keySpoc: formData.keySpocs[0] || formData.keySpoc || { name: '', email: '', contact: '' },
+      keySpoc: primaryContact,
       submittedAt: new Date().toISOString()
     };
     
@@ -100,23 +122,31 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
   // State Updaters
   const handleKeySpocFieldChange = (id, field, value) => {
     setFormData(prev => {
-      const updatedList = prev.keySpocs.map(spoc => spoc.id === id ? { ...spoc, [field]: value } : spoc);
+      let updatedList = prev.keySpocs.map(spoc => spoc.id === id ? { ...spoc, [field]: value } : spoc);
+      
+      // If user sets a contact to Primary SPOC, make other contacts Secondary SPOC
+      if (field === 'spocType' && value === 'Primary SPOC') {
+        updatedList = updatedList.map(spoc => spoc.id === id ? { ...spoc, spocType: 'Primary SPOC' } : { ...spoc, spocType: 'Secondary SPOC' });
+      }
+
+      const primaryContact = updatedList.find(s => s.spocType === 'Primary SPOC') || updatedList[0] || { name: '', email: '', contact: '' };
       return {
         ...prev,
         keySpocs: updatedList,
-        keySpoc: updatedList[0] || { name: '', email: '', contact: '' }
+        keySpoc: primaryContact
       };
     });
   };
 
   const addKeySpoc = () => {
     setFormData(prev => {
-      const newSpoc = { id: Date.now(), name: '', email: '', contact: '', designation: '' };
+      const newSpoc = { id: Date.now(), name: '', email: '', contact: '', designation: '', spocType: 'Secondary SPOC' };
       const updatedList = [...prev.keySpocs, newSpoc];
+      const primaryContact = updatedList.find(s => s.spocType === 'Primary SPOC') || updatedList[0] || newSpoc;
       return {
         ...prev,
         keySpocs: updatedList,
-        keySpoc: updatedList[0] || newSpoc
+        keySpoc: primaryContact
       };
     });
   };
@@ -124,11 +154,17 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
   const removeKeySpoc = (id) => {
     setFormData(prev => {
       const filtered = prev.keySpocs.filter(spoc => spoc.id !== id);
-      const updatedList = filtered.length > 0 ? filtered : [{ id: Date.now(), name: '', email: '', contact: '', designation: '' }];
+      let updatedList = filtered.length > 0 ? filtered : [{ id: Date.now(), name: '', email: '', contact: '', designation: '', spocType: 'Primary SPOC' }];
+      
+      // If removed SPOC was the primary, promote first remaining to Primary SPOC
+      if (!updatedList.some(s => s.spocType === 'Primary SPOC')) {
+        updatedList[0].spocType = 'Primary SPOC';
+      }
+
       return {
         ...prev,
         keySpocs: updatedList,
-        keySpoc: updatedList[0]
+        keySpoc: updatedList.find(s => s.spocType === 'Primary SPOC') || updatedList[0]
       };
     });
   };
@@ -255,17 +291,51 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
               {formData.keySpocs.map((spoc, index) => (
                 <div key={spoc.id} style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #e2e8f0', position: 'relative' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ 
-                        background: index === 0 ? '#eff6ff' : '#f1f5f9', 
-                        color: index === 0 ? '#2563eb' : '#475569', 
-                        fontSize: '9px', 
-                        fontWeight: '700', 
-                        padding: '0.15rem 0.45rem', 
-                        borderRadius: '4px',
-                        textTransform: 'uppercase'
-                      }}>
-                        {index === 0 ? 'Primary SPOC' : `Key SPOC ${index + 1}`}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <div style={{ display: 'inline-flex', background: '#e2e8f0', padding: '2px', borderRadius: '6px', gap: '2px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleKeySpocFieldChange(spoc.id, 'spocType', 'Primary SPOC')}
+                          style={{
+                            padding: '0.2rem 0.6rem',
+                            fontSize: '10px',
+                            fontWeight: '700',
+                            borderRadius: '4px',
+                            border: 'none',
+                            background: (spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Primary SPOC' ? '#2563eb' : 'transparent',
+                            color: (spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Primary SPOC' ? '#ffffff' : '#475569',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          <i className='bx bx-star'></i> Primary SPOC
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleKeySpocFieldChange(spoc.id, 'spocType', 'Secondary SPOC')}
+                          style={{
+                            padding: '0.2rem 0.6rem',
+                            fontSize: '10px',
+                            fontWeight: '700',
+                            borderRadius: '4px',
+                            border: 'none',
+                            background: (spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Secondary SPOC' ? '#0f172a' : 'transparent',
+                            color: (spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Secondary SPOC' ? '#ffffff' : '#475569',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          <i className='bx bx-user'></i> Secondary SPOC
+                        </button>
+                      </div>
+                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '500' }}>
+                        (Contact #{index + 1})
                       </span>
                     </div>
                     {formData.keySpocs.length > 1 && (
@@ -280,7 +350,21 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
                     )}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>SPOC Designation / Role</label>
+                      <div style={{ position: 'relative' }}>
+                        <select 
+                          value={spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')} 
+                          onChange={(e) => handleKeySpocFieldChange(spoc.id, 'spocType', e.target.value)}
+                          style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', appearance: 'none', background: 'white', boxSizing: 'border-box' }}
+                        >
+                          <option value="Primary SPOC">Primary SPOC</option>
+                          <option value="Secondary SPOC">Secondary SPOC</option>
+                        </select>
+                        <i className='bx bx-chevron-down' style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }}></i>
+                      </div>
+                    </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Full Name <span style={{ color: '#ef4444' }}>*</span></label>
                       <input 

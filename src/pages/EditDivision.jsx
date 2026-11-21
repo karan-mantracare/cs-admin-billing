@@ -1381,8 +1381,18 @@ function EditDivision() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                   {onboardingFormState.keySpocs.map((spoc, sIdx) => (
                                     <div key={sIdx} style={{ background: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
-                                      <div style={{ fontSize: '0.72rem', fontWeight: '700', color: sIdx === 0 ? '#2563eb' : '#64748b', marginBottom: '0.35rem' }}>
-                                        {sIdx === 0 ? 'Primary SPOC' : `Key SPOC ${sIdx + 1}`}
+                                      <div style={{ marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <span style={{
+                                          background: (spoc.spocType || (sIdx === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Primary SPOC' ? '#eff6ff' : '#f1f5f9',
+                                          color: (spoc.spocType || (sIdx === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Primary SPOC' ? '#1d4ed8' : '#475569',
+                                          padding: '0.15rem 0.45rem',
+                                          borderRadius: '4px',
+                                          fontSize: '0.72rem',
+                                          fontWeight: '700'
+                                        }}>
+                                          {spoc.spocType || (sIdx === 0 ? 'Primary SPOC' : 'Secondary SPOC')}
+                                        </span>
+                                        <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Contact #{sIdx + 1}</span>
                                       </div>
                                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
                                         <div>

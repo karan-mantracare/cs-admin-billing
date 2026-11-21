@@ -331,11 +331,12 @@ export function getDivisionOnboardingDetails(division) {
         const normEmail = email.toLowerCase();
         if (isValidEmail(email) && !seenSpocEmails.has(normEmail)) {
           seenSpocEmails.add(normEmail);
+          const spocLabel = kSpoc.spocType || (kIdx === 0 ? 'Primary SPOC' : 'Secondary SPOC');
           spocs.push({
             id: `spoc_div_key_${kIdx}`,
-            name: kSpoc.name?.trim() || `${divName} Key SPOC`,
+            name: kSpoc.name?.trim() || `${divName} ${spocLabel}`,
             email: email,
-            role: kIdx === 0 ? 'Key SPOC (Division Onboarding)' : `Key SPOC ${kIdx + 1} (Division Onboarding)`,
+            role: `${spocLabel} (Division Onboarding)`,
             phone: kSpoc.contact || '',
             source: 'Division Onboarding'
           });

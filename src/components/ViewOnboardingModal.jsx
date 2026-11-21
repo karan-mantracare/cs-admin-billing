@@ -57,8 +57,18 @@ function ViewOnboardingModal({ isOpen, onClose, data }) {
                 {data.keySpocs.map((spoc, idx) => (
                   <div key={idx} style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
                     {data.keySpocs.length > 1 && (
-                      <div style={{ fontSize: '0.75rem', fontWeight: '700', color: idx === 0 ? '#2563eb' : '#64748b', marginBottom: '0.5rem' }}>
-                        {idx === 0 ? 'Primary SPOC' : `Key SPOC ${idx + 1}`}
+                      <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span style={{
+                          background: (spoc.spocType || (idx === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Primary SPOC' ? '#eff6ff' : '#f1f5f9',
+                          color: (spoc.spocType || (idx === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Primary SPOC' ? '#1d4ed8' : '#475569',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '4px',
+                          fontSize: '0.72rem',
+                          fontWeight: '700'
+                        }}>
+                          {spoc.spocType || (idx === 0 ? 'Primary SPOC' : 'Secondary SPOC')}
+                        </span>
+                        <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Contact #{idx + 1}</span>
                       </div>
                     )}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>

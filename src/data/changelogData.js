@@ -4,16 +4,16 @@ export const CHANGELOG_DATA = [
     date: '2026-11-21',
     formattedDate: 'Nov 21, 2026',
     page: 'Client Onboarding',
-    subPage: 'Step 1 & 4: Multi-SPOC Management & Procurement Focus',
-    summary: 'Added option to add multiple Key SPOCs in Step 1 and Procurement Department Focus in Step 4',
-    details: 'Enhanced Step 1 (Key SPOC) of the MantraCare Client Onboarding Wizard to support adding multiple points of contact with a dedicated "+ Add SPOC" action, primary/secondary contact badges, removal controls, and clean responsive layout. Added "Procurement" department focus option in Step 4 (Payment SPOC) below "Both (Billing & Payment)". Synchronized data across Onboarding Filing, View Onboarding modal, Cadence Division utilities, and Division Edit view with backward compatibility.',
-    plainLanguage: 'Clients and administrators can now add multiple Key SPOCs during onboarding rather than just a single contact, and select Procurement as Department Focus for finance and billing contacts.',
+    subPage: 'Step 1 & 4: Multi-SPOC Designation (Primary & Secondary) & Procurement Focus',
+    summary: 'Added Primary SPOC vs Secondary SPOC designation options for multiple SPOCs, and Procurement focus in Step 4',
+    details: 'Enhanced Step 1 (Key SPOC) of the MantraCare Client Onboarding Wizard to support adding multiple points of contact with explicit Primary SPOC vs Secondary SPOC selection via interactive toggle pills and role dropdowns. Added "Procurement" department focus option in Step 4 (Payment SPOC) below "Both (Billing & Payment)". Synchronized data across Onboarding Filing, View Onboarding modal, Cadence Division utilities, and Division Edit view with backward compatibility.',
+    plainLanguage: 'Users can now designate contacts as either Primary SPOC or Secondary SPOC when adding multiple contacts during onboarding, and select Procurement as Department Focus for billing contacts.',
     highlights: [
       '+ Add SPOC Action: One-click addition of multiple Key SPOC contact cards in Step 1',
-      'Primary & Key SPOC Badges: First contact automatically designated as Primary SPOC',
+      'Primary vs Secondary SPOC Designation: Interactive toggle pills and dropdown to classify each contact as Primary SPOC or Secondary SPOC',
       'Department Focus: Added "Procurement" dropdown option in Step 4 for billing contacts',
       'Remove SPOC Control: Clean removal with confirmation safeguard ensuring at least one primary contact remains',
-      'Universal Persistence: Saved contacts immediately reflect in Onboarding view modal and Division management'
+      'Universal Persistence: Saved contacts immediately reflect in Onboarding view modal, cadence reachouts, and Division management'
     ],
     path: '/client-onboarding/1',
     linkText: 'Client Onboarding'
