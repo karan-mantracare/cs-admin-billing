@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, NavLink, useLocation, useNavigate } from 'reac
 import { useGlobal } from './context/GlobalContext';
 import Home from './pages/Home';
 import CsPortal from './pages/CsPortal';
+import CsHome from './pages/CsHome';
 import Dashboard from './pages/Dashboard';
 import EditWebinar from './pages/EditWebinar';
 // import Clients from './pages/Clients';
@@ -294,7 +295,8 @@ function App() {
         <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="/home" element={<Home />} />
         <Route path="/cs" element={<Navigate to="/cs/home" replace />} />
-        <Route path="/cs/home" element={<CsPortal />} />
+        <Route path="/cs/home" element={<CsHome />} />
+        <Route path="/cs/portal" element={<CsPortal />} />
         <Route path="/cs/cadence" element={<ClientCadence />} />
         <Route path="/cadence" element={<Navigate to="/cs/cadence" replace />} />
         <Route path="/cs/feedback" element={<CsFeedback />} />
