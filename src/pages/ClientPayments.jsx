@@ -406,10 +406,26 @@ function ClientPayments() {
     isChangeCurrency: false,
     changedCurrency: 'USD',
     exchangedAmount: '',
-    receivedBank: ''
+    receivedBank: '',
+    isTdsDeducted: false,
+    tdsAmount: ''
   });
   const [showPastPayments, setShowPastPayments] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState(null);
+
+  // Editable Remarks State for Payment Records
+  const [editingRemarksRowId, setEditingRemarksRowId] = useState(null);
+  const [editingRemarksValue, setEditingRemarksValue] = useState('');
+
+  const handleSaveRemarks = (recordId) => {
+    setPaymentRecords(prev => prev.map((r, idx) => {
+      if ((r.id && r.id === recordId) || idx === recordId) {
+        return { ...r, remarks: editingRemarksValue.trim() };
+      }
+      return r;
+    }));
+    setEditingRemarksRowId(null);
+  };
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15);
@@ -587,7 +603,8 @@ function ClientPayments() {
         String(r.invoiceNumber || '').toLowerCase().includes(query) ||
         String(r.receivedBank || '').toLowerCase().includes(query) ||
         String(r.currency || '').toLowerCase().includes(query) ||
-        String(r.amount || '').toLowerCase().includes(query);
+        String(r.amount || '').toLowerCase().includes(query) ||
+        String(r.remarks || '').toLowerCase().includes(query);
       if (!matchesSearch) return false;
     }
 
@@ -1302,6 +1319,7 @@ function ClientPayments() {
               <th>AMOUNT</th>
               <th>CURRENCY</th>
               <th>AMOUNT IN USD</th>
+              <th style={{ minWidth: '180px' }}>REMARKS</th>
               <th style={{ minWidth: '150px', textAlign: 'center' }}>ACTION</th>
             </tr>
           </thead>
@@ -1344,6 +1362,77 @@ function ClientPayments() {
                 <td><strong>{Number(r.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
                 <td>{r.currency}</td>
                 <td><strong className="text-green">${Number(r.amountInUSD || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></td>
+                <td style={{ minWidth: '180px' }}>
+                  {editingRemarksRowId === (r.id || i) ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <input 
+                        type="text" 
+                        autoFocus
+                        value={editingRemarksValue}
+                        onChange={(e) => setEditingRemarksValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveRemarks(r.id || i);
+                          if (e.key === 'Escape') setEditingRemarksRowId(null);
+                        }}
+                        placeholder="Enter remarks..."
+                        style={{
+                          padding: '0.3rem 0.5rem',
+                          fontSize: '0.8rem',
+                          borderRadius: '4px',
+                          border: '1px solid #0284c7',
+                          outline: 'none',
+                          width: '100%',
+                          color: '#0f172a'
+                        }}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => handleSaveRemarks(r.id || i)}
+                        style={{ background: '#059669', color: 'white', border: 'none', borderRadius: '4px', padding: '0.3rem 0.45rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        title="Save"
+                      >
+                        <i className='bx bx-check'></i>
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setEditingRemarksRowId(null)}
+                        style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '0.3rem 0.45rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        title="Cancel"
+                      >
+                        <i className='bx bx-x'></i>
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', cursor: 'pointer', padding: '0.2rem 0.4rem', borderRadius: '4px', transition: 'background 0.15s ease' }}
+                      onClick={() => {
+                        setEditingRemarksRowId(r.id || i);
+                        setEditingRemarksValue(r.remarks || '');
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      title="Click to edit Remarks"
+                    >
+                      {r.remarks ? (
+                        <span style={{
+                          fontSize: '0.8rem',
+                          fontWeight: r.remarks.includes('TDS') ? '600' : '500',
+                          color: r.remarks.includes('TDS') ? '#c2410c' : '#334155',
+                          background: r.remarks.includes('TDS') ? '#ffedd5' : 'transparent',
+                          padding: r.remarks.includes('TDS') ? '0.15rem 0.45rem' : '0',
+                          borderRadius: '4px'
+                        }}>
+                          {r.remarks}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                          Add remarks...
+                        </span>
+                      )}
+                      <i className='bx bx-pencil' style={{ color: '#94a3b8', fontSize: '0.9rem', flexShrink: 0 }}></i>
+                    </div>
+                  )}
+                </td>
                 <td style={{ textAlign: 'center' }}>
                   {r.changeRequest ? (
                     <button
@@ -1397,7 +1486,7 @@ function ClientPayments() {
             ))}
             {filteredPaymentRecords.length === 0 && (
               <tr>
-                <td colSpan="10" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                <td colSpan="11" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                   No payment records found{activeLinkFilter?.orderId ? ` for Order #${activeLinkFilter.orderId}` : ''}.
                 </td>
               </tr>
@@ -1770,13 +1859,14 @@ function ClientPayments() {
           }} onClick={() => setActivePaymentId(null)}>
           <div style={{
               background: 'white', borderRadius: '10px', width: '90%', maxWidth: '420px',
+              maxHeight: '90vh', display: 'flex', flexDirection: 'column',
               boxShadow: '0 10px 30px rgba(0,0,0,0.15)', overflow: 'hidden'
             }} onClick={(e) => e.stopPropagation()}>
               <div style={{ background: 'linear-gradient(135deg, #059669, #10b981)', padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ margin: 0, fontSize: '1rem', color: 'white', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><i className='bx bx-money'></i> {editingRecordId ? 'Edit Payment' : 'Add Payment'}</h2>
-                <button onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' }); setEditingRecordId(null); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                <button onClick={() => { setActivePaymentId(null); setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '', isTdsDeducted: false, tdsAmount: '' }); setEditingRecordId(null); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
               </div>
-              <div style={{ padding: '1.25rem' }}>
+              <div style={{ padding: '1.25rem', overflowY: 'auto' }}>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div>
@@ -1932,6 +2022,43 @@ function ClientPayments() {
                 )}
               </div>
 
+              {/* TDS / Withholding Tax Deducted Section */}
+              <div style={{ marginBottom: '1.25rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.88rem', fontWeight: '600', color: '#1e293b', userSelect: 'none' }}>
+                  <input 
+                    type="checkbox"
+                    checked={!!paymentForm.isTdsDeducted}
+                    onChange={(e) => setPaymentForm(prev => ({ 
+                      ...prev, 
+                      isTdsDeducted: e.target.checked, 
+                      tdsAmount: e.target.checked ? prev.tdsAmount : '' 
+                    }))}
+                    style={{ width: '16px', height: '16px', accentColor: '#059669', cursor: 'pointer' }}
+                  />
+                  <span>TDS / Withholding tax Deducted</span>
+                </label>
+
+                {paymentForm.isTdsDeducted && (
+                  <div style={{ marginTop: '0.75rem', padding: '0.85rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>
+                      TDS / Withholding Tax Amount ({paymentForm.isChangeCurrency ? paymentForm.changedCurrency : targetRow.currency})
+                    </label>
+                    <input 
+                      type="number"
+                      step="0.01"
+                      placeholder="Enter Amount"
+                      style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', outline: 'none' }}
+                      value={paymentForm.tdsAmount || ''}
+                      onChange={(e) => setPaymentForm(prev => ({ ...prev, tdsAmount: e.target.value }))}
+                    />
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: '#0369a1', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '0.5rem 0.65rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.45rem', lineHeight: '1.4' }}>
+                      <i className='bx bx-info-circle' style={{ fontSize: '1.05rem', flexShrink: 0 }}></i>
+                      <span>Note: TDS / Withholding tax must be in payment currency ({paymentForm.isChangeCurrency ? paymentForm.changedCurrency : targetRow.currency}) only.</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {(() => {
                 const pastPayments = paymentRecords.filter(r => r.paymentId === activePaymentId);
                 if (pastPayments.length === 0) return null;
@@ -1965,7 +2092,9 @@ function ClientPayments() {
                                   isChangeCurrency: pp.currency !== targetRow.currency,
                                   changedCurrency: pp.currency,
                                   exchangedAmount: pp.baseDeductAmount || pp.amount,
-                                  receivedBank: pp.receivedBank || ''
+                                  receivedBank: pp.receivedBank || '',
+                                  isTdsDeducted: false,
+                                  tdsAmount: ''
                                 });
                               }}></i>
                               <i className='bx bx-trash' style={{ cursor: 'pointer', color: '#ef4444', fontSize: '1.1rem' }} onClick={() => {
@@ -2060,12 +2189,22 @@ function ClientPayments() {
                     baseDeductAmount = amountVal;
                     amountInUSD = targetRow.currency === 'USD' ? amountVal : (amountVal * exchangeRate);
                   }
+
+                  // TDS deduction calculation
+                  const tdsVal = paymentForm.isTdsDeducted ? (Number(paymentForm.tdsAmount) || 0) : 0;
+                  let tdsAmountInUSD = 0;
+                  let tdsBaseDeduct = 0;
+                  if (tdsVal > 0) {
+                    const effectiveRate = amountVal > 0 ? (amountInUSD / amountVal) : (targetRow.currency === 'USD' ? 1 : exchangeRate);
+                    tdsAmountInUSD = Number((tdsVal * effectiveRate).toFixed(2));
+                    tdsBaseDeduct = amountVal > 0 ? Number((baseDeductAmount * (tdsVal / amountVal)).toFixed(2)) : tdsVal;
+                  }
                   
                   const isEditing = editingRecordId != null;
                   const oldRecord = isEditing ? paymentRecords.find(r => r.id === editingRecordId) : null;
                   const oldDeductAmountUsd = oldRecord ? (oldRecord.amountInUSD || 0) : 0;
 
-                  // Add record
+                  // Main payment record
                   const newRecord = {
                     id: isEditing ? editingRecordId : Math.random().toString(36).substring(2, 9),
                     entryDate: isEditing ? oldRecord.entryDate : new Date().toISOString().split('T')[0],
@@ -2077,19 +2216,46 @@ function ClientPayments() {
                     currency: payCurrency,
                     receivedBank: paymentForm.receivedBank || '-',
                     baseDeductAmount: Number(baseDeductAmount.toFixed(2)),
-                    amountInUSD: Number(amountInUSD.toFixed(2))
+                    amountInUSD: Number(amountInUSD.toFixed(2)),
+                    remarks: isEditing ? (oldRecord.remarks || '') : ''
                   };
+
+                  // TDS deduction record
+                  let tdsRecord = null;
+                  if (tdsVal > 0) {
+                    tdsRecord = {
+                      id: Math.random().toString(36).substring(2, 9),
+                      entryDate: new Date().toISOString().split('T')[0],
+                      paymentDate: paymentForm.paymentDate,
+                      invoiceNumber: targetRow.invoiceLink || 'N/A',
+                      orderId: targetRow.orderId,
+                      paymentId: targetRow.id,
+                      amount: tdsVal,
+                      currency: payCurrency,
+                      receivedBank: paymentForm.receivedBank ? `${paymentForm.receivedBank} (TDS)` : 'TDS / Tax Deduction',
+                      baseDeductAmount: tdsBaseDeduct,
+                      amountInUSD: tdsAmountInUSD,
+                      remarks: 'TDS / Withholding Tax'
+                    };
+                  }
                   
                   if (isEditing) {
                     setPaymentRecords(prev => prev.map(r => r.id === editingRecordId ? newRecord : r));
                   } else {
-                    setPaymentRecords(prev => [...prev, newRecord]);
+                    if (tdsRecord) {
+                      setPaymentRecords(prev => [...prev, newRecord, tdsRecord]);
+                    } else {
+                      setPaymentRecords(prev => [...prev, newRecord]);
+                    }
                   }
+
+                  // Total USD impact including TDS
+                  const totalPaidThisTx = Number(amountInUSD.toFixed(2)) + Number(tdsAmountInUSD.toFixed(2));
 
                   // Update Row
                   setPayments(prev => prev.map(p => {
                     if (p.id === activePaymentId) {
-                      const newTotalPaid = p.totalPaid - oldDeductAmountUsd + Number(amountInUSD.toFixed(2));
+                      const newTotalPaid = p.totalPaid - oldDeductAmountUsd + totalPaidThisTx;
                       const newDue = Math.max(0, p.amountDueUsd - newTotalPaid);
                       
                       let newOverdueDays = p.overdueDays;
@@ -2116,15 +2282,15 @@ function ClientPayments() {
                     return p;
                   }));
                   
-                    setActivePaymentId(null);
-                    setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '' });
-                    setShowPastPayments(false);
-                    setEditingRecordId(null);
-                  }}
-                  style={{ padding: '0.5rem 1.25rem', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                ><i className={`bx ${editingRecordId ? 'bx-save' : 'bx-check'}`}></i>{editingRecordId ? 'Update' : 'Save'}</button>
-              </div>
-              </div>
+                  setActivePaymentId(null);
+                  setPaymentForm({ paymentDate: '', amount: '', isChangeCurrency: false, changedCurrency: 'USD', exchangedAmount: '', receivedBank: '', isTdsDeducted: false, tdsAmount: '' });
+                  setShowPastPayments(false);
+                  setEditingRecordId(null);
+                }}
+                style={{ padding: '0.5rem 1.25rem', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              ><i className={`bx ${editingRecordId ? 'bx-save' : 'bx-check'}`}></i>{editingRecordId ? 'Update' : 'Save'}</button>
+            </div>
+            </div>
             </div>
           </div>
         );
