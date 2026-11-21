@@ -1424,7 +1424,10 @@ function ClientPayments() {
           const contractCurrency    = contract?.contractCurrency || billing.clientCurrency || payment.currency || 'EUR';
           const rawContractVal      = contract?.contractValue ?? billing.contractValue ?? payment.contractValue ?? payment.amountDue;
           const contractValue       = rawContractVal ? `${contractCurrency} ${Number(rawContractVal).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
+          const rawInvoiceVal       = payment.amountDue || contract?.contractValue || 0;
           const invoiceValue        = payment.amountDue ? `${payment.currency || contractCurrency} ${Number(payment.amountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
+          const isTaxIncluded       = !!(payment.includingTax || contract?.includingTax || billing.includingTax);
+          const taxStatusText       = isTaxIncluded ? 'Included in Invoice Value' : 'Excluded';
           const invoiceDate         = payment.invoiceByDate || contract?.billingDate || '—';
           const dueByDate           = payment.dueByDate || '—';
           const servicePeriod       = `${contract?.paymentDueDays ?? billing.paymentDueDays ?? payment.paymentDueDays ?? 15} days`;
@@ -1444,6 +1447,7 @@ function ClientPayments() {
             'Current Invoice',
             '─────────────────────────────',
             `Invoice Value              : ${invoiceValue}`,
+            `Tax Status                 : ${taxStatusText}`,
             `Invoice Date               : ${invoiceDate}`,
             `Due By Date                : ${dueByDate}`,
             `Remarks                    : ${remarks}`,

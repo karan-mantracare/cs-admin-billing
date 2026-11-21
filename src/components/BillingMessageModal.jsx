@@ -42,6 +42,9 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
   const invoiceCurrency = payment?.currency || contractCurrency || 'EUR';
   const invoiceValue = `${invoiceCurrency} ${Number(rawInvoiceVal).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
 
+  const isTaxIncluded = !!(payment?.includingTax || contract?.includingTax || billing?.includingTax);
+  const taxStatusText = isTaxIncluded ? 'Included in Invoice Value' : 'Excluded';
+
   const invoiceDate = payment?.invoiceByDate || contract?.billingDate || '—';
   const dueByDate   = payment?.dueByDate || '—';
 
@@ -108,6 +111,7 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
       'Current Invoice',
       '─────────────────────────────',
       `Invoice Value              : ${invoiceValue}`,
+      `Tax Status                 : ${taxStatusText}`,
       `Invoice Date               : ${invoiceDate}`,
       `Due By Date                : ${dueByDate}`,
       `Remarks                    : ${remarks || '—'}`,
@@ -144,6 +148,7 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
           Current Invoice
         </div>
         <Row label="Invoice Value" value={invoiceValue} valueColor="#10b981" />
+        <Row label="Tax Status" value={taxStatusText} valueColor={isTaxIncluded ? '#10b981' : '#64748b'} />
         <Row label="Invoice Date" value={invoiceDate} />
         <Row label="Due By Date" value={dueByDate} valueColor="#ef4444" />
         
