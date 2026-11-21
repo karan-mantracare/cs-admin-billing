@@ -65,16 +65,24 @@ The platform provides end-to-end tooling for enterprise healthcare and wellness 
   - Features a dedicated **Payout Disclaimer**: *"When you click on confirm & settle the provider will be paid for this session."*
   - Submitting the modal auto-saves the updated duration, selected service, and attendee count, marks the session as Completed, and transitions the linked expense to Settled.
 
-### 4. Corporate Accounts & Divisions (`/corporate`)
+### 4. Sensitive Cases & Manager Referral Portal (`/corporate/sensitive-cases`, `/home`, `/referral-form`)
+- **Corporate Sensitive Cases Hub**: Specialized clinical crisis management and employee assistance program (EAP) operations.
+  - **Manager Referral Tab**: Division ID (hyperlinked to division overview), Manager Name, Member Name, Primary Reason, Urgency Level, Status dropdown, inline editable remarks, View modal, and Mark as Highest Priority checkbox.
+  - **Critical Cases Tab**: Dedicated **SOURCE** column (`Hotline Call` | `1 on 1 Session`), SLA response tracking, crisis category, assigned crisis lead, and emergency de-escalation timeline.
+  - **Collapsible Form Details**: Detail inspect modal defaults to collapse mode, smoothly expanding to reveal complete manager profile, employee contact info, support needs, and clinical remarks.
+  - **Division-Mapped Referral Links**: Interactive link sharing tool that automatically maps to single corporate divisions or presents a division selector, generating persistent `/referral-form?divisionId=...` public intake forms.
+  - **Report for Sensitive Cases**: Inbound crisis intake modal in CS Home featuring top **Source** selection (`Hotline Call` / `1 on 1 Session`) with dynamic disabling of Caller Number on sessions.
+
+### 5. Corporate Accounts & Divisions (`/corporate`)
 - Multi-tier corporate entity structure supporting parent enterprises and independent regional/functional divisions.
 - Contract attribution mapping orders to multiple contract scopes with independent currency, start/end dates, and billing terms.
 - Automated client onboarding wizard (`/client-onboarding`) capturing HR contacts, company details, and service scopes.
 
-### 5. Financial Operations & Profitability (`/expense-approval`, `/expense-tracker`)
+### 6. Financial Operations & Profitability (`/expense-approval`, `/expense-tracker`)
 - **Expense Approval Queue**: Validates trainer claims, verifies session completion, compares actual cost against pre-authorized budget, and records manager sign-offs.
 - **Client P&L Tracker**: Real-time margin analytics comparing contract revenue against trainer fees and operational expenses.
 
-### 6. Central Change Log & Portal Hub (`/`)
+### 7. Central Change Log & Portal Hub (`/`)
 - Interactive enterprise dashboard providing instant access to all CS and Admin tools.
 - Real-time **Change Log Table** categorizing recent product releases by date, module, and plain-language summaries with deep-linking directly to target workflows.
 
@@ -174,6 +182,21 @@ Admin-CS-Payment/
 ---
 
 ## 📋 Recent Highlights & Changelog
+
+### Nov 21, 2026: Sensitive Cases Portal & CS Home Hotline / Session Intake
+- Added the **Sensitive Cases** hub under Corporate in the Admin Portal with two dedicated tabs: **Manager Referral** and **Critical cases**.
+- Implemented real-time case triage, division mapping, pagination (10-100), inline editable remarks, and a collapsible **Complete Form Details** modal.
+- Added **Report for Sensitive Cases** in CS Home featuring top **Source** radio buttons (**Hotline Call** | **1 on 1 Session**), dynamically disabling **Caller Number** when 1 on 1 Session is selected.
+- Added a dedicated **SOURCE** column in the Critical Cases table with color-coded badges and icons.
+- Replaced the admin "New Manager Referral" button with the **Manager Referral** division link generator matching the CS Home flow.
+
+### Nov 21, 2026: Workspace Overviews & Workflows Default Collapse
+- Configured **Customer Success (CS) Workflows** and **Admin Portal Workflows** on the Home dashboard to be collapsed by default.
+- Configured **Test & Telemetry Preview** and **What We Are Doing In This Project** in module summary workspaces to be collapsed by default ("Always Collapse") with clean expand/collapse chevron toggles.
+
+### Nov 21, 2026: Invoice Tax Simplification & Payment TDS Deduction
+- Streamlined **Manage Invoice** modal to retain only **Tax %** and **Tax Amount**, removing redundant tax fields.
+- Updated **Add Payment** modal to permit entering the TDS deduction amount strictly when the TDS checkbox is enabled in payment currency.
 
 ### Nov 20, 2026: Add Invoice Schedule Division Order Discovery & Auto-Resolution
 - Fixed an issue where selecting a Division in the Add Invoice Schedule modal displayed *"No existing orders found for this division"* due to overly strict corporate name matching against orders.

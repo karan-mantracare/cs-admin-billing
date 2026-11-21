@@ -1,5 +1,58 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-sensitive-cases-portal-and-hotline-intake-20261121',
+    date: '2026-11-21',
+    formattedDate: 'Nov 21, 2026',
+    page: 'Admin / CS',
+    subPage: 'Corporate / Sensitive Cases & CS Home Hotline Intake',
+    summary: 'Added Sensitive Cases hub in Admin with Manager Referral & Critical cases tabs, and Hotline/Session intake in CS Home',
+    details: 'Introduced a comprehensive Sensitive Cases portal under Corporate in the Admin dashboard with two dedicated tabs: Manager Referral and Critical cases. Features live status tracking, pagination (10-100), inline editable remarks, highest priority flagging, and a collapsible complete form details inspector. In CS Home, integrated a Manager Referral link copy workflow with corporate division mapping, and an urgent Report for Sensitive Cases intake modal featuring Source selection (Hotline Call / 1 on 1 Session) with conditional Caller Number input disabling.',
+    plainLanguage: 'Added a dedicated Sensitive Cases page in Admin with tabs for Manager Referral and Critical cases. Added quick link shortcuts in CS Home to copy division-mapped referral links and report sensitive clinical crises directly, supporting both Hotline calls and 1 on 1 sessions.',
+    highlights: [
+      'Manager Referral & Critical Cases Tabs: Complete confidential triage table with real-time updates and pagination (10-100)',
+      'Top Source Radio & Conditional Caller Number: Toggle between Hotline Call and 1 on 1 Session, automatically disabling Caller Number on Session',
+      'Dedicated Source Column: Added live Source badges with icons in the Critical Cases table',
+      'Collapsible Form Details: Case modal defaults to collapse mode with toggle to view complete multi-section manager and member details',
+      'Public Referral Form Mapping: Division-mapped public referral form auto-loads into the Admin portal upon submission'
+    ],
+    path: '/corporate/sensitive-cases',
+    linkText: 'Sensitive Cases'
+  },
+  {
+    id: 'cl-workspace-and-home-default-collapse-20261121',
+    date: '2026-11-21',
+    formattedDate: 'Nov 21, 2026',
+    page: 'Home',
+    subPage: 'Workspace Overviews & Portal Workflows Collapse Controls',
+    summary: 'Configured CS & Admin workflows on Home and Test & Scope preview cards on module overviews to be collapsed by default',
+    details: 'To improve page density and eliminate vertical visual clutter, Customer Success (CS) Workflows and Admin Portal Workflows on the main Home dashboard, as well as the Test & Telemetry Preview table and What We Are Doing In This Project cards on module summary pages, now default to collapsed mode with smooth interactive expand/collapse toggles and status indicators.',
+    plainLanguage: 'Collapsed heavy overview workflows and telemetry preview cards across Home and module workspaces by default so you can focus on primary actions immediately without excessive scrolling.',
+    highlights: [
+      'Always Collapsed by Default: CS & Admin workflow accordions and telemetry tables open in collapsed state',
+      'Interactive Header Toggles: One-click header toggle bars with chevron icons and status badges',
+      'Streamlined Workspace Density: Drastically reduces initial viewport scroll distance across dashboards'
+    ],
+    path: '/home',
+    linkText: 'Home Dashboard'
+  },
+  {
+    id: 'cl-tax-simplification-and-tds-deduction-20261121',
+    date: '2026-11-21',
+    formattedDate: 'Nov 21, 2026',
+    page: 'Admin',
+    subPage: 'Manage Invoice & Add Payment / Tax Details & TDS Deduction',
+    summary: 'Streamlined invoice modal to Tax % and Tax Amount only, and added conditional TDS deduction entry in payment currency',
+    details: 'Removed extraneous and redundant Tax Details fields in the Manage Invoice modal, keeping only Tax % and Tax Amount. In the Add Payment modal, enabled the TDS / Withholding tax input only when the TDS checkbox is selected, restricting input directly to the payment currency amount without unnecessary complex tax configuration.',
+    plainLanguage: 'Simplified invoice tax inputs to only Tax % and Tax Amount, and updated Add Payment so TDS deduction amount can be entered cleanly when the TDS checkbox is selected.',
+    highlights: [
+      'Streamlined Invoice Taxes: Removed clutter to show only Tax % and Tax Amount',
+      'Conditional TDS Input: Unlocks TDS deduction amount field only when TDS checkbox is active',
+      'Strict Payment Currency Scoping: Enforces TDS deduction exclusively in the received payment currency'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
     id: 'cl-quarterly-unlocked-installments-input-20261120',
     date: '2026-11-20',
     formattedDate: 'Nov 20, 2026',
