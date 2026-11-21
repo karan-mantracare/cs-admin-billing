@@ -49,21 +49,51 @@ function ViewOnboardingModal({ isOpen, onClose, data }) {
           
           {/* Key SPOC */}
           <div style={{ marginBottom: '2rem' }}>
-            <h3 style={{ fontSize: '0.9rem', color: '#334155', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', marginBottom: '1rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Key SPOC</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div>
-                <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Name</p>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.keySpoc?.name || 'N/A'}</p>
+            <h3 style={{ fontSize: '0.9rem', color: '#334155', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', marginBottom: '1rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {data?.keySpocs?.length > 1 ? 'Key SPOCs' : 'Key SPOC'}
+            </h3>
+            {Array.isArray(data?.keySpocs) && data.keySpocs.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {data.keySpocs.map((spoc, idx) => (
+                  <div key={idx} style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    {data.keySpocs.length > 1 && (
+                      <div style={{ fontSize: '0.75rem', fontWeight: '700', color: idx === 0 ? '#2563eb' : '#64748b', marginBottom: '0.5rem' }}>
+                        {idx === 0 ? 'Primary SPOC' : `Key SPOC ${idx + 1}`}
+                      </div>
+                    )}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                      <div>
+                        <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Name</p>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{spoc.name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Email</p>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{spoc.email || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Contact Number</p>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{spoc.contact || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div>
-                <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Email</p>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.keySpoc?.email || 'N/A'}</p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Name</p>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.keySpoc?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Email</p>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.keySpoc?.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Contact Number</p>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.keySpoc?.contact || 'N/A'}</p>
+                </div>
               </div>
-              <div>
-                <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: '#64748b' }}>Contact Number</p>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: '500' }}>{data?.keySpoc?.contact || 'N/A'}</p>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Escalation SPOCs */}

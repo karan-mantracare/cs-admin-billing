@@ -262,14 +262,14 @@ export default function SensitiveCases() {
     try {
       const saved = localStorage.getItem('sensitive_cases_manager_referrals');
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     return INITIAL_MANAGER_REFERRALS;
   });
 
   useEffect(() => {
     try {
       localStorage.setItem('sensitive_cases_manager_referrals', JSON.stringify(managerReferrals));
-    } catch {}
+    } catch { }
   }, [managerReferrals]);
 
   // Listen for storage events so external referrals immediately show up
@@ -278,7 +278,7 @@ export default function SensitiveCases() {
       try {
         const saved = localStorage.getItem('sensitive_cases_manager_referrals');
         if (saved) setManagerReferrals(JSON.parse(saved));
-      } catch {}
+      } catch { }
     };
     window.addEventListener('storage', handleStorageUpdate);
     window.addEventListener('referrals-updated', handleStorageUpdate);
@@ -293,14 +293,14 @@ export default function SensitiveCases() {
     try {
       const saved = localStorage.getItem('sensitive_cases_critical');
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     return INITIAL_CRITICAL_CASES;
   });
 
   useEffect(() => {
     try {
       localStorage.setItem('sensitive_cases_critical', JSON.stringify(criticalCases));
-    } catch {}
+    } catch { }
   }, [criticalCases]);
 
   // Listen for storage events so CS Dashboard reported sensitive cases immediately show up
@@ -309,7 +309,7 @@ export default function SensitiveCases() {
       try {
         const saved = localStorage.getItem('sensitive_cases_critical');
         if (saved) setCriticalCases(JSON.parse(saved));
-      } catch {}
+      } catch { }
     };
     window.addEventListener('storage', handleCriticalUpdate);
     window.addEventListener('critical-cases-updated', handleCriticalUpdate);
@@ -349,7 +349,7 @@ export default function SensitiveCases() {
   const mappedDivisions = useMemo(() => {
     const all = getAllCorporateDivisions(clients);
     if (corporateFilter && corporateFilter !== 'All') {
-      const filtered = all.filter(d => 
+      const filtered = all.filter(d =>
         (d.corporateName && d.corporateName.toLowerCase() === corporateFilter.toLowerCase()) ||
         (d.clientName && d.clientName.toLowerCase() === corporateFilter.toLowerCase())
       );
@@ -670,7 +670,7 @@ export default function SensitiveCases() {
 
   return (
     <div className="page-container" style={{ padding: '1.5rem 2rem', background: '#f8fafc', minHeight: '100vh' }}>
-      
+
       {/* Toast Notification */}
       {toastMessage && (
         <div style={{
@@ -823,7 +823,7 @@ export default function SensitiveCases() {
 
       {/* Main Card with Tabs */}
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
-        
+
         {/* Navigation Tabs Header */}
         <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', padding: '0 1.25rem', background: '#fafbfc' }}>
           <button
@@ -1147,12 +1147,12 @@ export default function SensitiveCases() {
                           border: '1px solid #cbd5e1',
                           background:
                             row.status === 'In Counseling' ? '#f0fdf4' :
-                            row.status === 'Assessment Scheduled' ? '#eff6ff' :
-                            row.status === 'Closed' ? '#f8fafc' : '#fffbeb',
+                              row.status === 'Assessment Scheduled' ? '#eff6ff' :
+                                row.status === 'Closed' ? '#f8fafc' : '#fffbeb',
                           color:
                             row.status === 'In Counseling' ? '#15803d' :
-                            row.status === 'Assessment Scheduled' ? '#1d4ed8' :
-                            row.status === 'Closed' ? '#64748b' : '#b45309',
+                              row.status === 'Assessment Scheduled' ? '#1d4ed8' :
+                                row.status === 'Closed' ? '#64748b' : '#b45309',
                           cursor: 'pointer'
                         }}
                       >
@@ -1407,12 +1407,12 @@ export default function SensitiveCases() {
                             border: '1px solid #cbd5e1',
                             background:
                               row.status === 'Immediate Action Required' ? '#fee2e2' :
-                              row.status === 'Intervention Ongoing' ? '#fef3c7' :
-                              row.status === 'Stabilized & Monitored' ? '#eff6ff' : '#f0fdf4',
+                                row.status === 'Intervention Ongoing' ? '#fef3c7' :
+                                  row.status === 'Stabilized & Monitored' ? '#eff6ff' : '#f0fdf4',
                             color:
                               row.status === 'Immediate Action Required' ? '#b91c1c' :
-                              row.status === 'Intervention Ongoing' ? '#b45309' :
-                              row.status === 'Stabilized & Monitored' ? '#1d4ed8' : '#15803d',
+                                row.status === 'Intervention Ongoing' ? '#b45309' :
+                                  row.status === 'Stabilized & Monitored' ? '#1d4ed8' : '#15803d',
                             cursor: 'pointer'
                           }}
                         >
@@ -1620,7 +1620,7 @@ export default function SensitiveCases() {
                     {viewingCase.type === 'referral' ? (
                       /* Complete Manager Referral Form Details */
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        
+
                         {/* 1. Manager Information */}
                         <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                           <h5 style={{ margin: '0 0 0.75rem 0', fontSize: '0.76rem', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1703,7 +1703,7 @@ export default function SensitiveCases() {
                     ) : (
                       /* Complete Critical Case Report Form Details */
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        
+
                         {/* Inbound Call & Intake Info */}
                         <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                           <h5 style={{ margin: '0 0 0.75rem 0', fontSize: '0.76rem', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

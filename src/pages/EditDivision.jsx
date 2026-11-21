@@ -702,7 +702,8 @@ function EditDivision() {
         const parsed = JSON.parse(saved);
         setFiledData(parsed);
         setOnboardingFormState({
-          keySpoc: parsed.keySpoc || { name: '', email: '', contact: '' },
+          keySpoc: parsed.keySpoc || (parsed.keySpocs?.[0]) || { name: '', email: '', contact: '' },
+          keySpocs: parsed.keySpocs?.length ? parsed.keySpocs : (parsed.keySpoc ? [parsed.keySpoc] : [{ id: 1, name: '', email: '', contact: '' }]),
           escalationSpocs: parsed.escalationSpocs?.length ? parsed.escalationSpocs : [{ id: 1, name: '', email: '', contact: '', designation: '' }],
           billingDetails: normalizeBillingCompanies(parsed.billingDetails),
           billingSpocs: parsed.billingSpocs?.length ? parsed.billingSpocs : [{ id: 1, name: '', email: '', contact: '', department: 'Billing' }],
@@ -1294,7 +1295,8 @@ function EditDivision() {
                                   onClick={() => {
                                     if (filedData) {
                                       setOnboardingFormState({
-                                        keySpoc: filedData.keySpoc || { name: '', email: '', contact: '' },
+                                        keySpoc: filedData.keySpoc || (filedData.keySpocs?.[0]) || { name: '', email: '', contact: '' },
+                                        keySpocs: filedData.keySpocs?.length ? filedData.keySpocs : (filedData.keySpoc ? [filedData.keySpoc] : [{ id: 1, name: '', email: '', contact: '' }]),
                                         escalationSpocs: filedData.escalationSpocs?.length ? filedData.escalationSpocs : [{ id: 1, name: '', email: '', contact: '', designation: '' }],
                                         billingDetails: filedData.billingDetails || { companyName: '', gstNumber: '', address: '' },
                                         billingSpocs: filedData.billingSpocs?.length ? filedData.billingSpocs : [{ id: 1, name: '', email: '', contact: '', department: 'Billing' }],
@@ -1375,20 +1377,46 @@ function EditDivision() {
                                 </div>
                               </div>
                             ) : (
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                <div>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Name</span>
-                                  <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.keySpoc?.name || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                              onboardingFormState.keySpocs?.length > 1 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                  {onboardingFormState.keySpocs.map((spoc, sIdx) => (
+                                    <div key={sIdx} style={{ background: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
+                                      <div style={{ fontSize: '0.72rem', fontWeight: '700', color: sIdx === 0 ? '#2563eb' : '#64748b', marginBottom: '0.35rem' }}>
+                                        {sIdx === 0 ? 'Primary SPOC' : `Key SPOC ${sIdx + 1}`}
+                                      </div>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                                        <div>
+                                          <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>Name</span>
+                                          <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: '500' }}>{spoc.name || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                        </div>
+                                        <div>
+                                          <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>Email</span>
+                                          <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: '500' }}>{spoc.email || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                        </div>
+                                        <div>
+                                          <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.15rem' }}>Contact Number</span>
+                                          <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: '500' }}>{spoc.contact || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
-                                <div>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Email</span>
-                                  <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.keySpoc?.email || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                              ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                  <div>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Name</span>
+                                    <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.keySpoc?.name || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                  </div>
+                                  <div>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Email</span>
+                                    <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.keySpoc?.email || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                  </div>
+                                  <div>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Contact Number</span>
+                                    <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.keySpoc?.contact || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
+                                  </div>
                                 </div>
-                                <div>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Contact Number</span>
-                                  <span style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: '500' }}>{onboardingFormState.keySpoc?.contact || <em style={{ color: '#94a3b8' }}>Not provided</em>}</span>
-                                </div>
-                              </div>
+                              )
                             )}
                           </div>
 

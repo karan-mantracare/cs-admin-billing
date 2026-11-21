@@ -42,8 +42,18 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
 
   const [formData, setFormData] = useState(() => {
     const initialCompany = getInitialCompany();
+    let initialKeySpocs = [];
+    if (Array.isArray(initialData.keySpocs) && initialData.keySpocs.length > 0) {
+      initialKeySpocs = initialData.keySpocs.map((s, idx) => ({ id: s.id || (Date.now() + idx), ...s }));
+    } else if (initialData.keySpoc && (initialData.keySpoc.name || initialData.keySpoc.email || initialData.keySpoc.contact)) {
+      initialKeySpocs = [{ id: Date.now(), name: initialData.keySpoc.name || '', email: initialData.keySpoc.email || '', contact: initialData.keySpoc.contact || '', designation: initialData.keySpoc.designation || '' }];
+    } else {
+      initialKeySpocs = [{ id: Date.now(), name: '', email: '', contact: '', designation: '' }];
+    }
+
     return {
-      keySpoc: initialData.keySpoc || { name: '', email: '', contact: '' },
+      keySpocs: initialKeySpocs,
+      keySpoc: initialKeySpocs[0] || { name: '', email: '', contact: '', designation: '' },
       escalationSpocs: initialData.escalationSpocs?.length ? initialData.escalationSpocs : [{ id: Date.now(), name: '', email: '', contact: '', designation: '' }],
       billingDetails: {
         companies: [initialCompany],
@@ -72,6 +82,8 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
     
     const dataToSave = {
       ...formData,
+      keySpocs: formData.keySpocs,
+      keySpoc: formData.keySpocs[0] || formData.keySpoc || { name: '', email: '', contact: '' },
       submittedAt: new Date().toISOString()
     };
     
@@ -86,9 +98,54 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
   };
 
   // State Updaters
+  const handleKeySpocFieldChange = (id, field, value) => {
+    setFormData(prev => {
+      const updatedList = prev.keySpocs.map(spoc => spoc.id === id ? { ...spoc, [field]: value } : spoc);
+      return {
+        ...prev,
+        keySpocs: updatedList,
+        keySpoc: updatedList[0] || { name: '', email: '', contact: '' }
+      };
+    });
+  };
+
+  const addKeySpoc = () => {
+    setFormData(prev => {
+      const newSpoc = { id: Date.now(), name: '', email: '', contact: '', designation: '' };
+      const updatedList = [...prev.keySpocs, newSpoc];
+      return {
+        ...prev,
+        keySpocs: updatedList,
+        keySpoc: updatedList[0] || newSpoc
+      };
+    });
+  };
+
+  const removeKeySpoc = (id) => {
+    setFormData(prev => {
+      const filtered = prev.keySpocs.filter(spoc => spoc.id !== id);
+      const updatedList = filtered.length > 0 ? filtered : [{ id: Date.now(), name: '', email: '', contact: '', designation: '' }];
+      return {
+        ...prev,
+        keySpocs: updatedList,
+        keySpoc: updatedList[0]
+      };
+    });
+  };
+
   const handleKeySpocChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, keySpoc: { ...prev.keySpoc, [name]: value } }));
+    setFormData(prev => {
+      const updatedSpoc = { ...prev.keySpoc, [name]: value };
+      const updatedList = prev.keySpocs.length > 0
+        ? prev.keySpocs.map((s, idx) => idx === 0 ? { ...s, [name]: value } : s)
+        : [{ id: Date.now(), ...updatedSpoc }];
+      return {
+        ...prev,
+        keySpoc: updatedSpoc,
+        keySpocs: updatedList
+      };
+    });
   };
 
   const handleEscalationSpocChange = (id, field, value) => {
@@ -164,21 +221,99 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
       case 1:
         return (
           <div className="wizard-step animate-fade-in" style={{ padding: '1rem 0' }}>
-            <h2 style={{ color: '#0f172a', marginBottom: '0.5rem', fontSize: '14px', fontWeight: '600' }}>Key Contact Details</h2>
-            <p style={{ color: '#64748b', marginBottom: '1rem' }}>Please provide the <strong>primary point of contact (POC)</strong>.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <h2 style={{ color: '#0f172a', marginBottom: '0.25rem', fontSize: '14px', fontWeight: '600' }}>Key Contact Details</h2>
+                <p style={{ color: '#64748b', margin: 0, fontSize: '11px' }}>
+                  Please provide the primary point of contact (POC) and any additional key SPOCs.
+                </p>
+              </div>
+              <button 
+                type="button"
+                onClick={addKeySpoc} 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.4rem', 
+                  padding: '0.4rem 0.75rem', 
+                  background: '#f1f5f9', 
+                  border: '1px solid #cbd5e1', 
+                  borderRadius: '6px', 
+                  color: '#0f172a', 
+                  cursor: 'pointer', 
+                  fontWeight: '600', 
+                  fontSize: '11px',
+                  transition: 'all 0.2s' 
+                }} 
+                className="hover:bg-slate-200"
+              >
+                <i className='bx bx-plus' style={{ fontSize: '14px' }}></i> Add SPOC
+              </button>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Full Name</label>
-                <input type="text" name="name" value={formData.keySpoc.name} onChange={handleKeySpocChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '10px', outline: 'none' }} placeholder="e.g. Jane Doe" />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Email Address</label>
-                <input type="email" name="email" value={formData.keySpoc.email} onChange={handleKeySpocChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '10px', outline: 'none' }} placeholder="jane.doe@company.com" />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Contact Number</label>
-                <input type="text" name="contact" value={formData.keySpoc.contact} onChange={handleKeySpocChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '10px', outline: 'none' }} placeholder="+1 (555) 000-0000" />
-              </div>
+              {formData.keySpocs.map((spoc, index) => (
+                <div key={spoc.id} style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #e2e8f0', position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ 
+                        background: index === 0 ? '#eff6ff' : '#f1f5f9', 
+                        color: index === 0 ? '#2563eb' : '#475569', 
+                        fontSize: '9px', 
+                        fontWeight: '700', 
+                        padding: '0.15rem 0.45rem', 
+                        borderRadius: '4px',
+                        textTransform: 'uppercase'
+                      }}>
+                        {index === 0 ? 'Primary SPOC' : `Key SPOC ${index + 1}`}
+                      </span>
+                    </div>
+                    {formData.keySpocs.length > 1 && (
+                      <button 
+                        type="button"
+                        onClick={() => removeKeySpoc(spoc.id)} 
+                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '11px', fontWeight: '500' }}
+                        title="Remove SPOC"
+                      >
+                        <i className='bx bx-trash' style={{ fontSize: '13px' }}></i> Remove
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Full Name <span style={{ color: '#ef4444' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        value={spoc.name || ''} 
+                        onChange={(e) => handleKeySpocFieldChange(spoc.id, 'name', e.target.value)} 
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }} 
+                        placeholder="e.g. Jane Doe" 
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Email Address <span style={{ color: '#ef4444' }}>*</span></label>
+                      <input 
+                        type="email" 
+                        value={spoc.email || ''} 
+                        onChange={(e) => handleKeySpocFieldChange(spoc.id, 'email', e.target.value)} 
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }} 
+                        placeholder="jane.doe@company.com" 
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Contact Number</label>
+                      <input 
+                        type="text" 
+                        value={spoc.contact || ''} 
+                        onChange={(e) => handleKeySpocFieldChange(spoc.id, 'contact', e.target.value)} 
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }} 
+                        placeholder="+1 (555) 000-0000" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         );

@@ -1,5 +1,23 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-client-onboarding-multiple-spocs-20261121',
+    date: '2026-11-21',
+    formattedDate: 'Nov 21, 2026',
+    page: 'Client Onboarding',
+    subPage: 'Step 1: Key SPOC / Multiple SPOC Management',
+    summary: 'Added option to add multiple Key SPOCs in Step 1 of Client Onboarding Wizard',
+    details: 'Enhanced Step 1 (Key SPOC) of the MantraCare Client Onboarding Wizard to support adding multiple points of contact with a dedicated "+ Add SPOC" action, primary/secondary contact badges, removal controls, and clean responsive layout. Synchronized data across Onboarding Filing, View Onboarding modal, Cadence Division utilities, and Division Edit view with backward compatibility.',
+    plainLanguage: 'Clients and administrators can now add multiple Key SPOCs during onboarding rather than just a single contact, with full viewing and editing support across all dashboards.',
+    highlights: [
+      '+ Add SPOC Action: One-click addition of multiple Key SPOC contact cards in Step 1',
+      'Primary & Key SPOC Badges: First contact automatically designated as Primary SPOC',
+      'Remove SPOC Control: Clean removal with confirmation safeguard ensuring at least one primary contact remains',
+      'Universal Persistence: Saved contacts immediately reflect in Onboarding view modal and Division management'
+    ],
+    path: '/client-onboarding/1',
+    linkText: 'Client Onboarding'
+  },
+  {
     id: 'cl-sensitive-cases-portal-and-hotline-intake-20261121',
     date: '2026-11-21',
     formattedDate: 'Nov 21, 2026',

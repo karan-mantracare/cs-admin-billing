@@ -13,7 +13,7 @@ export default function CsHome() {
     try {
       const stored = localStorage.getItem('logged_in_user');
       if (stored) return JSON.parse(stored);
-    } catch {}
+    } catch { }
     return { name: 'Karan', company: 'TechCorp Solutions' };
   });
 
@@ -58,7 +58,7 @@ export default function CsHome() {
   // Extract divisions mapped to the active company / user
   const mappedDivisions = useMemo(() => {
     const all = getAllCorporateDivisions(clients);
-    const matched = all.filter(d => 
+    const matched = all.filter(d =>
       (d.corporateName && d.corporateName.toLowerCase() === userCompany.toLowerCase()) ||
       (d.clientName && d.clientName.toLowerCase() === userCompany.toLowerCase())
     );
@@ -313,7 +313,7 @@ export default function CsHome() {
 
   return (
     <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: '4rem' }}>
-      
+
       {/* Toast Notification */}
       {toastMessage && (
         <div style={{
@@ -340,7 +340,7 @@ export default function CsHome() {
 
       {/* Main Content Container */}
       <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '1.75rem 2rem' }}>
-        
+
         {/* Top Hero Banner */}
         <div style={{
           background: 'linear-gradient(135deg, #01437d 0%, #026bb4 50%, #0284c7 100%)',
@@ -678,14 +678,14 @@ export default function CsHome() {
                 transition: 'all 0.2s ease',
                 zIndex: 2
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.08)';
-                e.currentTarget.style.background = '#0f172a';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.background = 'rgba(15, 23, 42, 0.85)';
-              }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.08)';
+                  e.currentTarget.style.background = '#0f172a';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.background = 'rgba(15, 23, 42, 0.85)';
+                }}
               >
                 <i className='bx bx-play' style={{ marginLeft: '3px' }}></i>
               </div>
@@ -696,7 +696,7 @@ export default function CsHome() {
         {/* Section 3: SUPPORT / Frequently Asked Questions */}
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.2fr', gap: '2.5rem', alignItems: 'flex-start' }}>
-            
+
             {/* Left FAQ Intro */}
             <div>
               <span style={{
@@ -1004,7 +1004,7 @@ export default function CsHome() {
 
             {/* Modal Form */}
             <form onSubmit={handleReportSubmit} style={{ padding: '1.5rem' }}>
-              
+
               {/* Top Row: Source Selection Radio */}
               <div style={{
                 marginBottom: '1.15rem',

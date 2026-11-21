@@ -320,22 +320,28 @@ export function getDivisionOnboardingDetails(division) {
   const seenSpocEmails = new Set();
 
   if (onboardingRecord) {
-    // 1. Key SPOC from Division Onboarding Form
-    if (onboardingRecord.keySpoc && onboardingRecord.keySpoc.email) {
-      const email = onboardingRecord.keySpoc.email.trim();
-      const normEmail = email.toLowerCase();
-      if (isValidEmail(email) && !seenSpocEmails.has(normEmail)) {
-        seenSpocEmails.add(normEmail);
-        spocs.push({
-          id: 'spoc_div_key',
-          name: onboardingRecord.keySpoc.name?.trim() || `${divName} Key SPOC`,
-          email: email,
-          role: 'Key SPOC (Division Onboarding)',
-          phone: onboardingRecord.keySpoc.contact || '',
-          source: 'Division Onboarding'
-        });
+    // 1. Key SPOC(s) from Division Onboarding Form
+    const keySpocList = Array.isArray(onboardingRecord.keySpocs) && onboardingRecord.keySpocs.length > 0
+      ? onboardingRecord.keySpocs
+      : (onboardingRecord.keySpoc ? [onboardingRecord.keySpoc] : []);
+
+    keySpocList.forEach((kSpoc, kIdx) => {
+      if (kSpoc && kSpoc.email) {
+        const email = kSpoc.email.trim();
+        const normEmail = email.toLowerCase();
+        if (isValidEmail(email) && !seenSpocEmails.has(normEmail)) {
+          seenSpocEmails.add(normEmail);
+          spocs.push({
+            id: `spoc_div_key_${kIdx}`,
+            name: kSpoc.name?.trim() || `${divName} Key SPOC`,
+            email: email,
+            role: kIdx === 0 ? 'Key SPOC (Division Onboarding)' : `Key SPOC ${kIdx + 1} (Division Onboarding)`,
+            phone: kSpoc.contact || '',
+            source: 'Division Onboarding'
+          });
+        }
       }
-    }
+    });
 
     // 2. Escalation SPOCs from Division Onboarding Form
     if (Array.isArray(onboardingRecord.escalationSpocs)) {

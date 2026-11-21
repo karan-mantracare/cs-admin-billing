@@ -76,7 +76,7 @@ The platform provides end-to-end tooling for enterprise healthcare and wellness 
 ### 5. Corporate Accounts & Divisions (`/corporate`)
 - Multi-tier corporate entity structure supporting parent enterprises and independent regional/functional divisions.
 - Contract attribution mapping orders to multiple contract scopes with independent currency, start/end dates, and billing terms.
-- Automated client onboarding wizard (`/client-onboarding`) capturing HR contacts, company details, and service scopes.
+- Automated client onboarding wizard (`/client-onboarding`) capturing multiple Key SPOCs (with primary contact attribution), escalation matrices, registered billing entities, finance contacts, and delivery expectations.
 
 ### 6. Financial Operations & Profitability (`/expense-approval`, `/expense-tracker`)
 - **Expense Approval Queue**: Validates trainer claims, verifies session completion, compares actual cost against pre-authorized budget, and records manager sign-offs.
