@@ -462,6 +462,7 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
                           <option value="Billing">Billing Only (Invoices)</option>
                           <option value="Payment">Payment Only (Remittances)</option>
                           <option value="Both">Both (Billing & Payment)</option>
+                          <option value="Procurement">Procurement</option>
                         </select>
                         <i className='bx bx-chevron-down' style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }}></i>
                       </div>
