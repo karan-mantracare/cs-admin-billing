@@ -1706,71 +1706,55 @@ function ClientPayments() {
                       </div>
                     </div>
 
-                    {/* Row 3: Tax Details | Tax % & Tax Amount */}
+                    {/* Row 3: Tax % | Tax Amount */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                       <div>
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
-                          Tax Details
+                          Tax %
                         </label>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. GSTIN / VAT / Tax ID" 
-                          style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
-                          value={invoiceForm.taxDetails}
-                          onChange={(e) => setInvoiceForm(prev => ({ ...prev, taxDetails: e.target.value }))}
-                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                          onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
-                        />
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.25fr', gap: '0.6rem' }}>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
-                            Tax %
-                          </label>
-                          <div style={{ position: 'relative' }}>
-                            <input 
-                              type="number" 
-                              step="0.01"
-                              min="0"
-                              max="100"
-                              placeholder="18" 
-                              style={{ width: '100%', padding: '0.65rem 1.4rem 0.65rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
-                              value={invoiceForm.taxPercent}
-                              onChange={(e) => {
-                                const pct = e.target.value;
-                                const base = Number(payment.baseAmountDue !== undefined ? payment.baseAmountDue : (payment.amountDue || 0));
-                                const calculatedTax = pct !== '' && base > 0 ? Number(((base * Number(pct)) / 100).toFixed(2)) : '';
-                                setInvoiceForm(prev => ({ ...prev, taxPercent: pct, taxAmount: calculatedTax }));
-                              }}
-                              onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                              onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
-                            />
-                            <span style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontSize: '0.8rem', fontWeight: '600', pointerEvents: 'none' }}>
-                              %
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
-                            Tax Amount <span style={{ color: '#94a3b8', fontSize: '0.72rem', fontWeight: '400' }}>({payment.currency || 'USD'})</span>
-                          </label>
+                        <div style={{ position: 'relative' }}>
                           <input 
                             type="number" 
                             step="0.01"
                             min="0"
-                            placeholder="e.g. 72" 
-                            style={{ width: '100%', padding: '0.65rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
-                            value={invoiceForm.taxAmount}
+                            max="100"
+                            placeholder="e.g. 18" 
+                            style={{ width: '100%', padding: '0.65rem 1.8rem 0.65rem 0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
+                            value={invoiceForm.taxPercent}
                             onChange={(e) => {
-                              const amt = e.target.value;
+                              const pct = e.target.value;
                               const base = Number(payment.baseAmountDue !== undefined ? payment.baseAmountDue : (payment.amountDue || 0));
-                              const calculatedPct = amt !== '' && base > 0 ? Number(((Number(amt) / base) * 100).toFixed(2)) : '';
-                              setInvoiceForm(prev => ({ ...prev, taxAmount: amt, taxPercent: calculatedPct }));
+                              const calculatedTax = pct !== '' && base > 0 ? Number(((base * Number(pct)) / 100).toFixed(2)) : '';
+                              setInvoiceForm(prev => ({ ...prev, taxPercent: pct, taxAmount: calculatedTax }));
                             }}
                             onFocus={(e) => e.target.style.borderColor = '#2563eb'}
                             onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                           />
+                          <span style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontSize: '0.85rem', fontWeight: '600', pointerEvents: 'none' }}>
+                            %
+                          </span>
                         </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                          Tax Amount <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: '400' }}>({payment.currency || 'USD'})</span>
+                        </label>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          min="0"
+                          placeholder="e.g. 72" 
+                          style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
+                          value={invoiceForm.taxAmount}
+                          onChange={(e) => {
+                            const amt = e.target.value;
+                            const base = Number(payment.baseAmountDue !== undefined ? payment.baseAmountDue : (payment.amountDue || 0));
+                            const calculatedPct = amt !== '' && base > 0 ? Number(((Number(amt) / base) * 100).toFixed(2)) : '';
+                            setInvoiceForm(prev => ({ ...prev, taxAmount: amt, taxPercent: calculatedPct }));
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                        />
                       </div>
                     </div>
                   </div>
