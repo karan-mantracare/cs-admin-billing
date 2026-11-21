@@ -11,6 +11,8 @@ const steps = [
 function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [stepError, setStepError] = useState('');
   const getInitialCompany = () => {
     if (initialData.billingDetails?.companyName) {
       return {
@@ -88,16 +90,83 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
 
   const progressPercentage = ((currentStep) / steps.length) * 100;
 
+  const validateStep1 = () => {
+    const primarySpoc = formData.keySpocs.find(s => s.spocType === 'Primary SPOC') || formData.keySpocs[0];
+    const newErrors = {};
+
+    if (!primarySpoc?.name?.trim()) {
+      newErrors[`spoc_${primarySpoc?.id}_name`] = 'Full Name is required';
+    }
+    if (!primarySpoc?.email?.trim()) {
+      newErrors[`spoc_${primarySpoc?.id}_email`] = 'Email Address is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(primarySpoc.email.trim())) {
+      newErrors[`spoc_${primarySpoc?.id}_email`] = 'Please enter a valid email address';
+    }
+    if (!primarySpoc?.contact?.trim()) {
+      newErrors[`spoc_${primarySpoc?.id}_contact`] = 'Contact Number is required';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setStepError('Please fill in all required Primary SPOC details (Full Name, Email Address, and Contact Number).');
+      return false;
+    }
+
+    setErrors({});
+    setStepError('');
+    return true;
+  };
+
+  const validateStep3 = () => {
+    const billing = formData.billingDetails || {};
+    const newErrors = {};
+
+    if (!billing.companyName?.trim()) {
+      newErrors['billing_companyName'] = 'Company Name (Legal) is required';
+    }
+    if (!billing.gstNumber?.trim()) {
+      newErrors['billing_gstNumber'] = 'GST / Tax / VAT Number is required';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setStepError('Please fill in required Billing Company information (Company Name and GST/Tax Number).');
+      return false;
+    }
+
+    setErrors({});
+    setStepError('');
+    return true;
+  };
+
   const handleNext = () => {
+    if (currentStep === 1) {
+      if (!validateStep1()) return;
+    } else if (currentStep === 3) {
+      if (!validateStep3()) return;
+    }
+
+    setErrors({});
+    setStepError('');
     if (currentStep < steps.length) setCurrentStep(prev => prev + 1);
   };
 
   const handleBack = () => {
+    setErrors({});
+    setStepError('');
     if (currentStep > 1) setCurrentStep(prev => prev - 1);
   };
 
   const handleSubmit = () => {
-    // Submit logic goes here
+    if (!validateStep1()) {
+      setCurrentStep(1);
+      return;
+    }
+    if (!validateStep3()) {
+      setCurrentStep(3);
+      return;
+    }
+
     setIsSubmitted(true);
     
     const primaryContact = formData.keySpocs.find(s => s.spocType === 'Primary SPOC') || formData.keySpocs[0] || formData.keySpoc || { name: '', email: '', contact: '' };
@@ -121,6 +190,15 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
 
   // State Updaters
   const handleKeySpocFieldChange = (id, field, value) => {
+    if (stepError) setStepError('');
+    if (errors[`spoc_${id}_${field}`]) {
+      setErrors(prev => {
+        const copy = { ...prev };
+        delete copy[`spoc_${id}_${field}`];
+        return copy;
+      });
+    }
+
     setFormData(prev => {
       let updatedList = prev.keySpocs.map(spoc => spoc.id === id ? { ...spoc, [field]: value } : spoc);
       
@@ -206,6 +284,15 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
   };
 
   const handleBillingFieldChange = (field, value) => {
+    if (stepError) setStepError('');
+    if (errors[`billing_${field}`]) {
+      setErrors(prev => {
+        const copy = { ...prev };
+        delete copy[`billing_${field}`];
+        return copy;
+      });
+    }
+
     setFormData(prev => {
       const updated = {
         ...prev.billingDetails,
@@ -257,11 +344,29 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
       case 1:
         return (
           <div className="wizard-step animate-fade-in" style={{ padding: '1rem 0' }}>
+            {stepError && currentStep === 1 && (
+              <div style={{
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#b91c1c',
+                padding: '0.65rem 0.85rem',
+                borderRadius: '8px',
+                marginBottom: '1rem',
+                fontSize: '11px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <i className='bx bx-error-circle' style={{ fontSize: '1.1rem', color: '#ef4444' }}></i>
+                <span>{stepError}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
               <div>
                 <h2 style={{ color: '#0f172a', marginBottom: '0.25rem', fontSize: '14px', fontWeight: '600' }}>Key Contact Details</h2>
                 <p style={{ color: '#64748b', margin: 0, fontSize: '11px' }}>
-                  Please provide the primary point of contact (POC) and any additional key SPOCs.
+                  Please provide the primary point of contact (POC) and any additional key SPOCs. <span style={{ color: '#dc2626', fontWeight: '500' }}>(Primary SPOC info is required)</span>
                 </p>
               </div>
               <button 
@@ -288,116 +393,171 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {formData.keySpocs.map((spoc, index) => (
-                <div key={spoc.id} style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #e2e8f0', position: 'relative' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <div style={{ display: 'inline-flex', background: '#e2e8f0', padding: '2px', borderRadius: '6px', gap: '2px' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleKeySpocFieldChange(spoc.id, 'spocType', 'Primary SPOC')}
-                          style={{
-                            padding: '0.2rem 0.6rem',
-                            fontSize: '10px',
-                            fontWeight: '700',
-                            borderRadius: '4px',
-                            border: 'none',
-                            background: (spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Primary SPOC' ? '#2563eb' : 'transparent',
-                            color: (spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Primary SPOC' ? '#ffffff' : '#475569',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            transition: 'all 0.15s'
-                          }}
-                        >
-                          <i className='bx bx-star'></i> Primary SPOC
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleKeySpocFieldChange(spoc.id, 'spocType', 'Secondary SPOC')}
-                          style={{
-                            padding: '0.2rem 0.6rem',
-                            fontSize: '10px',
-                            fontWeight: '700',
-                            borderRadius: '4px',
-                            border: 'none',
-                            background: (spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Secondary SPOC' ? '#0f172a' : 'transparent',
-                            color: (spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Secondary SPOC' ? '#ffffff' : '#475569',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            transition: 'all 0.15s'
-                          }}
-                        >
-                          <i className='bx bx-user'></i> Secondary SPOC
-                        </button>
-                      </div>
-                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '500' }}>
-                        (Contact #{index + 1})
-                      </span>
-                    </div>
-                    {formData.keySpocs.length > 1 && (
-                      <button 
-                        type="button"
-                        onClick={() => removeKeySpoc(spoc.id)} 
-                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '11px', fontWeight: '500' }}
-                        title="Remove SPOC"
-                      >
-                        <i className='bx bx-trash' style={{ fontSize: '13px' }}></i> Remove
-                      </button>
-                    )}
-                  </div>
+              {formData.keySpocs.map((spoc, index) => {
+                const isPrimary = (spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')) === 'Primary SPOC';
+                const nameErr = isPrimary ? errors[`spoc_${spoc.id}_name`] : null;
+                const emailErr = isPrimary ? errors[`spoc_${spoc.id}_email`] : null;
+                const contactErr = isPrimary ? errors[`spoc_${spoc.id}_contact`] : null;
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>SPOC Designation / Role</label>
-                      <div style={{ position: 'relative' }}>
-                        <select 
-                          value={spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')} 
-                          onChange={(e) => handleKeySpocFieldChange(spoc.id, 'spocType', e.target.value)}
-                          style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', appearance: 'none', background: 'white', boxSizing: 'border-box' }}
+                return (
+                  <div key={spoc.id} style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '12px', border: (nameErr || emailErr || contactErr) ? '1.5px solid #fca5a5' : '1px solid #e2e8f0', position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <div style={{ display: 'inline-flex', background: '#e2e8f0', padding: '2px', borderRadius: '6px', gap: '2px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleKeySpocFieldChange(spoc.id, 'spocType', 'Primary SPOC')}
+                            style={{
+                              padding: '0.2rem 0.6rem',
+                              fontSize: '10px',
+                              fontWeight: '700',
+                              borderRadius: '4px',
+                              border: isPrimary ? 'none' : 'none',
+                              background: isPrimary ? '#2563eb' : 'transparent',
+                              color: isPrimary ? '#ffffff' : '#475569',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            <i className='bx bx-star'></i> Primary SPOC
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleKeySpocFieldChange(spoc.id, 'spocType', 'Secondary SPOC')}
+                            style={{
+                              padding: '0.2rem 0.6rem',
+                              fontSize: '10px',
+                              fontWeight: '700',
+                              borderRadius: '4px',
+                              border: 'none',
+                              background: !isPrimary ? '#0f172a' : 'transparent',
+                              color: !isPrimary ? '#ffffff' : '#475569',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            <i className='bx bx-user'></i> Secondary SPOC
+                          </button>
+                        </div>
+                        <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '500' }}>
+                          (Contact #{index + 1})
+                        </span>
+                      </div>
+                      {formData.keySpocs.length > 1 && (
+                        <button 
+                          type="button"
+                          onClick={() => removeKeySpoc(spoc.id)} 
+                          style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '11px', fontWeight: '500' }}
+                          title="Remove SPOC"
                         >
-                          <option value="Primary SPOC">Primary SPOC</option>
-                          <option value="Secondary SPOC">Secondary SPOC</option>
-                        </select>
-                        <i className='bx bx-chevron-down' style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }}></i>
+                          <i className='bx bx-trash' style={{ fontSize: '13px' }}></i> Remove
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>SPOC Designation / Role</label>
+                        <div style={{ position: 'relative' }}>
+                          <select 
+                            value={spoc.spocType || (index === 0 ? 'Primary SPOC' : 'Secondary SPOC')} 
+                            onChange={(e) => handleKeySpocFieldChange(spoc.id, 'spocType', e.target.value)}
+                            style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', appearance: 'none', background: 'white', boxSizing: 'border-box' }}
+                          >
+                            <option value="Primary SPOC">Primary SPOC</option>
+                            <option value="Secondary SPOC">Secondary SPOC</option>
+                          </select>
+                          <i className='bx bx-chevron-down' style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }}></i>
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>
+                          Full Name {isPrimary && <span style={{ color: '#ef4444' }}>*</span>}
+                        </label>
+                        <input 
+                          type="text" 
+                          value={spoc.name || ''} 
+                          onChange={(e) => handleKeySpocFieldChange(spoc.id, 'name', e.target.value)} 
+                          style={{ 
+                            width: '100%', 
+                            padding: '0.5rem', 
+                            borderRadius: '6px', 
+                            border: nameErr ? '1.5px solid #ef4444' : '1px solid #cbd5e1', 
+                            background: nameErr ? '#fffafa' : '#ffffff',
+                            fontSize: '11px', 
+                            outline: 'none', 
+                            boxSizing: 'border-box' 
+                          }} 
+                          placeholder="e.g. Jane Doe" 
+                        />
+                        {nameErr && (
+                          <span style={{ color: '#ef4444', fontSize: '10px', marginTop: '0.2rem', display: 'block' }}>
+                            {nameErr}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>
+                          Email Address {isPrimary && <span style={{ color: '#ef4444' }}>*</span>}
+                        </label>
+                        <input 
+                          type="email" 
+                          value={spoc.email || ''} 
+                          onChange={(e) => handleKeySpocFieldChange(spoc.id, 'email', e.target.value)} 
+                          style={{ 
+                            width: '100%', 
+                            padding: '0.5rem', 
+                            borderRadius: '6px', 
+                            border: emailErr ? '1.5px solid #ef4444' : '1px solid #cbd5e1', 
+                            background: emailErr ? '#fffafa' : '#ffffff',
+                            fontSize: '11px', 
+                            outline: 'none', 
+                            boxSizing: 'border-box' 
+                          }} 
+                          placeholder="jane.doe@company.com" 
+                        />
+                        {emailErr && (
+                          <span style={{ color: '#ef4444', fontSize: '10px', marginTop: '0.2rem', display: 'block' }}>
+                            {emailErr}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>
+                          Contact Number {isPrimary && <span style={{ color: '#ef4444' }}>*</span>}
+                        </label>
+                        <input 
+                          type="text" 
+                          value={spoc.contact || ''} 
+                          onChange={(e) => handleKeySpocFieldChange(spoc.id, 'contact', e.target.value)} 
+                          style={{ 
+                            width: '100%', 
+                            padding: '0.5rem', 
+                            borderRadius: '6px', 
+                            border: contactErr ? '1.5px solid #ef4444' : '1px solid #cbd5e1', 
+                            background: contactErr ? '#fffafa' : '#ffffff',
+                            fontSize: '11px', 
+                            outline: 'none', 
+                            boxSizing: 'border-box' 
+                          }} 
+                          placeholder="+1 (555) 000-0000" 
+                        />
+                        {contactErr && (
+                          <span style={{ color: '#ef4444', fontSize: '10px', marginTop: '0.2rem', display: 'block' }}>
+                            {contactErr}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Full Name <span style={{ color: '#ef4444' }}>*</span></label>
-                      <input 
-                        type="text" 
-                        value={spoc.name || ''} 
-                        onChange={(e) => handleKeySpocFieldChange(spoc.id, 'name', e.target.value)} 
-                        style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }} 
-                        placeholder="e.g. Jane Doe" 
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Email Address <span style={{ color: '#ef4444' }}>*</span></label>
-                      <input 
-                        type="email" 
-                        value={spoc.email || ''} 
-                        onChange={(e) => handleKeySpocFieldChange(spoc.id, 'email', e.target.value)} 
-                        style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }} 
-                        placeholder="jane.doe@company.com" 
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Contact Number</label>
-                      <input 
-                        type="text" 
-                        value={spoc.contact || ''} 
-                        onChange={(e) => handleKeySpocFieldChange(spoc.id, 'contact', e.target.value)} 
-                        style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }} 
-                        placeholder="+1 (555) 000-0000" 
-                      />
-                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );
@@ -452,12 +612,32 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
         const billing = formData.billingDetails || {};
         return (
           <div className="wizard-step animate-fade-in" style={{ padding: '1rem 0' }}>
+            {stepError && currentStep === 3 && (
+              <div style={{
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#b91c1c',
+                padding: '0.65rem 0.85rem',
+                borderRadius: '8px',
+                marginBottom: '1rem',
+                fontSize: '11px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <i className='bx bx-error-circle' style={{ fontSize: '1.1rem', color: '#ef4444' }}></i>
+                <span>{stepError}</span>
+              </div>
+            )}
             <div style={{ marginBottom: '1.25rem' }}>
               <h2 style={{ color: '#0f172a', marginBottom: '0.25rem', fontSize: '14px', fontWeight: '600' }}>Company Information / Billing Details</h2>
-              <p style={{ color: '#64748b', fontSize: '11px', margin: 0 }}>Provide the registered company legal entity for invoicing and contracts.</p>
+              <p style={{ color: '#64748b', fontSize: '11px', margin: 0 }}>
+                Provide the registered company legal entity for invoicing and contracts. <span style={{ color: '#dc2626', fontWeight: '500' }}>(Company info is required)</span>
+              </p>
             </div>
             
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: (errors['billing_companyName'] || errors['billing_gstNumber']) ? '1.5px solid #fca5a5' : '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
                 <span style={{ 
                   background: '#dbeafe', 
@@ -482,9 +662,23 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
                     type="text" 
                     value={billing.companyName || ''} 
                     onChange={(e) => handleBillingFieldChange('companyName', e.target.value)} 
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }} 
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.5rem', 
+                      borderRadius: '6px', 
+                      border: errors['billing_companyName'] ? '1.5px solid #ef4444' : '1px solid #cbd5e1', 
+                      background: errors['billing_companyName'] ? '#fffafa' : '#ffffff',
+                      fontSize: '11px', 
+                      outline: 'none', 
+                      boxSizing: 'border-box' 
+                    }} 
                     placeholder="e.g. MantraCare Inc." 
                   />
+                  {errors['billing_companyName'] && (
+                    <span style={{ color: '#ef4444', fontSize: '10px', marginTop: '0.2rem', display: 'block' }}>
+                      {errors['billing_companyName']}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>GST / Tax Number / VAT Number <span style={{ color: '#ef4444' }}>*</span></label>
@@ -492,9 +686,23 @@ function ClientOnboardingWizard({ onClose, onSuccess, initialData = {} }) {
                     type="text" 
                     value={billing.gstNumber || ''} 
                     onChange={(e) => handleBillingFieldChange('gstNumber', e.target.value)} 
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }} 
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.5rem', 
+                      borderRadius: '6px', 
+                      border: errors['billing_gstNumber'] ? '1.5px solid #ef4444' : '1px solid #cbd5e1', 
+                      background: errors['billing_gstNumber'] ? '#fffafa' : '#ffffff',
+                      fontSize: '11px', 
+                      outline: 'none', 
+                      boxSizing: 'border-box' 
+                    }} 
                     placeholder="Enter tax / VAT ID" 
                   />
+                  {errors['billing_gstNumber'] && (
+                    <span style={{ color: '#ef4444', fontSize: '10px', marginTop: '0.2rem', display: 'block' }}>
+                      {errors['billing_gstNumber']}
+                    </span>
+                  )}
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '10px', color: '#475569', fontWeight: '500' }}>Registered Address</label>

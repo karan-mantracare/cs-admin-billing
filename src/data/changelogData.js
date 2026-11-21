@@ -4,16 +4,16 @@ export const CHANGELOG_DATA = [
     date: '2026-11-21',
     formattedDate: 'Nov 21, 2026',
     page: 'Client Onboarding',
-    subPage: 'Step 1 & 4: Multi-SPOC Designation (Primary & Secondary) & Procurement Focus',
-    summary: 'Added Primary SPOC vs Secondary SPOC designation options for multiple SPOCs, and Procurement focus in Step 4',
-    details: 'Enhanced Step 1 (Key SPOC) of the MantraCare Client Onboarding Wizard to support adding multiple points of contact with explicit Primary SPOC vs Secondary SPOC selection via interactive toggle pills and role dropdowns. Added "Procurement" department focus option in Step 4 (Payment SPOC) below "Both (Billing & Payment)". Synchronized data across Onboarding Filing, View Onboarding modal, Cadence Division utilities, and Division Edit view with backward compatibility.',
-    plainLanguage: 'Users can now designate contacts as either Primary SPOC or Secondary SPOC when adding multiple contacts during onboarding, and select Procurement as Department Focus for billing contacts.',
+    subPage: 'Step 1 & 3: Mandatory Primary SPOC & Billing Company Validation',
+    summary: 'Enforced required validation for Primary SPOC details and Billing Company information',
+    details: 'Enforced mandatory validation in Step 1 (Key SPOC) requiring Primary SPOC Full Name, valid Email Address, and Contact Number, and in Step 3 (Billing Details) requiring Company Legal Name and Tax/GST Number. Users cannot proceed to the next step or submit without completing these required fields, with clear error banners, red border highlights, and real-time field error clearance.',
+    plainLanguage: 'Added required validation checks for Primary SPOC information (name, email, phone) and registered billing company details (company name, tax number) before users can proceed or submit onboarding.',
     highlights: [
-      '+ Add SPOC Action: One-click addition of multiple Key SPOC contact cards in Step 1',
-      'Primary vs Secondary SPOC Designation: Interactive toggle pills and dropdown to classify each contact as Primary SPOC or Secondary SPOC',
-      'Department Focus: Added "Procurement" dropdown option in Step 4 for billing contacts',
-      'Remove SPOC Control: Clean removal with confirmation safeguard ensuring at least one primary contact remains',
-      'Universal Persistence: Saved contacts immediately reflect in Onboarding view modal, cadence reachouts, and Division management'
+      'Required Primary SPOC Info: Blocks progression from Step 1 if Full Name, Email Address, or Contact Number is missing or invalid',
+      'Required Billing Company Info: Blocks progression from Step 3 if Company Legal Name or GST/Tax Number is empty',
+      'Visual Error Highlighting: Displays top error alert banner and red input borders with field-specific guidance',
+      'Real-Time Clearance: Automatically clears validation warnings as soon as valid information is entered',
+      'Submit-Time Gate: Final submission verifies and automatically directs users to incomplete required steps'
     ],
     path: '/client-onboarding/1',
     linkText: 'Client Onboarding'

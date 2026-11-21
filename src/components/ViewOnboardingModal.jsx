@@ -15,7 +15,7 @@ function ViewOnboardingModal({ isOpen, onClose, data }) {
       justifyContent: 'center',
       padding: '2rem'
     }}>
-      <div 
+      <div
         style={{
           width: '100%',
           maxWidth: '700px',
@@ -46,7 +46,7 @@ function ViewOnboardingModal({ isOpen, onClose, data }) {
 
         {/* Content */}
         <div style={{ padding: '2rem', overflowY: 'auto', flex: 1 }}>
-          
+
           {/* Key SPOC */}
           <div style={{ marginBottom: '2rem' }}>
             <h3 style={{ fontSize: '0.9rem', color: '#334155', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', marginBottom: '1rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -151,14 +151,14 @@ function ViewOnboardingModal({ isOpen, onClose, data }) {
                 {data.billingDetails.companies.map((comp, idx) => (
                   <div key={comp.id || idx} style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <span style={{ 
-                        background: idx === 0 ? '#dbeafe' : '#e2e8f0', 
-                        color: idx === 0 ? '#1e40af' : '#475569', 
-                        fontSize: '0.68rem', 
-                        fontWeight: '700', 
-                        padding: '0.15rem 0.45rem', 
-                        borderRadius: '4px', 
-                        textTransform: 'uppercase' 
+                      <span style={{
+                        background: idx === 0 ? '#dbeafe' : '#e2e8f0',
+                        color: idx === 0 ? '#1e40af' : '#475569',
+                        fontSize: '0.68rem',
+                        fontWeight: '700',
+                        padding: '0.15rem 0.45rem',
+                        borderRadius: '4px',
+                        textTransform: 'uppercase'
                       }}>
                         {idx === 0 ? 'Primary Entity' : `Entity #${idx + 1}`}
                       </span>
@@ -236,9 +236,9 @@ function ViewOnboardingModal({ isOpen, onClose, data }) {
 
         {/* Footer */}
         <div style={{ padding: '1.5rem 2rem', borderTop: '1px solid #f1f5f9', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end' }}>
-          <button 
+          <button
             onClick={onClose}
-            style={{ 
+            style={{
               padding: '0.5rem 1.5rem', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
             }}
           >
@@ -246,8 +246,9 @@ function ViewOnboardingModal({ isOpen, onClose, data }) {
           </button>
         </div>
       </div>
-      
-      <style dangerouslySetInnerHTML={{__html: `
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes modalFadeIn {
           from { opacity: 0; transform: scale(0.95); }
           to { opacity: 1; transform: scale(1); }
