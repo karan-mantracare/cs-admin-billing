@@ -167,6 +167,10 @@ function ModuleSummaryPage({ defaultModule = 'Admin Portal', defaultSubmodule = 
   const [testSearch, setTestSearch] = useState('');
   const [testFilter, setTestFilter] = useState('All');
 
+  // Section collapse states (Always collapsed by default)
+  const [isTestTelemetryOpen, setIsTestTelemetryOpen] = useState(false);
+  const [isProjectScopeOpen, setIsProjectScopeOpen] = useState(false);
+
   const sampleTestRecords = [
     {
       id: 'REC-101',
@@ -325,175 +329,286 @@ function ModuleSummaryPage({ defaultModule = 'Admin Portal', defaultSubmodule = 
         </div>
       </div>
 
-      {/* Interactive Test & Data Preview Card */}
-      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#eff6ff', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <i className='bx bx-vial'></i>
-              </div>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>
-                {subName} • Test & Telemetry Preview
-              </h3>
+      {/* Interactive Test & Data Preview Card (Collapsible, Default Collapsed) */}
+      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '2rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+        <div 
+          onClick={() => setIsTestTelemetryOpen(!isTestTelemetryOpen)}
+          style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            padding: '1.25rem 1.5rem',
+            background: isTestTelemetryOpen ? '#f8fafc' : 'white',
+            borderBottom: isTestTelemetryOpen ? '1px solid #e2e8f0' : 'none',
+            cursor: 'pointer',
+            userSelect: 'none',
+            flexWrap: 'wrap', 
+            gap: '1rem',
+            transition: 'background 0.15s ease'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#eff6ff', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
+              <i className='bx bx-vial'></i>
             </div>
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-              Simulated workspace records and pipeline status for {groupName} / {subName}.
-            </p>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>
+                  {subName} • Test &amp; Telemetry Preview
+                </h3>
+                <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '999px', background: isTestTelemetryOpen ? '#f1f5f9' : '#fef3c7', color: isTestTelemetryOpen ? '#64748b' : '#92400e' }}>
+                  {isTestTelemetryOpen ? 'Expanded' : 'Collapsed'}
+                </span>
+              </div>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                Simulated workspace records and pipeline status for {groupName} / {subName}.
+              </p>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ position: 'relative' }}>
-              <i className='bx bx-search' style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
-              <input
-                type="text"
-                placeholder={`Search ${subName.toLowerCase()}...`}
-                value={testSearch}
-                onChange={(e) => setTestSearch(e.target.value)}
-                style={{ padding: '0.45rem 0.75rem 0.45rem 2.2rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
-              />
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }} onClick={(e) => e.stopPropagation()}>
             <button
+              type="button"
+              onClick={() => setIsTestTelemetryOpen(!isTestTelemetryOpen)}
               style={{
-                padding: '0.45rem 0.9rem',
-                background: '#0284c7',
-                color: 'white',
-                border: 'none',
+                background: isTestTelemetryOpen ? '#f8fafc' : '#0284c7',
+                border: isTestTelemetryOpen ? '1px solid #cbd5e1' : 'none',
+                padding: '0.45rem 0.85rem',
                 borderRadius: '6px',
-                fontSize: '0.85rem',
+                color: isTestTelemetryOpen ? '#334155' : 'white',
+                fontSize: '0.82rem',
                 fontWeight: '600',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.35rem'
+                gap: '0.35rem',
+                boxShadow: isTestTelemetryOpen ? 'none' : '0 1px 3px rgba(2, 132, 199, 0.3)',
+                transition: 'all 0.15s ease'
               }}
-              onClick={() => alert(`Test action triggered for ${subName}`)}
+              title={isTestTelemetryOpen ? 'Collapse Test & Telemetry' : 'Expand Test & Telemetry'}
             >
-              <i className='bx bx-plus'></i> New {subName} Record
+              <span>{isTestTelemetryOpen ? 'Collapse' : 'Expand'}</span>
+              <i className={`bx ${isTestTelemetryOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.15rem' }}></i>
             </button>
           </div>
         </div>
 
-        {/* Test Records Table */}
-        <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ padding: '0.65rem 1rem' }}>Record ID</th>
-                <th style={{ padding: '0.65rem 1rem' }}>Config / Item Name</th>
-                <th style={{ padding: '0.65rem 1rem' }}>Module Group</th>
-                <th style={{ padding: '0.65rem 1rem' }}>Status</th>
-                <th style={{ padding: '0.65rem 1rem' }}>Environment</th>
-                <th style={{ padding: '0.65rem 1rem' }}>Last Activity</th>
-                <th style={{ padding: '0.65rem 1rem', textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sampleTestRecords
-                .filter(r => !testSearch || r.name.toLowerCase().includes(testSearch.toLowerCase()) || r.id.toLowerCase().includes(testSearch.toLowerCase()))
-                .map((row) => (
-                  <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: '600', color: '#0284c7' }}>{row.id}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#1e293b', fontWeight: '500' }}>{row.name}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>{row.type}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>
-                      <span style={{
-                        padding: '0.2rem 0.6rem',
-                        borderRadius: '999px',
-                        fontSize: '0.72rem',
-                        fontWeight: '600',
-                        background: row.status === 'Active' ? '#f0fdf4' : '#fffbeb',
-                        color: row.status === 'Active' ? '#15803d' : '#b45309'
-                      }}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>
-                      <span style={{ fontSize: '0.75rem', background: '#f1f5f9', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: '500' }}>
-                        {row.tag}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>{row.updated}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-                      <button
-                        onClick={() => alert(`Executing test simulation for ${row.name}...`)}
-                        style={{
-                          background: 'none',
-                          border: '1px solid #cbd5e1',
-                          borderRadius: '4px',
-                          padding: '0.25rem 0.6rem',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          color: '#0284c7',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Run Test
-                      </button>
-                    </td>
+        {isTestTelemetryOpen && (
+          <div style={{ padding: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div style={{ position: 'relative' }}>
+                <i className='bx bx-search' style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                <input
+                  type="text"
+                  placeholder={`Search ${subName.toLowerCase()}...`}
+                  value={testSearch}
+                  onChange={(e) => setTestSearch(e.target.value)}
+                  style={{ padding: '0.45rem 0.75rem 0.45rem 2.2rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                />
+              </div>
+              <button
+                style={{
+                  padding: '0.45rem 0.9rem',
+                  background: '#0284c7',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem'
+                }}
+                onClick={() => alert(`Test action triggered for ${subName}`)}
+              >
+                <i className='bx bx-plus'></i> New {subName} Record
+              </button>
+            </div>
+
+            {/* Test Records Table */}
+            <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
+                    <th style={{ padding: '0.65rem 1rem' }}>Record ID</th>
+                    <th style={{ padding: '0.65rem 1rem' }}>Config / Item Name</th>
+                    <th style={{ padding: '0.65rem 1rem' }}>Module Group</th>
+                    <th style={{ padding: '0.65rem 1rem' }}>Status</th>
+                    <th style={{ padding: '0.65rem 1rem' }}>Environment</th>
+                    <th style={{ padding: '0.65rem 1rem' }}>Last Activity</th>
+                    <th style={{ padding: '0.65rem 1rem', textAlign: 'right' }}>Actions</th>
                   </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {sampleTestRecords
+                    .filter(r => !testSearch || r.name.toLowerCase().includes(testSearch.toLowerCase()) || r.id.toLowerCase().includes(testSearch.toLowerCase()))
+                    .map((row) => (
+                      <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '0.75rem 1rem', fontWeight: '600', color: '#0284c7' }}>{row.id}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: '#1e293b', fontWeight: '500' }}>{row.name}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>{row.type}</td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <span style={{
+                            padding: '0.2rem 0.6rem',
+                            borderRadius: '999px',
+                            fontSize: '0.72rem',
+                            fontWeight: '600',
+                            background: row.status === 'Active' ? '#f0fdf4' : '#fffbeb',
+                            color: row.status === 'Active' ? '#15803d' : '#b45309'
+                          }}>
+                            {row.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>
+                          <span style={{ fontSize: '0.75rem', background: '#f1f5f9', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: '500' }}>
+                            {row.tag}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>{row.updated}</td>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                          <button
+                            onClick={() => alert(`Executing test simulation for ${row.name}...`)}
+                            style={{
+                              background: 'none',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '4px',
+                              padding: '0.25rem 0.6rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              color: '#0284c7',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Run Test
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Project Mission & Scope Cards */}
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <i className='bx bx-layer' style={{ color: '#0284c7' }}></i>
-          What We Are Doing In This Project
-        </h2>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', marginBottom: '1rem' }}>
-              <i className='bx bx-receipt'></i>
+      {/* Project Mission & Scope Cards (Collapsible, Default Collapsed) */}
+      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '2.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+        <div 
+          onClick={() => setIsProjectScopeOpen(!isProjectScopeOpen)}
+          style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            padding: '1.25rem 1.5rem',
+            background: isProjectScopeOpen ? '#f8fafc' : 'white',
+            borderBottom: isProjectScopeOpen ? '1px solid #e2e8f0' : 'none',
+            cursor: 'pointer',
+            userSelect: 'none',
+            flexWrap: 'wrap', 
+            gap: '1rem',
+            transition: 'background 0.15s ease'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#eff6ff', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
+              <i className='bx bx-layer'></i>
             </div>
-            <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1rem', fontWeight: '600', color: '#1e293b' }}>
-              Smart Invoicing & Remarks
-            </h3>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
-              Full accounts receivable ledger with dynamic schedules, multi-currency conversions, instant invoice remark tooltips, and copyable billing summaries.
-            </p>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700', color: '#0f172a' }}>
+                  What We Are Doing In This Project
+                </h2>
+                <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '999px', background: isProjectScopeOpen ? '#f1f5f9' : '#fef3c7', color: isProjectScopeOpen ? '#64748b' : '#92400e' }}>
+                  {isProjectScopeOpen ? 'Expanded' : 'Collapsed'}
+                </span>
+              </div>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                Core architectural capabilities and operational deliverables across modules.
+              </p>
+            </div>
           </div>
 
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', marginBottom: '1rem' }}>
-              <i className='bx bx-group'></i>
-            </div>
-            <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1rem', fontWeight: '600', color: '#1e293b' }}>
-              Access Roles & Invitations
-            </h3>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
-              Granular role assignment for HR, Customer Success (CS), and Business Development (BD) with quick email invites and direct link sharing.
-            </p>
-          </div>
-
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#faf5ff', color: '#9333ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', marginBottom: '1rem' }}>
-              <i className='bx bx-check-shield'></i>
-            </div>
-            <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1rem', fontWeight: '600', color: '#1e293b' }}>
-              Budget & Remarks Approvals
-            </h3>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
-              Automated webinar and event approval flow verifying budgets, remarks, escalation trees, and division contract allowances.
-            </p>
-          </div>
-
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', marginBottom: '1rem' }}>
-              <i className='bx bx-expand-alt'></i>
-            </div>
-            <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1rem', fontWeight: '600', color: '#1e293b' }}>
-              Client Onboarding Portal
-            </h3>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
-              Interactive inline expandable forms with live logs, SPOC management, billing entity records, and client form sharing links.
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setIsProjectScopeOpen(!isProjectScopeOpen)}
+              style={{
+                background: isProjectScopeOpen ? '#f8fafc' : '#0284c7',
+                border: isProjectScopeOpen ? '1px solid #cbd5e1' : 'none',
+                padding: '0.45rem 0.85rem',
+                borderRadius: '6px',
+                color: isProjectScopeOpen ? '#334155' : 'white',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                boxShadow: isProjectScopeOpen ? 'none' : '0 1px 3px rgba(2, 132, 199, 0.3)',
+                transition: 'all 0.15s ease'
+              }}
+              title={isProjectScopeOpen ? 'Collapse Project Overview' : 'Expand Project Overview'}
+            >
+              <span>{isProjectScopeOpen ? 'Collapse' : 'Expand'}</span>
+              <i className={`bx ${isProjectScopeOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.15rem' }}></i>
+            </button>
           </div>
         </div>
+
+        {isProjectScopeOpen && (
+          <div style={{ padding: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', marginBottom: '1rem' }}>
+                  <i className='bx bx-receipt'></i>
+                </div>
+                <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1rem', fontWeight: '600', color: '#1e293b' }}>
+                  Smart Invoicing &amp; Remarks
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
+                  Full accounts receivable ledger with dynamic schedules, multi-currency conversions, instant invoice remark tooltips, and copyable billing summaries.
+                </p>
+              </div>
+
+              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', marginBottom: '1rem' }}>
+                  <i className='bx bx-group'></i>
+                </div>
+                <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1rem', fontWeight: '600', color: '#1e293b' }}>
+                  Access Roles &amp; Invitations
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
+                  Granular role assignment for HR, Customer Success (CS), and Business Development (BD) with quick email invites and direct link sharing.
+                </p>
+              </div>
+
+              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#faf5ff', color: '#9333ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', marginBottom: '1rem' }}>
+                  <i className='bx bx-check-shield'></i>
+                </div>
+                <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1rem', fontWeight: '600', color: '#1e293b' }}>
+                  Budget &amp; Remarks Approvals
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
+                  Automated webinar and event approval flow verifying budgets, remarks, escalation trees, and division contract allowances.
+                </p>
+              </div>
+
+              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', marginBottom: '1rem' }}>
+                  <i className='bx bx-expand-alt'></i>
+                </div>
+                <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1rem', fontWeight: '600', color: '#1e293b' }}>
+                  Client Onboarding Portal
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
+                  Interactive inline expandable forms with live logs, SPOC management, billing entity records, and client form sharing links.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Active Live Modules in the Project */}
