@@ -2070,15 +2070,16 @@ function ClientPayments() {
                             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginLeft: '1rem' }}>
                               <i className='bx bx-edit' style={{ cursor: 'pointer', color: '#0ea5e9', fontSize: '1.1rem' }} onClick={() => {
                                 setEditingRecordId(pp.id);
+                                const isTds = pp.remarks === 'TDS / Withholding Tax';
                                 setPaymentForm({
                                   paymentDate: pp.paymentDate,
-                                  amount: pp.amount,
+                                  amount: isTds ? '' : pp.amount,
                                   isChangeCurrency: pp.currency !== targetRow.currency,
                                   changedCurrency: pp.currency,
                                   exchangedAmount: pp.baseDeductAmount || pp.amount,
                                   receivedBank: pp.receivedBank || '',
-                                  isTdsDeducted: false,
-                                  tdsAmount: ''
+                                  isTdsDeducted: isTds,
+                                  tdsAmount: isTds ? pp.amount : ''
                                 });
                               }}></i>
                               <i className='bx bx-trash' style={{ cursor: 'pointer', color: '#ef4444', fontSize: '1.1rem' }} onClick={() => {
@@ -2139,9 +2140,15 @@ function ClientPayments() {
                 </button>
 
                 <button style={{ padding: '0.55rem 1.25rem', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '38px' }} onClick={() => {
-                  const amountVal = Number(paymentForm.amount);
-                  if (!paymentForm.paymentDate || !amountVal) {
-                    alert("Please provide valid date and amount inputs.");
+                  const amountVal = Number(paymentForm.amount) || 0;
+                  const tdsVal = paymentForm.isTdsDeducted ? (Number(paymentForm.tdsAmount) || 0) : 0;
+
+                  if (!paymentForm.paymentDate) {
+                    alert("Please provide a valid payment date.");
+                    return;
+                  }
+                  if (amountVal <= 0 && tdsVal <= 0) {
+                    alert("Please provide a payment amount or TDS amount.");
                     return;
                   }
 
@@ -2151,46 +2158,63 @@ function ClientPayments() {
                   let baseDeductAmount = amountVal;
                   let amountInUSD = amountVal;
 
-                  if (paymentForm.isChangeCurrency) {
-                    let enteredExchanged = Number(paymentForm.exchangedAmount);
-                    // If user entered a rate (e.g. 0.80 or 0.86) instead of total converted amount
-                    if (enteredExchanged > 0 && enteredExchanged < 2 && amountVal >= 10) {
-                      enteredExchanged = amountVal * enteredExchanged;
-                    }
+                  if (amountVal > 0) {
+                    if (paymentForm.isChangeCurrency) {
+                      let enteredExchanged = Number(paymentForm.exchangedAmount);
+                      // If user entered a rate (e.g. 0.80 or 0.86) instead of total converted amount
+                      if (enteredExchanged > 0 && enteredExchanged < 2 && amountVal >= 10) {
+                        enteredExchanged = amountVal * enteredExchanged;
+                      }
 
-                    if (payCurrency === 'USD') {
-                      amountInUSD = amountVal;
-                      baseDeductAmount = (enteredExchanged && enteredExchanged > 0) ? enteredExchanged : (amountVal / exchangeRate);
-                    } else if (payCurrency === targetRow.currency) {
+                      if (payCurrency === 'USD') {
+                        amountInUSD = amountVal;
+                        baseDeductAmount = (enteredExchanged && enteredExchanged > 0) ? enteredExchanged : (amountVal / exchangeRate);
+                      } else if (payCurrency === targetRow.currency) {
+                        baseDeductAmount = amountVal;
+                        amountInUSD = targetRow.currency === 'USD' ? amountVal : (amountVal * exchangeRate);
+                      } else {
+                        baseDeductAmount = (enteredExchanged && enteredExchanged > 0) ? enteredExchanged : amountVal;
+                        amountInUSD = baseDeductAmount * exchangeRate;
+                      }
+                    } else {
+                      // Paid in invoice currency
                       baseDeductAmount = amountVal;
                       amountInUSD = targetRow.currency === 'USD' ? amountVal : (amountVal * exchangeRate);
-                    } else {
-                      baseDeductAmount = (enteredExchanged && enteredExchanged > 0) ? enteredExchanged : amountVal;
-                      amountInUSD = baseDeductAmount * exchangeRate;
                     }
                   } else {
-                    // Paid in invoice currency
-                    baseDeductAmount = amountVal;
-                    amountInUSD = targetRow.currency === 'USD' ? amountVal : (amountVal * exchangeRate);
+                    baseDeductAmount = 0;
+                    amountInUSD = 0;
                   }
 
                   // TDS deduction calculation
-                  const tdsVal = paymentForm.isTdsDeducted ? (Number(paymentForm.tdsAmount) || 0) : 0;
                   let tdsAmountInUSD = 0;
                   let tdsBaseDeduct = 0;
                   if (tdsVal > 0) {
-                    const effectiveRate = amountVal > 0 ? (amountInUSD / amountVal) : (targetRow.currency === 'USD' ? 1 : exchangeRate);
-                    tdsAmountInUSD = Number((tdsVal * effectiveRate).toFixed(2));
-                    tdsBaseDeduct = amountVal > 0 ? Number((baseDeductAmount * (tdsVal / amountVal)).toFixed(2)) : tdsVal;
+                    if (amountVal > 0) {
+                      const effectiveRate = amountInUSD / amountVal;
+                      tdsAmountInUSD = Number((tdsVal * effectiveRate).toFixed(2));
+                      tdsBaseDeduct = Number((baseDeductAmount * (tdsVal / amountVal)).toFixed(2));
+                    } else {
+                      if (payCurrency === 'USD') {
+                        tdsAmountInUSD = tdsVal;
+                        tdsBaseDeduct = exchangeRate > 0 ? Number((tdsVal / exchangeRate).toFixed(2)) : tdsVal;
+                      } else if (payCurrency === targetRow.currency) {
+                        tdsBaseDeduct = tdsVal;
+                        tdsAmountInUSD = targetRow.currency === 'USD' ? tdsVal : Number((tdsVal * exchangeRate).toFixed(2));
+                      } else {
+                        tdsBaseDeduct = tdsVal;
+                        tdsAmountInUSD = Number((tdsVal * exchangeRate).toFixed(2));
+                      }
+                    }
                   }
                   
                   const isEditing = editingRecordId != null;
                   const oldRecord = isEditing ? paymentRecords.find(r => r.id === editingRecordId) : null;
                   const oldDeductAmountUsd = oldRecord ? (oldRecord.amountInUSD || 0) : 0;
 
-                  // Main payment record
-                  const newRecord = {
-                    id: isEditing ? editingRecordId : Math.random().toString(36).substring(2, 9),
+                  // Main payment record (only created if payment amount > 0)
+                  const newRecord = amountVal > 0 ? {
+                    id: (isEditing && (!oldRecord?.remarks?.includes('TDS'))) ? editingRecordId : Math.random().toString(36).substring(2, 9),
                     entryDate: isEditing ? oldRecord.entryDate : new Date().toISOString().split('T')[0],
                     paymentDate: paymentForm.paymentDate,
                     invoiceNumber: targetRow.invoiceLink || 'N/A',
@@ -2202,14 +2226,14 @@ function ClientPayments() {
                     baseDeductAmount: Number(baseDeductAmount.toFixed(2)),
                     amountInUSD: Number(amountInUSD.toFixed(2)),
                     remarks: isEditing ? (oldRecord.remarks || '') : ''
-                  };
+                  } : null;
 
                   // TDS deduction record
                   let tdsRecord = null;
                   if (tdsVal > 0) {
                     tdsRecord = {
-                      id: Math.random().toString(36).substring(2, 9),
-                      entryDate: new Date().toISOString().split('T')[0],
+                      id: (isEditing && (amountVal <= 0 || oldRecord?.remarks?.includes('TDS'))) ? editingRecordId : Math.random().toString(36).substring(2, 9),
+                      entryDate: isEditing ? oldRecord.entryDate : new Date().toISOString().split('T')[0],
                       paymentDate: paymentForm.paymentDate,
                       invoiceNumber: targetRow.invoiceLink || 'N/A',
                       orderId: targetRow.orderId,
@@ -2224,17 +2248,21 @@ function ClientPayments() {
                   }
                   
                   if (isEditing) {
-                    setPaymentRecords(prev => prev.map(r => r.id === editingRecordId ? newRecord : r));
+                    const recordToUpdate = newRecord || tdsRecord;
+                    if (recordToUpdate) {
+                      setPaymentRecords(prev => prev.map(r => r.id === editingRecordId ? recordToUpdate : r));
+                    }
                   } else {
-                    if (tdsRecord) {
-                      setPaymentRecords(prev => [...prev, newRecord, tdsRecord]);
-                    } else {
-                      setPaymentRecords(prev => [...prev, newRecord]);
+                    const recordsToAdd = [];
+                    if (newRecord) recordsToAdd.push(newRecord);
+                    if (tdsRecord) recordsToAdd.push(tdsRecord);
+                    if (recordsToAdd.length > 0) {
+                      setPaymentRecords(prev => [...prev, ...recordsToAdd]);
                     }
                   }
 
                   // Total USD impact including TDS
-                  const totalPaidThisTx = Number(amountInUSD.toFixed(2)) + Number(tdsAmountInUSD.toFixed(2));
+                  const totalPaidThisTx = (amountVal > 0 ? Number(amountInUSD.toFixed(2)) : 0) + Number(tdsAmountInUSD.toFixed(2));
 
                   // Update Row
                   setPayments(prev => prev.map(p => {
