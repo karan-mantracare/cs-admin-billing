@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
 import { getAllCorporateDivisions } from '../utils/cadenceDivisionUtils';
+import { PRIMARY_REASONS, URGENCY_LEVELS } from '../data/sensitiveCasesData';
 
 export default function CsHome() {
   const navigate = useNavigate();
@@ -28,10 +29,25 @@ export default function CsHome() {
   // Toast message state
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Division selection modal state for Referral Link
+  // Division selection modal state for Manager Referral Link
   const [isDivisionModalOpen, setIsDivisionModalOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState('copy'); // 'copy' | 'open'
   const [selectedDivisionId, setSelectedDivisionId] = useState('');
+
+  // Report for Sensitive Cases modal state
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportForm, setReportForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    callerName: '',
+    divisionId: '',
+    callTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+    callerNumber: '',
+    answeredBy: 'Self', // 'Self' | 'Other'
+    answeredByName: '',
+    primaryReason: '',
+    urgencyLevel: '',
+    remarks: ''
+  });
+  const [reportErrors, setReportErrors] = useState({});
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -60,7 +76,7 @@ export default function CsHome() {
     ];
   }, [clients, userCompany]);
 
-  // Handle Copy Referral Link button click
+  // Handle Manager Referral button click (Copy Referral Link)
   const handleCopyReferralLinkClick = () => {
     if (mappedDivisions.length === 1) {
       // Auto select if only 1 division mapped
@@ -71,20 +87,6 @@ export default function CsHome() {
     } else {
       // Multiple divisions mapped: ask user to select division
       setSelectedDivisionId(mappedDivisions[0]?.id || '');
-      setPendingAction('copy');
-      setIsDivisionModalOpen(true);
-    }
-  };
-
-  // Handle Open Referral Form button click
-  const handleOpenReferralFormClick = () => {
-    if (mappedDivisions.length === 1) {
-      const singleDiv = mappedDivisions[0];
-      const link = `${window.location.origin}/referral-form?divisionId=${encodeURIComponent(singleDiv.id)}`;
-      window.open(link, '_blank');
-    } else {
-      setSelectedDivisionId(mappedDivisions[0]?.id || '');
-      setPendingAction('open');
       setIsDivisionModalOpen(true);
     }
   };
@@ -93,14 +95,100 @@ export default function CsHome() {
   const handleConfirmDivisionAction = () => {
     const chosenDiv = mappedDivisions.find(d => d.id === selectedDivisionId) || mappedDivisions[0];
     const link = `${window.location.origin}/referral-form?divisionId=${encodeURIComponent(chosenDiv.id)}`;
-
-    if (pendingAction === 'copy') {
-      navigator.clipboard.writeText(link);
-      showToast(`Manager Referral link for ${chosenDiv.name} (${chosenDiv.id}) copied to clipboard!`);
-    } else {
-      window.open(link, '_blank');
-    }
+    navigator.clipboard.writeText(link);
+    showToast(`Manager Referral link for ${chosenDiv.name} (${chosenDiv.id}) copied to clipboard!`);
     setIsDivisionModalOpen(false);
+  };
+
+  // Handle Report Sensitive Case Submission
+  const handleReportSubmit = (e) => {
+    e.preventDefault();
+    const errs = {};
+
+    if (!reportForm.date) errs.date = 'Date is required';
+    if (!reportForm.callerName.trim()) errs.callerName = 'Caller Name is required';
+    const activeDivId = reportForm.divisionId || mappedDivisions[0]?.id;
+    if (!activeDivId) errs.divisionId = 'Please select a Division';
+    if (!reportForm.callTime.trim()) errs.callTime = 'Call Time is required';
+    if (!reportForm.callerNumber.trim()) errs.callerNumber = 'Caller Number is required';
+    if (reportForm.answeredBy === 'Other' && !reportForm.answeredByName.trim()) {
+      errs.answeredByName = 'Name is required when "Other" is selected';
+    }
+    if (!reportForm.primaryReason) errs.primaryReason = 'Please select a Primary Reason';
+    if (!reportForm.urgencyLevel) errs.urgencyLevel = 'Please select an Urgency Level';
+
+    // When "Other" is selected, remarks is mandatory
+    if (reportForm.primaryReason === 'Other' && !reportForm.remarks.trim()) {
+      errs.remarks = 'Remarks are mandatory when "Other" is selected as Primary Reason';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setReportErrors(errs);
+      return;
+    }
+
+    const divisionObj = mappedDivisions.find(d => d.id === activeDivId) || mappedDivisions[0];
+    const newCaseId = `SC-${Math.floor(1000 + Math.random() * 9000)}`;
+    const staffName = reportForm.answeredBy === 'Self' ? (currentUser?.name || 'Karan') : reportForm.answeredByName.trim();
+
+    const newCaseRecord = {
+      id: newCaseId,
+      caseId: newCaseId,
+      date: reportForm.date,
+      reportedAt: `${reportForm.date} ${reportForm.callTime}`,
+      callerName: reportForm.callerName.trim(),
+      callerNumber: reportForm.callerNumber.trim(),
+      callTime: reportForm.callTime.trim(),
+      divisionId: divisionObj?.id || activeDivId,
+      divisionName: divisionObj?.name || activeDivId,
+      corporate: divisionObj?.corporate || userCompany,
+      location: divisionObj?.location || 'Corporate Office',
+      answeredBy: staffName,
+      answeredByType: reportForm.answeredBy,
+      primaryReason: reportForm.primaryReason,
+      criticalCategory: reportForm.primaryReason,
+      urgencyLevel: reportForm.urgencyLevel,
+      riskLevel: reportForm.urgencyLevel,
+      remarks: reportForm.remarks.trim(),
+      summary: reportForm.remarks.trim() || `Inbound sensitive case call from ${reportForm.callerName.trim()} regarding ${reportForm.primaryReason} (${reportForm.urgencyLevel} priority). Answered by ${staffName}.`,
+      status: reportForm.urgencyLevel === 'Emergency' ? 'Immediate Action Required' : (reportForm.urgencyLevel === 'Severe' ? 'Intervention Ongoing' : 'New Report'),
+      triggerSource: `Inbound Call (${staffName})`,
+      assignedCrisisLead: 'MantraCare Crisis Team',
+      timeline: [
+        {
+          date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+          user: staffName,
+          action: `Sensitive case logged via CS Dashboard. Caller: ${reportForm.callerName.trim()} (${reportForm.callerNumber.trim()}), Urgency: ${reportForm.urgencyLevel}.`
+        }
+      ]
+    };
+
+    try {
+      const existing = JSON.parse(localStorage.getItem('sensitive_cases_critical') || '[]');
+      localStorage.setItem('sensitive_cases_critical', JSON.stringify([newCaseRecord, ...existing]));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('critical-cases-updated'));
+    } catch (err) {
+      console.error('Error saving sensitive case:', err);
+    }
+
+    setIsReportModalOpen(false);
+    showToast(`Sensitive Case ${newCaseId} successfully logged and sent to Admin!`);
+
+    // Reset form
+    setReportForm({
+      date: new Date().toISOString().split('T')[0],
+      callerName: '',
+      divisionId: mappedDivisions[0]?.id || '',
+      callTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+      callerNumber: '',
+      answeredBy: 'Self',
+      answeredByName: '',
+      primaryReason: '',
+      urgencyLevel: '',
+      remarks: ''
+    });
+    setReportErrors({});
   };
 
   // 6 Quick Link Shortcuts
@@ -342,8 +430,8 @@ export default function CsHome() {
             </div>
 
             {/* 2 Icons Opposite Quick Links */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              {/* 1. Copy Manager Referral Link Icon Button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+              {/* 1. Manager Referral (Copies Referral Link) */}
               <button
                 type="button"
                 onClick={handleCopyReferralLinkClick}
@@ -366,35 +454,50 @@ export default function CsHome() {
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0284c7'; e.currentTarget.style.background = '#f0f9ff'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'white'; }}
               >
-                <i className='bx bx-copy' style={{ fontSize: '1.15rem', color: '#0284c7' }}></i>
-                <span>Copy Referral Link</span>
+                <i className='bx bx-user-voice' style={{ fontSize: '1.15rem', color: '#0284c7' }}></i>
+                <span>Manager Referral</span>
               </button>
 
-              {/* 2. Open Manager Referral Form Icon Button */}
+              {/* 2. Report for Sensitive Cases Button */}
               <button
                 type="button"
-                onClick={handleOpenReferralFormClick}
-                title="Open Manager Referral Form"
+                onClick={() => {
+                  setReportForm({
+                    date: new Date().toISOString().split('T')[0],
+                    callerName: '',
+                    divisionId: mappedDivisions[0]?.id || '',
+                    callTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+                    callerNumber: '',
+                    answeredBy: 'Self',
+                    answeredByName: '',
+                    primaryReason: '',
+                    urgencyLevel: '',
+                    remarks: ''
+                  });
+                  setReportErrors({});
+                  setIsReportModalOpen(true);
+                }}
+                title="Report for Sensitive Cases"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.45rem',
                   padding: '0.55rem 0.95rem',
-                  background: '#0284c7',
+                  background: '#dc2626',
                   border: 'none',
                   borderRadius: '8px',
                   color: 'white',
                   fontWeight: '600',
                   fontSize: '0.84rem',
                   cursor: 'pointer',
-                  boxShadow: '0 2px 5px rgba(2, 132, 199, 0.25)',
+                  boxShadow: '0 2px 5px rgba(220, 38, 38, 0.25)',
                   transition: 'all 0.15s ease'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#0369a1'}
-                onMouseLeave={(e) => e.currentTarget.style.background = '#0284c7'}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#b91c1c'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#dc2626'}
               >
-                <i className='bx bx-link-external' style={{ fontSize: '1.15rem' }}></i>
-                <span>Open Referral Form</span>
+                <i className='bx bx-shield-plus' style={{ fontSize: '1.15rem' }}></i>
+                <span>Report for Sensitive Cases</span>
               </button>
             </div>
           </div>
@@ -819,11 +922,388 @@ export default function CsHome() {
                     gap: '0.35rem'
                   }}
                 >
-                  <i className={`bx ${pendingAction === 'copy' ? 'bx-copy' : 'bx-link-external'}`}></i>
-                  <span>{pendingAction === 'copy' ? 'Copy Referral Link' : 'Open Referral Form'}</span>
+                  <i className='bx bx-copy'></i>
+                  <span>Copy Manager Referral Link</span>
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Report for Sensitive Cases */}
+      {isReportModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backdropFilter: 'blur(4px)',
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '620px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
+            border: '1px solid #e2e8f0'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              background: '#dc2626',
+              color: 'white',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.4rem'
+                }}>
+                  <i className='bx bx-shield-plus'></i>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800' }}>
+                    Report for Sensitive Cases
+                  </h3>
+                  <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#fee2e2' }}>
+                    Log an urgent clinical crisis, inbound helpline call, or employee risk concern.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReportModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer', lineHeight: 1 }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleReportSubmit} style={{ padding: '1.5rem' }}>
+              
+              {/* Row 1: Date & Call Time */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+                    Date <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={reportForm.date}
+                    onChange={(e) => setReportForm({ ...reportForm, date: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      border: reportErrors.date ? '1px solid #dc2626' : '1px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      color: '#0f172a',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  {reportErrors.date && <span style={{ fontSize: '0.72rem', color: '#dc2626', display: 'block', marginTop: '0.2rem' }}>{reportErrors.date}</span>}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+                    Call Time <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 10:30 AM"
+                    value={reportForm.callTime}
+                    onChange={(e) => setReportForm({ ...reportForm, callTime: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      border: reportErrors.callTime ? '1px solid #dc2626' : '1px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      color: '#0f172a',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  {reportErrors.callTime && <span style={{ fontSize: '0.72rem', color: '#dc2626', display: 'block', marginTop: '0.2rem' }}>{reportErrors.callTime}</span>}
+                </div>
+              </div>
+
+              {/* Row 2: Caller Name & Caller Number */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+                    Caller Name <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. John Doe / Manager"
+                    value={reportForm.callerName}
+                    onChange={(e) => setReportForm({ ...reportForm, callerName: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      border: reportErrors.callerName ? '1px solid #dc2626' : '1px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      color: '#0f172a',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  {reportErrors.callerName && <span style={{ fontSize: '0.72rem', color: '#dc2626', display: 'block', marginTop: '0.2rem' }}>{reportErrors.callerName}</span>}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+                    Caller Number <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. +91 98765 43210"
+                    value={reportForm.callerNumber}
+                    onChange={(e) => setReportForm({ ...reportForm, callerNumber: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      border: reportErrors.callerNumber ? '1px solid #dc2626' : '1px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      color: '#0f172a',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  {reportErrors.callerNumber && <span style={{ fontSize: '0.72rem', color: '#dc2626', display: 'block', marginTop: '0.2rem' }}>{reportErrors.callerNumber}</span>}
+                </div>
+              </div>
+
+              {/* Row 3: Division (Select from dropdown) */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+                  Division <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <select
+                  value={reportForm.divisionId || mappedDivisions[0]?.id || ''}
+                  onChange={(e) => setReportForm({ ...reportForm, divisionId: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.55rem 0.75rem',
+                    borderRadius: '8px',
+                    border: reportErrors.divisionId ? '1px solid #dc2626' : '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    color: '#0f172a',
+                    background: 'white',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {mappedDivisions.map(div => (
+                    <option key={div.id} value={div.id}>
+                      {div.id} — {div.name} ({div.corporate})
+                    </option>
+                  ))}
+                </select>
+                {reportErrors.divisionId && <span style={{ fontSize: '0.72rem', color: '#dc2626', display: 'block', marginTop: '0.2rem' }}>{reportErrors.divisionId}</span>}
+              </div>
+
+              {/* Row 4: Answered By (Self / Other) */}
+              <div style={{ marginBottom: '1rem', background: '#f8fafc', padding: '0.85rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.5rem' }}>
+                  Answered By <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: reportForm.answeredBy === 'Other' ? '0.75rem' : '0' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+                    <input
+                      type="radio"
+                      name="answeredBy"
+                      value="Self"
+                      checked={reportForm.answeredBy === 'Self'}
+                      onChange={() => setReportForm({ ...reportForm, answeredBy: 'Self', answeredByName: '' })}
+                      style={{ accentColor: '#dc2626' }}
+                    />
+                    <span>Self ({userName})</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+                    <input
+                      type="radio"
+                      name="answeredBy"
+                      value="Other"
+                      checked={reportForm.answeredBy === 'Other'}
+                      onChange={() => setReportForm({ ...reportForm, answeredBy: 'Other' })}
+                      style={{ accentColor: '#dc2626' }}
+                    />
+                    <span>Other Staff Member</span>
+                  </label>
+                </div>
+
+                {reportForm.answeredBy === 'Other' && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: '700', color: '#475569', marginBottom: '0.25rem' }}>
+                      Staff Name <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter staff member's full name"
+                      value={reportForm.answeredByName}
+                      onChange={(e) => setReportForm({ ...reportForm, answeredByName: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '6px',
+                        border: reportErrors.answeredByName ? '1px solid #dc2626' : '1px solid #cbd5e1',
+                        fontSize: '0.85rem',
+                        color: '#0f172a',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    {reportErrors.answeredByName && <span style={{ fontSize: '0.72rem', color: '#dc2626', display: 'block', marginTop: '0.2rem' }}>{reportErrors.answeredByName}</span>}
+                  </div>
+                )}
+              </div>
+
+              {/* Row 5: Primary Reason & Urgency Level */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+                    Primary Reason <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <select
+                    value={reportForm.primaryReason}
+                    onChange={(e) => setReportForm({ ...reportForm, primaryReason: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      border: reportErrors.primaryReason ? '1px solid #dc2626' : '1px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      color: reportForm.primaryReason ? '#0f172a' : '#64748b',
+                      background: 'white',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <option value="" disabled>Please select one</option>
+                    {PRIMARY_REASONS.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                  {reportErrors.primaryReason && <span style={{ fontSize: '0.72rem', color: '#dc2626', display: 'block', marginTop: '0.2rem' }}>{reportErrors.primaryReason}</span>}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+                    Urgency Level <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <select
+                    value={reportForm.urgencyLevel}
+                    onChange={(e) => setReportForm({ ...reportForm, urgencyLevel: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      border: reportErrors.urgencyLevel ? '1px solid #dc2626' : '1px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      color: reportForm.urgencyLevel ? '#0f172a' : '#64748b',
+                      background: 'white',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <option value="" disabled>Please select one</option>
+                    {URGENCY_LEVELS.map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                  {reportErrors.urgencyLevel && <span style={{ fontSize: '0.72rem', color: '#dc2626', display: 'block', marginTop: '0.2rem' }}>{reportErrors.urgencyLevel}</span>}
+                </div>
+              </div>
+
+              {/* Row 6: Remarks (Optional, but Mandatory if 'Other' is selected) */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.35rem' }}>
+                  <span>
+                    Remarks {reportForm.primaryReason === 'Other' ? (
+                      <span style={{ color: '#dc2626' }}>* (Mandatory when "Other" is selected)</span>
+                    ) : (
+                      <span style={{ color: '#64748b', fontWeight: '400' }}>(Optional)</span>
+                    )}
+                  </span>
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder={reportForm.primaryReason === 'Other' ? "Please specify details for 'Other' reason (Mandatory)..." : "Add any observations, background context, or immediate actions taken..."}
+                  value={reportForm.remarks}
+                  onChange={(e) => setReportForm({ ...reportForm, remarks: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.75rem',
+                    borderRadius: '8px',
+                    border: reportErrors.remarks ? '1px solid #dc2626' : '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    color: '#0f172a',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    resize: 'vertical'
+                  }}
+                />
+                {reportErrors.remarks && <span style={{ fontSize: '0.72rem', color: '#dc2626', display: 'block', marginTop: '0.2rem' }}>{reportErrors.remarks}</span>}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsReportModalOpen(false)}
+                  style={{
+                    padding: '0.6rem 1.25rem',
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    fontSize: '0.85rem',
+                    color: '#475569',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '0.6rem 1.4rem',
+                    background: '#dc2626',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: '700',
+                    fontSize: '0.85rem',
+                    color: 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    boxShadow: '0 2px 6px rgba(220,38,38,0.3)'
+                  }}
+                >
+                  <i className='bx bx-send'></i>
+                  <span>Submit Sensitive Case</span>
+                </button>
+              </div>
+
+            </form>
           </div>
         </div>
       )}

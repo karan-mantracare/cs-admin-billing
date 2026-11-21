@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { PRIMARY_REASONS, URGENCY_LEVELS } from '../data/sensitiveCasesData';
 
 export default function ManagerReferralPage() {
   const [searchParams] = useSearchParams();
@@ -16,6 +17,7 @@ export default function ManagerReferralPage() {
     employeeId: '',
     primaryReason: '',
     urgencyLevel: '',
+    remarks: '',
     consentConfirmed: false
   });
 
@@ -38,6 +40,12 @@ export default function ManagerReferralPage() {
     if (!formData.memberEmail.trim()) errs.memberEmail = 'Team member Email Address is required';
     if (!formData.primaryReason) errs.primaryReason = 'Please select a primary reason';
     if (!formData.urgencyLevel) errs.urgencyLevel = 'Please select an urgency level';
+    
+    // Remarks mandatory when "Other" is selected
+    if (formData.primaryReason === 'Other' && !formData.remarks.trim()) {
+      errs.remarks = 'Remarks are mandatory when "Other" is selected';
+    }
+
     if (!formData.consentConfirmed) errs.consentConfirmed = 'Manager consent & acknowledgment is required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -62,10 +70,10 @@ export default function ManagerReferralPage() {
       employeeId: formData.employeeId.trim() || 'N/A',
       primaryReason: formData.primaryReason,
       urgencyLevel: formData.urgencyLevel,
-      severity: formData.urgencyLevel.includes('Urgent') ? 'Urgent' : (formData.urgencyLevel.includes('High') ? 'High' : (formData.urgencyLevel.includes('Medium') ? 'Medium' : 'Low')),
+      severity: formData.urgencyLevel,
       status: 'New Referral',
-      remarks: 'Submitted via Secure Manager Referral Portal',
-      isHighestPriority: formData.urgencyLevel.includes('Urgent') || formData.urgencyLevel.includes('High'),
+      remarks: formData.remarks.trim() || 'Submitted via Secure Manager Referral Portal',
+      isHighestPriority: formData.urgencyLevel === 'Emergency' || formData.urgencyLevel === 'Severe',
       referredDate: new Date().toISOString().split('T')[0],
       assignedClinician: 'Triage Pending (Clinical Lead)',
       consentProvided: true,
@@ -104,6 +112,7 @@ export default function ManagerReferralPage() {
       employeeId: '',
       primaryReason: '',
       urgencyLevel: '',
+      remarks: '',
       consentConfirmed: false
     });
     setErrors({});
@@ -455,14 +464,9 @@ export default function ManagerReferralPage() {
                     }}
                   >
                     <option value="" disabled>Please select one</option>
-                    <option value="Performance Decline & Stress">Performance Decline & Stress</option>
-                    <option value="Severe Burnout & Exhaustion">Severe Burnout & Exhaustion</option>
-                    <option value="Anxiety & Panic Episodes">Anxiety & Panic Episodes</option>
-                    <option value="Attendance / Absenteeism">Attendance / Absenteeism</option>
-                    <option value="Workplace Conflict & Isolation">Workplace Conflict & Isolation</option>
-                    <option value="Grief & Personal Loss">Grief & Personal Loss</option>
-                    <option value="Substance / Behavioral Concern">Substance / Behavioral Concern</option>
-                    <option value="Personal Wellness Support">Personal Wellness Support</option>
+                    {PRIMARY_REASONS.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
                   </select>
                   {errors.primaryReason && <span style={{ fontSize: '0.74rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{errors.primaryReason}</span>}
                 </div>
@@ -487,13 +491,41 @@ export default function ManagerReferralPage() {
                     }}
                   >
                     <option value="" disabled>Please select one</option>
-                    <option value="Routine / Low">Routine / Low</option>
-                    <option value="Moderate / Medium">Moderate / Medium</option>
-                    <option value="High">High</option>
-                    <option value="Critical / Urgent">Critical / Urgent</option>
+                    {URGENCY_LEVELS.map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
                   </select>
                   {errors.urgencyLevel && <span style={{ fontSize: '0.74rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{errors.urgencyLevel}</span>}
                 </div>
+              </div>
+
+              {/* Remarks Field (Mandatory if 'Other' is selected, otherwise optional) */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.35rem' }}>
+                  Remarks {formData.primaryReason === 'Other' ? (
+                    <span style={{ color: '#ef4444' }}>* (Mandatory when "Other" is selected)</span>
+                  ) : (
+                    <span style={{ color: '#64748b', fontWeight: '400' }}>(Optional)</span>
+                  )}
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder={formData.primaryReason === 'Other' ? "Please specify details for 'Other' reason (Mandatory)..." : "Specific context, behavioral observations, or notes for the clinical intake team..."}
+                  value={formData.remarks}
+                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '8px',
+                    border: errors.remarks ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                    fontSize: '0.9rem',
+                    color: '#0f172a',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    resize: 'vertical'
+                  }}
+                />
+                {errors.remarks && <span style={{ fontSize: '0.74rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{errors.remarks}</span>}
               </div>
 
               {/* Consent Box */}

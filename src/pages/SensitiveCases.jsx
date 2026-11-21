@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
+import { PRIMARY_REASONS, URGENCY_LEVELS, getUrgencyBadgeStyle } from '../data/sensitiveCasesData';
 
 // Default initial mock data for Manager Referrals
 const INITIAL_MANAGER_REFERRALS = [
@@ -297,6 +298,22 @@ export default function SensitiveCases() {
     } catch {}
   }, [criticalCases]);
 
+  // Listen for storage events so CS Dashboard reported sensitive cases immediately show up
+  useEffect(() => {
+    const handleCriticalUpdate = () => {
+      try {
+        const saved = localStorage.getItem('sensitive_cases_critical');
+        if (saved) setCriticalCases(JSON.parse(saved));
+      } catch {}
+    };
+    window.addEventListener('storage', handleCriticalUpdate);
+    window.addEventListener('critical-cases-updated', handleCriticalUpdate);
+    return () => {
+      window.removeEventListener('storage', handleCriticalUpdate);
+      window.removeEventListener('critical-cases-updated', handleCriticalUpdate);
+    };
+  }, []);
+
   // Filters and Search
   const [searchQuery, setSearchQuery] = useState('');
   const [corporateFilter, setCorporateFilter] = useState('All');
@@ -356,7 +373,17 @@ export default function SensitiveCases() {
     return managerReferrals.filter(item => {
       if (corporateFilter !== 'All' && item.corporate !== corporateFilter) return false;
       if (statusFilter !== 'All' && item.status !== statusFilter) return false;
-      if (severityFilter !== 'All' && (item.urgencyLevel !== severityFilter && item.severity !== severityFilter)) return false;
+      if (severityFilter !== 'All') {
+        const itemUrg = (item.urgencyLevel || item.severity || '').toLowerCase();
+        const filt = severityFilter.toLowerCase();
+        const matches =
+          itemUrg === filt ||
+          (filt === 'emergency' && (itemUrg.includes('emergency') || itemUrg.includes('urgent') || itemUrg.includes('sos'))) ||
+          (filt === 'severe' && itemUrg.includes('severe')) ||
+          (filt === 'high' && itemUrg.includes('high')) ||
+          (filt === 'normal' && (itemUrg.includes('normal') || itemUrg.includes('low') || itemUrg.includes('routine')));
+        if (!matches) return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const manager = (item.managerName || item.referringManager || '').toLowerCase();
@@ -383,16 +410,26 @@ export default function SensitiveCases() {
     return criticalCases.filter(item => {
       if (corporateFilter !== 'All' && item.corporate !== corporateFilter) return false;
       if (statusFilter !== 'All' && item.status !== statusFilter) return false;
-      if (severityFilter !== 'All' && item.riskLevel !== severityFilter) return false;
+      if (severityFilter !== 'All') {
+        const itemUrg = (item.riskLevel || item.urgencyLevel || '').toLowerCase();
+        const filt = severityFilter.toLowerCase();
+        const matches =
+          itemUrg === filt ||
+          (filt === 'emergency' && (itemUrg.includes('emergency') || itemUrg.includes('urgent') || itemUrg.includes('sos'))) ||
+          (filt === 'severe' && itemUrg.includes('severe')) ||
+          (filt === 'high' && itemUrg.includes('high')) ||
+          (filt === 'normal' && (itemUrg.includes('normal') || itemUrg.includes('low') || itemUrg.includes('routine')));
+        if (!matches) return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const match =
           item.id.toLowerCase().includes(q) ||
-          item.employeeAlias.toLowerCase().includes(q) ||
+          (item.employeeAlias || item.callerName || '').toLowerCase().includes(q) ||
           item.corporate.toLowerCase().includes(q) ||
-          item.triggerSource.toLowerCase().includes(q) ||
-          item.criticalCategory.toLowerCase().includes(q) ||
-          item.assignedCrisisLead.toLowerCase().includes(q);
+          (item.triggerSource || '').toLowerCase().includes(q) ||
+          (item.criticalCategory || item.primaryReason || '').toLowerCase().includes(q) ||
+          (item.assignedCrisisLead || item.answeredBy || '').toLowerCase().includes(q);
         if (!match) return false;
       }
       return true;
@@ -512,7 +549,7 @@ export default function SensitiveCases() {
     memberPhone: '',
     memberEmail: '',
     employeeId: '',
-    primaryReason: 'Severe Burnout & Exhaustion',
+    primaryReason: PRIMARY_REASONS[0],
     urgencyLevel: 'High',
     remarks: 'Manual referral entry by Admin',
     isHighestPriority: false,
@@ -523,6 +560,11 @@ export default function SensitiveCases() {
     e.preventDefault();
     if (!newReferralForm.memberName || !newReferralForm.managerName) {
       alert('Please fill out Member Name and Manager Name.');
+      return;
+    }
+
+    if (newReferralForm.primaryReason === 'Other' && !newReferralForm.remarks.trim()) {
+      alert('Remarks are mandatory when "Other" is selected as Primary Reason.');
       return;
     }
 
@@ -553,7 +595,7 @@ export default function SensitiveCases() {
       memberPhone: '',
       memberEmail: '',
       employeeId: '',
-      primaryReason: 'Severe Burnout & Exhaustion',
+      primaryReason: PRIMARY_REASONS[0],
       urgencyLevel: 'High',
       remarks: 'Manual referral entry by Admin',
       isHighestPriority: false,
@@ -568,8 +610,8 @@ export default function SensitiveCases() {
     employeeAlias: '',
     employeeDepartment: 'Engineering',
     triggerSource: '24/7 Crisis Hotline',
-    criticalCategory: 'Suicidal Ideation / Immediate Risk',
-    riskLevel: 'Critical / SOS',
+    criticalCategory: PRIMARY_REASONS[0],
+    riskLevel: 'Emergency',
     escalationProtocol: 'Level 3 - Crisis Clinician & Emergency Contact',
     assignedCrisisLead: 'Dr. Sameer Khan (Lead Crisis Specialist)',
     summary: '',
@@ -580,6 +622,11 @@ export default function SensitiveCases() {
     e.preventDefault();
     if (!newCriticalForm.employeeAlias || !newCriticalForm.summary) {
       alert('Please provide Employee Identifier and Brief Description.');
+      return;
+    }
+
+    if (newCriticalForm.criticalCategory === 'Other' && !newCriticalForm.summary.trim()) {
+      alert('Remarks / Summary are mandatory when "Other" is selected as Critical Risk Category.');
       return;
     }
 
@@ -912,20 +959,10 @@ export default function SensitiveCases() {
                 }}
               >
                 <option value="All">All Levels</option>
-                {activeTab === 'referrals' ? (
-                  <>
-                    <option value="Critical / Urgent">Critical / Urgent</option>
-                    <option value="High">High</option>
-                    <option value="Moderate / Medium">Moderate / Medium</option>
-                    <option value="Routine / Low">Routine / Low</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="Critical / SOS">Critical / SOS</option>
-                    <option value="Severe">Severe</option>
-                    <option value="High">High</option>
-                  </>
-                )}
+                <option value="Emergency">Emergency</option>
+                <option value="Severe">Severe</option>
+                <option value="High">High</option>
+                <option value="Normal">Normal</option>
               </select>
             </div>
 
@@ -1046,22 +1083,22 @@ export default function SensitiveCases() {
 
                     {/* Urgency Level */}
                     <td style={{ padding: '0.85rem 1rem' }}>
-                      <span style={{
-                        padding: '0.25rem 0.6rem',
-                        borderRadius: '12px',
-                        fontSize: '0.74rem',
-                        fontWeight: '700',
-                        background:
-                          (row.urgencyLevel?.includes('Urgent') || row.severity === 'Urgent') ? '#fee2e2' :
-                          (row.urgencyLevel?.includes('High') || row.severity === 'High') ? '#ffedd5' :
-                          (row.urgencyLevel?.includes('Medium') || row.severity === 'Medium') ? '#fef3c7' : '#e0f2fe',
-                        color:
-                          (row.urgencyLevel?.includes('Urgent') || row.severity === 'Urgent') ? '#b91c1c' :
-                          (row.urgencyLevel?.includes('High') || row.severity === 'High') ? '#c2410c' :
-                          (row.urgencyLevel?.includes('Medium') || row.severity === 'Medium') ? '#b45309' : '#0369a1'
-                      }}>
-                        {row.urgencyLevel || row.severity}
-                      </span>
+                      {(() => {
+                        const style = getUrgencyBadgeStyle(row.urgencyLevel || row.severity);
+                        return (
+                          <span style={{
+                            padding: '0.25rem 0.65rem',
+                            borderRadius: '12px',
+                            fontSize: '0.74rem',
+                            fontWeight: '700',
+                            background: style.bg,
+                            color: style.color,
+                            border: `1px solid ${style.border}`
+                          }}>
+                            {row.urgencyLevel || row.severity}
+                          </span>
+                        );
+                      })()}
                     </td>
 
                     {/* Status (Dropdown) */}
@@ -1261,13 +1298,13 @@ export default function SensitiveCases() {
                         <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{row.location}</div>
                       </td>
                       <td style={{ padding: '0.85rem 1rem' }}>
-                        <div style={{ fontWeight: '600', color: '#1e293b' }}>{row.employeeAlias}</div>
-                        <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{row.employeeDepartment}</div>
+                        <div style={{ fontWeight: '600', color: '#1e293b' }}>{row.employeeAlias || row.callerName || 'Confidential'}</div>
+                        <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{row.employeeDepartment || row.divisionName || row.divisionId || ''}</div>
                       </td>
                       <td style={{ padding: '0.85rem 1rem' }}>
                         <span style={{ fontSize: '0.78rem', color: '#334155', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                           <i className='bx bx-bell' style={{ color: '#ef4444' }}></i>
-                          {row.triggerSource}
+                          {row.triggerSource || (row.answeredBy ? `Inbound (${row.answeredBy})` : 'Crisis Alert')}
                         </span>
                       </td>
                       <td style={{ padding: '0.85rem 1rem', maxWidth: '240px' }}>
@@ -1280,24 +1317,29 @@ export default function SensitiveCases() {
                           fontWeight: '700',
                           display: 'inline-block'
                         }}>
-                          {row.criticalCategory}
+                          {row.criticalCategory || row.primaryReason}
                         </span>
                       </td>
                       <td style={{ padding: '0.85rem 1rem' }}>
-                        <span style={{
-                          padding: '0.25rem 0.65rem',
-                          borderRadius: '12px',
-                          fontSize: '0.74rem',
-                          fontWeight: '800',
-                          background: row.riskLevel.includes('SOS') ? '#dc2626' : (row.riskLevel === 'Severe' ? '#ea580c' : '#eab308'),
-                          color: 'white',
-                          boxShadow: row.riskLevel.includes('SOS') ? '0 2px 6px rgba(220,38,38,0.3)' : 'none'
-                        }}>
-                          {row.riskLevel}
-                        </span>
+                        {(() => {
+                          const style = getUrgencyBadgeStyle(row.riskLevel || row.urgencyLevel);
+                          return (
+                            <span style={{
+                              padding: '0.25rem 0.65rem',
+                              borderRadius: '12px',
+                              fontSize: '0.74rem',
+                              fontWeight: '800',
+                              background: style.bg,
+                              color: style.color,
+                              border: `1px solid ${style.border}`
+                            }}>
+                              {row.riskLevel || row.urgencyLevel}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td style={{ padding: '0.85rem 1rem', color: '#334155', fontSize: '0.8rem', fontWeight: '500' }}>
-                        {row.assignedCrisisLead}
+                        {row.assignedCrisisLead || (row.answeredBy ? `Staff: ${row.answeredBy}` : 'Crisis Team')}
                       </td>
                       <td style={{ padding: '0.85rem 1rem' }}>
                         <select
@@ -1637,13 +1679,9 @@ export default function SensitiveCases() {
                     onChange={(e) => setNewReferralForm({ ...newReferralForm, primaryReason: e.target.value })}
                     style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
                   >
-                    <option value="Performance Decline & Stress">Performance Decline & Stress</option>
-                    <option value="Severe Burnout & Exhaustion">Severe Burnout & Exhaustion</option>
-                    <option value="Anxiety & Panic Episodes">Anxiety & Panic Episodes</option>
-                    <option value="Attendance / Absenteeism">Attendance / Absenteeism</option>
-                    <option value="Workplace Conflict & Isolation">Workplace Conflict & Isolation</option>
-                    <option value="Grief & Personal Loss">Grief & Personal Loss</option>
-                    <option value="Substance / Behavioral Concern">Substance / Behavioral Concern</option>
+                    {PRIMARY_REASONS.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -1653,21 +1691,26 @@ export default function SensitiveCases() {
                     onChange={(e) => setNewReferralForm({ ...newReferralForm, urgencyLevel: e.target.value })}
                     style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
                   >
-                    <option value="Routine / Low">Routine / Low</option>
-                    <option value="Moderate / Medium">Moderate / Medium</option>
-                    <option value="High">High</option>
-                    <option value="Critical / Urgent">Critical / Urgent</option>
+                    {URGENCY_LEVELS.map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Remarks</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>
+                  Remarks {newReferralForm.primaryReason === 'Other' ? (
+                    <span style={{ color: '#dc2626' }}>* (Mandatory when "Other" is selected)</span>
+                  ) : (
+                    <span style={{ color: '#64748b', fontWeight: '400' }}>(Optional)</span>
+                  )}
+                </label>
                 <input
                   type="text"
                   value={newReferralForm.remarks}
                   onChange={(e) => setNewReferralForm({ ...newReferralForm, remarks: e.target.value })}
-                  placeholder="Clinical remarks or follow-up notes..."
+                  placeholder={newReferralForm.primaryReason === 'Other' ? "Please specify details for 'Other' reason (Mandatory)..." : "Clinical remarks or follow-up notes..."}
                   style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
                 />
               </div>
@@ -1793,42 +1836,44 @@ export default function SensitiveCases() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Risk Level *</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Urgency / Risk Level *</label>
                   <select
                     value={newCriticalForm.riskLevel}
                     onChange={(e) => setNewCriticalForm({ ...newCriticalForm, riskLevel: e.target.value })}
                     style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: '700', color: '#dc2626' }}
                   >
-                    <option value="Critical / SOS">Critical / SOS (Active Threat / Emergency)</option>
-                    <option value="Severe">Severe (Immediate De-escalation Needed)</option>
-                    <option value="High">High (High Risk Monitoring)</option>
+                    {URGENCY_LEVELS.map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               <div style={{ marginBottom: '0.85rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Critical Risk Category</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Primary Reason / Critical Category</label>
                 <select
                   value={newCriticalForm.criticalCategory}
                   onChange={(e) => setNewCriticalForm({ ...newCriticalForm, criticalCategory: e.target.value })}
                   style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
                 >
-                  <option value="Suicidal Ideation / Immediate Risk">Suicidal Ideation / Immediate Risk</option>
-                  <option value="Acute Psychotic Breakdown & Panic">Acute Psychotic Breakdown & Panic</option>
-                  <option value="Domestic Violence & Safety Threat">Domestic Violence & Safety Threat</option>
-                  <option value="Severe Depression & Substance Dependency Risk">Severe Depression & Substance Dependency Risk</option>
-                  <option value="Medical / Psychiatric Emergency">Medical / Psychiatric Emergency</option>
+                  {PRIMARY_REASONS.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
                 </select>
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Immediate Incident Summary &amp; Threat Context *</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>
+                  Immediate Incident Summary &amp; Threat Context {newCriticalForm.criticalCategory === 'Other' ? (
+                    <span style={{ color: '#dc2626' }}>* (Mandatory when "Other" is selected)</span>
+                  ) : '*'}
+                </label>
                 <textarea
                   rows="3"
                   required
                   value={newCriticalForm.summary}
                   onChange={(e) => setNewCriticalForm({ ...newCriticalForm, summary: e.target.value })}
-                  placeholder="Describe immediate danger, caller statements, and current location/status..."
+                  placeholder={newCriticalForm.criticalCategory === 'Other' ? "Please specify details for 'Other' category (Mandatory)..." : "Describe immediate danger, caller statements, and current location/status..."}
                   style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
                 />
               </div>
