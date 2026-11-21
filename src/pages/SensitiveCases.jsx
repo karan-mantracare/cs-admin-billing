@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
+import { getAllCorporateDivisions } from '../utils/cadenceDivisionUtils';
 import { PRIMARY_REASONS, URGENCY_LEVELS, getUrgencyBadgeStyle } from '../data/sensitiveCasesData';
 
 // Default initial mock data for Manager Referrals
@@ -325,11 +326,72 @@ export default function SensitiveCases() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Modals
-  const [isAddReferralOpen, setIsAddReferralOpen] = useState(false);
+  const [isDivisionModalOpen, setIsDivisionModalOpen] = useState(false);
+  const [selectedDivisionId, setSelectedDivisionId] = useState('');
+  const [toastMessage, setToastMessage] = useState(null);
   const [isReportCriticalOpen, setIsReportCriticalOpen] = useState(false);
   const [viewingCase, setViewingCase] = useState(null); // { type: 'referral' | 'critical', data: Object }
   const [isFormDetailsExpanded, setIsFormDetailsExpanded] = useState(false); // Collapse mode by default
   const [newNoteText, setNewNoteText] = useState('');
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  };
+
+  // Division mapping for Manager Referral Link
+  const mappedDivisions = useMemo(() => {
+    const all = getAllCorporateDivisions(clients);
+    if (corporateFilter && corporateFilter !== 'All') {
+      const filtered = all.filter(d => 
+        (d.corporateName && d.corporateName.toLowerCase() === corporateFilter.toLowerCase()) ||
+        (d.clientName && d.clientName.toLowerCase() === corporateFilter.toLowerCase())
+      );
+      if (filtered.length > 0) {
+        return filtered.map((m, idx) => ({
+          id: m.divisionId || m.id || `DIV-${101 + idx}`,
+          name: m.divisionName || m.name || `Division ${idx + 1}`,
+          corporate: m.corporateName || corporateFilter
+        }));
+      }
+    }
+    if (all.length > 0) {
+      return all.map((m, idx) => ({
+        id: m.divisionId || m.id || `DIV-${101 + idx}`,
+        name: m.divisionName || m.name || `Division ${idx + 1}`,
+        corporate: m.corporateName || 'Corporate Client'
+      }));
+    }
+    return [
+      { id: 'DIV-101', name: 'Engineering & Technology', corporate: 'TechCorp Solutions' },
+      { id: 'DIV-102', name: 'Global Operations & Support', corporate: 'TechCorp Solutions' },
+      { id: 'DIV-103', name: 'Sales & Product Strategy', corporate: 'TechCorp Solutions' }
+    ];
+  }, [clients, corporateFilter]);
+
+  // Handle Manager Referral button click (Copy Referral Link)
+  const handleCopyReferralLinkClick = () => {
+    if (mappedDivisions.length === 1) {
+      const singleDiv = mappedDivisions[0];
+      const link = `${window.location.origin}/referral-form?divisionId=${encodeURIComponent(singleDiv.id)}`;
+      navigator.clipboard.writeText(link);
+      showToast(`Manager Referral link for ${singleDiv.name} (${singleDiv.id}) copied to clipboard!`);
+    } else {
+      setSelectedDivisionId(mappedDivisions[0]?.id || '');
+      setIsDivisionModalOpen(true);
+    }
+  };
+
+  // Confirm division choice in modal
+  const handleConfirmDivisionAction = () => {
+    const chosenDiv = mappedDivisions.find(d => d.id === selectedDivisionId) || mappedDivisions[0];
+    const link = `${window.location.origin}/referral-form?divisionId=${encodeURIComponent(chosenDiv.id)}`;
+    navigator.clipboard.writeText(link);
+    showToast(`Manager Referral link for ${chosenDiv.name} (${chosenDiv.id}) copied to clipboard!`);
+    setIsDivisionModalOpen(false);
+  };
 
   // Editable remarks state
   const [editingRemarksId, setEditingRemarksId] = useState(null);
@@ -540,69 +602,7 @@ export default function SensitiveCases() {
     }
   };
 
-  // Form State for New Manager Referral
-  const [newReferralForm, setNewReferralForm] = useState({
-    divisionId: 'DIV-101',
-    corporate: 'TechCorp Solutions',
-    managerName: '',
-    managerEmail: '',
-    memberName: '',
-    memberPhone: '',
-    memberEmail: '',
-    employeeId: '',
-    primaryReason: PRIMARY_REASONS[0],
-    urgencyLevel: 'High',
-    remarks: 'Manual referral entry by Admin',
-    isHighestPriority: false,
-    consentProvided: true
-  });
 
-  const handleCreateReferral = (e) => {
-    e.preventDefault();
-    if (!newReferralForm.memberName || !newReferralForm.managerName) {
-      alert('Please fill out Member Name and Manager Name.');
-      return;
-    }
-
-    if (newReferralForm.primaryReason === 'Other' && !newReferralForm.remarks.trim()) {
-      alert('Remarks are mandatory when "Other" is selected as Primary Reason.');
-      return;
-    }
-
-    const newId = `MR-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newEntry = {
-      ...newReferralForm,
-      id: newId,
-      status: 'New Referral',
-      referredDate: new Date().toISOString().split('T')[0],
-      assignedClinician: 'Dr. Neha Kapoor (Senior Clinical Psychologist)',
-      timeline: [
-        {
-          date: new Date().toISOString().replace('T', ' ').substring(0, 16),
-          user: `${newReferralForm.managerName} (Manager)`,
-          action: `Manager referral created for ${newReferralForm.memberName} under Division ${newReferralForm.divisionId}.`
-        }
-      ]
-    };
-
-    setManagerReferrals(prev => [newEntry, ...prev]);
-    setIsAddReferralOpen(false);
-    setNewReferralForm({
-      divisionId: 'DIV-101',
-      corporate: 'TechCorp Solutions',
-      managerName: '',
-      managerEmail: '',
-      memberName: '',
-      memberPhone: '',
-      memberEmail: '',
-      employeeId: '',
-      primaryReason: PRIMARY_REASONS[0],
-      urgencyLevel: 'High',
-      remarks: 'Manual referral entry by Admin',
-      isHighestPriority: false,
-      consentProvided: true
-    });
-  };
 
   // Form State for Report Critical Case
   const [newCriticalForm, setNewCriticalForm] = useState({
@@ -667,6 +667,30 @@ export default function SensitiveCases() {
   return (
     <div className="page-container" style={{ padding: '1.5rem 2rem', background: '#f8fafc', minHeight: '100vh' }}>
       
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '1.5rem',
+          right: '1.5rem',
+          zIndex: 9999,
+          background: '#0f172a',
+          color: 'white',
+          padding: '0.85rem 1.25rem',
+          borderRadius: '8px',
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.65rem',
+          fontSize: '0.88rem',
+          fontWeight: '500',
+          animation: 'fadeIn 0.2s ease-in-out'
+        }}>
+          <i className='bx bx-check-circle' style={{ color: '#10b981', fontSize: '1.3rem' }}></i>
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* Page Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
@@ -688,25 +712,29 @@ export default function SensitiveCases() {
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           {activeTab === 'referrals' ? (
             <button
-              onClick={() => setIsAddReferralOpen(true)}
+              type="button"
+              onClick={handleCopyReferralLinkClick}
+              title="Copy Manager Referral Form link mapped to a corporate division"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.45rem',
-                padding: '0.6rem 1.1rem',
+                padding: '0.55rem 0.95rem',
+                background: 'white',
+                border: '1px solid #cbd5e1',
                 borderRadius: '8px',
-                background: '#0284c7',
-                color: 'white',
-                border: 'none',
+                color: '#0369a1',
                 fontWeight: '600',
-                fontSize: '0.85rem',
+                fontSize: '0.84rem',
                 cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                 transition: 'all 0.15s ease'
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0284c7'; e.currentTarget.style.background = '#f0f9ff'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'white'; }}
             >
-              <i className='bx bx-plus' style={{ fontSize: '1.1rem' }}></i>
-              <span>New Manager Referral</span>
+              <i className='bx bx-user-voice' style={{ fontSize: '1.15rem', color: '#0284c7' }}></i>
+              <span>Manager Referral</span>
             </button>
           ) : (
             <button
@@ -1792,176 +1820,132 @@ export default function SensitiveCases() {
         </div>
       )}
 
-      {/* MODAL: New Manager Referral Form */}
-      {isAddReferralOpen && (
+      {/* MODAL: Select Division for Manager Referral */}
+      {isDivisionModalOpen && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.6)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           backdropFilter: 'blur(3px)'
         }}>
           <div style={{
             background: 'white',
-            borderRadius: '12px',
-            width: '92%',
-            maxWidth: '620px',
-            maxHeight: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
-            overflow: 'hidden'
+            borderRadius: '14px',
+            width: '90%',
+            maxWidth: '520px',
+            overflow: 'hidden',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.25)'
           }}>
-            <div style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', padding: '1rem 1.25rem', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <i className='bx bx-user-voice'></i> New Manager Referral
-              </h2>
-              <button onClick={() => setIsAddReferralOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.3rem', cursor: 'pointer' }}>&times;</button>
+            <div style={{
+              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+              color: 'white',
+              padding: '1rem 1.25rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: '700', fontSize: '0.98rem' }}>
+                <i className='bx bx-shield-quarter'></i>
+                <span>Select Division for Manager Referral Link</span>
+              </div>
+              <button
+                onClick={() => setIsDivisionModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.3rem', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
             </div>
 
-            <form onSubmit={handleCreateReferral} style={{ padding: '1.25rem', overflowY: 'auto', flex: 1 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginBottom: '0.85rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Corporate Client *</label>
-                  <select
-                    value={newReferralForm.corporate}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, corporate: e.target.value })}
-                    style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
-                  >
-                    {availableCorporates.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Division ID</label>
-                  <input
-                    type="text"
-                    value={newReferralForm.divisionId}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, divisionId: e.target.value })}
-                    placeholder="e.g. DIV-101"
-                    style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.88rem', color: '#475569', lineHeight: 1.5 }}>
+                Select the corporate division to map this manager referral link to:
+              </p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginBottom: '0.85rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Manager Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newReferralForm.managerName}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, managerName: e.target.value })}
-                    placeholder="Full manager name"
-                    style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Manager Email</label>
-                  <input
-                    type="email"
-                    value={newReferralForm.managerEmail}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, managerEmail: e.target.value })}
-                    placeholder="manager@company.com"
-                    style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginBottom: '0.85rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Member Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newReferralForm.memberName}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, memberName: e.target.value })}
-                    placeholder="Team member name"
-                    style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Member Email</label>
-                  <input
-                    type="email"
-                    value={newReferralForm.memberEmail}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, memberEmail: e.target.value })}
-                    placeholder="member@company.com"
-                    style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginBottom: '0.85rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Primary Reason</label>
-                  <select
-                    value={newReferralForm.primaryReason}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, primaryReason: e.target.value })}
-                    style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
-                  >
-                    {PRIMARY_REASONS.map(r => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>Urgency Level</label>
-                  <select
-                    value={newReferralForm.urgencyLevel}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, urgencyLevel: e.target.value })}
-                    style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
-                  >
-                    {URGENCY_LEVELS.map(u => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '0.3rem' }}>
-                  Remarks {newReferralForm.primaryReason === 'Other' ? (
-                    <span style={{ color: '#dc2626' }}>* (Mandatory when "Other" is selected)</span>
-                  ) : (
-                    <span style={{ color: '#64748b', fontWeight: '400' }}>(Optional)</span>
-                  )}
-                </label>
-                <input
-                  type="text"
-                  value={newReferralForm.remarks}
-                  onChange={(e) => setNewReferralForm({ ...newReferralForm, remarks: e.target.value })}
-                  placeholder={newReferralForm.primaryReason === 'Other' ? "Please specify details for 'Other' reason (Mandatory)..." : "Clinical remarks or follow-up notes..."}
-                  style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.82rem', color: '#334155', fontWeight: '600' }}>
-                  <input
-                    type="checkbox"
-                    checked={newReferralForm.isHighestPriority}
-                    onChange={(e) => setNewReferralForm({ ...newReferralForm, isHighestPriority: e.target.checked })}
-                    style={{ width: '16px', height: '16px', accentColor: '#dc2626' }}
-                  />
-                  <span>Mark as Highest Priority</span>
-                </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                {mappedDivisions.map(div => {
+                  const isSelected = selectedDivisionId === div.id;
+                  return (
+                    <div
+                      key={div.id}
+                      onClick={() => setSelectedDivisionId(div.id)}
+                      style={{
+                        padding: '0.85rem 1rem',
+                        borderRadius: '10px',
+                        border: isSelected ? '2px solid #0284c7' : '1px solid #e2e8f0',
+                        background: isSelected ? '#f0f9ff' : 'white',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: '700', fontSize: '0.9rem', color: isSelected ? '#0369a1' : '#1e293b' }}>
+                          {div.name}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.15rem' }}>
+                          Division ID: <strong style={{ color: '#0284c7' }}>{div.id}</strong> {div.corporate ? `• ${div.corporate}` : ''}
+                        </div>
+                      </div>
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        border: isSelected ? '6px solid #0284c7' : '2px solid #cbd5e1',
+                        background: 'white'
+                      }} />
+                    </div>
+                  );
+                })}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
                 <button
                   type="button"
-                  onClick={() => setIsAddReferralOpen(false)}
-                  style={{ padding: '0.55rem 1.15rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}
+                  onClick={() => setIsDivisionModalOpen(false)}
+                  style={{
+                    padding: '0.55rem 1.15rem',
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    fontSize: '0.85rem',
+                    color: '#475569',
+                    cursor: 'pointer'
+                  }}
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  style={{ padding: '0.55rem 1.35rem', background: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}
+                  type="button"
+                  onClick={handleConfirmDivisionAction}
+                  style={{
+                    padding: '0.55rem 1.35rem',
+                    background: '#0284c7',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: '700',
+                    fontSize: '0.85rem',
+                    color: 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem'
+                  }}
                 >
-                  Save Referral
+                  <i className='bx bx-copy'></i>
+                  <span>Copy Manager Referral Link</span>
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
