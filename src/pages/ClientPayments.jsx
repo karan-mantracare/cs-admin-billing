@@ -363,9 +363,38 @@ function ClientPayments() {
   const [invoiceForm, setInvoiceForm] = useState({
     invoiceNumber: '',
     invoiceDate: '',
-    invoiceFile: null
+    invoiceDocument: '',
+    invoiceFile: null,
+    taxDetails: '',
+    taxPercent: ''
   });
   const [invoiceErrors, setInvoiceErrors] = useState({});
+
+  // Auto-populate invoice form when opening Manage Invoice modal
+  useEffect(() => {
+    if (activeUploadId !== null) {
+      const p = payments.find(pay => pay.id === activeUploadId);
+      if (p) {
+        let defaultTax = p.taxDetails || p.clientTaxDetails || '';
+        if (!defaultTax && p.contractId) {
+          try {
+            const contracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+            const cnt = contracts.find(c => String(c.id) === String(p.contractId));
+            if (cnt?.taxDetails) defaultTax = cnt.taxDetails;
+          } catch (e) {}
+        }
+        setInvoiceForm({
+          invoiceNumber: p.invoiceNumber || (p.invoiceLink && !p.invoiceLink.endsWith('.pdf') ? p.invoiceLink : '') || '',
+          invoiceDate: p.invoiceDate || new Date().toISOString().split('T')[0],
+          invoiceDocument: p.invoiceLink || '',
+          invoiceFile: null,
+          taxDetails: defaultTax,
+          taxPercent: p.taxPercent !== undefined ? p.taxPercent : ''
+        });
+        setInvoiceErrors({});
+      }
+    }
+  }, [activeUploadId]);
 
   // Add Payment Form State
   const [paymentForm, setPaymentForm] = useState({
@@ -1431,7 +1460,7 @@ function ClientPayments() {
 
         const resetModal = () => {
           setActiveUploadId(null);
-          setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceFile: null });
+          setInvoiceForm({ invoiceNumber: '', invoiceDate: '', invoiceDocument: '', invoiceFile: null, taxDetails: '', taxPercent: '' });
           setInvoiceErrors({});
           setActiveUploadTab('upload');
         };
@@ -1443,7 +1472,7 @@ function ClientPayments() {
             display: 'flex', justifyContent: 'center', alignItems: 'center'
           }} onClick={resetModal}>
             <div style={{
-              background: 'white', borderRadius: '12px', width: '90%', maxWidth: '520px',
+              background: 'white', borderRadius: '12px', width: '90%', maxWidth: '560px',
               boxShadow: '0 20px 40px rgba(0,0,0,0.2)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
             }} onClick={(e) => e.stopPropagation()}>
               
@@ -1488,47 +1517,113 @@ function ClientPayments() {
               {/* Tab Content */}
               {activeUploadTab === 'upload' ? (
                 <>
-                  <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
-                        Invoice Number <span style={{color:'#ef4444'}}>*</span>
-                      </label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. INV-2024-001" 
-                        style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '8px', border: `1px solid ${invoiceErrors.invoiceNumber ? '#ef4444' : '#cbd5e1'}`, fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
-                        value={invoiceForm.invoiceNumber}
-                        onChange={(e) => { setInvoiceForm(prev => ({ ...prev, invoiceNumber: e.target.value })); setInvoiceErrors(prev => ({...prev, invoiceNumber: null})); }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = invoiceErrors.invoiceNumber ? '#ef4444' : '#cbd5e1'}
-                      />
-                      {invoiceErrors.invoiceNumber && <p style={{margin:'0.3rem 0 0',fontSize:'0.75rem',color:'#ef4444'}}>{invoiceErrors.invoiceNumber}</p>}
+                  <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+                    {/* Row 1: Invoice Number | Invoice Date */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                          Invoice Number <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. INV-2024-001" 
+                          style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '8px', border: `1px solid ${invoiceErrors.invoiceNumber ? '#ef4444' : '#cbd5e1'}`, fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
+                          value={invoiceForm.invoiceNumber}
+                          onChange={(e) => { setInvoiceForm(prev => ({ ...prev, invoiceNumber: e.target.value })); setInvoiceErrors(prev => ({ ...prev, invoiceNumber: null })); }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = invoiceErrors.invoiceNumber ? '#ef4444' : '#cbd5e1'}
+                        />
+                        {invoiceErrors.invoiceNumber && <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: '#ef4444' }}>{invoiceErrors.invoiceNumber}</p>}
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                          Invoice Date <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <input 
+                          type="date" 
+                          style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '8px', border: `1px solid ${invoiceErrors.invoiceDate ? '#ef4444' : '#cbd5e1'}`, fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
+                          value={invoiceForm.invoiceDate}
+                          onChange={(e) => { setInvoiceForm(prev => ({ ...prev, invoiceDate: e.target.value })); setInvoiceErrors(prev => ({ ...prev, invoiceDate: null })); }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = invoiceErrors.invoiceDate ? '#ef4444' : '#cbd5e1'}
+                        />
+                        {invoiceErrors.invoiceDate && <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: '#ef4444' }}>{invoiceErrors.invoiceDate}</p>}
+                      </div>
                     </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
-                        Invoice Date <span style={{color:'#ef4444'}}>*</span>
-                      </label>
-                      <input 
-                        type="date" 
-                        style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '8px', border: `1px solid ${invoiceErrors.invoiceDate ? '#ef4444' : '#cbd5e1'}`, fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
-                        value={invoiceForm.invoiceDate}
-                        onChange={(e) => { setInvoiceForm(prev => ({ ...prev, invoiceDate: e.target.value })); setInvoiceErrors(prev => ({...prev, invoiceDate: null})); }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = invoiceErrors.invoiceDate ? '#ef4444' : '#cbd5e1'}
-                      />
-                      {invoiceErrors.invoiceDate && <p style={{margin:'0.3rem 0 0',fontSize:'0.75rem',color:'#ef4444'}}>{invoiceErrors.invoiceDate}</p>}
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
-                        Invoice Document <span style={{ color: '#94a3b8', fontWeight: '500' }}>(PDF)</span>
-                      </label>
-                      <div style={{ position: 'relative' }}>
+
+                    {/* Row 2: Invoice Document | Choose File */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                          Invoice Document
+                        </label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. INV-Document.pdf or URL" 
+                          style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
+                          value={invoiceForm.invoiceDocument}
+                          onChange={(e) => setInvoiceForm(prev => ({ ...prev, invoiceDocument: e.target.value }))}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                          Choose File <span style={{ color: '#94a3b8', fontWeight: '500' }}>(PDF)</span>
+                        </label>
                         <input 
                           type="file" 
                           accept=".pdf" 
-                          style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px dashed #cbd5e1', background: '#f8fafc', fontSize: '0.9rem', color: '#475569', boxSizing: 'border-box', cursor: 'pointer' }} 
-                          onChange={(e) => setInvoiceForm(prev => ({ ...prev, invoiceFile: e.target.files[0] }))}
+                          style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px', border: '1px dashed #cbd5e1', background: '#f8fafc', fontSize: '0.82rem', color: '#475569', boxSizing: 'border-box', cursor: 'pointer' }} 
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            setInvoiceForm(prev => ({
+                              ...prev,
+                              invoiceFile: file,
+                              invoiceDocument: file ? file.name : prev.invoiceDocument
+                            }));
+                          }}
                         />
+                      </div>
+                    </div>
+
+                    {/* Row 3: Tax Details | Tax % */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                          Tax Details
+                        </label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. GSTIN / VAT / Tax ID" 
+                          style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
+                          value={invoiceForm.taxDetails}
+                          onChange={(e) => setInvoiceForm(prev => ({ ...prev, taxDetails: e.target.value }))}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                          Tax %
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                          <input 
+                            type="number" 
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            placeholder="e.g. 18" 
+                            style={{ width: '100%', padding: '0.65rem 1.8rem 0.65rem 0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
+                            value={invoiceForm.taxPercent}
+                            onChange={(e) => setInvoiceForm(prev => ({ ...prev, taxPercent: e.target.value }))}
+                            onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                            onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                          />
+                          <span style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontSize: '0.85rem', fontWeight: '600', pointerEvents: 'none' }}>
+                            %
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1540,9 +1635,18 @@ function ClientPayments() {
                       if (!invoiceForm.invoiceNumber) errs.invoiceNumber = 'Invoice number is required';
                       if (!invoiceForm.invoiceDate) errs.invoiceDate = 'Invoice date is required';
                       if (Object.keys(errs).length) { setInvoiceErrors(errs); return; }
+                      const finalDoc = invoiceForm.invoiceDocument || (invoiceForm.invoiceFile ? invoiceForm.invoiceFile.name : invoiceForm.invoiceNumber);
                       setPayments(prev => prev.map(p => {
                         if (p.id === activeUploadId) {
-                          return { ...p, invoiceDate: invoiceForm.invoiceDate, invoiceLink: invoiceForm.invoiceNumber, status: p.status === 'To be Raised' ? 'Pending' : p.status };
+                          return {
+                            ...p,
+                            invoiceDate: invoiceForm.invoiceDate,
+                            invoiceLink: finalDoc,
+                            invoiceNumber: invoiceForm.invoiceNumber,
+                            taxDetails: invoiceForm.taxDetails,
+                            taxPercent: invoiceForm.taxPercent,
+                            status: p.status === 'To be Raised' ? 'Pending' : p.status
+                          };
                         }
                         return p;
                       }));
