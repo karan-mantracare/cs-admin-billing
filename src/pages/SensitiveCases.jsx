@@ -328,6 +328,7 @@ export default function SensitiveCases() {
   const [isAddReferralOpen, setIsAddReferralOpen] = useState(false);
   const [isReportCriticalOpen, setIsReportCriticalOpen] = useState(false);
   const [viewingCase, setViewingCase] = useState(null); // { type: 'referral' | 'critical', data: Object }
+  const [isFormDetailsExpanded, setIsFormDetailsExpanded] = useState(false); // Collapse mode by default
   const [newNoteText, setNewNoteText] = useState('');
 
   // Editable remarks state
@@ -1203,7 +1204,10 @@ export default function SensitiveCases() {
                     {/* Action (View Icon) */}
                     <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
                       <button
-                        onClick={() => setViewingCase({ type: 'referral', data: row })}
+                        onClick={() => {
+                          setViewingCase({ type: 'referral', data: row });
+                          setIsFormDetailsExpanded(false);
+                        }}
                         style={{
                           background: '#f0f9ff',
                           color: '#0284c7',
@@ -1374,7 +1378,10 @@ export default function SensitiveCases() {
                       </td>
                       <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
                         <button
-                          onClick={() => setViewingCase({ type: 'critical', data: row })}
+                          onClick={() => {
+                            setViewingCase({ type: 'critical', data: row });
+                            setIsFormDetailsExpanded(false);
+                          }}
                           style={{
                             background: '#fef2f2',
                             color: '#b91c1c',
@@ -1491,6 +1498,226 @@ export default function SensitiveCases() {
                     {viewingCase.data.status}
                   </div>
                 </div>
+              </div>
+
+              {/* Collapsible Complete Form Details Card (Starts in Collapse mode) */}
+              <div style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                marginBottom: '1.25rem',
+                overflow: 'hidden',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+              }}>
+                {/* Collapsible Header */}
+                <div
+                  onClick={() => setIsFormDetailsExpanded(!isFormDetailsExpanded)}
+                  style={{
+                    padding: '0.85rem 1rem',
+                    background: isFormDetailsExpanded ? '#f8fafc' : '#ffffff',
+                    borderBottom: isFormDetailsExpanded ? '1px solid #e2e8f0' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    transition: 'background 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => { if (!isFormDetailsExpanded) e.currentTarget.style.background = '#f8fafc'; }}
+                  onMouseLeave={(e) => { if (!isFormDetailsExpanded) e.currentTarget.style.background = '#ffffff'; }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                    <div style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '6px',
+                      background: viewingCase.type === 'critical' ? '#fee2e2' : '#e0f2fe',
+                      color: viewingCase.type === 'critical' ? '#dc2626' : '#0284c7',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1rem'
+                    }}>
+                      <i className='bx bx-file-blank'></i>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
+                        Complete Form Details
+                      </span>
+                      <span style={{
+                        marginLeft: '0.5rem',
+                        fontSize: '0.72rem',
+                        fontWeight: '600',
+                        color: isFormDetailsExpanded ? '#0284c7' : '#64748b',
+                        background: isFormDetailsExpanded ? '#e0f2fe' : '#f1f5f9',
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '999px'
+                      }}>
+                        {isFormDetailsExpanded ? 'Expanded' : 'Collapse mode'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: viewingCase.type === 'critical' ? '#dc2626' : '#0284c7', fontSize: '0.82rem', fontWeight: '700' }}>
+                    <span>{isFormDetailsExpanded ? 'Collapse' : 'Expand Form Details'}</span>
+                    <i className={`bx ${isFormDetailsExpanded ? 'bx-chevron-up' : 'bx-chevron-down'}`} style={{ fontSize: '1.2rem' }}></i>
+                  </div>
+                </div>
+
+                {/* Form Details Body - Rendered when expanded */}
+                {isFormDetailsExpanded && (
+                  <div style={{ padding: '1.25rem', background: '#fafbfc' }}>
+                    {viewingCase.type === 'referral' ? (
+                      /* Complete Manager Referral Form Details */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        
+                        {/* 1. Manager Information */}
+                        <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <h5 style={{ margin: '0 0 0.75rem 0', fontSize: '0.76rem', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <i className='bx bx-user-check'></i>
+                            <span>1. Manager Information</span>
+                          </h5>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', fontSize: '0.84rem' }}>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Full Name</span>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.managerName || viewingCase.data.referringManager || 'Jane Doe'}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Email Address</span>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.managerEmail || 'manager@company.com'}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Division ID</span>
+                              <strong style={{ color: '#0284c7' }}>{viewingCase.data.divisionId || 'DIV-101'}</strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. Team Member Profile */}
+                        <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <h5 style={{ margin: '0 0 0.75rem 0', fontSize: '0.76rem', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <i className='bx bx-id-card'></i>
+                            <span>2. Team Member Profile</span>
+                          </h5>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', fontSize: '0.84rem' }}>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Full Name</span>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.memberName || viewingCase.data.employeeName || 'John Smith'}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Phone Number</span>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.memberPhone || '+1 (555) 019-2831'}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Email Address</span>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.memberEmail || 'member@company.com'}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Employee ID</span>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.employeeId || 'N/A'}</strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 3. Support Needs */}
+                        <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <h5 style={{ margin: '0 0 0.75rem 0', fontSize: '0.76rem', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <i className='bx bx-heart'></i>
+                            <span>3. Support Needs &amp; Remarks</span>
+                          </h5>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.84rem', marginBottom: '0.75rem' }}>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Primary Reason</span>
+                              <span style={{ display: 'inline-block', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: '700', color: '#334155' }}>
+                                {viewingCase.data.primaryReason || viewingCase.data.category || 'N/A'}
+                              </span>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Urgency Level</span>
+                              <strong style={{ color: '#0284c7' }}>{viewingCase.data.urgencyLevel || viewingCase.data.severity || 'Normal'}</strong>
+                            </div>
+                          </div>
+                          <div style={{ marginBottom: '0.75rem' }}>
+                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Remarks</span>
+                            <p style={{ margin: 0, fontSize: '0.84rem', color: '#334155', background: '#f8fafc', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', lineHeight: 1.5 }}>
+                              {viewingCase.data.remarks || viewingCase.data.description || 'No additional remarks provided.'}
+                            </p>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.78rem', color: '#059669', fontWeight: '600' }}>
+                            <i className='bx bxs-check-circle' style={{ fontSize: '1.1rem' }}></i>
+                            <span>Manager Consent &amp; Acknowledgment: Confirmed (Employee consented to confidential contact)</span>
+                          </div>
+                        </div>
+
+                      </div>
+                    ) : (
+                      /* Complete Critical Case Report Form Details */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        
+                        {/* Inbound Call & Intake Info */}
+                        <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <h5 style={{ margin: '0 0 0.75rem 0', fontSize: '0.76rem', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <i className='bx bx-phone-call'></i>
+                            <span>Call &amp; Intake Details</span>
+                          </h5>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', fontSize: '0.84rem' }}>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Date</span>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.date || viewingCase.data.reportedAt?.split(' ')[0] || '2026-11-21'}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Call Time</span>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.callTime || viewingCase.data.reportedAt?.split(' ')[1] || '10:30 AM'}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Caller Name</span>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.callerName || viewingCase.data.employeeAlias || 'Confidential'}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Caller Number</span>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.callerNumber || '+91 98765 43210'}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Division</span>
+                              <strong style={{ color: '#dc2626' }}>{viewingCase.data.divisionName || viewingCase.data.divisionId || viewingCase.data.employeeDepartment || 'Corporate'}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Answered By</span>
+                              <strong style={{ color: '#0f172a' }}>{viewingCase.data.answeredBy || viewingCase.data.assignedCrisisLead || 'Self'}</strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Clinical Risk Assessment */}
+                        <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <h5 style={{ margin: '0 0 0.75rem 0', fontSize: '0.76rem', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <i className='bx bx-shield-plus'></i>
+                            <span>Clinical Risk &amp; Assessment Details</span>
+                          </h5>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.84rem', marginBottom: '0.75rem' }}>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Primary Reason / Category</span>
+                              <span style={{ display: 'inline-block', background: '#fee2e2', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: '700', color: '#991b1b' }}>
+                                {viewingCase.data.primaryReason || viewingCase.data.criticalCategory || 'Emergency Incident'}
+                              </span>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Urgency Level</span>
+                              <strong style={{ color: '#dc2626' }}>{viewingCase.data.urgencyLevel || viewingCase.data.riskLevel || 'Severe'}</strong>
+                            </div>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Remarks / Incident Notes</span>
+                            <p style={{ margin: 0, fontSize: '0.84rem', color: '#334155', background: '#f8fafc', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', lineHeight: 1.5 }}>
+                              {viewingCase.data.remarks || viewingCase.data.summary || 'Immediate crisis support initiated.'}
+                            </p>
+                          </div>
+                        </div>
+
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Case Summary / Description */}
