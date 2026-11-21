@@ -79,6 +79,7 @@ export default function ContractConnectModal({
 
   const [formData, setFormData] = useState({
     contractValue: '1500',
+    includingTax: false,
     contractCurrency: 'EUR',
     currencyExchangeValue: '0.86',
     paymentDueDays: '15',
@@ -351,6 +352,7 @@ export default function ContractConnectModal({
         taxDetails: primaryTax,
         address: primaryAddress,
         contractValue: parseFloat(formData.contractValue) || 0,
+        includingTax: !!formData.includingTax,
         contractCurrency: formData.contractCurrency,
         currencyExchangeValue: parseFloat(formData.currencyExchangeValue) || 1,
         paymentDueDays: parseInt(formData.paymentDueDays, 10) || 15,
@@ -903,6 +905,30 @@ export default function ContractConnectModal({
                     onChange={handleInputChange}
                     style={inputStyle}
                   />
+                  <label style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    marginTop: '0.45rem',
+                    fontSize: '0.82rem',
+                    color: '#475569',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}>
+                    <input
+                      type="checkbox"
+                      name="includingTax"
+                      checked={!!formData.includingTax}
+                      onChange={(e) => setFormData(prev => ({ ...prev, includingTax: e.target.checked }))}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        accentColor: '#0284c7',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <span>Including Tax</span>
+                  </label>
                 </div>
                 <div>
                   <label style={labelStyle}>Contract Currency <span style={{ color: '#ef4444' }}>*</span> <Tooltip text="Currency stipulated in contract." align="right" /></label>
