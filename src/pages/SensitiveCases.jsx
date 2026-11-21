@@ -1720,15 +1720,7 @@ export default function SensitiveCases() {
                 )}
               </div>
 
-              {/* Case Summary / Description */}
-              <div style={{ marginBottom: '1.25rem' }}>
-                <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '0.85rem', color: '#334155', fontWeight: '700' }}>
-                  {viewingCase.type === 'critical' ? 'Immediate Incident Summary & Observations' : 'Primary Concern & Details'}
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569', background: '#ffffff', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', lineHeight: 1.5 }}>
-                  {viewingCase.data.description || viewingCase.data.summary || viewingCase.data.primaryReason}
-                </p>
-              </div>
+
 
               {/* Case Action / Timeline Log */}
               <div>
