@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CHANGELOG_DATA } from '../data/changelogData';
 
@@ -8,9 +8,36 @@ function Home() {
   const [changelogFilter, setChangelogFilter] = useState('All');
   const [changelogSearch, setChangelogSearch] = useState('');
 
+  // Pagination state for Change Log
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   // Always collapsed by default per requirements
   const [isCsOpen, setIsCsOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+
+  // Filtered change logs with pagination
+  const filteredLogs = useMemo(() => {
+    return CHANGELOG_DATA.filter(item => {
+      if (changelogFilter !== 'All' && item.page !== changelogFilter) return false;
+      if (changelogSearch.trim()) {
+        const q = changelogSearch.toLowerCase();
+        return (
+          item.subPage.toLowerCase().includes(q) ||
+          item.summary.toLowerCase().includes(q) ||
+          item.details.toLowerCase().includes(q) ||
+          item.page.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [changelogFilter, changelogSearch]);
+
+  const totalItems = filteredLogs.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / rowsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * rowsPerPage;
+  const paginatedLogs = filteredLogs.slice(startIndex, startIndex + rowsPerPage);
 
   const csModules = [
     {
@@ -532,7 +559,10 @@ function Home() {
                 <button
                   key={p}
                   type="button"
-                  onClick={() => setChangelogFilter(p)}
+                  onClick={() => {
+                    setChangelogFilter(p);
+                    setCurrentPage(1);
+                  }}
                   style={{
                     padding: '0.35rem 0.75rem',
                     borderRadius: '6px',
@@ -558,7 +588,10 @@ function Home() {
                 type="text"
                 placeholder="Search changes..."
                 value={changelogSearch}
-                onChange={(e) => setChangelogSearch(e.target.value)}
+                onChange={(e) => {
+                  setChangelogSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
                 style={{
                   width: '100%',
                   padding: '0.45rem 0.75rem 0.45rem 2.2rem',
@@ -585,121 +618,107 @@ function Home() {
               </tr>
             </thead>
             <tbody>
-              {CHANGELOG_DATA
-                .filter(item => {
-                  if (changelogFilter !== 'All' && item.page !== changelogFilter) return false;
-                  if (changelogSearch.trim()) {
-                    const q = changelogSearch.toLowerCase();
-                    return (
-                      item.subPage.toLowerCase().includes(q) ||
-                      item.summary.toLowerCase().includes(q) ||
-                      item.details.toLowerCase().includes(q) ||
-                      item.page.toLowerCase().includes(q)
-                    );
-                  }
-                  return true;
-                })
-                .map((log) => {
-                  const getPageBadge = (page) => {
-                    if (page === 'Admin') return { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' };
-                    if (page === 'CS') return { bg: '#ecfeff', color: '#0e7490', border: '#a5f3fc' };
-                    return { bg: '#f5f3ff', color: '#6d28d9', border: '#ddd6fe' };
-                  };
-                  const badge = getPageBadge(log.page);
+              {paginatedLogs.map((log) => {
+                const getPageBadge = (page) => {
+                  if (page === 'Admin') return { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' };
+                  if (page === 'CS') return { bg: '#ecfeff', color: '#0e7490', border: '#a5f3fc' };
+                  return { bg: '#f5f3ff', color: '#6d28d9', border: '#ddd6fe' };
+                };
+                const badge = getPageBadge(log.page);
 
-                  return (
-                    <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9', background: 'white' }}>
-                      <td style={{ padding: '0.9rem 1rem', color: '#475569', fontWeight: '500', whiteSpace: 'nowrap' }}>
-                        {log.formattedDate}
-                      </td>
-                      <td style={{ padding: '0.9rem 1rem' }}>
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '0.2rem 0.6rem',
-                          borderRadius: '999px',
-                          fontSize: '0.75rem',
-                          fontWeight: '700',
-                          background: badge.bg,
-                          color: badge.color,
-                          border: `1px solid ${badge.border}`
-                        }}>
-                          {log.page}
+                return (
+                  <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9', background: 'white' }}>
+                    <td style={{ padding: '0.9rem 1rem', color: '#475569', fontWeight: '500', whiteSpace: 'nowrap' }}>
+                      {log.formattedDate}
+                    </td>
+                    <td style={{ padding: '0.9rem 1rem' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '0.2rem 0.6rem',
+                        borderRadius: '999px',
+                        fontSize: '0.75rem',
+                        fontWeight: '700',
+                        background: badge.bg,
+                        color: badge.color,
+                        border: `1px solid ${badge.border}`
+                      }}>
+                        {log.page}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.9rem 1rem', fontWeight: '600', color: '#0f172a' }}>
+                      {log.subPage}
+                    </td>
+                    <td style={{ padding: '0.9rem 1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                        <span style={{ color: '#334155', lineHeight: '1.4' }}>
+                          {log.summary}
                         </span>
-                      </td>
-                      <td style={{ padding: '0.9rem 1rem', fontWeight: '600', color: '#0f172a' }}>
-                        {log.subPage}
-                      </td>
-                      <td style={{ padding: '0.9rem 1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-                          <span style={{ color: '#334155', lineHeight: '1.4' }}>
-                            {log.summary}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedLog(log)}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.35rem',
-                              padding: '0.3rem 0.65rem',
-                              borderRadius: '6px',
-                              background: '#f8fafc',
-                              border: '1px solid #cbd5e1',
-                              color: '#0284c7',
-                              fontSize: '0.78rem',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              flexShrink: 0,
-                              transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#e0f2fe';
-                              e.currentTarget.style.borderColor = '#7dd3fc';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = '#f8fafc';
-                              e.currentTarget.style.borderColor = '#cbd5e1';
-                            }}
-                            title="View full change details in easy language"
-                          >
-                            <i className='bx bx-show' style={{ fontSize: '1rem' }}></i>
-                            <span>View</span>
-                          </button>
-                        </div>
-                      </td>
-                      <td style={{ padding: '0.9rem 1rem', textAlign: 'center' }}>
                         <button
                           type="button"
-                          onClick={() => navigate(log.path)}
+                          onClick={() => setSelectedLog(log)}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.35rem',
-                            padding: '0.4rem 0.75rem',
+                            padding: '0.3rem 0.65rem',
                             borderRadius: '6px',
-                            background: '#0284c7',
-                            border: 'none',
-                            color: 'white',
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            color: '#0284c7',
                             fontSize: '0.78rem',
                             fontWeight: '600',
                             cursor: 'pointer',
-                            boxShadow: '0 1px 2px rgba(2, 132, 199, 0.25)',
+                            flexShrink: 0,
                             transition: 'all 0.15s ease'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#0369a1'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = '#0284c7'}
-                          title={`Open ${log.linkText || log.subPage}`}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#e0f2fe';
+                            e.currentTarget.style.borderColor = '#7dd3fc';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#f8fafc';
+                            e.currentTarget.style.borderColor = '#cbd5e1';
+                          }}
+                          title="View full change details in easy language"
                         >
-                          <span>{log.linkText || 'Open'}</span>
-                          <i className='bx bx-right-arrow-alt' style={{ fontSize: '1rem' }}></i>
+                          <i className='bx bx-show' style={{ fontSize: '1rem' }}></i>
+                          <span>View</span>
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              {CHANGELOG_DATA.length === 0 && (
+                      </div>
+                    </td>
+                    <td style={{ padding: '0.9rem 1rem', textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(log.path)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '0.4rem 0.75rem',
+                          borderRadius: '6px',
+                          background: '#0284c7',
+                          border: 'none',
+                          color: 'white',
+                          fontSize: '0.78rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          boxShadow: '0 1px 2px rgba(2, 132, 199, 0.25)',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#0369a1'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#0284c7'}
+                        title={`Open ${log.linkText || log.subPage}`}
+                      >
+                        <span>{log.linkText || 'Open'}</span>
+                        <i className='bx bx-right-arrow-alt' style={{ fontSize: '1rem' }}></i>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {paginatedLogs.length === 0 && (
                 <tr>
                   <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
                     No changes found.
@@ -708,6 +727,146 @@ function Home() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Toolbar */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: '1.25rem',
+          paddingTop: '1rem',
+          borderTop: '1px solid #f1f5f9',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          {/* Left: Entries Counter & Rows Per Page */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.84rem', color: '#64748b', fontWeight: '500' }}>
+              Showing {totalItems === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + rowsPerPage, totalItems)} of {totalItems} entries
+            </span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <label style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: '500' }}>Rows per page:</label>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '0.3rem 0.6rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  fontSize: '0.82rem',
+                  fontWeight: '600',
+                  color: '#334155',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Right: Page Navigation Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <button
+              type="button"
+              disabled={safeCurrentPage === 1}
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                background: safeCurrentPage === 1 ? '#f8fafc' : 'white',
+                color: safeCurrentPage === 1 ? '#94a3b8' : '#334155',
+                cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <i className='bx bx-chevron-left'></i>
+              <span>Previous</span>
+            </button>
+
+            {/* Numeric page buttons */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 1)
+              .reduce((acc, p, idx, arr) => {
+                if (idx > 0 && p - arr[idx - 1] > 1) {
+                  acc.push('ellipsis-' + p);
+                }
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p) => {
+                if (typeof p === 'string') {
+                  return <span key={p} style={{ padding: '0 0.35rem', color: '#94a3b8', fontSize: '0.82rem' }}>...</span>;
+                }
+                const isActive = p === safeCurrentPage;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setCurrentPage(p)}
+                    style={{
+                      minWidth: '32px',
+                      height: '32px',
+                      padding: '0 0.5rem',
+                      borderRadius: '6px',
+                      border: isActive ? 'none' : '1px solid #cbd5e1',
+                      background: isActive ? '#0284c7' : 'white',
+                      color: isActive ? 'white' : '#334155',
+                      fontSize: '0.82rem',
+                      fontWeight: isActive ? '700' : '500',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: isActive ? '0 1px 3px rgba(2, 132, 199, 0.3)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {p}
+                  </button>
+                );
+              })
+            }
+
+            <button
+              type="button"
+              disabled={safeCurrentPage === totalPages || totalItems === 0}
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                background: (safeCurrentPage === totalPages || totalItems === 0) ? '#f8fafc' : 'white',
+                color: (safeCurrentPage === totalPages || totalItems === 0) ? '#94a3b8' : '#334155',
+                cursor: (safeCurrentPage === totalPages || totalItems === 0) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>Next</span>
+              <i className='bx bx-chevron-right'></i>
+            </button>
+          </div>
         </div>
       </div>
 
