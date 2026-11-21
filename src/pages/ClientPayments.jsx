@@ -15,6 +15,7 @@ const DEFAULT_BILLING_COLUMNS = [
   { id: 'billingCompany', label: 'Billing Company' },
   { id: 'amountDueUsd', label: 'Amount Due $' },
   { id: 'amountDue', label: 'Amount Due' },
+  { id: 'taxAmount', label: 'Tax Amount' },
   { id: 'currency', label: 'Currency' },
   { id: 'invoiceByDate', label: 'Invoice By Date' },
   { id: 'dueByDate', label: 'Due By Date' },
@@ -366,7 +367,8 @@ function ClientPayments() {
     invoiceDocument: '',
     invoiceFile: null,
     taxDetails: '',
-    taxPercent: ''
+    taxPercent: '',
+    taxAmount: ''
   });
   const [invoiceErrors, setInvoiceErrors] = useState({});
 
@@ -389,7 +391,8 @@ function ClientPayments() {
           invoiceDocument: p.invoiceLink || '',
           invoiceFile: null,
           taxDetails: defaultTax,
-          taxPercent: p.taxPercent !== undefined ? p.taxPercent : ''
+          taxPercent: p.taxPercent !== undefined ? p.taxPercent : '',
+          taxAmount: p.taxAmount !== undefined ? p.taxAmount : ''
         });
         setInvoiceErrors({});
       }
@@ -416,8 +419,18 @@ function ClientPayments() {
     try {
       const saved = localStorage.getItem('client_payments_visible_cols');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        let parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (!parsed.includes('taxAmount')) {
+            const currIdx = parsed.indexOf('currency');
+            if (currIdx >= 0) {
+              parsed.splice(currIdx, 0, 'taxAmount');
+            } else {
+              parsed.push('taxAmount');
+            }
+          }
+          return parsed;
+        }
       }
     } catch (e) {}
     return DEFAULT_BILLING_COLUMNS.map(c => c.id);
@@ -680,6 +693,7 @@ function ClientPayments() {
                 { id: 'invoiceId', label: 'Invoice ID', type: 'text' },
                 { id: 'corporateName', label: 'Corporate Name', type: 'text' },
                 { id: 'billingCompany', label: 'Billing Company', type: 'text' },
+                { id: 'taxAmount', label: 'Tax Amount', type: 'number' },
                 { id: 'status', label: 'Status', type: 'select', options: ['To be Raised', 'Pending', 'Partial', 'Received', 'Overdue', 'Invoice Pending'] },
                 { id: 'dueByDate', label: 'Due By Date', type: 'date' },
                 { id: 'invoiceByDate', label: 'Invoice By Date', type: 'date' },
@@ -968,6 +982,7 @@ function ClientPayments() {
               {visibleColumns.includes('billingCompany') && <th>BILLING COMPANY</th>}
               {visibleColumns.includes('amountDueUsd') && <th>AMOUNT DUE $</th>}
               {visibleColumns.includes('amountDue') && <th>AMOUNT DUE</th>}
+              {visibleColumns.includes('taxAmount') && <th>TAX AMOUNT</th>}
               {visibleColumns.includes('currency') && <th>CURRENCY</th>}
               {visibleColumns.includes('invoiceByDate') && <th>INVOICE BY DATE</th>}
               {visibleColumns.includes('dueByDate') && <th>DUE BY DATE</th>}
@@ -1056,6 +1071,17 @@ function ClientPayments() {
                 )}
                 {visibleColumns.includes('amountDue') && (
                   <td>{Number(p.amountDue || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
+                )}
+                {visibleColumns.includes('taxAmount') && (
+                  <td>
+                    {p.taxAmount !== undefined && p.taxAmount !== null && p.taxAmount !== '' && Number(p.taxAmount) > 0 ? (
+                      <span style={{ fontWeight: '600', color: '#0f172a' }}>
+                        {Number(p.taxAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#94a3b8' }}>-</span>
+                    )}
+                  </td>
                 )}
                 {visibleColumns.includes('currency') && (
                   <td>{p.currency}</td>
@@ -1591,7 +1617,7 @@ function ClientPayments() {
                       </div>
                     </div>
 
-                    {/* Row 3: Tax Details | Tax % */}
+                    {/* Row 3: Tax Details | Tax % & Tax Amount */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                       <div>
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
@@ -1607,26 +1633,54 @@ function ClientPayments() {
                           onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                         />
                       </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
-                          Tax %
-                        </label>
-                        <div style={{ position: 'relative' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.25fr', gap: '0.6rem' }}>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                            Tax %
+                          </label>
+                          <div style={{ position: 'relative' }}>
+                            <input 
+                              type="number" 
+                              step="0.01"
+                              min="0"
+                              max="100"
+                              placeholder="18" 
+                              style={{ width: '100%', padding: '0.65rem 1.4rem 0.65rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
+                              value={invoiceForm.taxPercent}
+                              onChange={(e) => {
+                                const pct = e.target.value;
+                                const base = Number(payment.baseAmountDue !== undefined ? payment.baseAmountDue : (payment.amountDue || 0));
+                                const calculatedTax = pct !== '' && base > 0 ? Number(((base * Number(pct)) / 100).toFixed(2)) : '';
+                                setInvoiceForm(prev => ({ ...prev, taxPercent: pct, taxAmount: calculatedTax }));
+                              }}
+                              onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                              onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                            />
+                            <span style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontSize: '0.8rem', fontWeight: '600', pointerEvents: 'none' }}>
+                              %
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem', fontWeight: '600', color: '#475569', letterSpacing: '0.02em' }}>
+                            Tax Amount <span style={{ color: '#94a3b8', fontSize: '0.72rem', fontWeight: '400' }}>({payment.currency || 'USD'})</span>
+                          </label>
                           <input 
                             type="number" 
                             step="0.01"
                             min="0"
-                            max="100"
-                            placeholder="e.g. 18" 
-                            style={{ width: '100%', padding: '0.65rem 1.8rem 0.65rem 0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
-                            value={invoiceForm.taxPercent}
-                            onChange={(e) => setInvoiceForm(prev => ({ ...prev, taxPercent: e.target.value }))}
+                            placeholder="e.g. 72" 
+                            style={{ width: '100%', padding: '0.65rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a', boxSizing: 'border-box', transition: 'border-color 0.2s', outline: 'none' }} 
+                            value={invoiceForm.taxAmount}
+                            onChange={(e) => {
+                              const amt = e.target.value;
+                              const base = Number(payment.baseAmountDue !== undefined ? payment.baseAmountDue : (payment.amountDue || 0));
+                              const calculatedPct = amt !== '' && base > 0 ? Number(((Number(amt) / base) * 100).toFixed(2)) : '';
+                              setInvoiceForm(prev => ({ ...prev, taxAmount: amt, taxPercent: calculatedPct }));
+                            }}
                             onFocus={(e) => e.target.style.borderColor = '#2563eb'}
                             onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                           />
-                          <span style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontSize: '0.85rem', fontWeight: '600', pointerEvents: 'none' }}>
-                            %
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -1640,8 +1694,26 @@ function ClientPayments() {
                       if (!invoiceForm.invoiceDate) errs.invoiceDate = 'Invoice date is required';
                       if (Object.keys(errs).length) { setInvoiceErrors(errs); return; }
                       const finalDoc = invoiceForm.invoiceDocument || (invoiceForm.invoiceFile ? invoiceForm.invoiceFile.name : invoiceForm.invoiceNumber);
+                      const numTax = Number(invoiceForm.taxAmount) || 0;
+
                       setPayments(prev => prev.map(p => {
                         if (p.id === activeUploadId) {
+                          const baseAmountDue = p.baseAmountDue !== undefined ? p.baseAmountDue : Number(p.amountDue || 0);
+                          const baseAmountDueUsd = p.baseAmountDueUsd !== undefined ? p.baseAmountDueUsd : Number(p.amountDueUsd || 0);
+
+                          let taxUsd = 0;
+                          if (numTax > 0) {
+                            if (baseAmountDue > 0 && baseAmountDueUsd > 0) {
+                              taxUsd = Number(((numTax / baseAmountDue) * baseAmountDueUsd).toFixed(2));
+                            } else {
+                              taxUsd = numTax;
+                            }
+                          }
+
+                          const updatedAmountDueUsd = Number((baseAmountDueUsd + taxUsd).toFixed(2));
+                          const currentPaid = Number(p.totalPaid || 0);
+                          const updatedDueAmount = Number(Math.max(0, updatedAmountDueUsd - currentPaid).toFixed(2));
+
                           return {
                             ...p,
                             invoiceDate: invoiceForm.invoiceDate,
@@ -1649,7 +1721,13 @@ function ClientPayments() {
                             invoiceNumber: invoiceForm.invoiceNumber,
                             taxDetails: invoiceForm.taxDetails,
                             taxPercent: invoiceForm.taxPercent,
-                            status: p.status === 'To be Raised' ? 'Pending' : p.status
+                            taxAmount: numTax > 0 ? numTax : '',
+                            taxAmountUsd: taxUsd,
+                            baseAmountDue: baseAmountDue,
+                            baseAmountDueUsd: baseAmountDueUsd,
+                            amountDueUsd: updatedAmountDueUsd,
+                            dueAmount: updatedDueAmount,
+                            status: updatedDueAmount <= 0 ? 'Received' : (currentPaid > 0 ? 'Partial' : (p.status === 'To be Raised' ? 'Pending' : p.status))
                           };
                         }
                         return p;
