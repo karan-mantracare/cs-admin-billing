@@ -63,7 +63,8 @@ export const ADJUSTMENT_OPTIONS = [
     badgeText: '+ Tax (Charged to Client)',
     badgeColor: '#059669',
     badgeBg: '#ecfdf5',
-    isMandatoryDetails: false
+    isMandatoryDetails: true,
+    placeholder: 'Mandatory: Enter GST or VAT details *'
   },
   {
     value: 'Withholding Tax',
@@ -72,7 +73,8 @@ export const ADJUSTMENT_OPTIONS = [
     badgeText: '- Deducted by Client',
     badgeColor: '#d97706',
     badgeBg: '#fef3c7',
-    isMandatoryDetails: false
+    isMandatoryDetails: false,
+    placeholder: 'Optional: e.g. WHT rate / TDS section...'
   },
   {
     value: 'Deduction',
@@ -81,7 +83,8 @@ export const ADJUSTMENT_OPTIONS = [
     badgeText: '- Invoice Discount / Offer',
     badgeColor: '#7c3aed',
     badgeBg: '#f5f3ff',
-    isMandatoryDetails: true
+    isMandatoryDetails: true,
+    placeholder: 'Mandatory: Enter deduction reason (discount, offer) *'
   },
   {
     value: 'Adjustments',
@@ -90,7 +93,8 @@ export const ADJUSTMENT_OPTIONS = [
     badgeText: '+ Additional Charge',
     badgeColor: '#0284c7',
     badgeBg: '#f0f9ff',
-    isMandatoryDetails: true
+    isMandatoryDetails: true,
+    placeholder: 'Mandatory: Enter adjustment reason (additional charge) *'
   }
 ];
 
@@ -472,11 +476,13 @@ export default function ContractModal({
     if (!formData.billingDate) newErrors.billingDate = 'Billing Date is required';
     if (!formData.bankDetailsLink) newErrors.bankDetailsLink = 'Bank Details link is required';
 
-    // Validate taxAdjustments: Details mandatory if Deduction and Adjustment is selected, and disallow negative values
+    // Validate taxAdjustments: Details mandatory if Tax, Deduction, or Adjustment is selected, and disallow negative values
     taxAdjustments.forEach((adj, idx) => {
       const def = getAdjustmentDef(adj.type);
       if (def.isMandatoryDetails && (!adj.details || !adj.details.trim())) {
-        newErrors[`adj_details_${idx}`] = 'Details are mandatory for Deductions and Adjustment';
+        newErrors[`adj_details_${idx}`] = def.value === 'Tax'
+          ? 'GST or VAT details are mandatory'
+          : `Details are mandatory for ${def.label}`;
       }
       if (adj.percentage !== '' && parseFloat(adj.percentage) < 0) {
         newErrors[`adj_pct_${idx}`] = 'Negative values are not allowed';
@@ -1445,7 +1451,7 @@ export default function ContractModal({
                             <input
                               type="text"
                               disabled={isReadOnly}
-                              placeholder={isMandatoryDetails ? "Mandatory: Enter deduction/adjustment reason *" : "Optional details / notes..."}
+                              placeholder={def.placeholder || (isMandatoryDetails ? "Mandatory: Enter details *" : "Optional details / notes...")}
                               value={adj.details || ''}
                               onChange={(e) => handleAdjustmentChange(idx, 'details', e.target.value)}
                               style={{
