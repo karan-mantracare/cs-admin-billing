@@ -55,6 +55,7 @@ export default function NotificationsPage() {
   const [arSearchText, setArSearchText] = useState('');
   const [arCommentText, setArCommentText] = useState('');
   const [arReplyingTo, setArReplyingTo] = useState(null);
+  const [showArEmojiPicker, setShowArEmojiPicker] = useState(false);
   const [emailPreviewModal, setEmailPreviewModal] = useState(null);
 
   // ----------------------------------------------------
@@ -78,6 +79,7 @@ export default function NotificationsPage() {
   const [userSearchText, setUserSearchText] = useState('');
   const [userReplyText, setUserReplyText] = useState('');
   const [userReplyingTo, setUserReplyingTo] = useState(null);
+  const [showUserEmojiPicker, setShowUserEmojiPicker] = useState(false);
 
   // ----------------------------------------------------
   // DATA LOADING
@@ -802,94 +804,172 @@ export default function NotificationsPage() {
                   )}
                 </div>
 
-                {/* Comment Composer */}
-                <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                  <form onSubmit={handleSendARComment}>
-                    {/* Quoted reply banner */}
-                    {arReplyingTo && (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        background: '#eff6ff',
-                        border: '1px solid #bfdbfe',
-                        borderRadius: '6px',
-                        padding: '0.35rem 0.75rem',
-                        marginBottom: '0.5rem',
-                        fontSize: '0.76rem'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
-                          <i className='bx bx-reply' style={{ color: '#2563eb', fontSize: '1rem', transform: 'rotate(180deg)' }}></i>
-                          <span style={{ color: '#1e40af', fontWeight: '600' }}>Replying to {arReplyingTo.author}:</span>
-                          <span style={{ color: '#3b82f6', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            "{arReplyingTo.text.slice(0, 65)}{arReplyingTo.text.length > 65 ? '...' : ''}"
-                          </span>
-                        </div>
+                {/* Comment Composer - Sleek Single-Line Bar */}
+                <div style={{ padding: '0.85rem 1.5rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc', position: 'relative' }}>
+                  {/* Quoted reply banner */}
+                  {arReplyingTo && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '6px',
+                      padding: '0.3rem 0.65rem',
+                      marginBottom: '0.4rem',
+                      fontSize: '0.75rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                        <i className='bx bx-reply' style={{ color: '#2563eb', fontSize: '1rem', transform: 'rotate(180deg)' }}></i>
+                        <span style={{ color: '#1e40af', fontWeight: '600' }}>Replying to {arReplyingTo.author}:</span>
+                        <span style={{ color: '#3b82f6', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          "{arReplyingTo.text.slice(0, 60)}{arReplyingTo.text.length > 60 ? '...' : ''}"
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setArReplyingTo(null)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          fontSize: '0.95rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '0 0.2rem'
+                        }}
+                        title="Cancel reply"
+                      >
+                        <i className='bx bx-x'></i>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Emoji Popover Picker for AR */}
+                  {showArEmojiPicker && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      right: '48px',
+                      marginBottom: '6px',
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '10px',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+                      padding: '0.35rem 0.5rem',
+                      display: 'flex',
+                      gap: '0.3rem',
+                      zIndex: 50
+                    }}>
+                      {['👍', '❤️', '😊', '🎉', '👏', '✅', '🔥', '💬', '🙌', '🚀'].map(emoji => (
                         <button
+                          key={emoji}
                           type="button"
-                          onClick={() => setArReplyingTo(null)}
+                          onClick={() => {
+                            setArCommentText(prev => prev + emoji);
+                            setShowArEmojiPicker(false);
+                            const inputEl = document.getElementById('ar-comment-input');
+                            if (inputEl) inputEl.focus();
+                          }}
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#64748b',
                             cursor: 'pointer',
-                            fontSize: '1rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '0 0.2rem'
+                            fontSize: '1.15rem',
+                            padding: '0.2rem',
+                            borderRadius: '4px',
+                            lineHeight: 1
                           }}
-                          title="Cancel reply"
+                          onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
                         >
-                          <i className='bx bx-x'></i>
+                          {emoji}
                         </button>
-                      </div>
-                    )}
+                      ))}
+                    </div>
+                  )}
 
-                    <textarea
+                  <form
+                    onSubmit={handleSendARComment}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '24px',
+                      padding: '0.2rem 0.35rem 0.2rem 0.85rem',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                    }}
+                  >
+                    <input
                       id="ar-comment-input"
-                      rows={2}
+                      type="text"
                       value={arCommentText}
                       onChange={(e) => setArCommentText(e.target.value)}
-                      placeholder={arReplyingTo ? `Write a reply to ${arReplyingTo.author}...` : `Add a comment or follow-up note for invoice ${activeInvoice.invoiceNumber}...`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSendARComment(e);
+                        }
+                      }}
+                      placeholder={arReplyingTo ? `Reply to ${arReplyingTo.author}...` : `Comment on invoice ${activeInvoice.invoiceNumber}...`}
                       style={{
-                        width: '100%',
-                        padding: '0.6rem 0.75rem',
-                        borderRadius: '6px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '0.84rem',
-                        boxSizing: 'border-box',
-                        resize: 'none',
+                        flex: 1,
+                        border: 'none',
                         outline: 'none',
+                        fontSize: '0.84rem',
+                        color: '#1e293b',
+                        background: 'transparent',
+                        padding: '0.35rem 0',
                         fontFamily: 'inherit'
                       }}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.76rem', color: '#64748b' }}>
-                        <i className='bx bx-user' style={{ color: '#4f46e5' }}></i>
-                        <span>Posting as:</span>
-                        <strong style={{ color: '#0f172a' }}>{currentUserName}</strong>
-                      </div>
 
-                      <button
-                        type="submit"
-                        disabled={!arCommentText.trim()}
-                        style={{
-                          background: arCommentText.trim() ? '#4f46e5' : '#cbd5e1',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '0.45rem 1.1rem',
-                          fontSize: '0.82rem',
-                          fontWeight: '600',
-                          cursor: arCommentText.trim() ? 'pointer' : 'not-allowed',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.35rem'
-                        }}
-                      >
-                        <i className='bx bx-send'></i> Post Comment
-                      </button>
-                    </div>
+                    {/* Emoji button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowArEmojiPicker(prev => !prev)}
+                      style={{
+                        background: showArEmojiPicker ? '#e0e7ff' : 'none',
+                        border: 'none',
+                        color: showArEmojiPicker ? '#4f46e5' : '#64748b',
+                        cursor: 'pointer',
+                        fontSize: '1.2rem',
+                        padding: '0.3rem',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Insert emoji"
+                    >
+                      <i className='bx bx-smile'></i>
+                    </button>
+
+                    {/* Send Icon button */}
+                    <button
+                      type="submit"
+                      disabled={!arCommentText.trim()}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        background: arCommentText.trim() ? '#4f46e5' : '#e2e8f0',
+                        color: arCommentText.trim() ? '#ffffff' : '#94a3b8',
+                        cursor: arCommentText.trim() ? 'pointer' : 'not-allowed',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.05rem',
+                        flexShrink: 0
+                      }}
+                      title="Post comment"
+                    >
+                      <i className='bx bx-send' style={{ transform: 'translateX(1px)' }}></i>
+                    </button>
                   </form>
                 </div>
               </>
@@ -1457,88 +1537,172 @@ export default function NotificationsPage() {
                   )}
                 </div>
 
-                {/* Reply Composer */}
-                <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                  <form onSubmit={handleSendUserReply}>
-                    {/* Quoted reply banner */}
-                    {userReplyingTo && (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        background: '#f0f9ff',
-                        border: '1px solid #bae6fd',
-                        borderRadius: '6px',
-                        padding: '0.35rem 0.75rem',
-                        marginBottom: '0.5rem',
-                        fontSize: '0.76rem'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
-                          <i className='bx bx-reply' style={{ color: '#0284c7', fontSize: '1rem', transform: 'rotate(180deg)' }}></i>
-                          <span style={{ color: '#0369a1', fontWeight: '600' }}>Replying to {userReplyingTo.author}:</span>
-                          <span style={{ color: '#0284c7', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            "{userReplyingTo.text.slice(0, 65)}{userReplyingTo.text.length > 65 ? '...' : ''}"
-                          </span>
-                        </div>
+                {/* Reply Composer - Sleek Single-Line Bar */}
+                <div style={{ padding: '0.85rem 1.5rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc', position: 'relative' }}>
+                  {/* Quoted reply banner */}
+                  {userReplyingTo && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: '#f0f9ff',
+                      border: '1px solid #bae6fd',
+                      borderRadius: '6px',
+                      padding: '0.3rem 0.65rem',
+                      marginBottom: '0.4rem',
+                      fontSize: '0.75rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                        <i className='bx bx-reply' style={{ color: '#0284c7', fontSize: '1rem', transform: 'rotate(180deg)' }}></i>
+                        <span style={{ color: '#0369a1', fontWeight: '600' }}>Replying to {userReplyingTo.author}:</span>
+                        <span style={{ color: '#0284c7', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          "{userReplyingTo.text.slice(0, 60)}{userReplyingTo.text.length > 60 ? '...' : ''}"
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setUserReplyingTo(null)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          fontSize: '0.95rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '0 0.2rem'
+                        }}
+                        title="Cancel reply"
+                      >
+                        <i className='bx bx-x'></i>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Emoji Popover Picker for User Reply */}
+                  {showUserEmojiPicker && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      right: '48px',
+                      marginBottom: '6px',
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '10px',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+                      padding: '0.35rem 0.5rem',
+                      display: 'flex',
+                      gap: '0.3rem',
+                      zIndex: 50
+                    }}>
+                      {['👍', '❤️', '😊', '🎉', '👏', '✅', '🔥', '💬', '🙌', '🚀'].map(emoji => (
                         <button
+                          key={emoji}
                           type="button"
-                          onClick={() => setUserReplyingTo(null)}
+                          onClick={() => {
+                            setUserReplyText(prev => prev + emoji);
+                            setShowUserEmojiPicker(false);
+                            const inputEl = document.getElementById('user-reply-input');
+                            if (inputEl) inputEl.focus();
+                          }}
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#64748b',
                             cursor: 'pointer',
-                            fontSize: '1rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '0 0.2rem'
+                            fontSize: '1.15rem',
+                            padding: '0.2rem',
+                            borderRadius: '4px',
+                            lineHeight: 1
                           }}
-                          title="Cancel reply"
+                          onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
                         >
-                          <i className='bx bx-x'></i>
+                          {emoji}
                         </button>
-                      </div>
-                    )}
+                      ))}
+                    </div>
+                  )}
 
-                    <textarea
+                  <form
+                    onSubmit={handleSendUserReply}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '24px',
+                      padding: '0.2rem 0.35rem 0.2rem 0.85rem',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                    }}
+                  >
+                    <input
                       id="user-reply-input"
-                      rows={2}
+                      type="text"
                       value={userReplyText}
                       onChange={(e) => setUserReplyText(e.target.value)}
-                      placeholder={userReplyingTo ? `Write a reply to ${userReplyingTo.author}...` : `Send a comment to ${activeUser.name}...`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSendUserReply(e);
+                        }
+                      }}
+                      placeholder={userReplyingTo ? `Reply to ${userReplyingTo.author}...` : `Send a comment to ${activeUser.name}...`}
                       style={{
-                        width: '100%',
-                        padding: '0.6rem 0.75rem',
-                        borderRadius: '6px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '0.84rem',
-                        boxSizing: 'border-box',
-                        resize: 'none',
+                        flex: 1,
+                        border: 'none',
                         outline: 'none',
+                        fontSize: '0.84rem',
+                        color: '#1e293b',
+                        background: 'transparent',
+                        padding: '0.35rem 0',
                         fontFamily: 'inherit'
                       }}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                      <button
-                        type="submit"
-                        disabled={!userReplyText.trim()}
-                        style={{
-                          background: userReplyText.trim() ? '#0284c7' : '#cbd5e1',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '0.45rem 1.25rem',
-                          fontSize: '0.82rem',
-                          fontWeight: '600',
-                          cursor: userReplyText.trim() ? 'pointer' : 'not-allowed',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.35rem'
-                        }}
-                      >
-                        <i className='bx bx-send'></i> Send Comment
-                      </button>
-                    </div>
+
+                    {/* Emoji button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowUserEmojiPicker(prev => !prev)}
+                      style={{
+                        background: showUserEmojiPicker ? '#e0f2fe' : 'none',
+                        border: 'none',
+                        color: showUserEmojiPicker ? '#0284c7' : '#64748b',
+                        cursor: 'pointer',
+                        fontSize: '1.2rem',
+                        padding: '0.3rem',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Insert emoji"
+                    >
+                      <i className='bx bx-smile'></i>
+                    </button>
+
+                    {/* Send Icon button */}
+                    <button
+                      type="submit"
+                      disabled={!userReplyText.trim()}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        background: userReplyText.trim() ? '#0284c7' : '#e2e8f0',
+                        color: userReplyText.trim() ? '#ffffff' : '#94a3b8',
+                        cursor: userReplyText.trim() ? 'pointer' : 'not-allowed',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.05rem',
+                        flexShrink: 0
+                      }}
+                      title="Send message"
+                    >
+                      <i className='bx bx-send' style={{ transform: 'translateX(1px)' }}></i>
+                    </button>
                   </form>
                 </div>
               </>
