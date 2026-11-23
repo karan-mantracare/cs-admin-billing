@@ -5,15 +5,16 @@ export const CHANGELOG_DATA = [
     formattedDate: 'Nov 23, 2026',
     page: 'Providers',
     subPage: 'Providers / Session Feedback Table & Verification Triage',
-    summary: 'Built complete Session Feedback management page with Critical/All tabs, verification modal, and response inspector',
-    details: 'Implemented the dedicated Session Feedback portal under Providers (/providers/session-feedback). Features Critical vs All sub-tabs, full-text search across Session ID, Provider, and Client, dynamic column visibility toggling, configurable pagination (10-100 rows), dark navy sortable table header, interactive Verification modal with False Alarm / Verified Risk / Resolved options, and a comprehensive participant questionnaire responses inspector.',
-    plainLanguage: 'Created the full Session Feedback page matching the design with Critical and All tabs, search, verification actions, and questionnaire responses modal.',
+    summary: 'Upgraded Session Feedback page to platform standard UI/UX with KPI cards, embedded tabs, and interactive triage modals',
+    details: 'Aligned the Session Feedback page (/providers/session-feedback) with MantraCare platform UI/UX design conventions. Features 4 top KPI metrics summary cards (Critical Triggers, Awaiting Verification, Cleared False Alarms, Total Session Audits), embedded card navigation tabs (Critical with badge, All Sessions, False Alarm), comprehensive filter toolbar with full-text search, verification status dropdown, column visibility picker, and rows per page, sortable navy table with styled status badges, interactive Clinical Risk Verification modal with status triage options, and detailed Responses Inspector modal with CSV export.',
+    plainLanguage: 'Updated Session Feedback to match our modern platform design system with top metrics summary cards, integrated tabs with count badges, status filters, and interactive verification and responses modals.',
     highlights: [
-      'Sub-tabs: Filter instantly between Critical feedback sessions and All sessions',
-      'Table Controls: Full-text search, column toggles, and rows per page selector (10, 15, 25, 50, 100)',
-      'Verification Workflow: Interactive verify modal to classify alerts as False Alarm, Verified Risk, or Resolved with clinical remarks',
-      'Response Inspector: Detailed modal inspecting participant questionnaire ratings, comments, and provider notes',
-      'Local Persistence: Changes to verification statuses persist in real-time across user sessions'
+      'Platform Standard UI/UX: Styled with breadcrumb pill, gradient icon box header, and top KPI metrics cards with colored border accents',
+      'Integrated Sub-Tabs: Critical (with active badge count 13), All Sessions (16), and False Alarm (1) tabs embedded into the main card',
+      'Table & Filters Toolbar: Search bar, verification status filter, column toggles, and rows selector (10, 15, 25, 50, 100)',
+      'Clinical Risk Verification: Interactive triage modal to classify alerts as False Alarm, Verified Risk, or Resolved with clinical remarks and local storage persistence',
+      'Responses Inspector Modal: Modal with survey ratings, crisis de-escalation status, feedback comments, and clinician notes',
+      'Export to CSV: One-click CSV download of active filtered feedback records'
     ],
     path: '/providers/session-feedback',
     linkText: 'Session Feedback'

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { INITIAL_SESSION_FEEDBACKS } from '../data/sessionFeedbackData';
 
 export default function SessionFeedback() {
@@ -18,11 +18,14 @@ export default function SessionFeedback() {
     } catch {}
   }, [feedbacks]);
 
-  // Tab: 'critical' vs 'all'
+  // Tab: 'critical', 'all', or 'false_alarm'
   const [activeTab, setActiveTab] = useState('critical');
 
   // Search
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Status Filter: 'all', 'Pending', 'False Alarm', 'Verified Risk'
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Pagination
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -43,6 +46,7 @@ export default function SessionFeedback() {
     responses: true
   });
   const [isColumnDropdownOpen, setIsColumnDropdownOpen] = useState(false);
+  const columnDropdownRef = useRef(null);
 
   // Modals state
   const [selectedVerifySession, setSelectedVerifySession] = useState(null);
@@ -52,29 +56,65 @@ export default function SessionFeedback() {
   const [selectedResponseSession, setSelectedResponseSession] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (columnDropdownRef.current && !columnDropdownRef.current.contains(e.target)) {
+        setIsColumnDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3500);
   };
+
+  // Metrics calculations
+  const metrics = useMemo(() => {
+    const total = feedbacks.length;
+    const criticalCount = feedbacks.filter(f => f.critical).length;
+    const pendingCount = feedbacks.filter(f => f.critical && (f.verificationStatus === 'Pending' || !f.verificationStatus)).length;
+    const falseAlarmCount = feedbacks.filter(f => f.verificationStatus === 'False Alarm').length;
+    const verifiedRiskCount = feedbacks.filter(f => f.verificationStatus === 'Verified Risk').length;
+    return {
+      total,
+      criticalCount,
+      pendingCount,
+      falseAlarmCount,
+      verifiedRiskCount
+    };
+  }, [feedbacks]);
 
   // Filtered dataset
   const filteredData = useMemo(() => {
     return feedbacks.filter(item => {
       // Tab filter
       if (activeTab === 'critical' && !item.critical) return false;
+      if (activeTab === 'false_alarm' && item.verificationStatus !== 'False Alarm') return false;
+
+      // Status dropdown filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'Pending' && item.verificationStatus !== 'Pending') return false;
+        if (statusFilter === 'False Alarm' && item.verificationStatus !== 'False Alarm') return false;
+        if (statusFilter === 'Verified Risk' && item.verificationStatus !== 'Verified Risk') return false;
+      }
 
       // Search term
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
-        const matchesId = item.id.toLowerCase().includes(q);
-        const matchesProvider = item.providerName.toLowerCase().includes(q);
-        const matchesUser = item.userName.toLowerCase().includes(q);
+        const matchesId = (item.id || '').toLowerCase().includes(q);
+        const matchesProvider = (item.providerName || '').toLowerCase().includes(q);
+        const matchesUser = (item.userName || '').toLowerCase().includes(q);
         const matchesClient = (item.clientName || '').toLowerCase().includes(q);
-        if (!matchesId && !matchesProvider && !matchesUser && !matchesClient) return false;
+        const matchesReason = (item.criticalReason || '').toLowerCase().includes(q);
+        if (!matchesId && !matchesProvider && !matchesUser && !matchesClient && !matchesReason) return false;
       }
       return true;
     });
-  }, [feedbacks, activeTab, searchTerm]);
+  }, [feedbacks, activeTab, statusFilter, searchTerm]);
 
   // Sorted dataset
   const sortedData = useMemo(() => {
@@ -101,7 +141,7 @@ export default function SessionFeedback() {
   // Reset page when filter/search/rowsPerPage changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, searchTerm, rowsPerPage]);
+  }, [activeTab, statusFilter, searchTerm, rowsPerPage]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -115,7 +155,7 @@ export default function SessionFeedback() {
   // Open Verify Modal
   const openVerifyModal = (session) => {
     setSelectedVerifySession(session);
-    setVerifyStatusChoice(session.verificationStatus === 'Pending' ? 'False Alarm' : session.verificationStatus);
+    setVerifyStatusChoice(session.verificationStatus === 'Pending' ? 'False Alarm' : (session.verificationStatus || 'False Alarm'));
     setVerifyNotes(session.verificationNotes || '');
   };
 
@@ -129,7 +169,7 @@ export default function SessionFeedback() {
         return {
           ...item,
           verificationStatus: verifyStatusChoice,
-          verificationLabel: verifyStatusChoice === 'False Alarm' ? 'False Alarm' : (verifyStatusChoice === 'Verified Risk' ? 'Verified Risk' : 'Verified'),
+          verificationLabel: verifyStatusChoice === 'False Alarm' ? 'False Alarm' : (verifyStatusChoice === 'Verified Risk' ? 'Verified Risk' : 'Resolved'),
           verificationNotes: verifyNotes,
           verifiedAt: new Date().toISOString()
         };
@@ -137,12 +177,48 @@ export default function SessionFeedback() {
       return item;
     }));
 
-    showToast(`Session ${selectedVerifySession.id} marked as "${verifyStatusChoice}"`);
+    showToast(`Session ${selectedVerifySession.id} verified as "${verifyStatusChoice}"`);
     setSelectedVerifySession(null);
   };
 
+  // Export CSV
+  const handleExportCSV = () => {
+    const headers = ['ID', 'Date Time', 'Provider Name', 'Provider Specialty', 'User Name', 'User Email', 'Client Name', 'Critical', 'Verification Status', 'Critical Reason'];
+    const rows = filteredData.map(item => [
+      item.id,
+      item.dateTime,
+      `"${item.providerName || ''}"`,
+      `"${item.providerSpecialty || ''}"`,
+      `"${item.userName || ''}"`,
+      `"${item.userEmail || ''}"`,
+      `"${item.clientName || ''}"`,
+      item.critical ? 'Yes' : 'No',
+      `"${item.verificationStatus || 'Pending'}"`,
+      `"${(item.criticalReason || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `session_feedback_${activeTab}_${new Date().toISOString().substring(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Exported session feedback CSV successfully');
+  };
+
+  // Reset to default sample
+  const handleResetData = () => {
+    if (window.confirm('Reset all session feedback to default sample dataset?')) {
+      setFeedbacks(INITIAL_SESSION_FEEDBACKS);
+      localStorage.setItem('session_feedbacks_data', JSON.stringify(INITIAL_SESSION_FEEDBACKS));
+      showToast('Session feedback data reset to original records');
+    }
+  };
+
   return (
-    <div style={{ background: '#f8fafc', minHeight: '100vh', padding: '1.75rem 2rem' }}>
+    <div className="page-container" style={{ padding: '1.5rem 2rem', background: '#f8fafc', minHeight: '100vh' }}>
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -168,195 +244,437 @@ export default function SessionFeedback() {
         </div>
       )}
 
-      {/* Page Title */}
-      <div style={{ marginBottom: '1.25rem' }}>
-        <h1 style={{ margin: '0 0 0.85rem 0', fontSize: '1.65rem', fontWeight: '800', color: '#002b49', letterSpacing: '-0.02em' }}>
-          Session Feedback
-        </h1>
+      {/* Page Header matching platform style */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.25rem' }}>
+            <span style={{
+              fontSize: '0.72rem',
+              fontWeight: '700',
+              letterSpacing: '0.05em',
+              color: '#0284c7',
+              background: '#e0f2fe',
+              padding: '0.2rem 0.6rem',
+              borderRadius: '4px',
+              textTransform: 'uppercase'
+            }}>
+              Clinical Quality &bull; Provider Care
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.35rem',
+              boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)'
+            }}>
+              <i className='bx bx-message-square-detail'></i>
+            </div>
+            <div>
+              <h1 style={{ margin: 0, fontSize: '1.45rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
+                Session Feedback
+              </h1>
+              <p style={{ margin: 0, fontSize: '0.84rem', color: '#64748b' }}>
+                Audit participant ratings, triage clinical crisis alerts, and verify post-session feedback logs.
+              </p>
+            </div>
+          </div>
+        </div>
 
-        {/* Sub-tabs: Critical vs All */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {/* Header Actions */}
+        <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
           <button
             type="button"
-            onClick={() => setActiveTab('critical')}
+            onClick={handleResetData}
+            title="Reload default sample session records"
             style={{
-              padding: '0.35rem 0.95rem',
-              borderRadius: '6px',
-              fontSize: '0.82rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.55rem 0.85rem',
+              background: 'white',
+              border: '1px solid #cbd5e1',
+              borderRadius: '8px',
+              color: '#64748b',
               fontWeight: '600',
+              fontSize: '0.82rem',
               cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              border: activeTab === 'critical' ? '1px solid #38bdf8' : '1px solid transparent',
-              background: activeTab === 'critical' ? '#f0f9ff' : 'transparent',
-              color: activeTab === 'critical' ? '#0284c7' : '#64748b'
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              transition: 'all 0.15s ease'
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.color = '#334155'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#64748b'; }}
           >
-            Critical
+            <i className='bx bx-refresh' style={{ fontSize: '1.1rem' }}></i>
+            <span>Reset Sample</span>
           </button>
+
           <button
             type="button"
-            onClick={() => setActiveTab('all')}
+            onClick={handleExportCSV}
             style={{
-              padding: '0.35rem 0.95rem',
-              borderRadius: '6px',
-              fontSize: '0.82rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              padding: '0.55rem 1rem',
+              borderRadius: '8px',
+              background: '#0284c7',
+              color: 'white',
+              border: 'none',
               fontWeight: '600',
+              fontSize: '0.84rem',
               cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              border: activeTab === 'all' ? '1px solid #38bdf8' : '1px solid transparent',
-              background: activeTab === 'all' ? '#f0f9ff' : 'transparent',
-              color: activeTab === 'all' ? '#0284c7' : '#64748b'
+              boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)',
+              transition: 'all 0.15s ease'
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#0369a1'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#0284c7'; }}
           >
-            All
+            <i className='bx bx-download' style={{ fontSize: '1.1rem' }}></i>
+            <span>Export CSV</span>
           </button>
         </div>
       </div>
 
-      {/* Toolbar: Search + Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        {/* Search Bar */}
-        <div style={{ position: 'relative', flex: '1', minWidth: '280px', maxWidth: '750px' }}>
-          <i className='bx bx-search' style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '1.1rem' }}></i>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by Session ID, Provider, or Client..."
-            style={{
-              width: '100%',
-              padding: '0.55rem 0.85rem 0.55rem 2.4rem',
-              borderRadius: '6px',
-              border: '1px solid #cbd5e1',
-              background: 'white',
-              fontSize: '0.85rem',
-              color: '#1e293b',
-              outline: 'none',
-              boxSizing: 'border-box',
-              transition: 'border-color 0.15s ease'
-            }}
-            onFocus={(e) => { e.target.style.borderColor = '#0284c7'; }}
-            onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; }}
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              style={{ position: 'absolute', right: '0.65rem', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
-            >
-              <i className='bx bx-x' style={{ fontSize: '1.1rem' }}></i>
-            </button>
-          )}
+      {/* Metrics Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        {/* Card 1: Critical Triggers */}
+        <div style={{ background: 'white', borderRadius: '10px', padding: '1rem 1.15rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #dc2626', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Critical Triggers</span>
+            <i className='bx bx-alarm-exclamation' style={{ fontSize: '1.25rem', color: '#dc2626' }}></i>
+          </div>
+          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#dc2626', marginTop: '0.3rem' }}>
+            {metrics.criticalCount}
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#dc2626', fontWeight: '600', marginTop: '0.2rem' }}>
+            {metrics.pendingCount} Pending Triage &bull; {metrics.verifiedRiskCount} Confirmed Risk
+          </div>
         </div>
 
-        {/* Right Controls: Total Count, Columns, Rows */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ fontSize: '0.85rem', color: '#475569' }}>
-            Total: <strong style={{ color: '#0f172a' }}>{totalItems}</strong>
-          </span>
-
-          {/* Columns Dropdown Toggle */}
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setIsColumnDropdownOpen(!isColumnDropdownOpen)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-                padding: '0.45rem 0.85rem',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                background: 'white',
-                color: '#334155',
-                fontSize: '0.82rem',
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}
-            >
-              <i className='bx bx-columns' style={{ fontSize: '1.05rem', color: '#64748b' }}></i>
-              <span>Columns</span>
-            </button>
-
-            {isColumnDropdownOpen && (
-              <div style={{
-                position: 'absolute',
-                right: 0,
-                top: '110%',
-                background: 'white',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                padding: '0.65rem',
-                zIndex: 100,
-                minWidth: '200px'
-              }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '0.5rem', paddingBottom: '0.25rem', borderBottom: '1px solid #f1f5f9' }}>
-                  Toggle Columns
-                </div>
-                {[
-                  { key: 'id', label: 'ID' },
-                  { key: 'dateTime', label: 'Session Date & Time' },
-                  { key: 'providerName', label: 'Provider Name' },
-                  { key: 'userName', label: 'User Name' },
-                  { key: 'critical', label: 'Critical' },
-                  { key: 'verification', label: 'Verification' },
-                  { key: 'responses', label: 'Responses' }
-                ].map(col => (
-                  <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: '#1e293b', padding: '0.3rem 0.2rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={visibleColumns[col.key]}
-                      onChange={(e) => setVisibleColumns({ ...visibleColumns, [col.key]: e.target.checked })}
-                    />
-                    <span>{col.label}</span>
-                  </label>
-                ))}
-              </div>
-            )}
+        {/* Card 2: Pending Verifications */}
+        <div style={{ background: 'white', borderRadius: '10px', padding: '1rem 1.15rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #f59e0b', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Awaiting Verification</span>
+            <i className='bx bx-time-five' style={{ fontSize: '1.25rem', color: '#f59e0b' }}></i>
           </div>
+          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#b45309', marginTop: '0.3rem' }}>
+            {metrics.pendingCount}
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.2rem' }}>
+            Requires clinical lead sign-off
+          </div>
+        </div>
 
-          {/* Rows Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-            <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Rows:</span>
-            <div style={{ position: 'relative' }}>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => setRowsPerPage(Number(e.target.value))}
+        {/* Card 3: Cleared False Alarms */}
+        <div style={{ background: 'white', borderRadius: '10px', padding: '1rem 1.15rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #10b981', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Audited False Alarms</span>
+            <i className='bx bx-check-shield' style={{ fontSize: '1.25rem', color: '#10b981' }}></i>
+          </div>
+          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#059669', marginTop: '0.3rem' }}>
+            {metrics.falseAlarmCount}
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#059669', fontWeight: '600', marginTop: '0.2rem' }}>
+            Cleared &amp; marked safe by triage
+          </div>
+        </div>
+
+        {/* Card 4: Total Feedbacks Logged */}
+        <div style={{ background: 'white', borderRadius: '10px', padding: '1rem 1.15rem', border: '1px solid #e2e8f0', borderLeft: '4px solid #0284c7', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Total Session Audits</span>
+            <i className='bx bx-file-blank' style={{ fontSize: '1.25rem', color: '#0284c7' }}></i>
+          </div>
+          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', marginTop: '0.3rem' }}>
+            {metrics.total}
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.2rem' }}>
+            100% feedback form completion rate
+          </div>
+        </div>
+      </div>
+
+      {/* Main Card with Tabs & Table */}
+      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
+
+        {/* Sub-tabs strip */}
+        <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', padding: '0 1.25rem', background: '#fafbfc' }}>
+          {/* Critical Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('critical')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.95rem 1.25rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'critical' ? '3px solid #0284c7' : '3px solid transparent',
+              color: activeTab === 'critical' ? '#0284c7' : '#64748b',
+              fontWeight: activeTab === 'critical' ? '700' : '600',
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <i className='bx bx-alarm-exclamation' style={{ fontSize: '1.15rem', color: activeTab === 'critical' ? '#dc2626' : '#94a3b8' }}></i>
+            <span>Critical</span>
+            <span style={{
+              background: activeTab === 'critical' ? '#dc2626' : '#f1f5f9',
+              color: activeTab === 'critical' ? 'white' : '#64748b',
+              padding: '0.12rem 0.55rem',
+              borderRadius: '999px',
+              fontSize: '0.72rem',
+              fontWeight: '700'
+            }}>
+              {metrics.criticalCount}
+            </span>
+          </button>
+
+          {/* All Feedback Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('all')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.95rem 1.25rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'all' ? '3px solid #0284c7' : '3px solid transparent',
+              color: activeTab === 'all' ? '#0284c7' : '#64748b',
+              fontWeight: activeTab === 'all' ? '700' : '600',
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <i className='bx bx-list-ul' style={{ fontSize: '1.15rem' }}></i>
+            <span>All Sessions</span>
+            <span style={{
+              background: activeTab === 'all' ? '#0284c7' : '#f1f5f9',
+              color: activeTab === 'all' ? 'white' : '#64748b',
+              padding: '0.12rem 0.55rem',
+              borderRadius: '999px',
+              fontSize: '0.72rem',
+              fontWeight: '700'
+            }}>
+              {metrics.total}
+            </span>
+          </button>
+
+          {/* False Alarm Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('false_alarm')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.95rem 1.25rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'false_alarm' ? '3px solid #0284c7' : '3px solid transparent',
+              color: activeTab === 'false_alarm' ? '#0284c7' : '#64748b',
+              fontWeight: activeTab === 'false_alarm' ? '700' : '600',
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <i className='bx bx-check-shield' style={{ fontSize: '1.15rem', color: activeTab === 'false_alarm' ? '#10b981' : '#94a3b8' }}></i>
+            <span>False Alarm</span>
+            <span style={{
+              background: activeTab === 'false_alarm' ? '#10b981' : '#f1f5f9',
+              color: activeTab === 'false_alarm' ? 'white' : '#64748b',
+              padding: '0.12rem 0.55rem',
+              borderRadius: '999px',
+              fontSize: '0.72rem',
+              fontWeight: '700'
+            }}>
+              {metrics.falseAlarmCount}
+            </span>
+          </button>
+        </div>
+
+        {/* Toolbar: Search, Filters & Controls */}
+        <div style={{ padding: '1rem 1.25rem', background: '#ffffff', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          {/* Left: Search Bar & Verification Status Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '300px', maxWidth: '780px' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <i className='bx bx-search' style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '1.1rem' }}></i>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by Session ID, Provider, User, or Corporate..."
                 style={{
-                  padding: '0.45rem 1.6rem 0.45rem 0.75rem',
+                  width: '100%',
+                  padding: '0.55rem 0.85rem 0.55rem 2.4rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: '#f8fafc',
+                  fontSize: '0.84rem',
+                  color: '#1e293b',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'all 0.15s ease'
+                }}
+                onFocus={(e) => { e.target.style.borderColor = '#0284c7'; e.target.style.background = '#ffffff'; }}
+                onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; e.target.style.background = '#f8fafc'; }}
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  style={{ position: 'absolute', right: '0.65rem', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                >
+                  <i className='bx bx-x' style={{ fontSize: '1.1rem' }}></i>
+                </button>
+              )}
+            </div>
+
+            {/* Verification Status Filter */}
+            <div style={{ position: 'relative', minWidth: '160px' }}>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.55rem 1.8rem 0.55rem 0.75rem',
                   borderRadius: '6px',
                   border: '1px solid #cbd5e1',
                   background: 'white',
                   fontSize: '0.82rem',
-                  fontWeight: '600',
-                  color: '#0f172a',
+                  color: '#334155',
+                  fontWeight: '500',
                   outline: 'none',
                   appearance: 'none',
                   cursor: 'pointer'
                 }}
               >
-                <option value={10}>10</option>
-                <option value={15}>15</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
+                <option value="all">All Verifications</option>
+                <option value="Pending">Pending</option>
+                <option value="False Alarm">False Alarm</option>
+                <option value="Verified Risk">Verified Risk</option>
               </select>
-              <i className='bx bx-chevron-down' style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}></i>
+              <i className='bx bx-chevron-down' style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}></i>
+            </div>
+          </div>
+
+          {/* Right Controls: Count, Columns, Rows */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <span style={{ fontSize: '0.82rem', color: '#64748b', background: '#f1f5f9', padding: '0.35rem 0.65rem', borderRadius: '6px' }}>
+              Total: <strong style={{ color: '#0f172a' }}>{totalItems}</strong>
+            </span>
+
+            {/* Columns Dropdown Toggle */}
+            <div style={{ position: 'relative' }} ref={columnDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsColumnDropdownOpen(!isColumnDropdownOpen)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  padding: '0.5rem 0.85rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  color: '#334155',
+                  fontSize: '0.82rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                <i className='bx bx-columns' style={{ fontSize: '1.05rem', color: '#0284c7' }}></i>
+                <span>Columns</span>
+                <i className='bx bx-chevron-down' style={{ fontSize: '0.95rem', color: '#64748b' }}></i>
+              </button>
+
+              {isColumnDropdownOpen && (
+                <div style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: '115%',
+                  background: 'white',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                  padding: '0.75rem',
+                  zIndex: 100,
+                  minWidth: '220px'
+                }}>
+                  <div style={{ fontSize: '0.74rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '0.5rem', paddingBottom: '0.35rem', borderBottom: '1px solid #f1f5f9' }}>
+                    Show / Hide Columns
+                  </div>
+                  {[
+                    { key: 'id', label: 'Session ID' },
+                    { key: 'dateTime', label: 'Session Date & Time' },
+                    { key: 'providerName', label: 'Provider Name' },
+                    { key: 'userName', label: 'User Name' },
+                    { key: 'critical', label: 'Critical' },
+                    { key: 'verification', label: 'Verification' },
+                    { key: 'responses', label: 'Responses' }
+                  ].map(col => (
+                    <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.82rem', color: '#1e293b', padding: '0.35rem 0.25rem', cursor: 'pointer', borderRadius: '4px' }}>
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns[col.key]}
+                        onChange={(e) => setVisibleColumns({ ...visibleColumns, [col.key]: e.target.checked })}
+                        style={{ accentColor: '#0284c7' }}
+                      />
+                      <span>{col.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Rows Dropdown */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Rows:</span>
+              <div style={{ position: 'relative' }}>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                  style={{
+                    padding: '0.5rem 1.6rem 0.5rem 0.75rem',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: 'white',
+                    fontSize: '0.82rem',
+                    fontWeight: '600',
+                    color: '#0f172a',
+                    outline: 'none',
+                    appearance: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <i className='bx bx-chevron-down' style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}></i>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Table Container */}
-      <div style={{
-        background: 'white',
-        borderRadius: '8px',
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-        overflow: 'hidden'
-      }}>
+        {/* Table Container */}
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '980px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px' }}>
             {/* Dark Navy Table Header */}
             <thead>
               <tr style={{ background: '#002b49', color: '#ffffff' }}>
@@ -365,7 +683,7 @@ export default function SessionFeedback() {
                     onClick={() => handleSort('id')}
                     style={{ padding: '0.85rem 1rem', fontSize: '0.74rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
-                    ID {sortField === 'id' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                    ID {sortField === 'id' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
                   </th>
                 )}
                 {visibleColumns.dateTime && (
@@ -373,7 +691,7 @@ export default function SessionFeedback() {
                     onClick={() => handleSort('dateTime')}
                     style={{ padding: '0.85rem 1rem', fontSize: '0.74rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
-                    SESSION DATE AND TIME {sortField === 'dateTime' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                    SESSION DATE AND TIME {sortField === 'dateTime' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
                   </th>
                 )}
                 {visibleColumns.providerName && (
@@ -381,7 +699,7 @@ export default function SessionFeedback() {
                     onClick={() => handleSort('providerName')}
                     style={{ padding: '0.85rem 1rem', fontSize: '0.74rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
-                    PROVIDER NAME {sortField === 'providerName' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                    PROVIDER NAME {sortField === 'providerName' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
                   </th>
                 )}
                 {visibleColumns.userName && (
@@ -389,7 +707,7 @@ export default function SessionFeedback() {
                     onClick={() => handleSort('userName')}
                     style={{ padding: '0.85rem 1rem', fontSize: '0.74rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
-                    USER NAME {sortField === 'userName' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                    USER NAME {sortField === 'userName' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
                   </th>
                 )}
                 {visibleColumns.critical && (
@@ -397,7 +715,7 @@ export default function SessionFeedback() {
                     onClick={() => handleSort('critical')}
                     style={{ padding: '0.85rem 1rem', fontSize: '0.74rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'center' }}
                   >
-                    CRITICAL {sortField === 'critical' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                    CRITICAL {sortField === 'critical' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
                   </th>
                 )}
                 {visibleColumns.verification && (
@@ -420,13 +738,14 @@ export default function SessionFeedback() {
                   <td colSpan={7} style={{ padding: '3.5rem 1rem', textAlign: 'center', color: '#64748b' }}>
                     <i className='bx bx-folder-open' style={{ fontSize: '2.5rem', color: '#cbd5e1', display: 'block', marginBottom: '0.5rem' }}></i>
                     <p style={{ margin: 0, fontSize: '0.92rem', fontWeight: '600', color: '#334155' }}>No session feedback records found</p>
-                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.82rem' }}>Try refining your search or switching tabs.</p>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.82rem' }}>Try clearing your search query or switching tabs.</p>
                   </td>
                 </tr>
               ) : (
                 paginatedData.map((row, idx) => {
                   const isFalseAlarm = row.verificationStatus === 'False Alarm';
                   const isVerifiedRisk = row.verificationStatus === 'Verified Risk';
+                  const isResolved = row.verificationStatus === 'Resolved';
 
                   return (
                     <tr
@@ -434,36 +753,69 @@ export default function SessionFeedback() {
                       style={{
                         borderBottom: '1px solid #f1f5f9',
                         background: idx % 2 === 0 ? '#ffffff' : '#fcfdfe',
-                        transition: 'background 0.1s ease'
+                        transition: 'background 0.12s ease'
                       }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#fcfdfe'; }}
                     >
                       {/* ID */}
                       {visibleColumns.id && (
-                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', fontWeight: '600', color: '#0f172a' }}>
-                          {row.id}
+                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.84rem', fontWeight: '700', color: '#0284c7' }}>
+                          <span style={{ cursor: 'pointer' }} onClick={() => setSelectedResponseSession(row)} title="View Feedback Details">
+                            {row.id}
+                          </span>
                         </td>
                       )}
 
                       {/* Date & Time */}
                       {visibleColumns.dateTime && (
-                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', color: '#334155' }}>
-                          {row.dateTime}
+                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', color: '#334155', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                            <i className='bx bx-calendar' style={{ color: '#94a3b8' }}></i>
+                            <span>{row.dateTime}</span>
+                          </div>
                         </td>
                       )}
 
                       {/* Provider Name */}
                       {visibleColumns.providerName && (
-                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', color: '#0f172a', fontWeight: '500' }}>
-                          {row.providerName}
+                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.84rem', color: '#0f172a', fontWeight: '600' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '50%',
+                              background: '#e0f2fe',
+                              color: '#0284c7',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.72rem',
+                              fontWeight: '700'
+                            }}>
+                              {(row.providerName || 'P').charAt(0)}
+                            </div>
+                            <div>
+                              <div>{row.providerName}</div>
+                              {row.providerSpecialty && (
+                                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '400' }}>
+                                  {row.providerSpecialty}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </td>
                       )}
 
                       {/* User Name */}
                       {visibleColumns.userName && (
-                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', color: '#334155' }}>
-                          {row.userName}
+                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.84rem', color: '#334155' }}>
+                          <div style={{ fontWeight: '500', color: '#0f172a' }}>{row.userName}</div>
+                          {row.clientName && (
+                            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                              {row.clientName}
+                            </div>
+                          )}
                         </td>
                       )}
 
@@ -472,17 +824,30 @@ export default function SessionFeedback() {
                         <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
                           {row.critical ? (
                             <span style={{
-                              color: '#dc2626',
-                              fontSize: '0.78rem',
-                              fontWeight: '600'
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: '999px',
+                              background: '#fee2e2',
+                              color: '#b91c1c',
+                              fontSize: '0.74rem',
+                              fontWeight: '700',
+                              border: '1px solid #fecaca'
                             }}>
+                              <i className='bx bx-error-circle' style={{ fontSize: '0.85rem' }}></i>
                               Yes
                             </span>
                           ) : (
                             <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              padding: '0.2rem 0.55rem',
+                              borderRadius: '999px',
+                              background: '#f1f5f9',
                               color: '#64748b',
-                              fontSize: '0.78rem',
-                              fontWeight: '500'
+                              fontSize: '0.74rem',
+                              fontWeight: '600'
                             }}>
                               No
                             </span>
@@ -498,57 +863,93 @@ export default function SessionFeedback() {
                               type="button"
                               onClick={() => openVerifyModal(row)}
                               style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: '#d97706',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                background: '#fef3c7',
+                                border: '1px solid #fde68a',
+                                color: '#b45309',
                                 fontWeight: '700',
-                                fontSize: '0.78rem',
+                                fontSize: '0.76rem',
                                 cursor: 'pointer',
-                                padding: '0.2rem 0.5rem',
-                                borderRadius: '4px'
+                                padding: '0.3rem 0.7rem',
+                                borderRadius: '6px',
+                                transition: 'all 0.15s ease'
                               }}
-                              title="Click to edit verification"
+                              title="Audited False Alarm - click to modify triage decision"
                             >
-                              False Alarm
+                              <i className='bx bx-check-circle' style={{ fontSize: '0.9rem' }}></i>
+                              <span>False Alarm</span>
                             </button>
                           ) : isVerifiedRisk ? (
                             <button
                               type="button"
                               onClick={() => openVerifyModal(row)}
                               style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
                                 background: '#fee2e2',
                                 border: '1px solid #fca5a5',
-                                color: '#b91c1c',
+                                color: '#991b1b',
                                 fontWeight: '700',
-                                fontSize: '0.75rem',
+                                fontSize: '0.76rem',
                                 cursor: 'pointer',
-                                padding: '0.25rem 0.65rem',
-                                borderRadius: '4px'
+                                padding: '0.3rem 0.7rem',
+                                borderRadius: '6px',
+                                transition: 'all 0.15s ease'
                               }}
-                              title="Click to edit verification"
+                              title="Verified High Risk - click to update notes"
                             >
-                              Verified Risk
+                              <i className='bx bx-alarm-exclamation' style={{ fontSize: '0.9rem' }}></i>
+                              <span>Verified Risk</span>
+                            </button>
+                          ) : isResolved ? (
+                            <button
+                              type="button"
+                              onClick={() => openVerifyModal(row)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                background: '#dcfce7',
+                                border: '1px solid #bbf7d0',
+                                color: '#166534',
+                                fontWeight: '700',
+                                fontSize: '0.76rem',
+                                cursor: 'pointer',
+                                padding: '0.3rem 0.7rem',
+                                borderRadius: '6px'
+                              }}
+                              title="Resolved - click to edit triage details"
+                            >
+                              <i className='bx bx-check-double' style={{ fontSize: '0.9rem' }}></i>
+                              <span>Resolved</span>
                             </button>
                           ) : (
                             <button
                               type="button"
                               onClick={() => openVerifyModal(row)}
                               style={{
-                                background: '#1d4ed8',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                background: '#0284c7',
                                 color: 'white',
                                 border: 'none',
-                                borderRadius: '4px',
-                                padding: '0.3rem 0.95rem',
+                                borderRadius: '6px',
+                                padding: '0.35rem 0.85rem',
                                 fontSize: '0.78rem',
                                 fontWeight: '600',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s ease',
-                                boxShadow: '0 1px 2px rgba(29, 78, 216, 0.2)'
+                                boxShadow: '0 1px 3px rgba(2, 132, 199, 0.25)'
                               }}
-                              onMouseEnter={(e) => { e.currentTarget.style.background = '#1e40af'; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.background = '#1d4ed8'; }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = '#0369a1'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = '#0284c7'; }}
                             >
-                              Verify
+                              <i className='bx bx-shield-quarter'></i>
+                              <span>Verify</span>
                             </button>
                           )}
                         </td>
@@ -560,7 +961,7 @@ export default function SessionFeedback() {
                           <button
                             type="button"
                             onClick={() => setSelectedResponseSession(row)}
-                            title="View Session Feedback Responses"
+                            title="Inspect Participant Feedback &amp; Responses"
                             style={{
                               width: '32px',
                               height: '32px',
@@ -578,14 +979,16 @@ export default function SessionFeedback() {
                               e.currentTarget.style.borderColor = '#0284c7';
                               e.currentTarget.style.color = '#0284c7';
                               e.currentTarget.style.background = '#f0f9ff';
+                              e.currentTarget.style.boxShadow = '0 2px 5px rgba(2, 132, 199, 0.15)';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.borderColor = '#cbd5e1';
                               e.currentTarget.style.color = '#475569';
                               e.currentTarget.style.background = 'white';
+                              e.currentTarget.style.boxShadow = 'none';
                             }}
                           >
-                            <i className='bx bx-show' style={{ fontSize: '1.1rem' }}></i>
+                            <i className='bx bx-show' style={{ fontSize: '1.15rem' }}></i>
                           </button>
                         </td>
                       )}
@@ -599,7 +1002,7 @@ export default function SessionFeedback() {
 
         {/* Bottom Pagination Bar */}
         <div style={{
-          padding: '0.85rem 1.25rem',
+          padding: '0.9rem 1.25rem',
           borderTop: '1px solid #f1f5f9',
           background: '#ffffff',
           display: 'flex',
@@ -609,12 +1012,14 @@ export default function SessionFeedback() {
           gap: '1rem'
         }}>
           {/* Page Indicator */}
-          <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
-            Page {currentPage} of {totalPages}
+          <div style={{ fontSize: '0.84rem', color: '#64748b' }}>
+            Showing <strong style={{ color: '#0f172a' }}>{totalItems === 0 ? 0 : startIndex + 1}</strong> to{' '}
+            <strong style={{ color: '#0f172a' }}>{Math.min(startIndex + rowsPerPage, totalItems)}</strong> of{' '}
+            <strong style={{ color: '#0f172a' }}>{totalItems}</strong> entries
           </div>
 
-          {/* Navigation Buttons: <<, Previous, Next, >> */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          {/* Navigation Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <button
               type="button"
               disabled={currentPage === 1}
@@ -650,6 +1055,19 @@ export default function SessionFeedback() {
             >
               Previous
             </button>
+
+            {/* Page number pill */}
+            <span style={{
+              padding: '0.35rem 0.8rem',
+              borderRadius: '6px',
+              background: '#0284c7',
+              color: 'white',
+              fontSize: '0.82rem',
+              fontWeight: '700'
+            }}>
+              {currentPage}
+            </span>
+
             <button
               type="button"
               disabled={currentPage === totalPages}
@@ -689,12 +1107,12 @@ export default function SessionFeedback() {
         </div>
       </div>
 
-      {/* ================= MODAL 1: VERIFICATION MODAL ================= */}
+      {/* ================= MODAL 1: CLINICAL VERIFICATION MODAL ================= */}
       {selectedVerifySession && (
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(15, 23, 42, 0.6)',
+          background: 'rgba(15, 23, 42, 0.65)',
           backdropFilter: 'blur(3px)',
           display: 'flex',
           alignItems: 'center',
@@ -706,9 +1124,10 @@ export default function SessionFeedback() {
             background: 'white',
             borderRadius: '12px',
             width: '100%',
-            maxWidth: '520px',
+            maxWidth: '540px',
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            animation: 'fadeIn 0.15s ease-out'
           }}>
             {/* Modal Header */}
             <div style={{
@@ -720,13 +1139,25 @@ export default function SessionFeedback() {
               justifyContent: 'space-between'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <i className='bx bx-check-shield' style={{ fontSize: '1.35rem', color: '#38bdf8' }}></i>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#38bdf8',
+                  fontSize: '1.25rem'
+                }}>
+                  <i className='bx bx-check-shield'></i>
+                </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700' }}>
-                    Verify Session Feedback
+                    Clinical Risk Verification
                   </h3>
                   <span style={{ fontSize: '0.78rem', color: '#93c5fd' }}>
-                    ID: {selectedVerifySession.id} • {selectedVerifySession.providerName}
+                    Session ID: {selectedVerifySession.id} &bull; {selectedVerifySession.providerName}
                   </span>
                 </div>
               </div>
@@ -753,22 +1184,45 @@ export default function SessionFeedback() {
                     <strong style={{ color: '#0f172a' }}>{selectedVerifySession.dateTime}</strong>
                   </div>
                   <div style={{ gridColumn: 'span 2' }}>
-                    <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Triage Reason</span>
-                    <span style={{ color: '#b91c1c', fontWeight: '500' }}>{selectedVerifySession.criticalReason}</span>
+                    <span style={{ color: '#64748b', display: 'block', fontSize: '0.72rem' }}>Flagged Reason</span>
+                    <span style={{ color: '#b91c1c', fontWeight: '600' }}>
+                      {selectedVerifySession.criticalReason || 'High distress score triggered in session evaluation'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Triage Decision Radio */}
+              {/* Triage Decision Selector */}
               <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.82rem', fontWeight: '600', color: '#334155' }}>
-                  Verification Assessment <span style={{ color: '#ef4444' }}>*</span>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.82rem', fontWeight: '700', color: '#1e293b' }}>
+                  Select Verification Outcome <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {[
-                    { val: 'False Alarm', label: 'False Alarm (No Immediate Clinical Risk)', desc: 'User or provider triggered alert mistakenly; normal session parameters.' },
-                    { val: 'Verified Risk', label: 'Verified Critical Risk (Escalate to Crisis Team)', desc: 'Genuine high-risk event requiring immediate clinical oversight.' },
-                    { val: 'Resolved', label: 'Resolved & Monitored (Follow-up Handled)', desc: 'Post-session stabilization verified by attending clinical staff.' }
+                    {
+                      val: 'False Alarm',
+                      label: 'False Alarm (Disregard Alert)',
+                      badge: 'Non-Critical',
+                      badgeColor: '#059669',
+                      badgeBg: '#dcfce7',
+                      desc: 'Participant responded normally; distress settled or trigger occurred mistakenly.'
+                    },
+                    {
+                      val: 'Verified Risk',
+                      label: 'Verified Critical Risk',
+                      badge: 'Escalation Required',
+                      badgeColor: '#dc2626',
+                      badgeBg: '#fee2e2',
+                      desc: 'Active self-harm, severe trauma, or clinical crisis confirmed. Triage team alerted.'
+                    },
+                    {
+                      val: 'Resolved',
+                      label: 'Resolved &amp; Monitored',
+                      badge: 'Stabilized',
+                      badgeColor: '#0284c7',
+                      badgeBg: '#e0f2fe',
+                      desc: 'Attending psychologist provided immediate de-escalation; scheduled check-in.'
+                    }
                   ].map(opt => (
                     <label
                       key={opt.val}
@@ -776,11 +1230,12 @@ export default function SessionFeedback() {
                         display: 'flex',
                         alignItems: 'flex-start',
                         gap: '0.65rem',
-                        padding: '0.65rem 0.85rem',
-                        borderRadius: '6px',
-                        border: verifyStatusChoice === opt.val ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
+                        padding: '0.75rem 0.85rem',
+                        borderRadius: '8px',
+                        border: verifyStatusChoice === opt.val ? '1.5px solid #0284c7' : '1px solid #e2e8f0',
                         background: verifyStatusChoice === opt.val ? '#f0f9ff' : '#ffffff',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        transition: 'all 0.12s ease'
                       }}
                     >
                       <input
@@ -789,13 +1244,18 @@ export default function SessionFeedback() {
                         value={opt.val}
                         checked={verifyStatusChoice === opt.val}
                         onChange={(e) => setVerifyStatusChoice(e.target.value)}
-                        style={{ marginTop: '0.2rem' }}
+                        style={{ marginTop: '0.25rem', accentColor: '#0284c7' }}
                       />
-                      <div>
-                        <div style={{ fontSize: '0.84rem', fontWeight: '600', color: verifyStatusChoice === opt.val ? '#0369a1' : '#1e293b' }}>
-                          {opt.label}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '0.86rem', fontWeight: '700', color: verifyStatusChoice === opt.val ? '#0284c7' : '#0f172a' }}>
+                            {opt.label}
+                          </span>
+                          <span style={{ fontSize: '0.7rem', fontWeight: '700', padding: '0.15rem 0.45rem', borderRadius: '4px', background: opt.badgeBg, color: opt.badgeColor }}>
+                            {opt.badge}
+                          </span>
                         </div>
-                        <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '0.15rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
                           {opt.desc}
                         </div>
                       </div>
@@ -806,23 +1266,26 @@ export default function SessionFeedback() {
 
               {/* Clinical Verification Notes */}
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.82rem', fontWeight: '600', color: '#334155' }}>
+                <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.82rem', fontWeight: '700', color: '#1e293b' }}>
                   Triage Remarks / Protocol Actions
                 </label>
                 <textarea
                   rows="3"
                   value={verifyNotes}
                   onChange={(e) => setVerifyNotes(e.target.value)}
-                  placeholder="Record call back details, clinical confirmation, or rationale for this assessment..."
+                  placeholder="Record provider consultation, participant call-back details, or clinical safety rationale..."
                   style={{
                     width: '100%',
-                    padding: '0.55rem',
+                    padding: '0.65rem',
                     borderRadius: '6px',
                     border: '1px solid #cbd5e1',
                     fontSize: '0.82rem',
+                    color: '#0f172a',
                     outline: 'none',
                     boxSizing: 'border-box'
                   }}
+                  onFocus={(e) => { e.target.style.borderColor = '#0284c7'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; }}
                 />
               </div>
 
@@ -832,7 +1295,7 @@ export default function SessionFeedback() {
                   type="button"
                   onClick={() => setSelectedVerifySession(null)}
                   style={{
-                    padding: '0.55rem 1rem',
+                    padding: '0.55rem 1.1rem',
                     borderRadius: '6px',
                     border: '1px solid #cbd5e1',
                     background: 'white',
@@ -847,7 +1310,7 @@ export default function SessionFeedback() {
                 <button
                   type="submit"
                   style={{
-                    padding: '0.55rem 1.25rem',
+                    padding: '0.55rem 1.35rem',
                     borderRadius: '6px',
                     border: 'none',
                     background: '#0284c7',
@@ -858,7 +1321,7 @@ export default function SessionFeedback() {
                     boxShadow: '0 2px 4px rgba(2, 132, 199, 0.3)'
                   }}
                 >
-                  Submit Verification
+                  Confirm Verification
                 </button>
               </div>
             </form>
@@ -866,7 +1329,7 @@ export default function SessionFeedback() {
         </div>
       )}
 
-      {/* ================= MODAL 2: RESPONSES MODAL ================= */}
+      {/* ================= MODAL 2: RESPONSES INSPECTOR MODAL ================= */}
       {selectedResponseSession && (
         <div style={{
           position: 'fixed',
@@ -884,11 +1347,12 @@ export default function SessionFeedback() {
             borderRadius: '12px',
             width: '100%',
             maxWidth: '680px',
-            maxHeight: '88vh',
+            maxHeight: '90vh',
             display: 'flex',
             flexDirection: 'column',
             boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            animation: 'fadeIn 0.15s ease-out'
           }}>
             {/* Modal Header */}
             <div style={{
@@ -900,207 +1364,216 @@ export default function SessionFeedback() {
               justifyContent: 'space-between',
               borderBottom: '1px solid rgba(255,255,255,0.1)'
             }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                  <span style={{
-                    background: selectedResponseSession.critical ? '#fee2e2' : '#dcfce7',
-                    color: selectedResponseSession.critical ? '#b91c1c' : '#15803d',
-                    padding: '0.2rem 0.55rem',
-                    borderRadius: '4px',
-                    fontSize: '0.72rem',
-                    fontWeight: '800',
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase'
-                  }}>
-                    {selectedResponseSession.critical ? 'Critical Session' : 'Standard Session'}
-                  </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#38bdf8',
+                  fontSize: '1.35rem'
+                }}>
+                  <i className='bx bx-show'></i>
+                </div>
+                <div>
                   <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700' }}>
                     Session Feedback Details
                   </h3>
+                  <span style={{ fontSize: '0.78rem', color: '#93c5fd' }}>
+                    ID: {selectedResponseSession.id} &bull; {selectedResponseSession.dateTime}
+                  </span>
                 </div>
-                <span style={{ fontSize: '0.8rem', color: '#93c5fd', marginTop: '0.2rem', display: 'block' }}>
-                  ID: {selectedResponseSession.id} • {selectedResponseSession.dateTime}
-                </span>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedResponseSession(null)}
-                style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.45rem', cursor: 'pointer' }}
               >
                 <i className='bx bx-x'></i>
               </button>
             </div>
 
-            {/* Scrollable Body */}
-            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              
-              {/* Participant & Provider Info Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
-                <div style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
-                    Attending Provider
-                  </span>
-                  <div style={{ fontSize: '0.92rem', fontWeight: '700', color: '#0f172a' }}>
-                    {selectedResponseSession.providerName}
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: '#0284c7', marginTop: '0.15rem' }}>
-                    {selectedResponseSession.providerSpecialty || 'Clinical Professional'}
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
+              {/* Quick Summary Cards Banner */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Critical Care</span>
+                  <div style={{ marginTop: '0.2rem' }}>
+                    {selectedResponseSession.critical ? (
+                      <span style={{ color: '#dc2626', fontWeight: '700', fontSize: '0.86rem' }}>
+                        ● Yes (Flagged)
+                      </span>
+                    ) : (
+                      <span style={{ color: '#059669', fontWeight: '700', fontSize: '0.86rem' }}>
+                        ● No (Normal)
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
-                    Participant / Client
-                  </span>
-                  <div style={{ fontSize: '0.92rem', fontWeight: '700', color: '#0f172a' }}>
-                    {selectedResponseSession.userName}
+                <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Verification</span>
+                  <div style={{ marginTop: '0.2rem', fontWeight: '700', fontSize: '0.86rem', color: selectedResponseSession.verificationStatus === 'False Alarm' ? '#d97706' : (selectedResponseSession.verificationStatus === 'Verified Risk' ? '#dc2626' : '#0284c7') }}>
+                    {selectedResponseSession.verificationStatus || 'Pending'}
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: '0.15rem' }}>
-                    {selectedResponseSession.clientName || 'Corporate Enterprise'}
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Clinical Score</span>
+                  <div style={{ marginTop: '0.2rem', fontWeight: '700', fontSize: '0.86rem', color: '#0f172a' }}>
+                    {selectedResponseSession.clinicalScore ? `${selectedResponseSession.clinicalScore} / 10` : '8.5 / 10'}
                   </div>
                 </div>
               </div>
 
-              {/* Critical Triage Notice */}
-              {selectedResponseSession.critical && (
-                <div style={{
-                  background: '#fef2f2',
-                  border: '1.5px solid #fecaca',
-                  borderRadius: '8px',
-                  padding: '0.85rem 1rem'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.35rem' }}>
-                    <i className='bx bx-error' style={{ color: '#dc2626', fontSize: '1.2rem' }}></i>
-                    <strong style={{ fontSize: '0.85rem', color: '#991b1b' }}>
-                      Clinical Risk Trigger Flagged
-                    </strong>
-                    <span style={{ marginLeft: 'auto', background: '#fee2e2', color: '#b91c1c', padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '700' }}>
-                      Severity: {selectedResponseSession.clinicalScore || 8} / 10
-                    </span>
+              {/* Participant & Provider Meta */}
+              <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '8px', border: '1px solid #bae6fd', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', fontSize: '0.84rem' }}>
+                  <div>
+                    <span style={{ color: '#0369a1', fontSize: '0.72rem', fontWeight: '700', textTransform: 'uppercase' }}>Provider Details</span>
+                    <div style={{ fontWeight: '700', color: '#0c4a6e', marginTop: '0.15rem' }}>
+                      {selectedResponseSession.providerName}
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#0284c7' }}>
+                      {selectedResponseSession.providerSpecialty || 'EAP Specialist / Counselor'}
+                    </div>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.82rem', color: '#7f1d1d', lineHeight: '1.4' }}>
+                  <div>
+                    <span style={{ color: '#0369a1', fontSize: '0.72rem', fontWeight: '700', textTransform: 'uppercase' }}>Participant / Client</span>
+                    <div style={{ fontWeight: '700', color: '#0c4a6e', marginTop: '0.15rem' }}>
+                      {selectedResponseSession.userName}
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#0284c7' }}>
+                      {selectedResponseSession.clientName || 'Corporate Client Partner'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Critical Risk Trigger Explanation */}
+              {selectedResponseSession.criticalReason && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '0.9rem', borderRadius: '8px', marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: '#b91c1c', fontWeight: '700', fontSize: '0.84rem', marginBottom: '0.35rem' }}>
+                    <i className='bx bx-alarm-exclamation' style={{ fontSize: '1.15rem' }}></i>
+                    <span>Identified Risk Factor</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: '#991b1b', lineHeight: 1.45 }}>
                     {selectedResponseSession.criticalReason}
                   </p>
                 </div>
               )}
 
-              {/* Questionnaire Responses Section */}
-              <div style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '1rem' }}>
-                <h4 style={{ margin: '0 0 0.85rem 0', fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.4rem' }}>
-                  Participant Questionnaire Responses
-                </h4>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginBottom: '1rem' }}>
-                  <div style={{ background: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Session Rating</span>
-                    <strong style={{ fontSize: '0.92rem', color: '#f59e0b' }}>
-                      {'★'.repeat(selectedResponseSession.questionnaire?.satisfaction || 5)}
-                      <span style={{ color: '#cbd5e1' }}>{'★'.repeat(5 - (selectedResponseSession.questionnaire?.satisfaction || 5))}</span>
-                    </strong>
-                  </div>
-
-                  <div style={{ background: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Felt Supported &amp; Heard</span>
-                    <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>
-                      {selectedResponseSession.questionnaire?.feltSupported || 'Yes'}
-                    </strong>
-                  </div>
-
-                  <div style={{ background: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Crisis De-escalated in Session</span>
-                    <strong style={{ fontSize: '0.88rem', color: selectedResponseSession.questionnaire?.crisisDeescalated === 'Partially' ? '#d97706' : '#15803d' }}>
-                      {selectedResponseSession.questionnaire?.crisisDeescalated || 'Yes'}
-                    </strong>
-                  </div>
-
-                  <div style={{ background: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Provider Empathy Rating</span>
-                    <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>
-                      {selectedResponseSession.questionnaire?.providerEmpathy || 5} / 5
-                    </strong>
+              {/* Form Responses Breakdown */}
+              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
+                Participant Survey Questions
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginBottom: '1.25rem' }}>
+                <div style={{ padding: '0.75rem', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Overall Session Satisfaction</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', marginTop: '0.15rem' }}>
+                    {'★'.repeat(selectedResponseSession.questionnaire?.satisfaction || 4)}
+                    <span style={{ color: '#cbd5e1' }}>{'★'.repeat(5 - (selectedResponseSession.questionnaire?.satisfaction || 4))}</span>
+                    <span style={{ fontSize: '0.76rem', color: '#64748b', marginLeft: '0.45rem', fontWeight: '500' }}>
+                      ({selectedResponseSession.questionnaire?.satisfaction || 4} out of 5 stars)
+                    </span>
                   </div>
                 </div>
 
-                {/* User Written Feedback */}
+                <div style={{ padding: '0.75rem', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Felt supported and heard during session?</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: '700', color: '#059669', marginTop: '0.15rem' }}>
+                    {selectedResponseSession.questionnaire?.feltSupported || 'Yes'}
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.75rem', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Was immediate distress effectively de-escalated?</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', marginTop: '0.15rem' }}>
+                    {selectedResponseSession.questionnaire?.crisisDeescalated || 'Partially / Follow-up Needed'}
+                  </div>
+                </div>
+
+                {selectedResponseSession.questionnaire?.userComments && (
+                  <div style={{ padding: '0.75rem', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Participant Remarks / Feedback</div>
+                    <div style={{ fontSize: '0.84rem', color: '#1e293b', marginTop: '0.25rem', fontStyle: 'italic', lineHeight: 1.45 }}>
+                      "{selectedResponseSession.questionnaire?.userComments}"
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Provider Clinical Notes */}
+              {selectedResponseSession.questionnaire?.providerNotes && (
                 <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '0.25rem' }}>
-                    Participant Remarks
-                  </span>
-                  <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', fontSize: '0.82rem', color: '#1e293b', fontStyle: 'italic', border: '1px solid #f1f5f9' }}>
-                    "{selectedResponseSession.questionnaire?.userComments || 'No written comment left by participant.'}"
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
+                    Clinician Post-Session Notes
+                  </h4>
+                  <div style={{ padding: '0.85rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '0.82rem', color: '#334155', lineHeight: 1.5 }}>
+                    {selectedResponseSession.questionnaire.providerNotes}
                   </div>
                 </div>
-              </div>
-
-              {/* Provider Clinical Post-Session Notes */}
-              <div style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '1rem' }}>
-                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Provider Clinical Summary
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.82rem', color: '#334155', lineHeight: '1.5', background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
-                  {selectedResponseSession.questionnaire?.providerNotes || 'Standard session completed without clinical exceptions.'}
-                </p>
-              </div>
-
+              )}
             </div>
 
             {/* Modal Footer */}
-            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #f1f5f9', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                  Verification Status: <strong>{selectedResponseSession.verificationStatus}</strong>
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const session = selectedResponseSession;
-                    setSelectedResponseSession(null);
-                    openVerifyModal(session);
-                  }}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '6px',
-                    border: '1px solid #0284c7',
-                    background: '#f0f9ff',
-                    color: '#0284c7',
-                    fontSize: '0.82rem',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Verify / Triage
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedResponseSession(null)}
-                  style={{
-                    padding: '0.5rem 1.25rem',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: '#0f172a',
-                    color: 'white',
-                    fontSize: '0.82rem',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Close
-                </button>
-              </div>
+            <div style={{
+              padding: '1rem 1.5rem',
+              background: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const s = selectedResponseSession;
+                  setSelectedResponseSession(null);
+                  openVerifyModal(s);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.5rem 1rem',
+                  background: '#0284c7',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: '600',
+                  fontSize: '0.82rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <i className='bx bx-check-shield'></i>
+                <span>Triage Verification</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedResponseSession(null)}
+                style={{
+                  padding: '0.5rem 1.15rem',
+                  background: 'white',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  fontWeight: '600',
+                  fontSize: '0.82rem',
+                  color: '#475569',
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Animation Styles */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-5px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}} />
     </div>
   );
 }
