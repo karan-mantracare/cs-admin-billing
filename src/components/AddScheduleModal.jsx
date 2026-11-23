@@ -2157,7 +2157,7 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
                             const val = e.target.value;
                             setPreviewInvoices(prev => prev.map((item, i) => i === idx ? { ...item, remarks: val } : item));
                           }}
-                          placeholder={`Remarks for ${inv.clientBillingEntity || 'invoice'}...`}
+                          placeholder="Invoice for the period of..."
                           style={{
                             width: '100%',
                             padding: '0.4rem 0.6rem',

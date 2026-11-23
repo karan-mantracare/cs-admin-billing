@@ -504,7 +504,7 @@ function EditPaymentModal({ isOpen, onClose, payment, onSave, onDelete }) {
               name="remarks" 
               value={formData.remarks || ''} 
               onChange={handleChange} 
-              placeholder="Enter remarks for invoice..." 
+              placeholder="Invoice for the period of..." 
               style={{
                 width: '100%',
                 padding: '0.6rem 0.75rem',
