@@ -313,25 +313,7 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
         {activeTab === 'feed' ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Scrollable feed items */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {/* Anti-Data Leakage banner */}
-              <div style={{
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                borderRadius: '8px',
-                padding: '0.75rem 1rem',
-                fontSize: '0.8rem',
-                color: '#1e40af',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '0.5rem'
-              }}>
-                <i className='bx bx-shield-quarter' style={{ fontSize: '1.1rem', marginTop: '0.1rem' }}></i>
-                <div>
-                  <strong>Data Privacy Policy:</strong> Automated email notifications are strictly sent to Primary CS and Accounts Team without amounts to prevent data leakage. Comments added here update unread badges without sending outbound emails.
-                </div>
-              </div>
-
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {/* Feed items */}
               {activities.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#94a3b8' }}>
