@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import CommentReactions from '../components/CommentReactions';
 import {
   getARInvoicesWithNotifications,
   getARTotalUnreadCount,
@@ -21,7 +22,9 @@ import {
   markInvoiceActivitiesRead,
   markInvoiceActivitiesUnread,
   markAllInvoicesRead,
-  getInvoiceParticipants
+  getInvoiceParticipants,
+  toggleInvoiceActivityReaction,
+  toggleUserCommentReaction
 } from '../utils/notificationService';
 
 export default function NotificationsPage() {
@@ -706,6 +709,18 @@ export default function NotificationsPage() {
                             {act.summary}
                           </div>
 
+                          {/* Comment Reactions */}
+                          <div style={{ paddingLeft: '2.1rem' }}>
+                            <CommentReactions
+                              reactions={act.reactions}
+                              currentUserName={currentUserName}
+                              onToggleReaction={(emoji) => {
+                                toggleInvoiceActivityReaction(activeInvoice.invoiceKey, act.id, emoji, currentUserName);
+                                setUpdateTrigger(prev => prev + 1);
+                              }}
+                            />
+                          </div>
+
                           {act.emailDetails && (
                             <div style={{ paddingLeft: '2.1rem', marginTop: '0.2rem' }}>
                               <button
@@ -1270,6 +1285,20 @@ export default function NotificationsPage() {
                               {comm.text}
                             </div>
                           </div>
+
+                          {/* Comment Reactions */}
+                          <div style={{ marginTop: '0.1rem' }}>
+                            <CommentReactions
+                              reactions={comm.reactions}
+                              currentUserName={currentUserName}
+                              align={isMe ? 'right' : 'left'}
+                              onToggleReaction={(emoji) => {
+                                toggleUserCommentReaction(activeUser.id, comm.id, emoji, currentUserName);
+                                setUpdateTrigger(prev => prev + 1);
+                              }}
+                            />
+                          </div>
+
                           <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '0.2rem', padding: '0 0.35rem' }}>
                             {new Date(comm.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>

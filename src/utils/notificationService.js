@@ -270,8 +270,47 @@ export const addInvoiceComment = (invoiceKey, commentText, author = 'Customer Su
     title: 'New Comment',
     summary: commentText.trim(),
     author,
-    emailSent: false
+    emailSent: false,
+    reactions: {}
   });
+};
+
+/**
+ * Toggle a reaction on an invoice activity or comment
+ */
+export const toggleInvoiceActivityReaction = (invoiceKey, activityId, emoji, userName = 'Karan Hinduja') => {
+  if (!invoiceKey || !activityId || !emoji) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(STORAGE_ACTIVITIES) || '{}');
+    const list = all[String(invoiceKey)] || [];
+    const updated = list.map(item => {
+      if (item.id === activityId) {
+        const reactions = item.reactions || {};
+        const currentUsers = Array.isArray(reactions[emoji]) ? [...reactions[emoji]] : [];
+        const hasReacted = currentUsers.includes(userName);
+        let newUsers;
+        if (hasReacted) {
+          newUsers = currentUsers.filter(u => u !== userName);
+        } else {
+          newUsers = [...currentUsers, userName];
+        }
+        const newReactions = { ...reactions };
+        if (newUsers.length > 0) {
+          newReactions[emoji] = newUsers;
+        } else {
+          delete newReactions[emoji];
+        }
+        return { ...item, reactions: newReactions };
+      }
+      return item;
+    });
+    all[String(invoiceKey)] = updated;
+    localStorage.setItem(STORAGE_ACTIVITIES, JSON.stringify(all));
+    window.dispatchEvent(new Event('ar_notification_update'));
+    return updated;
+  } catch (e) {
+    console.error('Failed to toggle invoice activity reaction', e);
+  }
 };
 
 /* =========================================================================
@@ -1012,6 +1051,44 @@ export const postUserComment = (userId, text, authorName = 'You', role = 'Custom
   } catch (e) {
     console.error('Failed to post user comment', e);
     return null;
+  }
+};
+
+/**
+ * Toggle reaction on a user thread comment
+ */
+export const toggleUserCommentReaction = (userId, commentId, emoji, userName = 'Karan Hinduja') => {
+  if (!userId || !commentId || !emoji) return;
+  try {
+    const commentsStore = JSON.parse(localStorage.getItem(STORAGE_OTHER_USERS_COMMENTS) || '{}');
+    const thread = commentsStore[userId] || (SEED_OTHER_USER_COMMENTS[userId] ? [...SEED_OTHER_USER_COMMENTS[userId]] : []);
+    const updated = thread.map(item => {
+      if (item.id === commentId) {
+        const reactions = item.reactions || {};
+        const currentUsers = Array.isArray(reactions[emoji]) ? [...reactions[emoji]] : [];
+        const hasReacted = currentUsers.includes(userName);
+        let newUsers;
+        if (hasReacted) {
+          newUsers = currentUsers.filter(u => u !== userName);
+        } else {
+          newUsers = [...currentUsers, userName];
+        }
+        const newReactions = { ...reactions };
+        if (newUsers.length > 0) {
+          newReactions[emoji] = newUsers;
+        } else {
+          delete newReactions[emoji];
+        }
+        return { ...item, reactions: newReactions };
+      }
+      return item;
+    });
+    commentsStore[userId] = updated;
+    localStorage.setItem(STORAGE_OTHER_USERS_COMMENTS, JSON.stringify(commentsStore));
+    window.dispatchEvent(new Event('ar_notification_update'));
+    return updated;
+  } catch (e) {
+    console.error('Failed to toggle user comment reaction', e);
   }
 };
 

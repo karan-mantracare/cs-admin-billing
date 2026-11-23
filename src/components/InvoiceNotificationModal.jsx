@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import CommentReactions from './CommentReactions';
 import {
   getInvoiceParticipants,
   addInvoiceParticipant,
@@ -7,7 +8,8 @@ import {
   addInvoiceComment,
   markInvoiceActivitiesRead,
   markInvoiceActivitiesUnread,
-  getInvoiceUnreadCount
+  getInvoiceUnreadCount,
+  toggleInvoiceActivityReaction
 } from '../utils/notificationService';
 
 export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
@@ -418,6 +420,18 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
 
                         <div style={{ fontSize: '0.85rem', color: '#334155', lineHeight: '1.45', paddingLeft: '2.3rem' }}>
                           {act.summary}
+                        </div>
+
+                        {/* Comment Reactions */}
+                        <div style={{ paddingLeft: '2.3rem' }}>
+                          <CommentReactions
+                            reactions={act.reactions}
+                            currentUserName={currentUserName}
+                            onToggleReaction={(emoji) => {
+                              toggleInvoiceActivityReaction(invoiceKey, act.id, emoji, currentUserName);
+                              reloadData();
+                            }}
+                          />
                         </div>
 
                         {act.emailDetails && (
