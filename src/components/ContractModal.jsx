@@ -286,7 +286,7 @@ export default function ContractModal({
       if (initialData) {
         setFormData({
           contractValue: initialData.contractValue !== undefined ? initialData.contractValue : '1500',
-          includingTax: initialData.includingTax !== undefined ? !!initialData.includingTax : false,
+          includingTax: false,
           contractCurrency: initialData.contractCurrency || 'EUR',
           currencyExchangeValue: initialData.currencyExchangeValue !== undefined ? initialData.currencyExchangeValue : '0.86',
           paymentDueDays: initialData.paymentDueDays !== undefined ? initialData.paymentDueDays : '15',
@@ -544,7 +544,7 @@ export default function ContractModal({
       taxDetails: targetEntity?.taxDetails || '',
       address: targetEntity?.address || '',
       contractValue: parseFloat(formData.contractValue) || 0,
-      includingTax: !!formData.includingTax,
+      includingTax: false,
       contractCurrency: formData.contractCurrency,
       currencyExchangeValue: parseFloat(formData.currencyExchangeValue) || 1,
       paymentDueDays: parseInt(formData.paymentDueDays, 10) || 15,
@@ -954,31 +954,6 @@ export default function ContractModal({
                   onChange={handleInputChange}
                   style={inputStyle}
                 />
-                <label style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.45rem',
-                  marginTop: '0.45rem',
-                  fontSize: '0.82rem',
-                  color: '#475569',
-                  cursor: isReadOnly ? 'default' : 'pointer',
-                  userSelect: 'none'
-                }}>
-                  <input
-                    type="checkbox"
-                    name="includingTax"
-                    disabled={isReadOnly}
-                    checked={!!formData.includingTax}
-                    onChange={(e) => setFormData(prev => ({ ...prev, includingTax: e.target.checked }))}
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      accentColor: '#0284c7',
-                      cursor: isReadOnly ? 'default' : 'pointer'
-                    }}
-                  />
-                  <span>Including Tax</span>
-                </label>
               </div>
 
               <div>

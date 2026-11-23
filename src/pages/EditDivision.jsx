@@ -482,7 +482,7 @@ function EditDivision() {
         const existingP = clientPayments[pIdx];
         const targetOrder = contractData.orderId ? contractData.orderId : (existingP.orderId || 'Null');
         const taxAdjustments = contractData.taxAdjustments || existingP.taxAdjustments || [];
-        const isTaxIncluded = contractData.includingTax !== undefined ? !!contractData.includingTax : existingP.includingTax;
+        const isTaxIncluded = false;
         const baseVal = Number(contractData.contractValue) || existingP.contractValue || 0;
         const calc = calculateTaxAdjustments(baseVal, taxAdjustments, isTaxIncluded);
 
@@ -497,7 +497,7 @@ function EditDivision() {
               clientAddress: contractData.address || (contractData.companyEntities?.[0]?.address) || p.clientAddress,
               contractValue: baseVal,
               baseAmountDue: baseVal,
-              includingTax: isTaxIncluded,
+              includingTax: false,
               paymentDueDays: contractData.paymentDueDays || p.paymentDueDays,
               billingCompany: contractData.billFrom || p.billingCompany,
               receivingBankName: contractData.receivingBankName || p.receivingBankName,
@@ -1955,11 +1955,6 @@ function EditDivision() {
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem', color: '#0f172a', fontWeight: '600' }}>
                                   <div>{cnt.contractValue?.toLocaleString()} {cnt.contractCurrency}</div>
-                                  {cnt.includingTax && (
-                                    <span style={{ fontSize: '0.7rem', color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: '600', display: 'inline-block', marginTop: '0.2rem' }}>
-                                      Including Tax
-                                    </span>
-                                  )}
                                   {cnt.taxAdjustments && cnt.taxAdjustments.length > 0 && (
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.3rem' }}>
                                       {cnt.taxAdjustments.map((t, tIdx) => (
