@@ -145,10 +145,10 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
       '',
       'Amount Details',
       '─────────────────────────────',
-      'Particulars | Amount | %'
+      'Particulars | Details | % | Amount'
     ];
 
-    textLines.push(`Base Amount : ${Number(calc.baseAmount).toFixed(2)} ${invoiceCurrency} | —`);
+    textLines.push(`Base Amount : — | — | ${Number(calc.baseAmount).toFixed(2)} ${invoiceCurrency}`);
 
     const taxRows = (calc.calculatedItems || []).filter(item => {
       const t = (item.type || '').toLowerCase();
@@ -162,28 +162,28 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
     });
 
     taxRows.forEach(item => {
-      textLines.push(`Tax${item.details ? ` (${item.details})` : ''} : +${Number(item.impactAmount || 0).toFixed(2)} ${invoiceCurrency} | ${item.percentage ? item.percentage + '%' : '—'}`);
+      textLines.push(`Tax${item.details ? ` (${item.details})` : ''} : ${Number(item.impactAmount || 0).toFixed(2)} | ${item.percentage ? item.percentage + '%' : '—'} |`);
     });
     deductRows.forEach(item => {
-      textLines.push(`Deduction${item.details ? ` (${item.details})` : ''} : -${Math.abs(item.impactAmount || 0).toFixed(2)} ${invoiceCurrency} | ${item.percentage ? item.percentage + '%' : '—'}`);
+      textLines.push(`Deduction${item.details ? ` (${item.details})` : ''} : -${Math.abs(item.impactAmount || 0).toFixed(2)} | ${item.percentage ? item.percentage + '%' : '—'} |`);
     });
     adjRows.forEach(item => {
-      textLines.push(`Adjustments${item.details ? ` (${item.details})` : ''} : +${Number(item.impactAmount || 0).toFixed(2)} ${invoiceCurrency} | ${item.percentage ? item.percentage + '%' : '—'}`);
+      textLines.push(`Adjustments${item.details ? ` (${item.details})` : ''} : ${Number(item.impactAmount || 0).toFixed(2)} | ${item.percentage ? item.percentage + '%' : '—'} |`);
     });
 
     const netAdj = calc.totalAdjustments - calc.totalDeductions + (isTaxIncluded ? 0 : calc.totalTax);
     const hasAdj = taxRows.length > 0 || deductRows.length > 0 || adjRows.length > 0;
     if (hasAdj) {
-      textLines.push(`Total Adjustment (Adjustments + Tax + Deduction) : ${netAdj >= 0 ? '+' : '-'}${Math.abs(netAdj).toFixed(2)} ${invoiceCurrency} | —`);
+      textLines.push(`Total Adjustment : — | — | ${netAdj.toFixed(2)} ${invoiceCurrency}`);
     }
 
-    textLines.push(`Total Invoice Value : ${calc.finalAmountDue.toFixed(2)} ${invoiceCurrency} | —`);
+    textLines.push(`Total Invoice Value : — | — | ${calc.finalAmountDue.toFixed(2)} ${invoiceCurrency}`);
 
     whtRows.forEach(item => {
-      textLines.push(`Withholding Tax${item.details ? ` (${item.details})` : ''} : -${Math.abs(item.impactAmount || 0).toFixed(2)} ${invoiceCurrency} | ${item.percentage ? item.percentage + '%' : '—'}`);
+      textLines.push(`Withholding Tax${item.details ? ` (${item.details})` : ''} : -${Math.abs(item.impactAmount || 0).toFixed(2)} | ${item.percentage ? item.percentage + '%' : '—'} |`);
     });
     if (calc.totalWht > 0) {
-      textLines.push(`Net Receivable : ${calc.netReceivableAfterWht.toFixed(2)} ${invoiceCurrency} | —`);
+      textLines.push(`Net Receivable : — | — | ${calc.netReceivableAfterWht.toFixed(2)} ${invoiceCurrency}`);
     }
 
     const text = textLines.filter(l => l !== null).join('\n');
@@ -303,18 +303,27 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
           const netAdjustment = calc.totalAdjustments - calc.totalDeductions + (isTaxIncluded ? 0 : calc.totalTax);
           const hasAdj = taxRows.length > 0 || deductRows.length > 0 || adjRows.length > 0;
 
+          const cellBase = {
+            padding: '0.45rem 0.65rem',
+            borderRight: '1px solid #e2e8f0',
+            fontSize: '0.82rem'
+          };
+          const lastCellBase = {
+            padding: '0.45rem 0.65rem',
+            fontSize: '0.82rem',
+            textAlign: 'right'
+          };
+
           const gridStyle = {
             display: 'grid',
-            gridTemplateColumns: '2.2fr 1.3fr 0.7fr',
-            gap: '0.5rem',
-            padding: '0.5rem 0.75rem',
+            gridTemplateColumns: '2fr 1.1fr 0.8fr 1.2fr',
             alignItems: 'center',
-            fontSize: '0.82rem'
+            borderBottom: '1px solid #e2e8f0'
           };
 
           return (
             <div style={{
-              border: '1px solid #e2e8f0',
+              border: '1px solid #cbd5e1',
               borderRadius: '6px',
               background: '#ffffff',
               overflow: 'hidden'
@@ -322,169 +331,162 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
               {/* Header */}
               <div style={{
                 ...gridStyle,
-                background: '#f1f5f9',
-                borderBottom: '1px solid #e2e8f0',
-                fontSize: '0.72rem',
+                background: '#f8fafc',
+                borderBottom: '1px solid #cbd5e1',
+                fontSize: '0.78rem',
                 fontWeight: '700',
-                color: '#475569',
-                textTransform: 'uppercase',
-                letterSpacing: '0.03em'
+                color: '#334155'
               }}>
-                <div>Particulars</div>
-                <div style={{ textAlign: 'right' }}>Amount ({invoiceCurrency})</div>
-                <div style={{ textAlign: 'center' }}>%</div>
+                <div style={{ ...cellBase, fontWeight: '700' }}>Particulars</div>
+                <div style={{ ...cellBase, fontWeight: '700', textAlign: 'right' }}>Details</div>
+                <div style={{ ...cellBase, fontWeight: '700', textAlign: 'center' }}>%</div>
+                <div style={{ ...lastCellBase, fontWeight: '700' }}>Amount ({invoiceCurrency})</div>
               </div>
 
-              {/* Base Amount (distinct clean tone) */}
+              {/* Base Amount */}
               <div style={{
                 ...gridStyle,
-                background: '#f8fafc',
-                borderBottom: '1px solid #e2e8f0',
-                fontWeight: '600',
+                background: '#ffffff',
                 color: '#1e293b'
               }}>
-                <div>Base Amount</div>
-                <div style={{ textAlign: 'right', fontWeight: '700' }}>
+                <div style={cellBase}>Base Amount</div>
+                <div style={{ ...cellBase, textAlign: 'center', color: '#94a3b8' }}>—</div>
+                <div style={{ ...cellBase, textAlign: 'center', color: '#94a3b8' }}>—</div>
+                <div style={{ ...lastCellBase, fontWeight: '700', color: '#0f172a' }}>
                   {Number(calc.baseAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-                <div style={{ textAlign: 'center', color: '#94a3b8' }}>—</div>
               </div>
 
-              {/* Tax Rows (same clean neutral color) */}
+              {/* Tax Rows */}
               {taxRows.map((item, idx) => (
                 <div key={`tax-${idx}`} style={{
                   ...gridStyle,
                   background: '#ffffff',
-                  borderBottom: '1px solid #f1f5f9',
-                  color: '#334155'
+                  color: '#475569'
                 }}>
-                  <div>
-                    <span style={{ fontWeight: '500' }}>Tax</span>
-                    {item.details && <span style={{ color: '#64748b', fontSize: '0.78rem' }}> ({item.details})</span>}
+                  <div style={cellBase}>
+                    Tax{item.details ? ` (${item.details})` : ''}
                   </div>
-                  <div style={{ textAlign: 'right', fontWeight: '600' }}>
-                    +{Number(item.impactAmount || 0).toFixed(2)}
+                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155' }}>
+                    {Number(item.impactAmount || 0).toFixed(2)}
                   </div>
-                  <div style={{ textAlign: 'center', color: '#475569', fontWeight: '500' }}>
+                  <div style={{ ...cellBase, textAlign: 'center', color: '#334155' }}>
                     {item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—'}
                   </div>
+                  <div style={lastCellBase}></div>
                 </div>
               ))}
 
-              {/* Deduction Rows (same clean neutral color) */}
+              {/* Deduction Rows */}
               {deductRows.map((item, idx) => (
                 <div key={`deduct-${idx}`} style={{
                   ...gridStyle,
                   background: '#ffffff',
-                  borderBottom: '1px solid #f1f5f9',
-                  color: '#334155'
+                  color: '#475569'
                 }}>
-                  <div>
-                    <span style={{ fontWeight: '500' }}>Deduction</span>
-                    {item.details && <span style={{ color: '#64748b', fontSize: '0.78rem' }}> ({item.details})</span>}
+                  <div style={cellBase}>
+                    Deduction{item.details ? ` (${item.details})` : ''}
                   </div>
-                  <div style={{ textAlign: 'right', fontWeight: '600' }}>
+                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155' }}>
                     -{Math.abs(item.impactAmount || 0).toFixed(2)}
                   </div>
-                  <div style={{ textAlign: 'center', color: '#475569', fontWeight: '500' }}>
+                  <div style={{ ...cellBase, textAlign: 'center', color: '#334155' }}>
                     {item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—'}
                   </div>
+                  <div style={lastCellBase}></div>
                 </div>
               ))}
 
-              {/* Adjustments Rows (same clean neutral color) */}
+              {/* Adjustments Rows */}
               {adjRows.map((item, idx) => (
                 <div key={`adj-${idx}`} style={{
                   ...gridStyle,
                   background: '#ffffff',
-                  borderBottom: '1px solid #f1f5f9',
-                  color: '#334155'
+                  color: '#475569'
                 }}>
-                  <div>
-                    <span style={{ fontWeight: '500' }}>Adjustments</span>
-                    {item.details && <span style={{ color: '#64748b', fontSize: '0.78rem' }}> ({item.details})</span>}
+                  <div style={cellBase}>
+                    Adjustments{item.details ? ` (${item.details})` : ''}
                   </div>
-                  <div style={{ textAlign: 'right', fontWeight: '600' }}>
-                    +{Number(item.impactAmount || 0).toFixed(2)}
+                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155' }}>
+                    {Number(item.impactAmount || 0).toFixed(2)}
                   </div>
-                  <div style={{ textAlign: 'center', color: '#475569', fontWeight: '500' }}>
+                  <div style={{ ...cellBase, textAlign: 'center', color: '#334155' }}>
                     {item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—'}
                   </div>
+                  <div style={lastCellBase}></div>
                 </div>
               ))}
 
-              {/* Total Adjustment (subtotal row) */}
+              {/* Total Adjustment */}
               {hasAdj && (
                 <div style={{
                   ...gridStyle,
-                  background: '#f8fafc',
-                  borderTop: '1px dashed #cbd5e1',
-                  borderBottom: '1px dashed #cbd5e1',
-                  color: '#1e293b'
+                  background: '#ffffff',
+                  color: '#475569'
                 }}>
-                  <div style={{ fontWeight: '600' }}>
-                    Total Adjustment <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '400' }}>(Adjustments + Tax + Deduction)</span>
+                  <div style={cellBase}>Total Adjustment</div>
+                  <div style={{ ...cellBase, textAlign: 'center', color: '#94a3b8' }}>—</div>
+                  <div style={{ ...cellBase, textAlign: 'center', color: '#94a3b8' }}>—</div>
+                  <div style={{ ...lastCellBase, fontWeight: '700', color: '#0f172a' }}>
+                    {netAdjustment.toFixed(2)}
                   </div>
-                  <div style={{
-                    textAlign: 'right',
-                    fontWeight: '700',
-                    color: netAdjustment >= 0 ? '#0284c7' : '#c2410c'
-                  }}>
-                    {netAdjustment >= 0 ? `+${Math.abs(netAdjustment).toFixed(2)}` : `-${Math.abs(netAdjustment).toFixed(2)}`}
-                  </div>
-                  <div style={{ textAlign: 'center', color: '#94a3b8' }}>—</div>
                 </div>
               )}
 
-              {/* Total Invoice Value (distinct highlight color) */}
+              {/* Total Invoice Value: (Highlighted green row) */}
               <div style={{
                 ...gridStyle,
                 background: '#ecfdf5',
-                borderTop: '1px solid #a7f3d0',
-                borderBottom: whtRows.length > 0 ? '1px solid #e2e8f0' : 'none',
+                color: '#059669',
                 fontWeight: '700'
               }}>
-                <div style={{ color: '#059669', fontWeight: '700' }}>Total Invoice Value:</div>
-                <div style={{ textAlign: 'right', fontWeight: '800', color: '#059669', fontSize: '0.9rem' }}>
+                <div style={{ ...cellBase, borderRight: '1px solid #bbf7d0', color: '#059669', fontWeight: '700' }}>
+                  Total Invoice Value:
+                </div>
+                <div style={{ ...cellBase, borderRight: '1px solid #bbf7d0', textAlign: 'center', color: '#059669' }}>—</div>
+                <div style={{ ...cellBase, borderRight: '1px solid #bbf7d0', textAlign: 'center', color: '#059669' }}>—</div>
+                <div style={{ ...lastCellBase, fontWeight: '800', color: '#059669', fontSize: '0.88rem' }}>
                   {calc.finalAmountDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-                <div style={{ textAlign: 'center', color: '#94a3b8' }}>—</div>
               </div>
 
-              {/* Withholding Tax Rows (same clean neutral color) */}
+              {/* Withholding Tax Rows */}
               {whtRows.map((item, idx) => (
                 <div key={`wht-${idx}`} style={{
                   ...gridStyle,
                   background: '#ffffff',
-                  borderBottom: '1px solid #f1f5f9',
-                  color: '#334155'
+                  color: '#475569'
                 }}>
-                  <div>
-                    <span style={{ fontWeight: '500' }}>Withholding Tax</span>
-                    {item.details && <span style={{ color: '#64748b', fontSize: '0.78rem' }}> ({item.details})</span>}
+                  <div style={cellBase}>
+                    Withholding Tax{item.details ? ` (${item.details})` : ''}
                   </div>
-                  <div style={{ textAlign: 'right', fontWeight: '600' }}>
+                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155' }}>
                     -{Math.abs(item.impactAmount || 0).toFixed(2)}
                   </div>
-                  <div style={{ textAlign: 'center', color: '#475569', fontWeight: '500' }}>
+                  <div style={{ ...cellBase, textAlign: 'center', color: '#334155' }}>
                     {item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—'}
                   </div>
+                  <div style={lastCellBase}></div>
                 </div>
               ))}
 
-              {/* Net Receivable (distinct highlight color) */}
+              {/* Net Receivable: (Highlighted amber row) */}
               {calc.totalWht > 0 && (
                 <div style={{
                   ...gridStyle,
                   background: '#fffbeb',
-                  borderTop: '1px solid #fde68a',
+                  color: '#b45309',
+                  borderBottom: 'none',
                   fontWeight: '700'
                 }}>
-                  <div style={{ color: '#b45309', fontWeight: '700' }}>Net Receivable:</div>
-                  <div style={{ textAlign: 'right', fontWeight: '800', color: '#b45309', fontSize: '0.9rem' }}>
+                  <div style={{ ...cellBase, borderRight: '1px solid #fde68a', color: '#b45309', fontWeight: '700' }}>
+                    Net Receivable:
+                  </div>
+                  <div style={{ ...cellBase, borderRight: '1px solid #fde68a', textAlign: 'center', color: '#b45309' }}>—</div>
+                  <div style={{ ...cellBase, borderRight: '1px solid #fde68a', textAlign: 'center', color: '#b45309' }}>—</div>
+                  <div style={{ ...lastCellBase, fontWeight: '800', color: '#b45309', fontSize: '0.88rem' }}>
                     {calc.netReceivableAfterWht.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <div style={{ textAlign: 'center', color: '#94a3b8' }}>—</div>
                 </div>
               )}
             </div>
