@@ -415,7 +415,7 @@ Delivered to: ${participants.map(p => `${p.name} (${p.email})`).join(', ')}
 
     <!-- Call to Action Button -->
     <div style="text-align: center; margin: 24px 0 16px;">
-      <a href="${directLink}" style="background: #2563eb; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
+      <a href="${directLink}" target="_blank" rel="noopener noreferrer" style="background: #2563eb; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
         View Invoice Details in Portal &rarr;
       </a>
     </div>
@@ -521,7 +521,7 @@ Delivered to: ${participants.map(p => `${p.name} (${p.email})`).join(', ')}
     </div>
 
     <div style="text-align: center; margin: 24px 0 16px;">
-      <a href="${directLink}" style="background: #059669; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(5,150,105,0.25);">
+      <a href="${directLink}" target="_blank" rel="noopener noreferrer" style="background: #059669; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(5,150,105,0.25);">
         View Payment Records &rarr;
       </a>
     </div>
@@ -631,7 +631,7 @@ Delivered to: ${participants.map(p => `${p.name} (${p.email})`).join(', ')}
     </div>
 
     <div style="text-align: center; margin: 24px 0 16px;">
-      <a href="${directLink}" style="background: #d97706; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(217,119,6,0.25);">
+      <a href="${directLink}" target="_blank" rel="noopener noreferrer" style="background: #d97706; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(217,119,6,0.25);">
         View Billing Schedule &rarr;
       </a>
     </div>
@@ -729,7 +729,7 @@ Delivered to: ${participants.map(p => `${p.name} (${p.email})`).join(', ')}
     </div>
 
     <div style="text-align: center; margin: 24px 0 16px;">
-      <a href="${directLink}" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(79,70,229,0.25);">
+      <a href="${directLink}" target="_blank" rel="noopener noreferrer" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(79,70,229,0.25);">
         View Updated Invoice &rarr;
       </a>
     </div>
@@ -825,7 +825,7 @@ export const getEmailTemplatePreview = (templateType, payment = {}) => {
 
     <!-- Call to Action Button -->
     <div style="text-align: center; margin: 24px 0 16px;">
-      <a href="${directLink}" style="background: #2563eb; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
+      <a href="${directLink}" target="_blank" rel="noopener noreferrer" style="background: #2563eb; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
         View Invoice Details in Portal &rarr;
       </a>
     </div>
@@ -884,7 +884,7 @@ export const getEmailTemplatePreview = (templateType, payment = {}) => {
 
     <!-- Call to Action Button -->
     <div style="text-align: center; margin: 24px 0 16px;">
-      <a href="${directLink}" style="background: #059669; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(5,150,105,0.25);">
+      <a href="${directLink}" target="_blank" rel="noopener noreferrer" style="background: #059669; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(5,150,105,0.25);">
         View Payment Records in Portal &rarr;
       </a>
     </div>
@@ -943,7 +943,7 @@ export const getEmailTemplatePreview = (templateType, payment = {}) => {
 
     <!-- Call to Action Button -->
     <div style="text-align: center; margin: 24px 0 16px;">
-      <a href="${directLink}" style="background: #d97706; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(217,119,6,0.25);">
+      <a href="${directLink}" target="_blank" rel="noopener noreferrer" style="background: #d97706; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(217,119,6,0.25);">
         View Billing Schedule in Portal &rarr;
       </a>
     </div>
@@ -998,7 +998,7 @@ export const getEmailTemplatePreview = (templateType, payment = {}) => {
 
     <!-- Call to Action Button -->
     <div style="text-align: center; margin: 24px 0 16px;">
-      <a href="${directLink}" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(79,70,229,0.25);">
+      <a href="${directLink}" target="_blank" rel="noopener noreferrer" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(79,70,229,0.25);">
         View Updated Invoice in Portal &rarr;
       </a>
     </div>

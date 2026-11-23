@@ -351,6 +351,11 @@ function ClientPayments() {
     const invId = searchParams.get('invoiceId') || location.state?.filterInvoiceId || location.state?.invoiceId || '';
     if (oId || t || invId) {
       setActiveLinkFilter({ orderId: String(oId).trim(), type: String(t).trim().toLowerCase(), invoiceId: String(invId).trim() });
+      if (String(t).toLowerCase() === 'received') {
+        setActiveTab('records');
+      } else if (String(t).toLowerCase() === 'due' || oId || invId) {
+        setActiveTab('billing');
+      }
     }
   }, [searchParams, location.state]);
 
@@ -567,7 +572,10 @@ function ClientPayments() {
   }, []);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState('billing');
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = searchParams.get('type') || location.state?.filterPaymentType || location.state?.type || '';
+    return String(t).toLowerCase() === 'received' ? 'records' : 'billing';
+  });
 
   // Search & Filter State
   const [advancedFilters, setAdvancedFilters] = useState({ conditions: [], searchText: '' });
@@ -823,8 +831,12 @@ function ClientPayments() {
       }
       if (activeLinkFilter.invoiceId) {
         const targetInv = String(activeLinkFilter.invoiceId).toLowerCase();
-        const rInv = String(r.paymentId || r.id || '').toLowerCase();
-        if (rInv !== targetInv && !rInv.includes(targetInv)) {
+        const rInvNum = String(r.invoiceNumber || '').toLowerCase();
+        const rPayId = String(r.paymentId || '').toLowerCase();
+        const rId = String(r.id || '').toLowerCase();
+        if (rInvNum !== targetInv && !rInvNum.includes(targetInv) &&
+            rPayId !== targetInv && !rPayId.includes(targetInv) &&
+            rId !== targetInv) {
           return false;
         }
       }
