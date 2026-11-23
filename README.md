@@ -28,6 +28,10 @@ The platform provides end-to-end tooling for enterprise healthcare and wellness 
 - **Validation & Disabling Controls**: Warns when installment count exceeds plan term, displaying error banners and disabling Preview/Save actions to prevent invalid billing commitments.
 - **Ledger Management**: Status indicators for Scheduled, Due, Paid, and Overdue milestones with one-click payment reminder copy tools and remarks preview tooltips.
 - **Payment Records & Change Request Workflow**: Dedicated ACTIONS column on Payment Records with modal workflow to submit, track, and withdraw "Change" or "Delete" requests with mandatory justifications.
+- **Invoice Notifications & WhatsApp-Style Internal Activity Feed**:
+  - **Collaborative Activity Hub**: Integrated modal and notifications portal for tracking billing events, in-app comments, reactions, and quoted replies between CS and Accounts teams.
+  - **WhatsApp-Inspired Experience**: Messages stream chronologically (`oldest -> newest`) with the latest message directly at the bottom, auto-scroll to the newest message, floating down-chevron quick-jump button, centered date pills (`Today`, `Yesterday`, `D/M/YYYY`), and anchored `HH:MM` timestamps.
+  - **Zero-Amount Email Protection**: Automated transactional emails (New Invoice, Payment Recorded, Schedule Created, Invoice Edited) strictly omit currency amounts to prevent financial data leakage, with direct portal buttons targeting the active `/client-payments` route.
 
 ### 2. Customer Success & Feedback Governance (`/cs/feedback`, `/feedback-form/:id`)
 - **12-Dimension Evaluation Rubric**: Comprehensive evaluation covering:

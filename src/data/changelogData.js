@@ -1,5 +1,26 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-ar-activity-whatsapp-feed-email-routes-20261123',
+    date: '2026-11-23',
+    formattedDate: 'Nov 23, 2026',
+    page: 'Accounts Receivable',
+    subPage: 'Invoice Notifications & Activity Feed',
+    summary: 'WhatsApp-inspired chronological chat feed, auto-scroll to newest message, and updated email portal deep-links',
+    details: 'Enhanced the Invoice Notifications & Comments modal and Notifications Page with a WhatsApp-style activity feed: ordered chronologically with the latest message at the bottom, auto-scrolling to the newest message on open and comment post, and a floating down-chevron quick-scroll button. Cleaned up activity headers with an inline "Title | by Author" format, anchored 12-hour HH:MM timestamps in the bottom-right corner, and removed dispatched email preview buttons. Updated all email template notification deep-links to point to /client-payments.',
+    plainLanguage: 'Revamped the invoice comment feed to look and feel like WhatsApp with newest messages at the bottom, auto-scrolling, centered date separators, clean inline headers, and updated email notification buttons to link to /client-payments.',
+    highlights: [
+      'Chronological Message Order: Messages flow from oldest to newest with the latest message positioned directly above the fixed composer',
+      'Auto-Scroll & Quick-Jump: Automatically scrolls to the newest message on modal open and comment post, with a floating down-chevron to jump back down from history',
+      'Clean Inline Headers: Formatted activity titles and authors into a single compact line (e.g., "New Comment | by Priya Sharma", "Payment Recorded | by Finance Operations")',
+      'Bottom-Right Timestamps: Anchored strict 12-hour HH:MM time (no seconds) in the bottom-right corner of each message item',
+      'Centered Date Dividers: Segregated messages day-wise with WhatsApp-style pills ("Today", "Yesterday", "D/M/YYYY") and eliminated redundant dates from cards',
+      'Updated Email Deep-Links: Changed email action button links from legacy /corporate/payments to the active /client-payments route with query parameters',
+      'Decluttered Cards: Removed "Preview Dispatched Email" action buttons and "In-App Only" badges from comment items'
+    ],
+    path: '/client-payments',
+    linkText: 'Accounts Receivable'
+  },
+  {
     id: 'cl-ar-deductions-and-adjustments-impact-20261123',
     date: '2026-11-23',
     formattedDate: 'Nov 23, 2026',
