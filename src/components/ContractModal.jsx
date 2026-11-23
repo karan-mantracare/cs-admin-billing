@@ -1338,12 +1338,7 @@ export default function ContractModal({
                     <div>Select Adjustment Type</div>
                     <div>%</div>
                     <div>Amount ({formData.contractCurrency || 'EUR'})</div>
-                    <div>
-                      Details{' '}
-                      <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: '500', textTransform: 'none' }}>
-                        (Mandatory for Deduction &amp; Adjustments)
-                      </span>
-                    </div>
+                    <div>Details</div>
                     <div></div>
                   </div>
 
