@@ -64,7 +64,7 @@ export const ADJUSTMENT_OPTIONS = [
     badgeColor: '#059669',
     badgeBg: '#ecfdf5',
     isMandatoryDetails: true,
-    placeholder: 'Enter GST or VAT details *'
+    placeholder: 'Enter GST or VAT details'
   },
   {
     value: 'Withholding Tax',
@@ -74,7 +74,7 @@ export const ADJUSTMENT_OPTIONS = [
     badgeColor: '#d97706',
     badgeBg: '#fef3c7',
     isMandatoryDetails: false,
-    placeholder: 'e.g. WHT rate / TDS section (optional)'
+    placeholder: 'Optional: e.g. WHT rate / TDS section'
   },
   {
     value: 'Deduction',
@@ -84,7 +84,7 @@ export const ADJUSTMENT_OPTIONS = [
     badgeColor: '#7c3aed',
     badgeBg: '#f5f3ff',
     isMandatoryDetails: true,
-    placeholder: 'Enter deduction reason (discount, offer) *'
+    placeholder: 'Enter deduction reason (discount, offer)'
   },
   {
     value: 'Adjustments',
@@ -94,7 +94,7 @@ export const ADJUSTMENT_OPTIONS = [
     badgeColor: '#0284c7',
     badgeBg: '#f0f9ff',
     isMandatoryDetails: true,
-    placeholder: 'Enter adjustment reason (additional charge) *'
+    placeholder: 'Enter adjustment reason (additional charge)'
   }
 ];
 
@@ -1344,7 +1344,7 @@ export default function ContractModal({
                     <div>Select Type</div>
                     <div>%</div>
                     <div>Amount ({formData.contractCurrency || 'EUR'})</div>
-                    <div>Details</div>
+                    <div>Details <span style={{ color: '#ef4444' }}>*</span></div>
                     <div></div>
                   </div>
 
@@ -1447,21 +1447,39 @@ export default function ContractModal({
                           </div>
 
                           {/* 4. Details */}
-                          <div>
+                          <div style={{ position: 'relative' }}>
                             <input
                               type="text"
                               disabled={isReadOnly}
-                              placeholder={def.placeholder || (isMandatoryDetails ? "Enter details *" : "Optional details / notes...")}
+                              placeholder={def.placeholder || (isMandatoryDetails ? "Enter details" : "Optional details / notes...")}
                               value={adj.details || ''}
                               onChange={(e) => handleAdjustmentChange(idx, 'details', e.target.value)}
                               style={{
                                 ...inputStyle,
-                                padding: '0.5rem 0.65rem',
+                                padding: isMandatoryDetails && !adj.details ? '0.5rem 1.4rem 0.5rem 0.65rem' : '0.5rem 0.65rem',
                                 fontSize: '0.84rem',
                                 borderColor: hasDetailsError ? '#ef4444' : (isMandatoryDetails && !adj.details ? '#f59e0b' : '#cbd5e1'),
                                 backgroundColor: hasDetailsError ? '#fef2f2' : '#ffffff'
                               }}
                             />
+                            {isMandatoryDetails && !adj.details && (
+                              <span
+                                style={{
+                                  position: 'absolute',
+                                  right: '0.65rem',
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  color: '#ef4444',
+                                  fontSize: '1rem',
+                                  fontWeight: 'bold',
+                                  lineHeight: 1,
+                                  pointerEvents: 'none'
+                                }}
+                                title="Mandatory"
+                              >
+                                *
+                              </span>
+                            )}
                           </div>
 
                           {/* 5. Delete Action */}
