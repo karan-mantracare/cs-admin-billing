@@ -136,7 +136,9 @@ export const getInvoiceActivities = (invoiceKey) => {
   if (!invoiceKey) return [];
   try {
     const all = JSON.parse(localStorage.getItem(STORAGE_ACTIVITIES) || '{}');
-    return all[String(invoiceKey)] || [];
+    const items = all[String(invoiceKey)] || [];
+    // Chronological order: oldest at top, latest/newest at bottom
+    return [...items].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   } catch (e) {
     console.error('Failed to get invoice activities', e);
     return [];
@@ -251,7 +253,7 @@ export const logInvoiceActivity = (invoiceKey, activityData) => {
       ...activityData
     };
 
-    all[String(invoiceKey)] = [newEntry, ...current];
+    all[String(invoiceKey)] = [...current, newEntry];
     localStorage.setItem(STORAGE_ACTIVITIES, JSON.stringify(all));
     window.dispatchEvent(new Event('ar_notification_update'));
     return newEntry;
@@ -1513,7 +1515,7 @@ export const getARInvoicesWithNotifications = () => {
       const acts = activitiesStore[key] || [];
       const lastRead = readStore[key] || 0;
       const unreadCount = acts.filter(a => new Date(a.timestamp).getTime() > lastRead).length;
-      const lastAct = acts.length > 0 ? acts[0] : null;
+      const lastAct = acts.length > 0 ? [...acts].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0] : null;
 
       result.push({
         id: p.id,
@@ -1539,7 +1541,7 @@ export const getARInvoicesWithNotifications = () => {
         const acts = activitiesStore[key] || [];
         const lastRead = readStore[key] || 0;
         const unreadCount = acts.filter(a => new Date(a.timestamp).getTime() > lastRead).length;
-        const lastAct = acts.length > 0 ? acts[0] : null;
+        const lastAct = acts.length > 0 ? [...acts].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0] : null;
 
         result.push({
           id: key,

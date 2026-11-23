@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import CommentReactions from './CommentReactions';
 import {
   getInvoiceParticipants,
@@ -23,6 +23,18 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
   const [previewEmail, setPreviewEmail] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+  const feedScrollRef = useRef(null);
+  const feedBottomRef = useRef(null);
+
+  const scrollToBottom = (behavior = 'auto') => {
+    if (feedBottomRef.current) {
+      feedBottomRef.current.scrollIntoView({ behavior });
+    } else if (feedScrollRef.current) {
+      feedScrollRef.current.scrollTop = feedScrollRef.current.scrollHeight;
+    }
+  };
 
   // Auto-fetch logged-in user identity (no dropdown)
   const loggedInUser = (() => {
@@ -69,6 +81,21 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
     return () => window.removeEventListener('ar_notification_update', handleUpdate);
   }, [isOpen, payment, invoiceKey]);
 
+  // Auto-scroll to latest message at bottom on open, tab switch, or new activity
+  useEffect(() => {
+    if (isOpen && activeTab === 'feed') {
+      const timer = setTimeout(() => {
+        scrollToBottom('auto');
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, activeTab, activities.length]);
+
+  const handleFeedScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    setShowScrollToBottom(scrollHeight - scrollTop - clientHeight > 100);
+  };
+
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -96,6 +123,9 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
     const inputEl = document.getElementById('modal-comment-input');
     if (inputEl) inputEl.style.height = '24px';
     reloadData();
+    setTimeout(() => {
+      scrollToBottom('smooth');
+    }, 60);
   };
 
   const handleAddParticipant = (e) => {
@@ -312,9 +342,13 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
 
         {/* Tab Content Area */}
         {activeTab === 'feed' ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
             {/* Scrollable feed items */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <div
+              ref={feedScrollRef}
+              onScroll={handleFeedScroll}
+              style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
+            >
               {/* Feed items */}
               {activities.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#94a3b8' }}>
@@ -517,11 +551,49 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                     </React.Fragment>
                   );
                 })}
+                <div ref={feedBottomRef} />
               </div>
             );
           })()
         )}
             </div>
+
+            {/* Floating Scroll to Bottom Button */}
+            {showScrollToBottom && (
+              <button
+                type="button"
+                onClick={() => scrollToBottom('smooth')}
+                style={{
+                  position: 'absolute',
+                  bottom: '72px',
+                  right: '24px',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#475569',
+                  cursor: 'pointer',
+                  zIndex: 10,
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f1f5f9';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#ffffff';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+                title="Scroll to latest messages"
+              >
+                <i className='bx bx-chevron-down' style={{ fontSize: '1.4rem' }}></i>
+              </button>
+            )}
 
             {/* Add Comment Section - Fixed at Bottom */}
             <div style={{

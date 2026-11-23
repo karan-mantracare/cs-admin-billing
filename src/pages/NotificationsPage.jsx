@@ -191,6 +191,9 @@ export default function NotificationsPage() {
     if (inputEl) inputEl.style.height = '24px';
     setSelectedInvoiceActivities(getInvoiceActivities(selectedInvoiceKey));
     setUpdateTrigger(prev => prev + 1);
+    setTimeout(() => {
+      arThreadBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 60);
   };
 
   // Submit reply to Other User
@@ -204,6 +207,9 @@ export default function NotificationsPage() {
     if (inputEl) inputEl.style.height = '24px';
     setUserThreadComments(getUserCommentsThread(selectedUserId));
     setUpdateTrigger(prev => prev + 1);
+    setTimeout(() => {
+      userThreadBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 60);
   };
 
   // Submit new General Notification (Admin Panel)
