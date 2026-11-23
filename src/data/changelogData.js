@@ -1,5 +1,22 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-move-sensitive-data-to-providers-20261123',
+    date: '2026-11-23',
+    formattedDate: 'Nov 23, 2026',
+    page: 'Navigation & Providers',
+    subPage: 'Sidebar / Providers Menu / Sensitive Data',
+    summary: 'Moved Sensitive Data from Corporate to Providers in the left sidebar menu',
+    details: 'Relocated the Sensitive Data module from the Corporate menu section to the Providers section in the left sidebar navigation, positioned right after Session Feedback. Configured route routing to /providers/sensitive-data while maintaining backward compatibility with previous routes (/corporate/sensitive-cases, /sensitive-cases, and /sensitive-data).',
+    plainLanguage: 'Moved the Sensitive Data module from the Corporate section to the Providers section in the sidebar navigation.',
+    highlights: [
+      'Menu Reorganization: Moved Sensitive Data out of Corporate and into Providers directly beneath Session Feedback',
+      'Unified Route Handling: Added routes for /providers/sensitive-data and /providers/sensitive-cases with full backward compatibility',
+      'Active State Highlighting: Ensures the Providers section and Sensitive Data menu item highlight properly on active navigation'
+    ],
+    path: '/providers/sensitive-data',
+    linkText: 'Sensitive Data'
+  },
+  {
     id: 'cl-session-feedback-page-20261123',
     date: '2026-11-23',
     formattedDate: 'Nov 23, 2026',

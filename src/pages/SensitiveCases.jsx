@@ -698,16 +698,30 @@ export default function SensitiveCases() {
       {/* Page Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.25rem' }}>
+            <span style={{
+              fontSize: '0.72rem',
+              fontWeight: '700',
+              letterSpacing: '0.05em',
+              color: '#0284c7',
+              background: '#e0f2fe',
+              padding: '0.2rem 0.6rem',
+              borderRadius: '4px',
+              textTransform: 'uppercase'
+            }}>
+              Provider Care &bull; Confidential Triage
+            </span>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)' }}>
               <i className='bx bx-shield-quarter'></i>
             </div>
             <div>
               <h1 style={{ margin: 0, fontSize: '1.45rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
-                Sensitive Cases
+                Sensitive Data
               </h1>
               <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
-                Confidential corporate EAP care: Manager Referrals &amp; High-Risk Critical Crisis Interventions
+                Confidential EAP care: Manager Referrals &amp; High-Risk Critical Crisis Interventions
               </p>
             </div>
           </div>

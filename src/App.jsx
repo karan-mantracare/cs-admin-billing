@@ -142,6 +142,7 @@ function App() {
                       location.pathname.startsWith('/profitability') || 
                       location.pathname.startsWith('/expert') || 
                       location.pathname.startsWith('/sensitive-cases') || 
+                      location.pathname.startsWith('/sensitive-data') || 
                       location.pathname.startsWith('/providers') || 
                       location.pathname.startsWith('/users') || 
                       location.pathname.startsWith('/products') || 
@@ -337,8 +338,11 @@ function App() {
         <Route path="/client-pl" element={<ExpenseTracker />} />
         <Route path="/profitability" element={<ExpenseTracker />} />
         <Route path="/expense-approval" element={<ExpenseApproval />} />
-        <Route path="/corporate/sensitive-cases" element={<SensitiveCases />} />
+         <Route path="/corporate/sensitive-cases" element={<SensitiveCases />} />
         <Route path="/sensitive-cases" element={<SensitiveCases />} />
+        <Route path="/providers/sensitive-data" element={<SensitiveCases />} />
+        <Route path="/providers/sensitive-cases" element={<SensitiveCases />} />
+        <Route path="/sensitive-data" element={<SensitiveCases />} />
         <Route path="/providers/session-feedback" element={<SessionFeedback />} />
         <Route path="/session-feedback" element={<SessionFeedback />} />
 

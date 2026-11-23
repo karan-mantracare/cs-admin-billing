@@ -176,6 +176,7 @@ function Sidebar({ isOpen, onClose }) {
         { label: 'Efficiency', path: '/providers/efficiency', icon: 'bx-bar-chart-alt-2' },
         { label: 'Sessions', path: '/providers/sessions', icon: 'bx-time' },
         { label: 'Session Feedback', path: '/providers/session-feedback', icon: 'bx-file' },
+        { label: 'Sensitive Data', path: '/providers/sensitive-data', icon: 'bx-shield-quarter', isProjectModule: true },
         { label: 'Appointment Report', path: '/providers/appointment-report', icon: 'bx-calendar' },
         { label: 'Malicious Chat', path: '/providers/malicious-chat', icon: 'bx-error-alt' },
         { label: 'Country × service counts', path: '/providers/country-service-counts', icon: 'bx-globe' },
@@ -202,7 +203,6 @@ function Sidebar({ isOpen, onClose }) {
         { label: 'Expense Approval', path: '/expense-approval', icon: 'bx-dollar-circle', isProjectModule: true },
         { label: 'Accounts Receivable', path: '/client-payments', icon: 'bx-dollar-circle', isProjectModule: true },
         { label: 'Expert Assignment', path: '/expert-assignment', icon: 'bx-group', isProjectModule: true },
-        { label: 'Sensitive Cases', path: '/corporate/sensitive-cases', icon: 'bx-shield-quarter', isProjectModule: true },
       ]
     },
     {
@@ -505,7 +505,14 @@ function Sidebar({ isOpen, onClose }) {
                       {section.subItems?.map(item => {
                         const isActive = location.pathname === item.path || 
                           (item.path === '/cs/cadence' && location.pathname === '/cadence') ||
-                          (item.path === '/cs/feedback' && location.pathname === '/feedback');
+                          (item.path === '/cs/feedback' && location.pathname === '/feedback') ||
+                          (item.path === '/providers/sensitive-data' && (
+                            location.pathname === '/providers/sensitive-data' ||
+                            location.pathname === '/providers/sensitive-cases' ||
+                            location.pathname === '/corporate/sensitive-cases' ||
+                            location.pathname === '/sensitive-data' ||
+                            location.pathname === '/sensitive-cases'
+                          ));
                         const isProject = item.isProjectModule;
 
                         return (
