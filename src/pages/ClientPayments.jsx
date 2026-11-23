@@ -5,9 +5,17 @@ import { useGlobal } from '../context/GlobalContext';
 import AddScheduleModal from '../components/AddScheduleModal';
 import EditPaymentModal from '../components/EditPaymentModal';
 import BillingMessageModal, { BillingMessageContent } from '../components/BillingMessageModal';
+import InvoiceNotificationModal from '../components/InvoiceNotificationModal';
 import UniversalFilter from '../components/UniversalFilter';
 import { getPrimaryCS } from '../utils/roleUtils';
 import { calculateTaxAdjustments } from '../utils/taxAdjustmentUtils';
+import {
+  getInvoiceUnreadCount,
+  sendNewInvoiceNotification,
+  sendPaymentNotification,
+  sendScheduleNotification,
+  sendInvoiceEditedNotification
+} from '../utils/notificationService';
 
 const DEFAULT_BILLING_COLUMNS = [
   { id: 'clientName', label: 'Client Name' },
@@ -321,18 +329,28 @@ function ClientPayments() {
   const [isAddScheduleOpen, setIsAddScheduleOpen] = useState(false);
   const [addModalMode, setAddModalMode] = useState('schedule');
   const [initialScheduleSelection, setInitialScheduleSelection] = useState(null);
+  const [activeNotificationPayment, setActiveNotificationPayment] = useState(null);
+  const [, setNotificationUpdateTrigger] = useState(0);
+
+  useEffect(() => {
+    const handleNotifUpdate = () => setNotificationUpdateTrigger(prev => prev + 1);
+    window.addEventListener('ar_notification_update', handleNotifUpdate);
+    return () => window.removeEventListener('ar_notification_update', handleNotifUpdate);
+  }, []);
 
   const [activeLinkFilter, setActiveLinkFilter] = useState(() => {
     const oId = searchParams.get('orderId') || location.state?.filterOrderId || location.state?.orderId || '';
     const t = searchParams.get('type') || location.state?.filterPaymentType || location.state?.type || '';
-    return (oId || t) ? { orderId: String(oId).trim(), type: String(t).trim().toLowerCase() } : null;
+    const invId = searchParams.get('invoiceId') || location.state?.filterInvoiceId || location.state?.invoiceId || '';
+    return (oId || t || invId) ? { orderId: String(oId).trim(), type: String(t).trim().toLowerCase(), invoiceId: String(invId).trim() } : null;
   });
 
   useEffect(() => {
     const oId = searchParams.get('orderId') || location.state?.filterOrderId || location.state?.orderId || '';
     const t = searchParams.get('type') || location.state?.filterPaymentType || location.state?.type || '';
-    if (oId || t) {
-      setActiveLinkFilter({ orderId: String(oId).trim(), type: String(t).trim().toLowerCase() });
+    const invId = searchParams.get('invoiceId') || location.state?.filterInvoiceId || location.state?.invoiceId || '';
+    if (oId || t || invId) {
+      setActiveLinkFilter({ orderId: String(oId).trim(), type: String(t).trim().toLowerCase(), invoiceId: String(invId).trim() });
     }
   }, [searchParams, location.state]);
 
@@ -712,8 +730,18 @@ function ClientPayments() {
 
   // Filtering Logic
   const filteredPayments = payments.filter(p => {
-    // 1. Link Filter (from URL query ?orderId=...&type=received/due)
+    // 1. Link Filter (from URL query ?orderId=...&type=received/due&invoiceId=...)
     if (activeLinkFilter) {
+      if (activeLinkFilter.invoiceId) {
+        const targetInv = String(activeLinkFilter.invoiceId).toLowerCase();
+        const pInvNum = String(p.invoiceNumber || '').toLowerCase();
+        const pInvLink = String(p.invoiceLink || '').toLowerCase();
+        const pId = String(p.id || '').toLowerCase();
+        if (pInvNum !== targetInv && !pInvNum.includes(targetInv) &&
+            !pInvLink.includes(targetInv) && pId !== targetInv) {
+          return false;
+        }
+      }
       if (activeLinkFilter.orderId) {
         const targetOrder = String(activeLinkFilter.orderId).toLowerCase();
         const pOrder = String(p.orderId || '').toLowerCase();
@@ -854,6 +882,11 @@ function ClientPayments() {
   const toBeBilled = filteredPayments.filter(p => resolvePaymentStatus(p) === 'To be raised').reduce((sum, p) => sum + (Number(p.amountDueUsd) || 0), 0);
 
   const handleSaveEdit = (updatedPayment) => {
+    try {
+      sendInvoiceEditedNotification(updatedPayment, 'Invoice details, schedule terms, or remarks updated');
+    } catch (e) {
+      console.error('Failed to dispatch invoice edited notification', e);
+    }
     setPayments(prev => {
       if (updatedPayment.contractId) {
         return prev.map(p => {
@@ -1373,6 +1406,49 @@ function ClientPayments() {
                     </button>
                     <button title="Upload Invoice" style={{ border: '1px solid #bfdbfe', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#eff6ff', cursor: 'pointer', color: '#2563eb', display: 'inline-flex', alignItems: 'center' }} onClick={() => setActiveUploadId(p.id)}>
                       <i className='bx bx-file-blank'></i>
+                    </button>
+                    <button 
+                      title="Notifications & Comments" 
+                      onClick={() => setActiveNotificationPayment(p)}
+                      style={{ 
+                        position: 'relative', 
+                        border: '1px solid #c7d2fe', 
+                        borderRadius: '5px', 
+                        padding: '0.3rem 0.5rem', 
+                        background: '#eef2ff', 
+                        cursor: 'pointer', 
+                        color: '#4f46e5', 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center' 
+                      }}
+                    >
+                      <i className='bx bx-bell'></i>
+                      {(() => {
+                        const unread = getInvoiceUnreadCount(p.id || p.invoiceNumber);
+                        if (unread > 0) {
+                          return (
+                            <span style={{
+                              position: 'absolute',
+                              top: '-6px',
+                              right: '-6px',
+                              background: '#ef4444',
+                              color: '#ffffff',
+                              fontSize: '0.62rem',
+                              fontWeight: '700',
+                              borderRadius: '999px',
+                              padding: '0.1rem 0.35rem',
+                              lineHeight: 1,
+                              minWidth: '14px',
+                              textAlign: 'center',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                            }}>
+                              {unread}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </button>
                   </td>
                 )}
@@ -1950,7 +2026,7 @@ function ClientPayments() {
                           const totalDueUsd = Number(p.amountDueUsd || 0);
                           const updatedDueAmount = Number(Math.max(0, totalDueUsd - currentPaid).toFixed(2));
 
-                          return {
+                          const updatedPayment = {
                             ...p,
                             invoiceDate: invoiceForm.invoiceDate,
                             invoiceLink: finalDoc,
@@ -1958,6 +2034,18 @@ function ClientPayments() {
                             dueAmount: updatedDueAmount,
                             status: updatedDueAmount <= 0 ? 'Received' : (currentPaid > 0 ? 'Partial' : 'Payment pending')
                           };
+
+                          try {
+                            sendNewInvoiceNotification(updatedPayment, {
+                              invoiceNumber: invoiceForm.invoiceNumber,
+                              invoiceDate: invoiceForm.invoiceDate,
+                              remarks: p.remarks
+                            });
+                          } catch (e) {
+                            console.error('Failed to dispatch new invoice notification', e);
+                          }
+
+                          return updatedPayment;
                         }
                         return p;
                       }));
@@ -2421,6 +2509,17 @@ function ClientPayments() {
                   // Total USD impact including TDS
                   const totalPaidThisTx = (amountVal > 0 ? Number(amountInUSD.toFixed(2)) : 0) + Number(tdsAmountInUSD.toFixed(2));
 
+                  // Dispatch Payment Notification (Zero-Amount Anti-Leakage to Primary CS & Accounts Team)
+                  try {
+                    sendPaymentNotification(targetRow, {
+                      paymentDate: paymentForm.paymentDate,
+                      receivedBank: paymentForm.receivedBank || 'Company Account',
+                      enteredBy: 'Finance Operations'
+                    });
+                  } catch (e) {
+                    console.error('Failed to dispatch payment notification', e);
+                  }
+
                   // Update Row
                   setPayments(prev => prev.map(p => {
                     if (p.id === activePaymentId) {
@@ -2478,6 +2577,18 @@ function ClientPayments() {
         onSave={({ formData, selectedOrder, mode, invoices }) => {
           if (invoices && invoices.length > 0) {
             setPayments(prev => [...invoices, ...prev]);
+            try {
+              sendScheduleNotification({
+                clientName: formData.corporate || selectedOrder?.clientName || invoices[0]?.clientName,
+                orderId: selectedOrder?.id || invoices[0]?.orderId || '',
+                totalInstallments: invoices.length,
+                frequency: formData.paymentCadence || 'Scheduled Cadence',
+                csResponsible: selectedOrder?.csResponsible,
+                firstInvoiceId: invoices[0]?.id
+              });
+            } catch (e) {
+              console.error('Failed to dispatch schedule notification', e);
+            }
             return;
           }
           if (!selectedOrder) return;
@@ -2538,6 +2649,19 @@ function ClientPayments() {
           }
 
           setPayments(prev => [...newRows, ...prev]);
+
+          try {
+            sendScheduleNotification({
+              clientName: formData.corporate || selectedOrder?.clientName,
+              orderId: selectedOrder?.id || '',
+              totalInstallments: terms,
+              frequency: formData.paymentCadence || 'Monthly',
+              csResponsible: selectedOrder?.csResponsible,
+              firstInvoiceId: newRows[0]?.id
+            });
+          } catch (e) {
+            console.error('Failed to dispatch schedule notification', e);
+          }
         }} 
       />
 
@@ -2824,6 +2948,13 @@ function ClientPayments() {
           </div>
         </div>
       )}
+
+      {/* Invoice Notification & Comments Modal */}
+      <InvoiceNotificationModal
+        isOpen={!!activeNotificationPayment}
+        onClose={() => setActiveNotificationPayment(null)}
+        payment={activeNotificationPayment}
+      />
 
     </main>
   );
