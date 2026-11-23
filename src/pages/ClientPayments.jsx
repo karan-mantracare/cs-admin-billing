@@ -1614,35 +1614,47 @@ function ClientPayments() {
             `Bill From / Bank           : ${billFrom} (${receivingBank})`,
             bankDetailsLink ? `Bank Details Link          : ${bankDetailsLink}` : null,
             '',
-            'Deductions & Adjustments',
+            'Amount Details',
             '─────────────────────────────',
-            `Tax Status                 : ${taxStatusText}`
+            'Particulars | Details | % | Amount'
           ];
 
-          if (calc.calculatedItems && calc.calculatedItems.length > 0) {
-            messageLines.push('Type (details) | % | Amount | Currency');
-            calc.calculatedItems.forEach(item => {
-              const typeStr = `${item.type}${item.details ? ` (${item.details})` : ''}`;
-              const pctStr = item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—';
-              messageLines.push(`${typeStr} : ${pctStr} | ${item.formattedImpact} ${invoiceCurrency}`);
-            });
-            messageLines.push('');
-            messageLines.push(`Base Amount Due            : ${invoiceCurrency} ${Number(calc.baseAmount).toFixed(2)}`);
-            if (calc.totalAdjustments > 0) {
-              messageLines.push(`  Total Adjustments        : +${invoiceCurrency} ${calc.totalAdjustments.toFixed(2)}`);
-            }
-            if (calc.totalDeductions > 0) {
-              messageLines.push(`  Total Deductions         : -${invoiceCurrency} ${calc.totalDeductions.toFixed(2)}`);
-            }
-            if (calc.totalTax > 0 && !isTaxIncluded) {
-              messageLines.push(`  Tax Impact (GST/VAT)     : +${invoiceCurrency} ${calc.totalTax.toFixed(2)}`);
-            }
-            const netAdj = calc.totalAdjustments - calc.totalDeductions + (isTaxIncluded ? 0 : calc.totalTax);
-            messageLines.push(`Total Adjustment           : ${netAdj >= 0 ? '+' : '-'}${invoiceCurrency} ${Math.abs(netAdj).toFixed(2)}`);
-            messageLines.push(`Total Invoice Value        : ${invoiceCurrency} ${calc.finalAmountDue.toFixed(2)}`);
-            if (calc.totalWht > 0) {
-              messageLines.push(`Net Payable after WHT      : ${invoiceCurrency} ${calc.netReceivableAfterWht.toFixed(2)}`);
-            }
+          messageLines.push(`Base Amount : — | — | ${invoiceCurrency} ${Number(calc.baseAmount).toFixed(2)}`);
+
+          const taxRows = (calc.calculatedItems || []).filter(item => {
+            const t = (item.type || '').toLowerCase();
+            return (t.includes('tax') && !t.includes('withhold') && !t.includes('wht')) || t.includes('gst') || t.includes('vat');
+          });
+          const deductRows = (calc.calculatedItems || []).filter(item => (item.type || '').toLowerCase().includes('deduct'));
+          const adjRows = (calc.calculatedItems || []).filter(item => (item.type || '').toLowerCase().includes('adjust'));
+          const whtRows = (calc.calculatedItems || []).filter(item => {
+            const t = (item.type || '').toLowerCase();
+            return t.includes('withhold') || t.includes('wht');
+          });
+
+          taxRows.forEach(item => {
+            messageLines.push(`Tax : ${item.details || 'GST/VAT'} | ${item.percentage ? item.percentage + '%' : '—'} | +${invoiceCurrency} ${Number(item.impactAmount || 0).toFixed(2)}`);
+          });
+          deductRows.forEach(item => {
+            messageLines.push(`Deduction : ${item.details || 'Discount'} | ${item.percentage ? item.percentage + '%' : '—'} | -${invoiceCurrency} ${Math.abs(item.impactAmount || 0).toFixed(2)}`);
+          });
+          adjRows.forEach(item => {
+            messageLines.push(`Adjustments : ${item.details || 'Additional charge'} | ${item.percentage ? item.percentage + '%' : '—'} | +${invoiceCurrency} ${Number(item.impactAmount || 0).toFixed(2)}`);
+          });
+
+          const netAdj = calc.totalAdjustments - calc.totalDeductions + (isTaxIncluded ? 0 : calc.totalTax);
+          const hasAdj = taxRows.length > 0 || deductRows.length > 0 || adjRows.length > 0;
+          if (hasAdj) {
+            messageLines.push(`Total Adjustment : Adjustments + Tax + Deduction | — | ${netAdj >= 0 ? '+' : '-'}${invoiceCurrency} ${Math.abs(netAdj).toFixed(2)}`);
+          }
+
+          messageLines.push(`Total Invoice Value : Total billed to client | — | ${invoiceCurrency} ${calc.finalAmountDue.toFixed(2)}`);
+
+          whtRows.forEach(item => {
+            messageLines.push(`Withholding Tax : ${item.details || 'Amount held by Client / TDS'} | ${item.percentage ? item.percentage + '%' : '—'} | -${invoiceCurrency} ${Math.abs(item.impactAmount || 0).toFixed(2)}`);
+          });
+          if (calc.totalWht > 0) {
+            messageLines.push(`Net Receivable : Payable by Client | — | ${invoiceCurrency} ${calc.netReceivableAfterWht.toFixed(2)}`);
           }
 
           const messageText = messageLines.filter(l => l !== null).join('\n');
