@@ -332,6 +332,21 @@ export default function ContractModal({
     }
   }, [formData.billFrom, formData.receivingBankName, formData.contractCurrency]);
 
+  // Recalculate tax adjustment amounts when contract value changes
+  useEffect(() => {
+    if (!isOpen) return;
+    const contractVal = parseFloat(formData.contractValue) || 0;
+    if (contractVal > 0) {
+      setTaxAdjustments(prev => prev.map(item => {
+        if (item.percentage !== undefined && item.percentage !== '' && !isNaN(parseFloat(item.percentage))) {
+          const calculatedAmt = ((contractVal * parseFloat(item.percentage)) / 100).toFixed(2);
+          return { ...item, amount: calculatedAmt };
+        }
+        return item;
+      }));
+    }
+  }, [isOpen, formData.contractValue]);
+
   if (!isOpen) return null;
 
   // Live amount in USD calculation
@@ -366,20 +381,6 @@ export default function ContractModal({
       setTimeout(() => setCopiedLink(false), 2000);
     }
   };
-
-  // Recalculate tax adjustment amounts when contract value changes
-  useEffect(() => {
-    const contractVal = parseFloat(formData.contractValue) || 0;
-    if (contractVal > 0) {
-      setTaxAdjustments(prev => prev.map(item => {
-        if (item.percentage !== undefined && item.percentage !== '' && !isNaN(parseFloat(item.percentage))) {
-          const calculatedAmt = ((contractVal * parseFloat(item.percentage)) / 100).toFixed(2);
-          return { ...item, amount: calculatedAmt };
-        }
-        return item;
-      }));
-    }
-  }, [formData.contractValue]);
 
   const handleAddAdjustmentRow = () => {
     setTaxAdjustments(prev => [
