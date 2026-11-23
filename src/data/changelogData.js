@@ -1,5 +1,24 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-session-feedback-page-20261123',
+    date: '2026-11-23',
+    formattedDate: 'Nov 23, 2026',
+    page: 'Providers',
+    subPage: 'Providers / Session Feedback Table & Verification Triage',
+    summary: 'Built complete Session Feedback management page with Critical/All tabs, verification modal, and response inspector',
+    details: 'Implemented the dedicated Session Feedback portal under Providers (/providers/session-feedback). Features Critical vs All sub-tabs, full-text search across Session ID, Provider, and Client, dynamic column visibility toggling, configurable pagination (10-100 rows), dark navy sortable table header, interactive Verification modal with False Alarm / Verified Risk / Resolved options, and a comprehensive participant questionnaire responses inspector.',
+    plainLanguage: 'Created the full Session Feedback page matching the design with Critical and All tabs, search, verification actions, and questionnaire responses modal.',
+    highlights: [
+      'Sub-tabs: Filter instantly between Critical feedback sessions and All sessions',
+      'Table Controls: Full-text search, column toggles, and rows per page selector (10, 15, 25, 50, 100)',
+      'Verification Workflow: Interactive verify modal to classify alerts as False Alarm, Verified Risk, or Resolved with clinical remarks',
+      'Response Inspector: Detailed modal inspecting participant questionnaire ratings, comments, and provider notes',
+      'Local Persistence: Changes to verification statuses persist in real-time across user sessions'
+    ],
+    path: '/providers/session-feedback',
+    linkText: 'Session Feedback'
+  },
+  {
     id: 'cl-providers-menu-session-feedback-20261123',
     date: '2026-11-23',
     formattedDate: 'Nov 23, 2026',

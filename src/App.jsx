@@ -27,6 +27,7 @@ import AcceptInvite from './pages/AcceptInvite';
 import ClientCadence from './pages/ClientCadence';
 import SensitiveCases from './pages/SensitiveCases';
 import ManagerReferralPage from './pages/ManagerReferralPage';
+import SessionFeedback from './pages/SessionFeedback';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -338,6 +339,8 @@ function App() {
         <Route path="/expense-approval" element={<ExpenseApproval />} />
         <Route path="/corporate/sensitive-cases" element={<SensitiveCases />} />
         <Route path="/sensitive-cases" element={<SensitiveCases />} />
+        <Route path="/providers/session-feedback" element={<SessionFeedback />} />
+        <Route path="/session-feedback" element={<SessionFeedback />} />
 
         {/* Sidebar Modules with Project Summary and Live Workspaces */}
         <Route path="/orders/*" element={<ModuleSummaryPage defaultModule="Orders" />} />
