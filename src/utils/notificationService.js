@@ -28,9 +28,9 @@ const STORAGE_EMAIL_LOGS = 'ar_email_notifications_log';
  */
 const getBaseAppUrl = () => {
   if (typeof window !== 'undefined' && window.location) {
-    return `${window.location.origin}/corporate/payments`;
+    return `${window.location.origin}/client-payments`;
   }
-  return '/corporate/payments';
+  return '/client-payments';
 };
 
 /**
