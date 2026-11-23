@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CommentReactions from '../components/CommentReactions';
 import {
@@ -84,6 +84,45 @@ export default function NotificationsPage() {
   const [showUserEmojiPicker, setShowUserEmojiPicker] = useState(false);
   const [hoveredCommentId, setHoveredCommentId] = useState(null);
   const [activeReactionPickerId, setActiveReactionPickerId] = useState(null);
+
+  // Auto-scroll and scroll-to-bottom refs & state
+  const userThreadScrollRef = useRef(null);
+  const userThreadBottomRef = useRef(null);
+  const [showUserScrollToBottom, setShowUserScrollToBottom] = useState(false);
+
+  const arThreadScrollRef = useRef(null);
+  const arThreadBottomRef = useRef(null);
+  const [showArScrollToBottom, setShowArScrollToBottom] = useState(false);
+
+  useEffect(() => {
+    if (userThreadBottomRef.current) {
+      userThreadBottomRef.current.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [selectedUserId, userThreadComments.length]);
+
+  useEffect(() => {
+    if (arThreadBottomRef.current) {
+      arThreadBottomRef.current.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [selectedInvoiceKey, selectedInvoiceActivities.length]);
+
+  const handleUserThreadScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    setShowUserScrollToBottom(scrollHeight - scrollTop - clientHeight > 100);
+  };
+
+  const handleScrollUserToBottom = () => {
+    userThreadBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleArThreadScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    setShowArScrollToBottom(scrollHeight - scrollTop - clientHeight > 100);
+  };
+
+  const handleScrollArToBottom = () => {
+    arThreadBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   // ----------------------------------------------------
   // DATA LOADING
@@ -398,12 +437,13 @@ export default function NotificationsPage() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: '360px 1fr',
-          gap: '1.25rem',
+          gap: 0,
           background: '#ffffff',
           borderRadius: '12px',
           border: '1px solid #e2e8f0',
           overflow: 'hidden',
-          minHeight: '680px',
+          height: 'calc(100vh - 200px)',
+          minHeight: '620px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
         }}>
           {/* Left Master List: Invoices */}
@@ -411,7 +451,9 @@ export default function NotificationsPage() {
             borderRight: '1px solid #e2e8f0',
             background: '#f8fafc',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            height: '100%',
+            overflow: 'hidden'
           }}>
             {/* Search Invoices */}
             <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
@@ -525,7 +567,7 @@ export default function NotificationsPage() {
           </div>
 
           {/* Right Detail Pane: Selected Invoice Feed & Comments */}
-          <div style={{ display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', background: '#ffffff', height: '100%', overflow: 'hidden', position: 'relative' }}>
             {activeInvoice ? (
               <>
                 {/* Header for selected invoice */}
@@ -535,7 +577,8 @@ export default function NotificationsPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  background: '#f8fafc'
+                  background: '#f8fafc',
+                  flexShrink: 0
                 }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -630,7 +673,18 @@ export default function NotificationsPage() {
                 </div>
 
                 {/* Activities & Comments Timeline */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <div
+                  ref={arThreadScrollRef}
+                  onScroll={handleArThreadScroll}
+                  style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: '1.25rem 1.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.85rem'
+                  }}
+                >
                   {/* Zero-leakage alert pill */}
                   <div style={{
                     background: '#eff6ff',
@@ -810,10 +864,48 @@ export default function NotificationsPage() {
                       );
                     })
                   )}
+                  <div ref={arThreadBottomRef} />
                 </div>
 
-                {/* Comment Composer - Sleek Single-Line Bar */}
-                <div style={{ padding: '0.85rem 1.5rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc', position: 'relative' }}>
+                {/* Floating Scroll to Bottom Button */}
+                {showArScrollToBottom && (
+                  <button
+                    type="button"
+                    onClick={handleScrollArToBottom}
+                    style={{
+                      position: 'absolute',
+                      bottom: '76px',
+                      right: '24px',
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: '#475569',
+                      zIndex: 20,
+                      transition: 'transform 0.15s'
+                    }}
+                    title="Scroll to latest updates"
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <i className='bx bx-chevron-down' style={{ fontSize: '1.4rem' }}></i>
+                  </button>
+                )}
+
+                {/* Comment Composer - Sleek Single-Line Bar (FIXED AT BOTTOM) */}
+                <div style={{
+                  padding: '0.85rem 1.5rem',
+                  borderTop: '1px solid #e2e8f0',
+                  background: '#ffffff',
+                  position: 'relative',
+                  flexShrink: 0
+                }}>
                   {/* Quoted reply banner */}
                   {arReplyingTo && (
                     <div style={{
@@ -1197,12 +1289,13 @@ export default function NotificationsPage() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: '320px 1fr',
-          gap: '1.25rem',
+          gap: 0,
           background: '#ffffff',
           borderRadius: '12px',
           border: '1px solid #e2e8f0',
           overflow: 'hidden',
-          minHeight: '680px',
+          height: 'calc(100vh - 200px)',
+          minHeight: '620px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
         }}>
           {/* Left Master List: Users */}
@@ -1210,7 +1303,9 @@ export default function NotificationsPage() {
             borderRight: '1px solid #e2e8f0',
             background: '#f8fafc',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            height: '100%',
+            overflow: 'hidden'
           }}>
             {/* Search Users */}
             <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
@@ -1326,7 +1421,7 @@ export default function NotificationsPage() {
           </div>
 
           {/* Right Detail Pane: User Comments Thread */}
-          <div style={{ display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', background: '#ffffff', height: '100%', overflow: 'hidden', position: 'relative' }}>
             {activeUser ? (
               <>
                 {/* User Header */}
@@ -1336,7 +1431,8 @@ export default function NotificationsPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  background: '#f8fafc'
+                  background: '#f8fafc',
+                  flexShrink: 0
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <span style={{
@@ -1429,7 +1525,18 @@ export default function NotificationsPage() {
                 </div>
 
                 {/* Conversation Thread */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <div
+                  ref={userThreadScrollRef}
+                  onScroll={handleUserThreadScroll}
+                  style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: '1.25rem 1.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.85rem'
+                  }}
+                >
                   {/* Banner notice */}
                   <div style={{
                     background: '#f8fafc',
@@ -1723,10 +1830,48 @@ export default function NotificationsPage() {
                       });
                     })()
                   )}
+                  <div ref={userThreadBottomRef} />
                 </div>
 
-                {/* Reply Composer - Sleek Single-Line Bar */}
-                <div style={{ padding: '0.85rem 1.5rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc', position: 'relative' }}>
+                {/* WhatsApp Style Floating Scroll to Bottom Button */}
+                {showUserScrollToBottom && (
+                  <button
+                    type="button"
+                    onClick={handleScrollUserToBottom}
+                    style={{
+                      position: 'absolute',
+                      bottom: '76px',
+                      right: '24px',
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: '#475569',
+                      zIndex: 20,
+                      transition: 'transform 0.15s'
+                    }}
+                    title="Scroll to latest messages"
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <i className='bx bx-chevron-down' style={{ fontSize: '1.4rem' }}></i>
+                  </button>
+                )}
+
+                {/* Reply Composer - Sleek Single-Line Bar (FIXED AT BOTTOM) */}
+                <div style={{
+                  padding: '0.85rem 1.5rem',
+                  borderTop: '1px solid #e2e8f0',
+                  background: '#ffffff',
+                  position: 'relative',
+                  flexShrink: 0
+                }}>
                   {/* Quoted reply banner */}
                   {userReplyingTo && (
                     <div style={{

@@ -310,11 +310,10 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
         </div>
 
         {/* Tab Content Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', background: '#f8fafc' }}>
-
-          {/* TAB 1: ACTIVITY & COMMENTS FEED */}
-          {activeTab === 'feed' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {activeTab === 'feed' ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* Scrollable feed items */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {/* Anti-Data Leakage banner */}
               <div style={{
                 background: '#eff6ff',
@@ -516,9 +515,16 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                   })}
                 </div>
               )}
+            </div>
 
-              {/* Add Comment Section - Compact Single-Line Bar */}
-              <div style={{ marginTop: '0.65rem', position: 'relative' }}>
+            {/* Add Comment Section - Fixed at Bottom */}
+            <div style={{
+              flexShrink: 0,
+              padding: '0.75rem 1.5rem',
+              borderTop: '1px solid #e2e8f0',
+              background: '#ffffff',
+              position: 'relative'
+            }}>
                 {/* Quoted Reply Preview */}
                 {replyingTo && (
                   <div style={{
@@ -698,7 +704,8 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                 </form>
               </div>
             </div>
-          )}
+        ) : (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', background: '#f8fafc' }}>
 
           {/* TAB 2: PARTICIPANTS TAB */}
           {activeTab === 'participants' && (
@@ -1092,6 +1099,7 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
             </div>
           )}
         </div>
+      )}
 
         {/* Modal Footer */}
         <div style={{
