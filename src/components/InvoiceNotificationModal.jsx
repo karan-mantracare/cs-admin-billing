@@ -302,16 +302,6 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
             }}
           >
             <i className='bx bx-mail-send'></i> Email Templates & Logs
-            <span style={{
-              background: '#ecfdf5',
-              color: '#047857',
-              padding: '0.1rem 0.45rem',
-              borderRadius: '999px',
-              fontSize: '0.72rem',
-              fontWeight: '600'
-            }}>
-              Zero-Leakage
-            </span>
           </button>
         </div>
 
