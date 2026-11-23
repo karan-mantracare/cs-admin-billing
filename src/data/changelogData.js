@@ -5,15 +5,14 @@ export const CHANGELOG_DATA = [
     formattedDate: 'Nov 23, 2026',
     page: 'Corporate / Division',
     subPage: 'Contract Modal / Taxes & Adjustment Details',
-    summary: 'Added Taxes & Adjustment Details section with interactive calculations and mandatory validation',
-    details: 'Introduced a dedicated Taxes & Adjustment Details section positioned right above Remarks in ContractModal. Features informative tooltip ("Please note this will be applicable on all the invoices/schedules"), dropdown selection for Adjustment Types (GST, With Holding Tax, Deductions, Adjustment), bi-directional auto-sync between percentage (%) and amount based on contract value, mandatory Details field validation when Deduction or Adjustment is selected, dynamic add/remove rows, and visual display in the division contracts table.',
-    plainLanguage: 'Added a Taxes & Adjustment Details section above Remarks in the Contract modal to configure GST, Withholding Tax, Deductions, and Adjustments with %/amount auto-calculation and mandatory details for deductions.',
+    summary: 'Enhanced Taxes & Adjustment Details: Disallowed negative values, added dropdown tooltips, and optimized layout lengths',
+    details: 'Updated the Taxes & Adjustment Details section in ContractModal to strictly disallow negative values across percentage and amount inputs with real-time sanitation and key filtering. Added explicit tooltips for each adjustment type in the dropdown (Tax, Withholding Tax, Deduction, Adjustments) with interactive info badges and descriptions. Expanded modal layout width and column lengths to eliminate text cutoff.',
+    plainLanguage: 'Disallowed negative numbers in taxes/adjustments, added explanatory tooltips for Tax, Withholding Tax, Deduction, and Adjustments, and widened column lengths to prevent text cutoff.',
     highlights: [
-      'Taxes & Adjustment Details Section: Positioned directly above Remarks with informative tooltip explaining application to all invoices/schedules',
-      'Adjustment Type Options: Dropdown support for GST, With Holding Tax, Deductions, and Adjustment',
-      'Interactive % and Amount Sync: Auto-calculates amount from percentage or percentage from amount based on contract value',
-      'Conditional Validation: Details field becomes strictly mandatory whenever Deductions or Adjustment is selected',
-      'Dynamic Row Management: Allows adding multiple tax/adjustment rows with one-click row removal'
+      'Disallow Negative Values: Strict non-negative enforcement preventing minus keys, negative paste, and negative values for % and Amount',
+      'Dropdown Value Tooltips: Contextual tooltips explaining Tax (charged to client), Withholding Tax (deducted by client), Deduction (discounts/offers), and Adjustments (additional charges)',
+      'Expanded Layout & Lengths: Widened modal to 760px and optimized grid column ratios (1.7fr 0.8fr 1fr 2.1fr 34px) to prevent dropdown text truncation',
+      'Mandatory Details Validation: Retained mandatory rationale requirement when Deduction or Adjustments is chosen'
     ],
     path: '/corporate/division/edit/1',
     linkText: 'Contracts & Billing'

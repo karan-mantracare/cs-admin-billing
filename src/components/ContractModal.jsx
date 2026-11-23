@@ -34,7 +34,7 @@ const Tooltip = ({ text, align = 'center' }) => {
           fontSize: '0.75rem',
           whiteSpace: 'normal',
           width: 'max-content',
-          maxWidth: '220px',
+          maxWidth: '280px',
           zIndex: 100,
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
           pointerEvents: 'none',
@@ -53,6 +53,55 @@ const Tooltip = ({ text, align = 'center' }) => {
       )}
     </div>
   );
+};
+
+export const ADJUSTMENT_OPTIONS = [
+  {
+    value: 'Tax',
+    label: 'Tax',
+    tooltip: 'This is the GST or VAT Tax that will be charged to the client',
+    badgeText: '+ Tax (Charged to Client)',
+    badgeColor: '#059669',
+    badgeBg: '#ecfdf5',
+    isMandatoryDetails: false
+  },
+  {
+    value: 'Withholding Tax',
+    label: 'Withholding Tax',
+    tooltip: 'The client will make the payment after deducting this amount',
+    badgeText: '- Deducted by Client',
+    badgeColor: '#d97706',
+    badgeBg: '#fef3c7',
+    isMandatoryDetails: false
+  },
+  {
+    value: 'Deduction',
+    label: 'Deduction',
+    tooltip: 'This will be deducted from the invoice (Discounts, offers etc)',
+    badgeText: '- Invoice Discount / Offer',
+    badgeColor: '#7c3aed',
+    badgeBg: '#f5f3ff',
+    isMandatoryDetails: true
+  },
+  {
+    value: 'Adjustments',
+    label: 'Adjustments',
+    tooltip: 'These will be charged additional to the client',
+    badgeText: '+ Additional Charge',
+    badgeColor: '#0284c7',
+    badgeBg: '#f0f9ff',
+    isMandatoryDetails: true
+  }
+];
+
+export const getAdjustmentDef = (type) => {
+  if (!type) return ADJUSTMENT_OPTIONS[0];
+  const t = String(type).trim().toLowerCase();
+  if (t === 'tax' || t.includes('gst') || t.includes('vat')) return ADJUSTMENT_OPTIONS[0];
+  if (t.includes('withhold') || t.includes('with holding') || t === 'wht') return ADJUSTMENT_OPTIONS[1];
+  if (t.includes('deduct')) return ADJUSTMENT_OPTIONS[2];
+  if (t.includes('adjust')) return ADJUSTMENT_OPTIONS[3];
+  return ADJUSTMENT_OPTIONS[0];
 };
 
 export default function ContractModal({ 
@@ -333,7 +382,7 @@ export default function ContractModal({
       ...prev,
       {
         id: 'adj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-        type: 'GST',
+        type: 'Tax',
         percentage: '',
         amount: '',
         details: ''
@@ -347,11 +396,25 @@ export default function ContractModal({
       const copy = { ...prev };
       delete copy[`adj_details_${index}`];
       delete copy[`adj_type_${index}`];
+      delete copy[`adj_pct_${index}`];
+      delete copy[`adj_amt_${index}`];
       return copy;
     });
   };
 
-  const handleAdjustmentChange = (index, field, value) => {
+  const handleAdjustmentChange = (index, field, rawValue) => {
+    let value = rawValue;
+    if (field === 'percentage' || field === 'amount') {
+      // Disallow negative values and minus signs
+      if (typeof value === 'string') {
+        value = value.replace(/[-+eE]/g, '');
+      }
+      const num = parseFloat(value);
+      if (!isNaN(num) && num < 0) {
+        value = '0';
+      }
+    }
+
     setTaxAdjustments(prev => {
       const updated = [...prev];
       const item = { ...updated[index], [field]: value };
@@ -360,17 +423,22 @@ export default function ContractModal({
       if (field === 'percentage') {
         const pct = parseFloat(value);
         if (!isNaN(pct) && contractVal > 0) {
-          item.amount = ((contractVal * pct) / 100).toFixed(2);
+          const positivePct = Math.max(0, pct);
+          item.amount = ((contractVal * positivePct) / 100).toFixed(2);
         } else if (value === '') {
           item.amount = '';
         }
       } else if (field === 'amount') {
         const amt = parseFloat(value);
         if (!isNaN(amt) && contractVal > 0) {
-          item.percentage = ((amt / contractVal) * 100).toFixed(2);
+          const positiveAmt = Math.max(0, amt);
+          item.percentage = ((positiveAmt / contractVal) * 100).toFixed(2);
         } else if (value === '') {
           item.percentage = '';
         }
+      } else if (field === 'type') {
+        const def = getAdjustmentDef(value);
+        item.type = def.value;
       }
       updated[index] = item;
       return updated;
@@ -404,11 +472,17 @@ export default function ContractModal({
     if (!formData.billingDate) newErrors.billingDate = 'Billing Date is required';
     if (!formData.bankDetailsLink) newErrors.bankDetailsLink = 'Bank Details link is required';
 
-    // Validate taxAdjustments: Details mandatory if Deduction and Adjustment is selected
+    // Validate taxAdjustments: Details mandatory if Deduction and Adjustment is selected, and disallow negative values
     taxAdjustments.forEach((adj, idx) => {
-      const isMandatoryDetails = adj.type === 'Deductions' || adj.type === 'Adjustment';
-      if (isMandatoryDetails && (!adj.details || !adj.details.trim())) {
+      const def = getAdjustmentDef(adj.type);
+      if (def.isMandatoryDetails && (!adj.details || !adj.details.trim())) {
         newErrors[`adj_details_${idx}`] = 'Details are mandatory for Deductions and Adjustment';
+      }
+      if (adj.percentage !== '' && parseFloat(adj.percentage) < 0) {
+        newErrors[`adj_pct_${idx}`] = 'Negative values are not allowed';
+      }
+      if (adj.amount !== '' && parseFloat(adj.amount) < 0) {
+        newErrors[`adj_amt_${idx}`] = 'Negative values are not allowed';
       }
     });
 
@@ -442,7 +516,15 @@ export default function ContractModal({
 
     const cleanTaxAdjustments = taxAdjustments.filter(t => 
       t.type && (t.percentage !== '' || t.amount !== '' || (t.details && t.details.trim() !== ''))
-    );
+    ).map(t => {
+      const def = getAdjustmentDef(t.type);
+      return {
+        ...t,
+        type: def.value,
+        percentage: t.percentage !== '' ? Math.max(0, Math.abs(parseFloat(t.percentage) || 0)).toString() : '',
+        amount: t.amount !== '' ? Math.max(0, Math.abs(parseFloat(t.amount) || 0)).toFixed(2) : ''
+      };
+    });
 
     const savedContract = {
       id: initialData?.id || (Date.now() + Math.random()),
@@ -530,7 +612,7 @@ export default function ContractModal({
           backgroundColor: '#ffffff',
           borderRadius: '12px',
           width: '100%',
-          maxWidth: '680px',
+          maxWidth: '760px',
           maxHeight: '92vh',
           overflowY: 'auto',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
@@ -1243,14 +1325,15 @@ export default function ContractModal({
                   {/* Table Header */}
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '1.4fr 0.75fr 1fr 2fr 34px',
-                    gap: '0.5rem',
+                    gridTemplateColumns: '1.7fr 0.8fr 1fr 2.1fr 34px',
+                    gap: '0.65rem',
                     padding: '0 0.35rem',
                     fontSize: '0.74rem',
                     fontWeight: '700',
                     color: '#475569',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.02em'
+                    letterSpacing: '0.02em',
+                    alignItems: 'center'
                   }}>
                     <div>Select Adjustment Type</div>
                     <div>%</div>
@@ -1258,7 +1341,7 @@ export default function ContractModal({
                     <div>
                       Details{' '}
                       <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: '500', textTransform: 'none' }}>
-                        (Mandatory if Deduction &amp; Adjustment selected)
+                        (Mandatory for Deduction &amp; Adjustments)
                       </span>
                     </div>
                     <div></div>
@@ -1266,55 +1349,69 @@ export default function ContractModal({
 
                   {/* Table Rows */}
                   {taxAdjustments.map((adj, idx) => {
-                    const isMandatoryDetails = adj.type === 'Deductions' || adj.type === 'Adjustment';
+                    const def = getAdjustmentDef(adj.type);
+                    const isMandatoryDetails = def.isMandatoryDetails;
                     const hasDetailsError = errors[`adj_details_${idx}`];
 
                     return (
                       <div key={adj.id || idx}>
                         <div style={{
                           display: 'grid',
-                          gridTemplateColumns: '1.4fr 0.75fr 1fr 2fr 34px',
-                          gap: '0.5rem',
+                          gridTemplateColumns: '1.7fr 0.8fr 1fr 2.1fr 34px',
+                          gap: '0.65rem',
                           alignItems: 'center'
                         }}>
-                          {/* 1. Select Adjustment Type */}
-                          <div>
-                            <select
-                              disabled={isReadOnly}
-                              value={adj.type}
-                              onChange={(e) => handleAdjustmentChange(idx, 'type', e.target.value)}
-                              style={{
-                                ...inputStyle,
-                                padding: '0.5rem 0.65rem',
-                                fontSize: '0.84rem',
-                                fontWeight: '500',
-                                cursor: isReadOnly ? 'default' : 'pointer'
-                              }}
-                            >
-                              <option value="GST">GST</option>
-                              <option value="With Holding Tax">With Holding Tax</option>
-                              <option value="Deductions">Deductions</option>
-                              <option value="Adjustment">Adjustment</option>
-                            </select>
+                          {/* 1. Select Adjustment Type + Tooltip */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <div style={{ flex: 1, position: 'relative' }}>
+                              <select
+                                disabled={isReadOnly}
+                                value={def.value}
+                                onChange={(e) => handleAdjustmentChange(idx, 'type', e.target.value)}
+                                title={def.tooltip}
+                                style={{
+                                  ...inputStyle,
+                                  padding: '0.5rem 0.65rem',
+                                  fontSize: '0.84rem',
+                                  fontWeight: '600',
+                                  color: '#0f172a',
+                                  cursor: isReadOnly ? 'default' : 'pointer'
+                                }}
+                              >
+                                {ADJUSTMENT_OPTIONS.map(opt => (
+                                  <option key={opt.value} value={opt.value} title={opt.tooltip}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <Tooltip text={def.tooltip} align="left" />
                           </div>
 
-                          {/* 2. % */}
+                          {/* 2. % (No negative values) */}
                           <div style={{ position: 'relative' }}>
                             <input
                               type="number"
+                              min="0"
+                              step="any"
                               disabled={isReadOnly}
                               placeholder="0"
                               value={adj.percentage !== undefined ? adj.percentage : ''}
+                              onKeyDown={(e) => {
+                                if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') {
+                                  e.preventDefault();
+                                }
+                              }}
                               onChange={(e) => handleAdjustmentChange(idx, 'percentage', e.target.value)}
                               style={{
                                 ...inputStyle,
-                                padding: '0.5rem 1.45rem 0.5rem 0.55rem',
+                                padding: '0.5rem 1.45rem 0.5rem 0.6rem',
                                 fontSize: '0.84rem'
                               }}
                             />
                             <span style={{
                               position: 'absolute',
-                              right: '0.45rem',
+                              right: '0.5rem',
                               top: '50%',
                               transform: 'translateY(-50%)',
                               color: '#94a3b8',
@@ -1325,17 +1422,24 @@ export default function ContractModal({
                             </span>
                           </div>
 
-                          {/* 3. Amount */}
+                          {/* 3. Amount (No negative values) */}
                           <div>
                             <input
                               type="number"
+                              min="0"
+                              step="any"
                               disabled={isReadOnly}
                               placeholder="0.00"
                               value={adj.amount !== undefined ? adj.amount : ''}
+                              onKeyDown={(e) => {
+                                if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') {
+                                  e.preventDefault();
+                                }
+                              }}
                               onChange={(e) => handleAdjustmentChange(idx, 'amount', e.target.value)}
                               style={{
                                 ...inputStyle,
-                                padding: '0.5rem 0.55rem',
+                                padding: '0.5rem 0.65rem',
                                 fontSize: '0.84rem'
                               }}
                             />
@@ -1387,13 +1491,36 @@ export default function ContractModal({
                           </div>
                         </div>
 
-                        {/* Row Error Message */}
-                        {hasDetailsError && (
-                          <div style={{ color: '#ef4444', fontSize: '0.74rem', marginTop: '0.2rem', paddingLeft: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <i className="bx bx-error-circle"></i>
-                            <span>{hasDetailsError}</span>
+                        {/* Row Helper / Caption with Tooltip Description */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginTop: '0.25rem',
+                          padding: '0 0.25rem',
+                          fontSize: '0.72rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{
+                              background: def.badgeBg,
+                              color: def.badgeColor,
+                              fontWeight: '700',
+                              fontSize: '0.68rem',
+                              padding: '0.08rem 0.35rem',
+                              borderRadius: '3px'
+                            }}>
+                              {def.badgeText}
+                            </span>
+                            <span style={{ color: '#64748b' }}>
+                              {def.tooltip}
+                            </span>
                           </div>
-                        )}
+                          {hasDetailsError && (
+                            <span style={{ color: '#ef4444', fontWeight: '600' }}>
+                              * {hasDetailsError}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
