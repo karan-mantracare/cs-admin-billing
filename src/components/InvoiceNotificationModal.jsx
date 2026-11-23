@@ -9,7 +9,8 @@ import {
   markInvoiceActivitiesRead,
   markInvoiceActivitiesUnread,
   getInvoiceUnreadCount,
-  toggleInvoiceActivityReaction
+  toggleInvoiceActivityReaction,
+  getEmailTemplatePreview
 } from '../utils/notificationService';
 
 export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
@@ -880,54 +881,198 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
           {/* TAB 3: EMAIL TEMPLATES & LOGS */}
           {activeTab === 'emails' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {/* Template showcase cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span style={{ background: '#eff6ff', color: '#2563eb', padding: '0.3rem', borderRadius: '6px' }}>
-                      <i className='bx bx-file-blank'></i>
-                    </span>
-                    <strong style={{ fontSize: '0.85rem', color: '#1e293b' }}>1. New Invoice Template</strong>
+              {/* Interactive Clickable Template showcase cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+                {/* 1. New Invoice Template Card */}
+                <div
+                  onClick={() => setPreviewEmail(getEmailTemplatePreview('NEW_INVOICE', payment))}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    padding: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease-in-out',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = '#2563eb';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37,99,235,0.1)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = '#cbd5e1';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  title="Click to preview New Invoice Email Template"
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ background: '#eff6ff', color: '#2563eb', padding: '0.35rem', borderRadius: '6px', fontSize: '1.1rem', display: 'inline-flex' }}>
+                          <i className='bx bx-file-blank'></i>
+                        </span>
+                        <strong style={{ fontSize: '0.88rem', color: '#1e293b' }}>1. New Invoice Template</strong>
+                      </div>
+                      <span style={{ fontSize: '0.7rem', color: '#2563eb', background: '#eff6ff', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: '600' }}>
+                        Click to view
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b', lineHeight: '1.45' }}>
+                      Sent on new invoice upload. Includes client name, billing entity, invoice ID, dates, remarks, bill from, and direct portal link. Zero amounts included.
+                    </p>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
-                    Sent on new invoice upload. Includes client name, billing entity, invoice ID, dates, remarks, bill from, and direct portal link. Zero amounts included.
-                  </p>
+                  <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                    <span style={{ color: '#2563eb', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <i className='bx bx-search-alt'></i> View Email & Portal Button &rarr;
+                    </span>
+                    <span style={{ color: '#94a3b8' }}>Zero-amount</span>
+                  </div>
                 </div>
 
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span style={{ background: '#ecfdf5', color: '#059669', padding: '0.3rem', borderRadius: '6px' }}>
-                      <i className='bx bx-check-circle'></i>
-                    </span>
-                    <strong style={{ fontSize: '0.85rem', color: '#1e293b' }}>2. Payment Template</strong>
+                {/* 2. Payment Template Card */}
+                <div
+                  onClick={() => setPreviewEmail(getEmailTemplatePreview('PAYMENT', payment))}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    padding: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease-in-out',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = '#059669';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(5,150,105,0.1)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = '#cbd5e1';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  title="Click to preview Payment Email Template"
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ background: '#ecfdf5', color: '#059669', padding: '0.35rem', borderRadius: '6px', fontSize: '1.1rem', display: 'inline-flex' }}>
+                          <i className='bx bx-check-circle'></i>
+                        </span>
+                        <strong style={{ fontSize: '0.88rem', color: '#1e293b' }}>2. Payment Template</strong>
+                      </div>
+                      <span style={{ fontSize: '0.7rem', color: '#059669', background: '#ecfdf5', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: '600' }}>
+                        Click to view
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b', lineHeight: '1.45' }}>
+                      Sent on payment recorded. Includes client name, invoice reference, payment date, receiving bank, and direct payment tab link. Zero amounts included.
+                    </p>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
-                    Sent on payment recorded. Includes client name, invoice reference, payment date, receiving bank, and direct payment tab link. Zero amounts included.
-                  </p>
+                  <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                    <span style={{ color: '#059669', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <i className='bx bx-search-alt'></i> View Email & Portal Button &rarr;
+                    </span>
+                    <span style={{ color: '#94a3b8' }}>Zero-amount</span>
+                  </div>
                 </div>
 
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span style={{ background: '#fef3c7', color: '#d97706', padding: '0.3rem', borderRadius: '6px' }}>
-                      <i className='bx bx-calendar-event'></i>
-                    </span>
-                    <strong style={{ fontSize: '0.85rem', color: '#1e293b' }}>3. Schedule Template</strong>
+                {/* 3. Schedule Template Card */}
+                <div
+                  onClick={() => setPreviewEmail(getEmailTemplatePreview('SCHEDULE', payment))}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    padding: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease-in-out',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = '#d97706';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(217,119,6,0.1)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = '#cbd5e1';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  title="Click to preview Schedule Email Template"
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ background: '#fef3c7', color: '#d97706', padding: '0.35rem', borderRadius: '6px', fontSize: '1.1rem', display: 'inline-flex' }}>
+                          <i className='bx bx-calendar-event'></i>
+                        </span>
+                        <strong style={{ fontSize: '0.88rem', color: '#1e293b' }}>3. Schedule Template</strong>
+                      </div>
+                      <span style={{ fontSize: '0.7rem', color: '#d97706', background: '#fef3c7', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: '600' }}>
+                        Click to view
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b', lineHeight: '1.45' }}>
+                      Sent on schedule created. Includes client name, order ID, cadence, installment count, and filtered schedule link. Zero amounts included.
+                    </p>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
-                    Sent on schedule created. Includes client name, order ID, cadence, installment count, and filtered schedule link. Zero amounts included.
-                  </p>
+                  <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                    <span style={{ color: '#d97706', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <i className='bx bx-search-alt'></i> View Email & Portal Button &rarr;
+                    </span>
+                    <span style={{ color: '#94a3b8' }}>Zero-amount</span>
+                  </div>
                 </div>
 
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span style={{ background: '#f5f3ff', color: '#7c3aed', padding: '0.3rem', borderRadius: '6px' }}>
-                      <i className='bx bx-edit'></i>
-                    </span>
-                    <strong style={{ fontSize: '0.85rem', color: '#1e293b' }}>4. Invoice Edited Template</strong>
+                {/* 4. Invoice Edited Template Card */}
+                <div
+                  onClick={() => setPreviewEmail(getEmailTemplatePreview('INVOICE_EDITED', payment))}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    padding: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease-in-out',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = '#7c3aed';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(124,58,237,0.1)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = '#cbd5e1';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  title="Click to preview Invoice Edited Email Template"
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ background: '#f5f3ff', color: '#7c3aed', padding: '0.35rem', borderRadius: '6px', fontSize: '1.1rem', display: 'inline-flex' }}>
+                          <i className='bx bx-edit'></i>
+                        </span>
+                        <strong style={{ fontSize: '0.88rem', color: '#1e293b' }}>4. Invoice Edited Template</strong>
+                      </div>
+                      <span style={{ fontSize: '0.7rem', color: '#7c3aed', background: '#f5f3ff', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: '600' }}>
+                        Click to view
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b', lineHeight: '1.45' }}>
+                      Sent on invoice modifications. Includes invoice ID, client name, modified fields summary, and direct link. Zero amounts included.
+                    </p>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
-                    Sent on invoice modifications. Includes invoice ID, client name, modified fields summary, and direct link. Zero amounts included.
-                  </p>
+                  <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                    <span style={{ color: '#7c3aed', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <i className='bx bx-search-alt'></i> View Email & Portal Button &rarr;
+                    </span>
+                    <span style={{ color: '#94a3b8' }}>Zero-amount</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1031,11 +1176,11 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
               justifyContent: 'space-between'
             }}>
               <div>
-                <span style={{ fontSize: '0.72rem', fontWeight: '700', textTransform: 'uppercase', color: '#059669', background: '#ecfdf5', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
-                  Sent Email Preview
+                <span style={{ fontSize: '0.72rem', fontWeight: '700', textTransform: 'uppercase', color: '#047857', background: '#ecfdf5', padding: '0.15rem 0.55rem', borderRadius: '4px' }}>
+                  {previewEmail.templateTitle || 'Email Notification Preview'}
                 </span>
-                <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#0f172a', marginTop: '0.25rem' }}>
-                  {previewEmail.subject}
+                <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#0f172a', marginTop: '0.35rem', lineHeight: '1.4' }}>
+                  <span style={{ color: '#64748b', fontWeight: '500' }}>Subject:</span> {previewEmail.subject}
                 </div>
               </div>
               <button

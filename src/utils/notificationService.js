@@ -759,6 +759,263 @@ Delivered to: ${participants.map(p => `${p.name} (${p.email})`).join(', ')}
   return { subject, participants, directLink, emailRecord };
 };
 
+/**
+ * Generate preview payload for an email template without sending/logging an email
+ */
+export const getEmailTemplatePreview = (templateType, payment = {}) => {
+  const invoiceNum = payment.invoiceNumber || (payment.invoiceLink ? payment.invoiceLink.split('/').pop() : `INV-${payment.id || '2026-001'}`);
+  const clientName = payment.clientName || 'Corporate Client';
+  const billingEntity = payment.clientBillingEntity || payment.billingCompany || 'Corporate Division';
+  const invoiceDate = payment.invoiceDate && payment.invoiceDate !== '-' ? payment.invoiceDate : new Date().toISOString().split('T')[0];
+  const dueByDate = payment.dueByDate && payment.dueByDate !== '-' ? payment.dueByDate : '15 days from issue';
+  const remarks = payment.remarks || 'Invoice for the period of services rendered';
+  const billFrom = payment.billingCompany || 'MCHI (MantraCare Health Inc)';
+  const participants = getInvoiceParticipants(payment.id || 'INV', payment);
+
+  if (templateType === 'NEW_INVOICE') {
+    const directLink = `${getBaseAppUrl()}?invoiceId=${encodeURIComponent(invoiceNum)}&orderId=${encodeURIComponent(payment.orderId || '')}`;
+    const subject = `[Accounts Receivable] New Invoice Issued: ${invoiceNum} - ${clientName}`;
+    const htmlBody = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+  <div style="background: #2563eb; padding: 20px 24px; color: #ffffff;">
+    <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em;">New Invoice Issued</h2>
+    <p style="margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9;">Accounts Receivable Notification • MantraCare</p>
+  </div>
+  <div style="padding: 24px;">
+    <p style="margin: 0 0 16px; font-size: 0.92rem; color: #334155; line-height: 1.5;">
+      A new invoice has been generated and uploaded for <strong>${clientName}</strong>.
+    </p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-bottom: 20px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; color: #334155;">
+        <tr>
+          <td style="padding: 6px 0; color: #64748b; width: 40%;">Client Name:</td>
+          <td style="padding: 6px 0; font-weight: 600;">${clientName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Billing Entity:</td>
+          <td style="padding: 6px 0; font-weight: 600;">${billingEntity}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Invoice ID:</td>
+          <td style="padding: 6px 0; font-weight: 700; color: #2563eb;">${invoiceNum}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Invoice Date:</td>
+          <td style="padding: 6px 0; font-weight: 500;">${invoiceDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Due By Date:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #dc2626;">${dueByDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Remarks:</td>
+          <td style="padding: 6px 0; font-style: italic;">${remarks}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Bill From:</td>
+          <td style="padding: 6px 0;">${billFrom}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Data Privacy Alert Banner -->
+    <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 10px 14px; border-radius: 4px; font-size: 0.78rem; color: #1e40af; margin-bottom: 22px; line-height: 1.4;">
+      <strong>Data Leakage Prevention:</strong> Financial amounts and payment figures are deliberately omitted from this notification to maintain strict organizational confidentiality.
+    </div>
+
+    <!-- Call to Action Button -->
+    <div style="text-align: center; margin: 24px 0 16px;">
+      <a href="${directLink}" style="background: #2563eb; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
+        View Invoice Details in Portal &rarr;
+      </a>
+    </div>
+  </div>
+  <div style="background: #f1f5f9; padding: 12px 24px; border-top: 1px solid #e2e8f0; font-size: 0.75rem; color: #64748b;">
+    Delivered to notification participants: ${participants.map(p => `${p.name} (${p.email})`).join(', ')}
+  </div>
+</div>`.trim();
+
+    return {
+      templateTitle: '1. New Invoice Template',
+      subject,
+      htmlBody,
+      directLink
+    };
+  }
+
+  if (templateType === 'PAYMENT') {
+    const directLink = `${getBaseAppUrl()}?type=received&invoiceId=${encodeURIComponent(invoiceNum)}&orderId=${encodeURIComponent(payment.orderId || '')}`;
+    const subject = `[Payment Update] Payment Received: Invoice ${invoiceNum} - ${clientName}`;
+    const htmlBody = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+  <div style="background: #059669; padding: 20px 24px; color: #ffffff;">
+    <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700;">Payment Recorded</h2>
+    <p style="margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9;">Accounts Receivable • MantraCare</p>
+  </div>
+  <div style="padding: 24px;">
+    <p style="margin: 0 0 16px; font-size: 0.92rem; color: #334155; line-height: 1.5;">
+      A payment transaction has been confirmed and recorded for <strong>${clientName}</strong>.
+    </p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-bottom: 20px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; color: #334155;">
+        <tr>
+          <td style="padding: 6px 0; color: #64748b; width: 40%;">Client Name:</td>
+          <td style="padding: 6px 0; font-weight: 600;">${clientName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Invoice Reference:</td>
+          <td style="padding: 6px 0; font-weight: 700; color: #059669;">${invoiceNum}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Payment Date:</td>
+          <td style="padding: 6px 0; font-weight: 500;">${new Date().toISOString().split('T')[0]}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Receiving Bank:</td>
+          <td style="padding: 6px 0; font-weight: 500;">${billFrom}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Data Privacy Alert Banner -->
+    <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 10px 14px; border-radius: 4px; font-size: 0.78rem; color: #065f46; margin-bottom: 22px; line-height: 1.4;">
+      <strong>Data Leakage Prevention:</strong> Exact transaction figures are omitted from this message to safeguard corporate banking privacy.
+    </div>
+
+    <!-- Call to Action Button -->
+    <div style="text-align: center; margin: 24px 0 16px;">
+      <a href="${directLink}" style="background: #059669; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(5,150,105,0.25);">
+        View Payment Records in Portal &rarr;
+      </a>
+    </div>
+  </div>
+  <div style="background: #f1f5f9; padding: 12px 24px; border-top: 1px solid #e2e8f0; font-size: 0.75rem; color: #64748b;">
+    Delivered to notification participants: ${participants.map(p => `${p.name} (${p.email})`).join(', ')}
+  </div>
+</div>`.trim();
+
+    return {
+      templateTitle: '2. Payment Template',
+      subject,
+      htmlBody,
+      directLink
+    };
+  }
+
+  if (templateType === 'SCHEDULE') {
+    const directLink = `${getBaseAppUrl()}?orderId=${encodeURIComponent(payment.orderId || '')}`;
+    const subject = `[Billing Schedule] Schedule Configured: ${clientName}`;
+    const htmlBody = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+  <div style="background: #d97706; padding: 20px 24px; color: #ffffff;">
+    <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700;">Billing Schedule Created</h2>
+    <p style="margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9;">Accounts Receivable • MantraCare</p>
+  </div>
+  <div style="padding: 24px;">
+    <p style="margin: 0 0 16px; font-size: 0.92rem; color: #334155; line-height: 1.5;">
+      A new milestone billing schedule has been finalized for <strong>${clientName}</strong>.
+    </p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-bottom: 20px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; color: #334155;">
+        <tr>
+          <td style="padding: 6px 0; color: #64748b; width: 40%;">Client Name:</td>
+          <td style="padding: 6px 0; font-weight: 600;">${clientName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Order Reference:</td>
+          <td style="padding: 6px 0; font-weight: 600;">${payment.orderId || 'ORD-2026-X'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Installments:</td>
+          <td style="padding: 6px 0; font-weight: 600; color: #d97706;">Milestone Schedule Configured</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Billing Cadence:</td>
+          <td style="padding: 6px 0;">Monthly / Milestone Terms</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Data Privacy Alert Banner -->
+    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 10px 14px; border-radius: 4px; font-size: 0.78rem; color: #92400e; margin-bottom: 22px; line-height: 1.4;">
+      <strong>Data Leakage Prevention:</strong> Detailed contract values and milestone amounts are omitted from email notices to safeguard commercial confidentiality.
+    </div>
+
+    <!-- Call to Action Button -->
+    <div style="text-align: center; margin: 24px 0 16px;">
+      <a href="${directLink}" style="background: #d97706; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(217,119,6,0.25);">
+        View Billing Schedule in Portal &rarr;
+      </a>
+    </div>
+  </div>
+  <div style="background: #f1f5f9; padding: 12px 24px; border-top: 1px solid #e2e8f0; font-size: 0.75rem; color: #64748b;">
+    Delivered to notification participants: ${participants.map(p => `${p.name} (${p.email})`).join(', ')}
+  </div>
+</div>`.trim();
+
+    return {
+      templateTitle: '3. Schedule Template',
+      subject,
+      htmlBody,
+      directLink
+    };
+  }
+
+  // INVOICE_EDITED
+  const directLink = `${getBaseAppUrl()}?invoiceId=${encodeURIComponent(invoiceNum)}&orderId=${encodeURIComponent(payment.orderId || '')}`;
+  const subject = `[Invoice Modified] Details Updated: ${invoiceNum} - ${clientName}`;
+  const htmlBody = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+  <div style="background: #4f46e5; padding: 20px 24px; color: #ffffff;">
+    <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700;">Invoice Details Modified</h2>
+    <p style="margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9;">Accounts Receivable • MantraCare</p>
+  </div>
+  <div style="padding: 24px;">
+    <p style="margin: 0 0 16px; font-size: 0.92rem; color: #334155; line-height: 1.5;">
+      Invoice details for <strong>${invoiceNum}</strong> of <strong>${clientName}</strong> were recently edited.
+    </p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-bottom: 20px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; color: #334155;">
+        <tr>
+          <td style="padding: 6px 0; color: #64748b; width: 40%;">Client Name:</td>
+          <td style="padding: 6px 0; font-weight: 600;">${clientName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Invoice Reference:</td>
+          <td style="padding: 6px 0; font-weight: 700; color: #4f46e5;">${invoiceNum}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Modification Note:</td>
+          <td style="padding: 6px 0; font-style: italic;">Due dates, billing entity, or remarks were updated</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Data Privacy Alert Banner -->
+    <div style="background: #eef2ff; border-left: 4px solid #6366f1; padding: 10px 14px; border-radius: 4px; font-size: 0.78rem; color: #3730a3; margin-bottom: 22px; line-height: 1.4;">
+      <strong>Data Leakage Prevention:</strong> In compliance with security policies, financial balances and monetary amounts are strictly omitted from email transmissions.
+    </div>
+
+    <!-- Call to Action Button -->
+    <div style="text-align: center; margin: 24px 0 16px;">
+      <a href="${directLink}" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 11px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 4px rgba(79,70,229,0.25);">
+        View Updated Invoice in Portal &rarr;
+      </a>
+    </div>
+  </div>
+  <div style="background: #f1f5f9; padding: 12px 24px; border-top: 1px solid #e2e8f0; font-size: 0.75rem; color: #64748b;">
+    Delivered to notification participants: ${participants.map(p => `${p.name} (${p.email})`).join(', ')}
+  </div>
+</div>`.trim();
+
+  return {
+    templateTitle: '4. Invoice Edited Template',
+    subject,
+    htmlBody,
+    directLink
+  };
+};
+
 /* =========================================================================
    GENERAL NOTIFICATIONS & OTHER USER COMMENTS (NO EMAILS DISPATCHED)
    ========================================================================= */
