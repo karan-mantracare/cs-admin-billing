@@ -706,23 +706,6 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
           {/* TAB 3: EMAIL TEMPLATES & LOGS */}
           {activeTab === 'emails' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{
-                background: '#fef3c7',
-                border: '1px solid #fde68a',
-                borderRadius: '8px',
-                padding: '0.75rem 1rem',
-                fontSize: '0.8rem',
-                color: '#92400e',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '0.5rem'
-              }}>
-                <i className='bx bx-lock' style={{ fontSize: '1.1rem', marginTop: '0.1rem' }}></i>
-                <div>
-                  <strong>Zero-Amount Email Notification Guarantee:</strong> To eliminate corporate data leakage, none of our notification templates transmit money values, amounts, or fee totals over email. All recipients click secure portal links to view financial details inside the authenticated dashboard.
-                </div>
-              </div>
-
               {/* Template showcase cards */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem' }}>
