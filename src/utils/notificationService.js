@@ -38,7 +38,7 @@ const getBaseAppUrl = () => {
  */
 export const getDefaultParticipants = (payment = {}) => {
   const primaryCsName = payment?.csResponsible || getPrimaryCS(payment?.divisionId, payment?.divisionName, payment?.clientName) || 'Karan Hinduja';
-  
+
   // Format CS email (mock / standard format)
   const csEmail = `${primaryCsName.toLowerCase().replace(/[^a-z]/g, '.')}@mantracare.com`;
 
@@ -85,7 +85,7 @@ export const addInvoiceParticipant = (invoiceKey, participant, payment = {}) => 
   try {
     const all = JSON.parse(localStorage.getItem(STORAGE_PARTICIPANTS) || '{}');
     const current = all[String(invoiceKey)] || getDefaultParticipants(payment);
-    
+
     // Check if already exists
     const exists = current.some(p => p.email.toLowerCase() === participant.email.toLowerCase());
     if (!exists) {
@@ -152,7 +152,7 @@ export const getInvoiceUnreadCount = (invoiceKey) => {
     const activities = getInvoiceActivities(invoiceKey);
     const readStore = JSON.parse(localStorage.getItem(STORAGE_READ_STATE) || '{}');
     const lastReadTimestamp = readStore[String(invoiceKey)] || 0;
-    
+
     return activities.filter(a => new Date(a.timestamp).getTime() > lastReadTimestamp).length;
   } catch (e) {
     return 0;
@@ -244,7 +244,7 @@ export const logInvoiceActivity = (invoiceKey, activityData) => {
   try {
     const all = JSON.parse(localStorage.getItem(STORAGE_ACTIVITIES) || '{}');
     const current = all[String(invoiceKey)] || [];
-    
+
     const newEntry = {
       id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       timestamp: new Date().toISOString(),
@@ -263,7 +263,7 @@ export const logInvoiceActivity = (invoiceKey, activityData) => {
 /**
  * Add a user comment (NO email sent, updates unread count)
  */
-export const addInvoiceComment = (invoiceKey, commentText, author = 'Customer Success') => {
+export const addInvoiceComment = (invoiceKey, commentText, author = 'Customer Success', replyTo = null) => {
   if (!invoiceKey || !commentText?.trim()) return;
   return logInvoiceActivity(invoiceKey, {
     type: 'COMMENT_ADDED',
@@ -271,7 +271,12 @@ export const addInvoiceComment = (invoiceKey, commentText, author = 'Customer Su
     summary: commentText.trim(),
     author,
     emailSent: false,
-    reactions: {}
+    reactions: {},
+    replyTo: replyTo ? {
+      id: replyTo.id,
+      author: replyTo.author,
+      text: replyTo.text
+    } : null
   });
 };
 
@@ -332,7 +337,7 @@ export const sendNewInvoiceNotification = (payment = {}, extraInfo = {}) => {
   const dueByDate = payment.dueByDate && payment.dueByDate !== '-' ? payment.dueByDate : 'As per agreement';
   const remarks = payment.remarks || extraInfo.remarks || 'Invoice for the period';
   const billFrom = payment.billingCompany || 'MCHI';
-  
+
   const directLink = `${getBaseAppUrl()}?invoiceId=${encodeURIComponent(invoiceNum)}&orderId=${encodeURIComponent(payment.orderId || '')}`;
 
   const subject = `[Accounts Receivable] New Invoice Issued: ${invoiceNum} - ${clientName}`;
@@ -423,7 +428,7 @@ Delivered to: ${participants.map(p => `${p.name} (${p.email})`).join(', ')}
 
   // Record dispatch and log activity
   const emailRecord = recordEmailDispatch('NEW_INVOICE', invoiceKey, participants, subject, htmlBody, textBody);
-  
+
   logInvoiceActivity(invoiceKey, {
     type: 'NEW_INVOICE',
     title: 'New Invoice Uploaded',
@@ -453,7 +458,7 @@ export const sendPaymentNotification = (payment = {}, paymentRecord = {}) => {
   const clientName = payment.clientName || 'Valued Corporate';
   const paymentDate = paymentRecord.paymentDate || new Date().toISOString().split('T')[0];
   const receivedBank = paymentRecord.receivedBank || payment.billingCompany || 'Designated Corporate Account';
-  
+
   const directLink = `${getBaseAppUrl()}?type=received&invoiceId=${encodeURIComponent(invoiceNum)}&orderId=${encodeURIComponent(payment.orderId || '')}`;
 
   const subject = `[Payment Update] Payment Received: Invoice ${invoiceNum} - ${clientName}`;
@@ -988,7 +993,7 @@ export const getOtherUsersWithStats = () => {
       const thread = allComments[user.id] || [];
       const lastMsg = thread.length > 0 ? thread[thread.length - 1] : null;
       const lastReadTime = readStore[user.id] || 0;
-      
+
       const unreadCount = thread.filter(m => m.senderId !== 'currentUser' && new Date(m.timestamp).getTime() > lastReadTime).length;
 
       return {
@@ -1028,7 +1033,7 @@ export const getUserCommentsThread = (userId) => {
  * Post a comment in a user's thread
  * (No email sent, in-app only)
  */
-export const postUserComment = (userId, text, authorName = 'You', role = 'Customer Success') => {
+export const postUserComment = (userId, text, authorName = 'You', role = 'Customer Success', replyTo = null) => {
   if (!userId || !text?.trim()) return null;
   try {
     const commentsStore = JSON.parse(localStorage.getItem(STORAGE_OTHER_USERS_COMMENTS) || '{}');
@@ -1040,7 +1045,13 @@ export const postUserComment = (userId, text, authorName = 'You', role = 'Custom
       senderName: authorName,
       role,
       text: text.trim(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      reactions: {},
+      replyTo: replyTo ? {
+        id: replyTo.id,
+        author: replyTo.author,
+        text: replyTo.text
+      } : null
     };
 
     const updatedThread = [...currentThread, newComment];

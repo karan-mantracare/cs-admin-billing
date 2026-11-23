@@ -18,13 +18,14 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
   const [participants, setParticipants] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [previewEmail, setPreviewEmail] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
 
   // Auto-fetch logged-in user identity (no dropdown)
   const loggedInUser = (() => {
     try {
       const stored = localStorage.getItem('logged_in_user');
       if (stored) return JSON.parse(stored);
-    } catch {}
+    } catch { }
     return { name: 'Karan Hinduja', role: 'Admin', email: 'hinduja1988@gmail.com' };
   })();
   const currentUserName = loggedInUser.name || 'Karan Hinduja';
@@ -85,8 +86,9 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
     e.preventDefault();
     if (!commentText.trim()) return;
 
-    addInvoiceComment(invoiceKey, commentText.trim(), currentUserName);
+    addInvoiceComment(invoiceKey, commentText.trim(), currentUserName, replyingTo);
     setCommentText('');
+    setReplyingTo(null);
     reloadData();
   };
 
@@ -131,8 +133,8 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
   };
 
   return (
-    <div 
-      className="modal-overlay" 
+    <div
+      className="modal-overlay"
       onClick={onClose}
       style={{
         position: 'fixed',
@@ -149,9 +151,9 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
         padding: '1rem'
       }}
     >
-      <div 
-        className="modal-container" 
-        onClick={(e) => e.stopPropagation()} 
+      <div
+        className="modal-container"
+        onClick={(e) => e.stopPropagation()}
         style={{
           background: '#ffffff',
           borderRadius: '12px',
@@ -175,14 +177,14 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ 
-                background: '#e0e7ff', 
-                color: '#4338ca', 
-                width: '32px', 
-                height: '32px', 
-                borderRadius: '8px', 
-                display: 'inline-flex', 
-                alignItems: 'center', 
+              <span style={{
+                background: '#e0e7ff',
+                color: '#4338ca',
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                display: 'inline-flex',
+                alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '1.2rem'
               }}>
@@ -198,13 +200,13 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
               <span><strong>Client:</strong> {clientName}</span>
             </div>
           </div>
-          <button 
-            onClick={onClose} 
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              fontSize: '1.4rem', 
-              color: '#94a3b8', 
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '1.4rem',
+              color: '#94a3b8',
               cursor: 'pointer',
               padding: '0.25rem',
               display: 'flex',
@@ -241,11 +243,11 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
             }}
           >
             <i className='bx bx-history'></i> Activity & Comments
-            <span style={{ 
-              background: activeTab === 'feed' ? '#e0e7ff' : '#f1f5f9', 
+            <span style={{
+              background: activeTab === 'feed' ? '#e0e7ff' : '#f1f5f9',
               color: activeTab === 'feed' ? '#4338ca' : '#64748b',
-              padding: '0.1rem 0.45rem', 
-              borderRadius: '999px', 
+              padding: '0.1rem 0.45rem',
+              borderRadius: '999px',
               fontSize: '0.72rem',
               fontWeight: '600'
             }}>
@@ -270,11 +272,11 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
             }}
           >
             <i className='bx bx-group'></i> Notification Recipients
-            <span style={{ 
-              background: activeTab === 'participants' ? '#e0e7ff' : '#f1f5f9', 
+            <span style={{
+              background: activeTab === 'participants' ? '#e0e7ff' : '#f1f5f9',
               color: activeTab === 'participants' ? '#4338ca' : '#64748b',
-              padding: '0.1rem 0.45rem', 
-              borderRadius: '999px', 
+              padding: '0.1rem 0.45rem',
+              borderRadius: '999px',
               fontSize: '0.72rem',
               fontWeight: '600'
             }}>
@@ -299,11 +301,11 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
             }}
           >
             <i className='bx bx-mail-send'></i> Email Templates & Logs
-            <span style={{ 
-              background: '#ecfdf5', 
+            <span style={{
+              background: '#ecfdf5',
               color: '#047857',
-              padding: '0.1rem 0.45rem', 
-              borderRadius: '999px', 
+              padding: '0.1rem 0.45rem',
+              borderRadius: '999px',
               fontSize: '0.72rem',
               fontWeight: '600'
             }}>
@@ -314,7 +316,7 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
 
         {/* Tab Content Area */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', background: '#f8fafc' }}>
-          
+
           {/* TAB 1: ACTIVITY & COMMENTS FEED */}
           {activeTab === 'feed' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -348,8 +350,8 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                   {activities.map((act) => {
                     const iconStyle = getActivityIcon(act.type);
                     return (
-                      <div 
-                        key={act.id} 
+                      <div
+                        key={act.id}
                         style={{
                           background: '#ffffff',
                           border: '1px solid #e2e8f0',
@@ -418,12 +420,40 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                           </div>
                         </div>
 
+                        {/* Replying To Quote Bubble */}
+                        {act.replyTo && (
+                          <div style={{
+                            marginLeft: '2.3rem',
+                            marginBottom: '0.35rem',
+                            padding: '0.3rem 0.6rem',
+                            background: '#f8fafc',
+                            borderLeft: '3px solid #6366f1',
+                            borderRadius: '4px',
+                            fontSize: '0.74rem'
+                          }}>
+                            <div style={{ fontWeight: '600', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <i className='bx bx-reply' style={{ transform: 'rotate(180deg)' }}></i>
+                              <span>Replying to {act.replyTo.author}</span>
+                            </div>
+                            <div style={{
+                              color: '#475569',
+                              fontStyle: 'italic',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              marginTop: '0.1rem'
+                            }}>
+                              "{act.replyTo.text}"
+                            </div>
+                          </div>
+                        )}
+
                         <div style={{ fontSize: '0.85rem', color: '#334155', lineHeight: '1.45', paddingLeft: '2.3rem' }}>
                           {act.summary}
                         </div>
 
-                        {/* Comment Reactions */}
-                        <div style={{ paddingLeft: '2.3rem' }}>
+                        {/* Comment Reactions & Reply Action */}
+                        <div style={{ paddingLeft: '2.3rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                           <CommentReactions
                             reactions={act.reactions}
                             currentUserName={currentUserName}
@@ -432,6 +462,36 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                               reloadData();
                             }}
                           />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplyingTo({
+                                id: act.id,
+                                author: act.author || act.title || 'User',
+                                text: act.summary || ''
+                              });
+                              const inputEl = document.getElementById('modal-comment-input');
+                              if (inputEl) inputEl.focus();
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#64748b',
+                              fontSize: '0.74rem',
+                              fontWeight: '500',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.15rem 0.4rem',
+                              borderRadius: '4px'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
+                            title="Reply to this comment"
+                          >
+                            <i className='bx bx-reply' style={{ fontSize: '0.9rem' }}></i> Reply
+                          </button>
                         </div>
 
                         {act.emailDetails && (
@@ -477,11 +537,52 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                   </span>
                 </div>
                 <form onSubmit={handleAddComment}>
+                  {/* Quoted Reply Preview */}
+                  {replyingTo && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '6px',
+                      padding: '0.4rem 0.75rem',
+                      marginBottom: '0.5rem',
+                      fontSize: '0.76rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                        <i className='bx bx-reply' style={{ color: '#2563eb', fontSize: '1.05rem', transform: 'rotate(180deg)' }}></i>
+                        <span style={{ color: '#1e40af', fontWeight: '600' }}>Replying to {replyingTo.author}:</span>
+                        <span style={{ color: '#3b82f6', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          "{replyingTo.text.slice(0, 65)}{replyingTo.text.length > 65 ? '...' : ''}"
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setReplyingTo(null)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '0 0.2rem'
+                        }}
+                        title="Cancel reply"
+                      >
+                        <i className='bx bx-x'></i>
+                      </button>
+                    </div>
+                  )}
+
                   <textarea
+                    id="modal-comment-input"
                     rows={3}
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="Enter your comment, internal note, or follow-up update for this invoice..."
+                    placeholder={replyingTo ? `Write a reply to ${replyingTo.author}...` : "Enter your comment, internal note, or follow-up update for this invoice..."}
                     style={{
                       width: '100%',
                       padding: '0.6rem',
@@ -553,12 +654,12 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                 </div>
                 <div style={{ divideY: '1px solid #e2e8f0' }}>
                   {participants.map((p) => (
-                    <div 
-                      key={p.email} 
-                      style={{ 
-                        padding: '0.85rem 1rem', 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                    <div
+                      key={p.email}
+                      style={{
+                        padding: '0.85rem 1rem',
+                        display: 'flex',
+                        alignItems: 'center',
                         justifyContent: 'space-between',
                         borderBottom: '1px solid #f1f5f9'
                       }}
@@ -832,7 +933,7 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
 
       {/* Nested Email HTML Preview Modal */}
       {previewEmail && (
-        <div 
+        <div
           onClick={() => setPreviewEmail(null)}
           style={{
             position: 'fixed',
@@ -849,8 +950,8 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
             padding: '1.5rem'
           }}
         >
-          <div 
-            onClick={(e) => e.stopPropagation()} 
+          <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               background: '#ffffff',
               borderRadius: '10px',
@@ -879,7 +980,7 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                   {previewEmail.subject}
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setPreviewEmail(null)}
                 style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: '#94a3b8', cursor: 'pointer' }}
               >
@@ -888,8 +989,8 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', background: '#f1f5f9' }}>
-              <div 
-                dangerouslySetInnerHTML={{ __html: previewEmail.htmlBody }} 
+              <div
+                dangerouslySetInnerHTML={{ __html: previewEmail.htmlBody }}
                 style={{ borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
               />
             </div>

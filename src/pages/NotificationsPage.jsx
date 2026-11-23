@@ -54,6 +54,7 @@ export default function NotificationsPage() {
   const [selectedInvoiceActivities, setSelectedInvoiceActivities] = useState([]);
   const [arSearchText, setArSearchText] = useState('');
   const [arCommentText, setArCommentText] = useState('');
+  const [arReplyingTo, setArReplyingTo] = useState(null);
   const [emailPreviewModal, setEmailPreviewModal] = useState(null);
 
   // ----------------------------------------------------
@@ -76,6 +77,7 @@ export default function NotificationsPage() {
   const [userThreadComments, setUserThreadComments] = useState([]);
   const [userSearchText, setUserSearchText] = useState('');
   const [userReplyText, setUserReplyText] = useState('');
+  const [userReplyingTo, setUserReplyingTo] = useState(null);
 
   // ----------------------------------------------------
   // DATA LOADING
@@ -137,8 +139,9 @@ export default function NotificationsPage() {
   const handleSendARComment = (e) => {
     e.preventDefault();
     if (!arCommentText.trim() || !selectedInvoiceKey) return;
-    addInvoiceComment(selectedInvoiceKey, arCommentText.trim(), currentUserName);
+    addInvoiceComment(selectedInvoiceKey, arCommentText.trim(), currentUserName, arReplyingTo);
     setArCommentText('');
+    setArReplyingTo(null);
     setSelectedInvoiceActivities(getInvoiceActivities(selectedInvoiceKey));
     setUpdateTrigger(prev => prev + 1);
   };
@@ -147,8 +150,9 @@ export default function NotificationsPage() {
   const handleSendUserReply = (e) => {
     e.preventDefault();
     if (!userReplyText.trim() || !selectedUserId) return;
-    postUserComment(selectedUserId, userReplyText.trim(), currentUserName, loggedInUser.role || 'Admin');
+    postUserComment(selectedUserId, userReplyText.trim(), currentUserName, loggedInUser.role || 'Admin', userReplyingTo);
     setUserReplyText('');
+    setUserReplyingTo(null);
     setUserThreadComments(getUserCommentsThread(selectedUserId));
     setUpdateTrigger(prev => prev + 1);
   };
@@ -705,12 +709,34 @@ export default function NotificationsPage() {
                             )}
                           </div>
 
+                          {/* Quoted Reply if any */}
+                          {act.replyTo && (
+                            <div style={{
+                              marginLeft: '2.1rem',
+                              marginBottom: '0.35rem',
+                              padding: '0.3rem 0.6rem',
+                              background: '#f8fafc',
+                              borderLeft: '3px solid #6366f1',
+                              borderRadius: '4px',
+                              fontSize: '0.72rem',
+                              color: '#64748b'
+                            }}>
+                              <div style={{ fontWeight: '600', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <i className='bx bx-reply' style={{ transform: 'rotate(180deg)' }}></i>
+                                <span>Replying to {act.replyTo.author}</span>
+                              </div>
+                              <div style={{ fontStyle: 'italic', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '0.1rem' }}>
+                                "{act.replyTo.text}"
+                              </div>
+                            </div>
+                          )}
+
                           <div style={{ fontSize: '0.84rem', color: '#334155', paddingLeft: '2.1rem', lineHeight: '1.45' }}>
                             {act.summary}
                           </div>
 
-                          {/* Comment Reactions */}
-                          <div style={{ paddingLeft: '2.1rem' }}>
+                          {/* Comment Reactions & Reply Action */}
+                          <div style={{ paddingLeft: '2.1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                             <CommentReactions
                               reactions={act.reactions}
                               currentUserName={currentUserName}
@@ -719,6 +745,36 @@ export default function NotificationsPage() {
                                 setUpdateTrigger(prev => prev + 1);
                               }}
                             />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setArReplyingTo({
+                                  id: act.id,
+                                  author: act.author || act.title || 'User',
+                                  text: act.summary || ''
+                                });
+                                const inputEl = document.getElementById('ar-comment-input');
+                                if (inputEl) inputEl.focus();
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#64748b',
+                                fontSize: '0.74rem',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                padding: '0.15rem 0.4rem',
+                                borderRadius: '4px'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
+                              title="Reply to this comment"
+                            >
+                              <i className='bx bx-reply' style={{ fontSize: '0.9rem' }}></i> Reply
+                            </button>
                           </div>
 
                           {act.emailDetails && (
@@ -749,11 +805,52 @@ export default function NotificationsPage() {
                 {/* Comment Composer */}
                 <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
                   <form onSubmit={handleSendARComment}>
+                    {/* Quoted reply banner */}
+                    {arReplyingTo && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '6px',
+                        padding: '0.35rem 0.75rem',
+                        marginBottom: '0.5rem',
+                        fontSize: '0.76rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                          <i className='bx bx-reply' style={{ color: '#2563eb', fontSize: '1rem', transform: 'rotate(180deg)' }}></i>
+                          <span style={{ color: '#1e40af', fontWeight: '600' }}>Replying to {arReplyingTo.author}:</span>
+                          <span style={{ color: '#3b82f6', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            "{arReplyingTo.text.slice(0, 65)}{arReplyingTo.text.length > 65 ? '...' : ''}"
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setArReplyingTo(null)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#64748b',
+                            cursor: 'pointer',
+                            fontSize: '1rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '0 0.2rem'
+                          }}
+                          title="Cancel reply"
+                        >
+                          <i className='bx bx-x'></i>
+                        </button>
+                      </div>
+                    )}
+
                     <textarea
+                      id="ar-comment-input"
                       rows={2}
                       value={arCommentText}
                       onChange={(e) => setArCommentText(e.target.value)}
-                      placeholder={`Add a comment or follow-up note for invoice ${activeInvoice.invoiceNumber}...`}
+                      placeholder={arReplyingTo ? `Write a reply to ${arReplyingTo.author}...` : `Add a comment or follow-up note for invoice ${activeInvoice.invoiceNumber}...`}
                       style={{
                         width: '100%',
                         padding: '0.6rem 0.75rem',
@@ -1281,13 +1378,35 @@ export default function NotificationsPage() {
                             }}>
                               {comm.senderName} ({comm.role})
                             </div>
+
+                            {/* Quoted Reply inside bubble */}
+                            {comm.replyTo && (
+                              <div style={{
+                                background: isMe ? 'rgba(255,255,255,0.18)' : '#e2e8f0',
+                                borderLeft: `3px solid ${isMe ? '#ffffff' : '#0284c7'}`,
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '4px',
+                                marginBottom: '0.4rem',
+                                fontSize: '0.72rem',
+                                color: isMe ? '#e0e7ff' : '#475569'
+                              }}>
+                                <div style={{ fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <i className='bx bx-reply' style={{ transform: 'rotate(180deg)' }}></i>
+                                  <span>Replying to {comm.replyTo.author}:</span>
+                                </div>
+                                <div style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '0.1rem' }}>
+                                  "{comm.replyTo.text}"
+                                </div>
+                              </div>
+                            )}
+
                             <div style={{ fontSize: '0.86rem', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>
                               {comm.text}
                             </div>
                           </div>
 
-                          {/* Comment Reactions */}
-                          <div style={{ marginTop: '0.1rem' }}>
+                          {/* Comment Reactions & Reply Action */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem', flexDirection: isMe ? 'row-reverse' : 'row' }}>
                             <CommentReactions
                               reactions={comm.reactions}
                               currentUserName={currentUserName}
@@ -1297,6 +1416,36 @@ export default function NotificationsPage() {
                                 setUpdateTrigger(prev => prev + 1);
                               }}
                             />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUserReplyingTo({
+                                  id: comm.id,
+                                  author: comm.senderName || 'Teammate',
+                                  text: comm.text || ''
+                                });
+                                const inputEl = document.getElementById('user-reply-input');
+                                if (inputEl) inputEl.focus();
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#94a3b8',
+                                fontSize: '0.72rem',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                padding: '0.1rem 0.3rem',
+                                borderRadius: '4px'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#0284c7'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                              title="Reply to this message"
+                            >
+                              <i className='bx bx-reply' style={{ fontSize: '0.88rem' }}></i> Reply
+                            </button>
                           </div>
 
                           <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '0.2rem', padding: '0 0.35rem' }}>
@@ -1311,11 +1460,52 @@ export default function NotificationsPage() {
                 {/* Reply Composer */}
                 <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
                   <form onSubmit={handleSendUserReply}>
+                    {/* Quoted reply banner */}
+                    {userReplyingTo && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: '#f0f9ff',
+                        border: '1px solid #bae6fd',
+                        borderRadius: '6px',
+                        padding: '0.35rem 0.75rem',
+                        marginBottom: '0.5rem',
+                        fontSize: '0.76rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                          <i className='bx bx-reply' style={{ color: '#0284c7', fontSize: '1rem', transform: 'rotate(180deg)' }}></i>
+                          <span style={{ color: '#0369a1', fontWeight: '600' }}>Replying to {userReplyingTo.author}:</span>
+                          <span style={{ color: '#0284c7', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            "{userReplyingTo.text.slice(0, 65)}{userReplyingTo.text.length > 65 ? '...' : ''}"
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUserReplyingTo(null)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#64748b',
+                            cursor: 'pointer',
+                            fontSize: '1rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '0 0.2rem'
+                          }}
+                          title="Cancel reply"
+                        >
+                          <i className='bx bx-x'></i>
+                        </button>
+                      </div>
+                    )}
+
                     <textarea
+                      id="user-reply-input"
                       rows={2}
                       value={userReplyText}
                       onChange={(e) => setUserReplyText(e.target.value)}
-                      placeholder={`Send a comment to ${activeUser.name}...`}
+                      placeholder={userReplyingTo ? `Write a reply to ${userReplyingTo.author}...` : `Send a comment to ${activeUser.name}...`}
                       style={{
                         width: '100%',
                         padding: '0.6rem 0.75rem',
