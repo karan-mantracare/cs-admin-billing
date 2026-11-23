@@ -304,14 +304,16 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
           const hasAdj = taxRows.length > 0 || deductRows.length > 0 || adjRows.length > 0;
 
           const cellBase = {
-            padding: '0.45rem 0.65rem',
+            padding: '0.5rem 0.75rem',
             borderRight: '1px solid #e2e8f0',
-            fontSize: '0.82rem'
+            fontSize: '0.82rem',
+            fontVariantNumeric: 'tabular-nums'
           };
           const lastCellBase = {
-            padding: '0.45rem 0.65rem',
+            padding: '0.5rem 0.75rem',
             fontSize: '0.82rem',
-            textAlign: 'right'
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums'
           };
 
           const gridStyle = {
@@ -349,7 +351,7 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                 background: '#ffffff',
                 color: '#1e293b'
               }}>
-                <div style={cellBase}>Base Amount</div>
+                <div style={{ ...cellBase, fontWeight: '600' }}>Base Amount</div>
                 <div style={{ ...cellBase, textAlign: 'center', color: '#94a3b8' }}>—</div>
                 <div style={{ ...cellBase, textAlign: 'center', color: '#94a3b8' }}>—</div>
                 <div style={{ ...lastCellBase, fontWeight: '700', color: '#0f172a' }}>
@@ -365,12 +367,13 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                   color: '#475569'
                 }}>
                   <div style={cellBase}>
-                    Tax{item.details ? ` (${item.details})` : ''}
+                    <span style={{ fontWeight: '500', color: '#1e293b' }}>Tax</span>
+                    {item.details && <span style={{ color: '#64748b', fontSize: '0.78rem' }}> ({item.details})</span>}
                   </div>
-                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155' }}>
-                    {Number(item.impactAmount || 0).toFixed(2)}
+                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155', fontWeight: '500' }}>
+                    +{Number(item.impactAmount || 0).toFixed(2)}
                   </div>
-                  <div style={{ ...cellBase, textAlign: 'center', color: '#334155' }}>
+                  <div style={{ ...cellBase, textAlign: 'center', color: '#475569', fontWeight: '500' }}>
                     {item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—'}
                   </div>
                   <div style={lastCellBase}></div>
@@ -385,12 +388,13 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                   color: '#475569'
                 }}>
                   <div style={cellBase}>
-                    Deduction{item.details ? ` (${item.details})` : ''}
+                    <span style={{ fontWeight: '500', color: '#1e293b' }}>Deduction</span>
+                    {item.details && <span style={{ color: '#64748b', fontSize: '0.78rem' }}> ({item.details})</span>}
                   </div>
-                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155' }}>
+                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155', fontWeight: '500' }}>
                     -{Math.abs(item.impactAmount || 0).toFixed(2)}
                   </div>
-                  <div style={{ ...cellBase, textAlign: 'center', color: '#334155' }}>
+                  <div style={{ ...cellBase, textAlign: 'center', color: '#475569', fontWeight: '500' }}>
                     {item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—'}
                   </div>
                   <div style={lastCellBase}></div>
@@ -405,12 +409,13 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                   color: '#475569'
                 }}>
                   <div style={cellBase}>
-                    Adjustments{item.details ? ` (${item.details})` : ''}
+                    <span style={{ fontWeight: '500', color: '#1e293b' }}>Adjustments</span>
+                    {item.details && <span style={{ color: '#64748b', fontSize: '0.78rem' }}> ({item.details})</span>}
                   </div>
-                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155' }}>
-                    {Number(item.impactAmount || 0).toFixed(2)}
+                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155', fontWeight: '500' }}>
+                    +{Number(item.impactAmount || 0).toFixed(2)}
                   </div>
-                  <div style={{ ...cellBase, textAlign: 'center', color: '#334155' }}>
+                  <div style={{ ...cellBase, textAlign: 'center', color: '#475569', fontWeight: '500' }}>
                     {item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—'}
                   </div>
                   <div style={lastCellBase}></div>
@@ -424,11 +429,11 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                   background: '#ffffff',
                   color: '#475569'
                 }}>
-                  <div style={cellBase}>Total Adjustment</div>
+                  <div style={{ ...cellBase, fontWeight: '600', color: '#1e293b' }}>Total Adjustment</div>
                   <div style={{ ...cellBase, textAlign: 'center', color: '#94a3b8' }}>—</div>
                   <div style={{ ...cellBase, textAlign: 'center', color: '#94a3b8' }}>—</div>
                   <div style={{ ...lastCellBase, fontWeight: '700', color: '#0f172a' }}>
-                    {netAdjustment.toFixed(2)}
+                    {netAdjustment >= 0 ? `+${Math.abs(netAdjustment).toFixed(2)}` : `-${Math.abs(netAdjustment).toFixed(2)}`}
                   </div>
                 </div>
               )}
@@ -445,7 +450,7 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                 </div>
                 <div style={{ ...cellBase, borderRight: '1px solid #bbf7d0', textAlign: 'center', color: '#059669' }}>—</div>
                 <div style={{ ...cellBase, borderRight: '1px solid #bbf7d0', textAlign: 'center', color: '#059669' }}>—</div>
-                <div style={{ ...lastCellBase, fontWeight: '800', color: '#059669', fontSize: '0.88rem' }}>
+                <div style={{ ...lastCellBase, fontWeight: '800', color: '#059669', fontSize: '0.9rem' }}>
                   {calc.finalAmountDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
@@ -458,12 +463,13 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                   color: '#475569'
                 }}>
                   <div style={cellBase}>
-                    Withholding Tax{item.details ? ` (${item.details})` : ''}
+                    <span style={{ fontWeight: '500', color: '#1e293b' }}>Withholding Tax</span>
+                    {item.details && <span style={{ color: '#64748b', fontSize: '0.78rem' }}> ({item.details})</span>}
                   </div>
-                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155' }}>
+                  <div style={{ ...cellBase, textAlign: 'right', color: '#334155', fontWeight: '500' }}>
                     -{Math.abs(item.impactAmount || 0).toFixed(2)}
                   </div>
-                  <div style={{ ...cellBase, textAlign: 'center', color: '#334155' }}>
+                  <div style={{ ...cellBase, textAlign: 'center', color: '#475569', fontWeight: '500' }}>
                     {item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—'}
                   </div>
                   <div style={lastCellBase}></div>
@@ -484,7 +490,7 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                   </div>
                   <div style={{ ...cellBase, borderRight: '1px solid #fde68a', textAlign: 'center', color: '#b45309' }}>—</div>
                   <div style={{ ...cellBase, borderRight: '1px solid #fde68a', textAlign: 'center', color: '#b45309' }}>—</div>
-                  <div style={{ ...lastCellBase, fontWeight: '800', color: '#b45309', fontSize: '0.88rem' }}>
+                  <div style={{ ...lastCellBase, fontWeight: '800', color: '#b45309', fontSize: '0.9rem' }}>
                     {calc.netReceivableAfterWht.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
