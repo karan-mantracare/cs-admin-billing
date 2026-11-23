@@ -28,6 +28,16 @@ export default function NotificationsPage() {
   // Trigger re-render on notification changes
   const [updateTrigger, setUpdateTrigger] = useState(0);
 
+  // Auto-fetch logged-in user identity (no Author dropdown option)
+  const loggedInUser = (() => {
+    try {
+      const stored = localStorage.getItem('logged_in_user');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return { name: 'Karan Hinduja', role: 'Admin', email: 'hinduja1988@gmail.com' };
+  })();
+  const currentUserName = loggedInUser.name || 'Karan Hinduja';
+
   // ----------------------------------------------------
   // ACCOUNTS RECEIVABLES STATE
   // ----------------------------------------------------
@@ -36,7 +46,6 @@ export default function NotificationsPage() {
   const [selectedInvoiceActivities, setSelectedInvoiceActivities] = useState([]);
   const [arSearchText, setArSearchText] = useState('');
   const [arCommentText, setArCommentText] = useState('');
-  const [arCommentAuthor, setArCommentAuthor] = useState('Customer Success');
   const [emailPreviewModal, setEmailPreviewModal] = useState(null);
 
   // ----------------------------------------------------
@@ -120,7 +129,7 @@ export default function NotificationsPage() {
   const handleSendARComment = (e) => {
     e.preventDefault();
     if (!arCommentText.trim() || !selectedInvoiceKey) return;
-    addInvoiceComment(selectedInvoiceKey, arCommentText.trim(), arCommentAuthor);
+    addInvoiceComment(selectedInvoiceKey, arCommentText.trim(), currentUserName);
     setArCommentText('');
     setSelectedInvoiceActivities(getInvoiceActivities(selectedInvoiceKey));
     setUpdateTrigger(prev => prev + 1);
@@ -130,7 +139,7 @@ export default function NotificationsPage() {
   const handleSendUserReply = (e) => {
     e.preventDefault();
     if (!userReplyText.trim() || !selectedUserId) return;
-    postUserComment(selectedUserId, userReplyText.trim(), 'You', 'Customer Success');
+    postUserComment(selectedUserId, userReplyText.trim(), currentUserName, loggedInUser.role || 'Admin');
     setUserReplyText('');
     setUserThreadComments(getUserCommentsThread(selectedUserId));
     setUpdateTrigger(prev => prev + 1);
@@ -664,24 +673,10 @@ export default function NotificationsPage() {
                       }}
                     />
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span style={{ fontSize: '0.74rem', color: '#64748b' }}>Post As:</span>
-                        <select
-                          value={arCommentAuthor}
-                          onChange={(e) => setArCommentAuthor(e.target.value)}
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            borderRadius: '4px',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '0.76rem',
-                            background: '#fff'
-                          }}
-                        >
-                          <option value="Customer Success">Customer Success</option>
-                          <option value="Accounts Team">Accounts Team</option>
-                          <option value="Finance Operations">Finance Operations</option>
-                          <option value="Karan Hinduja">Karan Hinduja</option>
-                        </select>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.76rem', color: '#64748b' }}>
+                        <i className='bx bx-user' style={{ color: '#4f46e5' }}></i>
+                        <span>Posting as:</span>
+                        <strong style={{ color: '#0f172a' }}>{currentUserName}</strong>
                       </div>
 
                       <button

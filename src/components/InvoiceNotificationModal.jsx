@@ -14,8 +14,17 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
   const [activities, setActivities] = useState([]);
   const [participants, setParticipants] = useState([]);
   const [commentText, setCommentText] = useState('');
-  const [commentAuthor, setCommentAuthor] = useState('Customer Success');
   const [previewEmail, setPreviewEmail] = useState(null);
+
+  // Auto-fetch logged-in user identity (no dropdown)
+  const loggedInUser = (() => {
+    try {
+      const stored = localStorage.getItem('logged_in_user');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return { name: 'Karan Hinduja', role: 'Admin', email: 'hinduja1988@gmail.com' };
+  })();
+  const currentUserName = loggedInUser.name || 'Karan Hinduja';
 
   // New participant form state
   const [newPartName, setNewPartName] = useState('');
@@ -73,7 +82,7 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
     e.preventDefault();
     if (!commentText.trim()) return;
 
-    addInvoiceComment(invoiceKey, commentText.trim(), commentAuthor);
+    addInvoiceComment(invoiceKey, commentText.trim(), currentUserName);
     setCommentText('');
     reloadData();
   };
@@ -471,24 +480,10 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                     }}
                   />
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.6rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Author:</span>
-                      <select
-                        value={commentAuthor}
-                        onChange={(e) => setCommentAuthor(e.target.value)}
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          borderRadius: '4px',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '0.78rem',
-                          background: '#fff'
-                        }}
-                      >
-                        <option value="Customer Success">Customer Success</option>
-                        <option value="Accounts Team">Accounts Team</option>
-                        <option value="Finance Operations">Finance Operations</option>
-                        <option value="Karan Hinduja">Karan Hinduja (Primary CS)</option>
-                      </select>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.76rem', color: '#64748b' }}>
+                      <i className='bx bx-user' style={{ color: '#4f46e5' }}></i>
+                      <span>Posting as:</span>
+                      <strong style={{ color: '#0f172a' }}>{currentUserName}</strong>
                     </div>
 
                     <button
