@@ -385,7 +385,7 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                                       {act.title || 'System Notification'}
                                     </div>
                                     <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                                      by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span> • {formatMessageTime(act.timestamp)}
+                                      by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span>
                                     </div>
                                   </div>
                                 </div>
@@ -454,46 +454,53 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                           {act.summary}
                         </div>
 
-                        {/* Comment Reactions & Reply Action */}
-                        <div style={{ paddingLeft: '2.3rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                          <CommentReactions
-                            reactions={act.reactions}
-                            currentUserName={currentUserName}
-                            onToggleReaction={(emoji) => {
-                              toggleInvoiceActivityReaction(invoiceKey, act.id, emoji, currentUserName);
-                              reloadData();
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReplyingTo({
-                                id: act.id,
-                                author: act.author || act.title || 'User',
-                                text: act.summary || ''
-                              });
-                              const inputEl = document.getElementById('modal-comment-input');
-                              if (inputEl) inputEl.focus();
-                            }}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#64748b',
-                              fontSize: '0.74rem',
-                              fontWeight: '500',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem',
-                              padding: '0.15rem 0.4rem',
-                              borderRadius: '4px'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
-                            title="Reply to this comment"
-                          >
-                            <i className='bx bx-reply' style={{ fontSize: '0.9rem' }}></i> Reply
-                          </button>
+                        {/* Comment Reactions, Reply Action & Bottom-Right Timestamp */}
+                        <div style={{ paddingLeft: '2.3rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <CommentReactions
+                              reactions={act.reactions}
+                              currentUserName={currentUserName}
+                              onToggleReaction={(emoji) => {
+                                toggleInvoiceActivityReaction(invoiceKey, act.id, emoji, currentUserName);
+                                reloadData();
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReplyingTo({
+                                  id: act.id,
+                                  author: act.author || act.title || 'User',
+                                  text: act.summary || ''
+                                });
+                                const inputEl = document.getElementById('modal-comment-input');
+                                if (inputEl) inputEl.focus();
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#64748b',
+                                fontSize: '0.74rem',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                padding: '0.15rem 0.4rem',
+                                borderRadius: '4px'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
+                              title="Reply to this comment"
+                            >
+                              <i className='bx bx-reply' style={{ fontSize: '0.9rem' }}></i> Reply
+                            </button>
+                          </div>
+
+                          {/* Time shown in bottom right corner */}
+                          <div style={{ fontSize: '0.67rem', color: '#94a3b8', marginLeft: 'auto' }}>
+                            {formatMessageTime(act.timestamp)}
+                          </div>
                         </div>
 
                         {act.emailDetails && (

@@ -767,7 +767,7 @@ export default function NotificationsPage() {
                                     {act.title || 'Notification'}
                                   </strong>
                                   <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                                    by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span> • {formatMessageTime(act.timestamp)}
+                                    by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span>
                                   </span>
                                 </div>
 
@@ -823,46 +823,53 @@ export default function NotificationsPage() {
                             {act.summary}
                           </div>
 
-                          {/* Comment Reactions & Reply Action */}
-                          <div style={{ paddingLeft: '2.1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                            <CommentReactions
-                              reactions={act.reactions}
-                              currentUserName={currentUserName}
-                              onToggleReaction={(emoji) => {
-                                toggleInvoiceActivityReaction(activeInvoice.invoiceKey, act.id, emoji, currentUserName);
-                                setUpdateTrigger(prev => prev + 1);
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setArReplyingTo({
-                                  id: act.id,
-                                  author: act.author || act.title || 'User',
-                                  text: act.summary || ''
-                                });
-                                const inputEl = document.getElementById('ar-comment-input');
-                                if (inputEl) inputEl.focus();
-                              }}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: '#64748b',
-                                fontSize: '0.74rem',
-                                fontWeight: '500',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.25rem',
-                                padding: '0.15rem 0.4rem',
-                                borderRadius: '4px'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
-                              onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
-                              title="Reply to this comment"
-                            >
-                              <i className='bx bx-reply' style={{ fontSize: '0.9rem' }}></i> Reply
-                            </button>
+                          {/* Comment Reactions, Reply Action & Bottom-Right Timestamp */}
+                          <div style={{ paddingLeft: '2.1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                              <CommentReactions
+                                reactions={act.reactions}
+                                currentUserName={currentUserName}
+                                onToggleReaction={(emoji) => {
+                                  toggleInvoiceActivityReaction(activeInvoice.invoiceKey, act.id, emoji, currentUserName);
+                                  setUpdateTrigger(prev => prev + 1);
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setArReplyingTo({
+                                    id: act.id,
+                                    author: act.author || act.title || 'User',
+                                    text: act.summary || ''
+                                  });
+                                  const inputEl = document.getElementById('ar-comment-input');
+                                  if (inputEl) inputEl.focus();
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#64748b',
+                                  fontSize: '0.74rem',
+                                  fontWeight: '500',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  padding: '0.15rem 0.4rem',
+                                  borderRadius: '4px'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
+                                title="Reply to this comment"
+                              >
+                                <i className='bx bx-reply' style={{ fontSize: '0.9rem' }}></i> Reply
+                              </button>
+                            </div>
+
+                            {/* Time shown in bottom right corner */}
+                            <div style={{ fontSize: '0.67rem', color: '#94a3b8', marginLeft: 'auto' }}>
+                              {formatMessageTime(act.timestamp)}
+                            </div>
                           </div>
 
                           {act.emailDetails && (
@@ -1283,9 +1290,6 @@ export default function NotificationsPage() {
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                            {formatMessageTime(notif.timestamp)}
-                          </span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1323,7 +1327,12 @@ export default function NotificationsPage() {
 
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem' }}>
                         <span>Dispatched by <strong>{notif.sender || 'Admin Panel'}</strong></span>
-                        <span style={{ fontStyle: 'italic' }}>General Notice • Comments disabled</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ fontStyle: 'italic' }}>General Notice • Comments disabled</span>
+                          <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '500' }}>
+                            {formatMessageTime(notif.timestamp)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </React.Fragment>
@@ -1758,22 +1767,23 @@ export default function NotificationsPage() {
                                   )}
 
                                   {/* Message Text and Time at bottom right (HH:MM, no seconds) */}
-                                  <div style={{ fontSize: '0.86rem', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>
-                                    {comm.text}
-                                    <span style={{
-                                      fontSize: '0.65rem',
-                                      color: isMe ? 'rgba(255,255,255,0.72)' : '#94a3b8',
-                                      marginLeft: '0.65rem',
-                                      float: 'right',
-                                      marginTop: '0.35rem',
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                    <div style={{ fontSize: '0.86rem', lineHeight: '1.45', whiteSpace: 'pre-wrap', wordBreak: 'break-word', paddingRight: '0.2rem' }}>
+                                      {comm.text}
+                                    </div>
+                                    <div style={{
+                                      alignSelf: 'flex-end',
                                       display: 'inline-flex',
                                       alignItems: 'center',
-                                      gap: '0.2rem',
-                                      lineHeight: 1
+                                      gap: '0.25rem',
+                                      fontSize: '0.65rem',
+                                      color: isMe ? 'rgba(255,255,255,0.75)' : '#94a3b8',
+                                      lineHeight: 1,
+                                      marginTop: '-0.1rem'
                                     }}>
-                                      {formatMessageTime(comm.timestamp)}
+                                      <span>{formatMessageTime(comm.timestamp)}</span>
                                       {isMe && <i className='bx bx-check-double' style={{ color: '#c7d2fe', fontSize: '0.85rem' }}></i>}
-                                    </span>
+                                    </div>
                                   </div>
 
                                   {/* WhatsApp Reaction Pill (at bottom edge of bubble) */}
