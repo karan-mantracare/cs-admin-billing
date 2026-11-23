@@ -116,6 +116,156 @@ export const resolvePaymentStatus = (p) => {
   return 'To be raised';
 };
 
+export const getAdjustmentBreakdown = (p) => {
+  if (!p) return null;
+  let rawAdj = p.taxAdjustments;
+  if (!rawAdj || rawAdj.length === 0) {
+    if (p.contractId) {
+      try {
+        const contracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+        const c = contracts.find(x => String(x.id) === String(p.contractId));
+        if (c?.taxAdjustments) rawAdj = c.taxAdjustments;
+      } catch (e) {}
+    }
+  }
+  if (rawAdj && rawAdj.length > 0) {
+    const isTaxInc = !!(p.includingTax);
+    const base = Number(p.baseAmountDue !== undefined ? p.baseAmountDue : (p.amountDue || 0));
+    const calc = calculateTaxAdjustments(base, rawAdj, isTaxInc);
+    const netAdj = calc.totalAdjustments - calc.totalDeductions + (isTaxInc ? 0 : calc.totalTax);
+    
+    const taxRows = (calc.calculatedItems || []).filter(item => {
+      const t = (item.type || '').toLowerCase();
+      return (t.includes('tax') && !t.includes('withhold') && !t.includes('wht')) || t.includes('gst') || t.includes('vat');
+    });
+    const deductRows = (calc.calculatedItems || []).filter(item => (item.type || '').toLowerCase().includes('deduct'));
+    const adjRows = (calc.calculatedItems || []).filter(item => (item.type || '').toLowerCase().includes('adjust'));
+
+    return {
+      calc,
+      taxRows,
+      deductRows,
+      adjRows,
+      netAdj
+    };
+  }
+  return null;
+};
+
+function AdjustmentBadgeWithTooltip({ p, num, isPositive }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const breakdown = getAdjustmentBreakdown(p);
+
+  const badge = (
+    <span style={{
+      fontWeight: '600',
+      color: isPositive ? '#0284c7' : '#7c3aed',
+      background: isPositive ? '#f0f9ff' : '#f5f3ff',
+      border: `1px solid ${isPositive ? '#bae6fd' : '#ddd6fe'}`,
+      padding: '0.15rem 0.45rem',
+      borderRadius: '4px',
+      fontSize: '0.8rem',
+      cursor: breakdown ? 'pointer' : 'default',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '0.2rem'
+    }}>
+      {isPositive ? `+${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      {breakdown && <i className='bx bx-info-circle' style={{ fontSize: '0.75rem', opacity: 0.7 }}></i>}
+    </span>
+  );
+
+  if (!breakdown || (breakdown.taxRows.length === 0 && breakdown.deductRows.length === 0 && breakdown.adjRows.length === 0)) {
+    return badge;
+  }
+
+  const { taxRows, deductRows, adjRows, netAdj } = breakdown;
+
+  return (
+    <div 
+      style={{ position: 'relative', display: 'inline-block' }}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      {badge}
+
+      {showTooltip && (
+        <div style={{
+          position: 'absolute',
+          bottom: '125%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#0f172a',
+          color: '#ffffff',
+          padding: '0.55rem 0.75rem',
+          borderRadius: '6px',
+          fontSize: '0.74rem',
+          minWidth: '220px',
+          maxWidth: '300px',
+          zIndex: 9999,
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)',
+          pointerEvents: 'none',
+          lineHeight: '1.45',
+          whiteSpace: 'nowrap',
+          textAlign: 'left'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            {taxRows.map((t, idx) => (
+              <div key={`t-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '1.2rem', color: '#86efac' }}>
+                <span>Tax{t.details ? ` (${t.details})` : ''} :</span>
+                <span style={{ fontWeight: '600', fontVariantNumeric: 'tabular-nums' }}>
+                  {Number(t.impactAmount || 0).toFixed(2)}
+                </span>
+              </div>
+            ))}
+            {deductRows.map((d, idx) => (
+              <div key={`d-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '1.2rem', color: '#d8b4fe' }}>
+                <span>Deduction{d.details ? ` (${d.details})` : ''} :</span>
+                <span style={{ fontWeight: '600', fontVariantNumeric: 'tabular-nums' }}>
+                  -{Math.abs(d.impactAmount || 0).toFixed(2)}
+                </span>
+              </div>
+            ))}
+            {adjRows.map((a, idx) => (
+              <div key={`a-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '1.2rem', color: '#7dd3fc' }}>
+                <span>Adjustments{a.details ? ` (${a.details})` : ''} :</span>
+                <span style={{ fontWeight: '600', fontVariantNumeric: 'tabular-nums' }}>
+                  {Number(a.impactAmount || 0).toFixed(2)}
+                </span>
+              </div>
+            ))}
+            <div style={{
+              borderTop: '1px solid #334155',
+              paddingTop: '0.25rem',
+              marginTop: '0.15rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '1.2rem',
+              fontWeight: '700',
+              color: '#ffffff'
+            }}>
+              <span>Total :</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {netAdj.toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            borderWidth: '5px',
+            borderStyle: 'solid',
+            borderColor: '#0f172a transparent transparent transparent'
+          }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ClientPayments() {
   const navigate = useNavigate();
   const { clients, showToast } = useGlobal();
@@ -1155,17 +1305,7 @@ function ClientPayments() {
                         const num = Number(adjVal);
                         const isPositive = num > 0;
                         return (
-                          <span style={{
-                            fontWeight: '600',
-                            color: isPositive ? '#0284c7' : '#7c3aed',
-                            background: isPositive ? '#f0f9ff' : '#f5f3ff',
-                            border: `1px solid ${isPositive ? '#bae6fd' : '#ddd6fe'}`,
-                            padding: '0.15rem 0.45rem',
-                            borderRadius: '4px',
-                            fontSize: '0.8rem'
-                          }}>
-                            {isPositive ? `+${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
+                          <AdjustmentBadgeWithTooltip p={p} num={num} isPositive={isPositive} />
                         );
                       }
                       return <span style={{ color: '#94a3b8' }}>—</span>;
