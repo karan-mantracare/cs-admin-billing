@@ -11,7 +11,8 @@ import {
   getInvoiceUnreadCount,
   toggleInvoiceActivityReaction,
   getEmailTemplatePreview,
-  formatMessageTime
+  formatMessageTime,
+  getMessageDateCategory
 } from '../utils/notificationService';
 
 export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
@@ -322,47 +323,72 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem' }}>Leave a comment below or trigger notifications via invoice updates.</p>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {activities.map((act) => {
-                    const iconStyle = getActivityIcon(act.type);
-                    return (
-                      <div
-                        key={act.id}
-                        style={{
-                          background: '#ffffff',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '8px',
-                          padding: '1rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.5rem',
-                          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                            <span style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '6px',
-                              background: iconStyle.bg,
-                              color: iconStyle.color,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '1rem'
-                            }}>
-                              <i className={`bx ${iconStyle.icon}`}></i>
-                            </span>
-                            <div>
-                              <div style={{ fontWeight: '600', fontSize: '0.88rem', color: '#1e293b' }}>
-                                {act.title || 'System Notification'}
+                (() => {
+                  let lastDateCategory = null;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {activities.map((act) => {
+                        const iconStyle = getActivityIcon(act.type);
+                        const dateCategory = getMessageDateCategory(act.timestamp);
+                        const showDateDivider = dateCategory !== lastDateCategory;
+                        lastDateCategory = dateCategory;
+
+                        return (
+                          <React.Fragment key={act.id}>
+                            {/* WhatsApp Centered Floating Date Divider */}
+                            {showDateDivider && (
+                              <div style={{ display: 'flex', justifyContent: 'center', margin: '0.65rem 0 0.35rem' }}>
+                                <span style={{
+                                  background: '#e2e8f0',
+                                  color: '#475569',
+                                  fontSize: '0.72rem',
+                                  fontWeight: '600',
+                                  padding: '0.2rem 0.75rem',
+                                  borderRadius: '8px',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                  textTransform: 'capitalize'
+                                }}>
+                                  {dateCategory}
+                                </span>
                               </div>
-                              <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                                by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span> • {new Date(act.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} • {formatMessageTime(act.timestamp)}
-                              </div>
-                            </div>
-                          </div>
+                            )}
+
+                            <div
+                              style={{
+                                background: '#ffffff',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                padding: '1rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.5rem',
+                                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                  <span style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '6px',
+                                    background: iconStyle.bg,
+                                    color: iconStyle.color,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '1rem'
+                                  }}>
+                                    <i className={`bx ${iconStyle.icon}`}></i>
+                                  </span>
+                                  <div>
+                                    <div style={{ fontWeight: '600', fontSize: '0.88rem', color: '#1e293b' }}>
+                                      {act.title || 'System Notification'}
+                                    </div>
+                                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                      by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span> • {formatMessageTime(act.timestamp)}
+                                    </div>
+                                  </div>
+                                </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             {act.emailSent ? (
@@ -493,10 +519,13 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                           </div>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            );
+          })()
+        )}
             </div>
 
             {/* Add Comment Section - Fixed at Bottom */}

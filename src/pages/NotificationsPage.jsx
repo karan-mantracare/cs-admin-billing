@@ -708,44 +708,68 @@ export default function NotificationsPage() {
                       <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem' }}>Use the comment box below to add notes or updates.</p>
                     </div>
                   ) : (
-                    selectedInvoiceActivities.map((act) => {
-                      const iconStyle = getActivityIcon(act.type);
-                      return (
-                        <div
-                          key={act.id}
-                          style={{
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '8px',
-                            padding: '0.85rem 1rem',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.35rem',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span style={{
-                                width: '26px',
-                                height: '26px',
-                                borderRadius: '6px',
-                                background: iconStyle.bg,
-                                color: iconStyle.color,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '0.95rem'
-                              }}>
-                                <i className={`bx ${iconStyle.icon}`}></i>
-                              </span>
-                              <strong style={{ fontSize: '0.86rem', color: '#1e293b' }}>
-                                {act.title || 'Notification'}
-                              </strong>
-                              <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                                by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span> • {new Date(act.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} • {formatMessageTime(act.timestamp)}
-                              </span>
-                            </div>
+                    (() => {
+                      let lastDateCategory = null;
+                      return selectedInvoiceActivities.map((act) => {
+                        const iconStyle = getActivityIcon(act.type);
+                        const dateCategory = getMessageDateCategory(act.timestamp);
+                        const showDateDivider = dateCategory !== lastDateCategory;
+                        lastDateCategory = dateCategory;
+
+                        return (
+                          <React.Fragment key={act.id}>
+                            {/* WhatsApp Centered Floating Date Divider */}
+                            {showDateDivider && (
+                              <div style={{ display: 'flex', justifyContent: 'center', margin: '0.65rem 0 0.35rem' }}>
+                                <span style={{
+                                  background: '#e2e8f0',
+                                  color: '#475569',
+                                  fontSize: '0.72rem',
+                                  fontWeight: '600',
+                                  padding: '0.2rem 0.75rem',
+                                  borderRadius: '8px',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                  textTransform: 'capitalize'
+                                }}>
+                                  {dateCategory}
+                                </span>
+                              </div>
+                            )}
+
+                            <div
+                              style={{
+                                background: '#ffffff',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                padding: '0.85rem 1rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.35rem',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <span style={{
+                                    width: '26px',
+                                    height: '26px',
+                                    borderRadius: '6px',
+                                    background: iconStyle.bg,
+                                    color: iconStyle.color,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.95rem'
+                                  }}>
+                                    <i className={`bx ${iconStyle.icon}`}></i>
+                                  </span>
+                                  <strong style={{ fontSize: '0.86rem', color: '#1e293b' }}>
+                                    {act.title || 'Notification'}
+                                  </strong>
+                                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                    by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span> • {formatMessageTime(act.timestamp)}
+                                  </span>
+                                </div>
 
                             {act.emailSent ? (
                               <span style={{
@@ -861,9 +885,11 @@ export default function NotificationsPage() {
                             </div>
                           )}
                         </div>
-                      );
-                    })
-                  )}
+                      </React.Fragment>
+                    );
+                  });
+                })()
+              )}
                   <div ref={arThreadBottomRef} />
                 </div>
 
@@ -1162,122 +1188,148 @@ export default function NotificationsPage() {
 
           {/* Cards Feed */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {generalList.map((notif) => {
-              const readStore = JSON.parse(localStorage.getItem('general_notifications_read_state') || '{}');
-              const isUnread = !readStore[String(notif.id)];
+            {(() => {
+              let lastDateCategory = null;
+              return generalList.map((notif) => {
+                const readStore = JSON.parse(localStorage.getItem('general_notifications_read_state') || '{}');
+                const isUnread = !readStore[String(notif.id)];
+                const dateCategory = getMessageDateCategory(notif.timestamp);
+                const showDateDivider = dateCategory !== lastDateCategory;
+                lastDateCategory = dateCategory;
 
-              const priorityCfg = {
-                Critical: { bg: '#fee2e2', color: '#dc2626', border: '#fecaca' },
-                High: { bg: '#fef3c7', color: '#d97706', border: '#fde68a' },
-                Normal: { bg: '#e0f2fe', color: '#0284c7', border: '#bae6fd' }
-              }[notif.priority] || { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' };
+                const priorityCfg = {
+                  Critical: { bg: '#fee2e2', color: '#dc2626', border: '#fecaca' },
+                  High: { bg: '#fef3c7', color: '#d97706', border: '#fde68a' },
+                  Normal: { bg: '#e0f2fe', color: '#0284c7', border: '#bae6fd' }
+                }[notif.priority] || { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' };
 
-              return (
-                <div
-                  key={notif.id}
-                  onClick={() => {
-                    if (isUnread) {
-                      markGeneralNotificationRead(notif.id);
-                    }
-                  }}
-                  style={{
-                    background: '#ffffff',
-                    border: isUnread ? '1.5px solid #38bdf8' : '1px solid #e2e8f0',
-                    borderLeft: isUnread ? '5px solid #0284c7' : '1px solid #e2e8f0',
-                    borderRadius: '10px',
-                    padding: '1.15rem 1.35rem',
-                    boxShadow: isUnread ? '0 4px 6px -1px rgba(2, 132, 199, 0.08)' : '0 1px 2px rgba(0,0,0,0.03)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <span style={{
-                        background: priorityCfg.bg,
-                        color: priorityCfg.color,
-                        border: `1px solid ${priorityCfg.border}`,
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '4px',
-                        fontSize: '0.7rem',
-                        fontWeight: '700',
-                        textTransform: 'uppercase'
-                      }}>
-                        {notif.priority}
-                      </span>
-                      <span style={{
-                        background: '#f1f5f9',
-                        color: '#475569',
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '4px',
-                        fontSize: '0.72rem',
-                        fontWeight: '600'
-                      }}>
-                        {notif.category}
-                      </span>
-                      <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: '700', color: '#0f172a' }}>
-                        {notif.title}
-                      </h3>
-                      {isUnread && (
+                return (
+                  <React.Fragment key={notif.id}>
+                    {/* WhatsApp Centered Floating Date Divider */}
+                    {showDateDivider && (
+                      <div style={{ display: 'flex', justifyContent: 'center', margin: '0.65rem 0 0.35rem' }}>
                         <span style={{
-                          background: '#ef4444',
-                          color: '#ffffff',
-                          fontSize: '0.65rem',
-                          fontWeight: '700',
-                          padding: '0.1rem 0.4rem',
-                          borderRadius: '999px'
-                        }}>
-                          Unread
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        {new Date(notif.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} • {formatMessageTime(notif.timestamp)}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isUnread) {
-                            markGeneralNotificationRead(notif.id);
-                          } else {
-                            markGeneralNotificationUnread(notif.id);
-                          }
-                          setUpdateTrigger(prev => prev + 1);
-                        }}
-                        style={{
-                          background: isUnread ? '#ecfdf5' : '#f8fafc',
-                          border: `1px solid ${isUnread ? '#a7f3d0' : '#cbd5e1'}`,
-                          color: isUnread ? '#059669' : '#64748b',
-                          borderRadius: '4px',
-                          padding: '0.2rem 0.55rem',
+                          background: '#e2e8f0',
+                          color: '#475569',
                           fontSize: '0.72rem',
                           fontWeight: '600',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.25rem'
-                        }}
-                        title={isUnread ? "Click to mark as read" : "Click to mark as unread"}
-                      >
-                        <i className={`bx ${isUnread ? 'bx-check' : 'bx-envelope'}`}></i>
-                        {isUnread ? 'Mark Read' : 'Mark Unread'}
-                      </button>
+                          padding: '0.2rem 0.75rem',
+                          borderRadius: '8px',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                          textTransform: 'capitalize'
+                        }}>
+                          {dateCategory}
+                        </span>
+                      </div>
+                    )}
+
+                    <div
+                      key={notif.id}
+                      onClick={() => {
+                        if (isUnread) {
+                          markGeneralNotificationRead(notif.id);
+                        }
+                      }}
+                      style={{
+                        background: '#ffffff',
+                        border: isUnread ? '1.5px solid #38bdf8' : '1px solid #e2e8f0',
+                        borderLeft: isUnread ? '5px solid #0284c7' : '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        padding: '1.15rem 1.35rem',
+                        boxShadow: isUnread ? '0 4px 6px -1px rgba(2, 132, 199, 0.08)' : '0 1px 2px rgba(0,0,0,0.03)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <span style={{
+                            background: priorityCfg.bg,
+                            color: priorityCfg.color,
+                            border: `1px solid ${priorityCfg.border}`,
+                            padding: '0.15rem 0.5rem',
+                            borderRadius: '4px',
+                            fontSize: '0.7rem',
+                            fontWeight: '700',
+                            textTransform: 'uppercase'
+                          }}>
+                            {notif.priority}
+                          </span>
+                          <span style={{
+                            background: '#f1f5f9',
+                            color: '#475569',
+                            padding: '0.15rem 0.5rem',
+                            borderRadius: '4px',
+                            fontSize: '0.72rem',
+                            fontWeight: '600'
+                          }}>
+                            {notif.category}
+                          </span>
+                          <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: '700', color: '#0f172a' }}>
+                            {notif.title}
+                          </h3>
+                          {isUnread && (
+                            <span style={{
+                              background: '#ef4444',
+                              color: '#ffffff',
+                              fontSize: '0.65rem',
+                              fontWeight: '700',
+                              padding: '0.1rem 0.4rem',
+                              borderRadius: '999px'
+                            }}>
+                              Unread
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            {formatMessageTime(notif.timestamp)}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isUnread) {
+                                markGeneralNotificationRead(notif.id);
+                              } else {
+                                markGeneralNotificationUnread(notif.id);
+                              }
+                              setUpdateTrigger(prev => prev + 1);
+                            }}
+                            style={{
+                              background: isUnread ? '#ecfdf5' : '#f8fafc',
+                              border: `1px solid ${isUnread ? '#a7f3d0' : '#cbd5e1'}`,
+                              color: isUnread ? '#059669' : '#64748b',
+                              borderRadius: '4px',
+                              padding: '0.2rem 0.55rem',
+                              fontSize: '0.72rem',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}
+                            title={isUnread ? "Click to mark as read" : "Click to mark as unread"}
+                          >
+                            <i className={`bx ${isUnread ? 'bx-check' : 'bx-envelope'}`}></i>
+                            {isUnread ? 'Mark Read' : 'Mark Unread'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <p style={{ margin: '0 0 0.75rem', fontSize: '0.86rem', color: '#334155', lineHeight: '1.5' }}>
+                        {notif.message}
+                      </p>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem' }}>
+                        <span>Dispatched by <strong>{notif.sender || 'Admin Panel'}</strong></span>
+                        <span style={{ fontStyle: 'italic' }}>General Notice • Comments disabled</span>
+                      </div>
                     </div>
-                  </div>
-
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.86rem', color: '#334155', lineHeight: '1.5' }}>
-                    {notif.message}
-                  </p>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem' }}>
-                    <span>Dispatched by <strong>{notif.sender || 'Admin Panel'}</strong></span>
-                    <span style={{ fontStyle: 'italic' }}>General Notice • Comments disabled</span>
-                  </div>
-                </div>
-              );
-            })}
+                  </React.Fragment>
+                );
+              });
+            })()}
           </div>
         </div>
       )}
