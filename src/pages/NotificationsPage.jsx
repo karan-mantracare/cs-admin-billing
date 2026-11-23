@@ -772,7 +772,8 @@ export default function NotificationsPage() {
                                   <strong style={{ fontSize: '0.86rem', color: '#1e293b' }}>
                                     {act.title || 'Notification'}
                                   </strong>
-                                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                  <span style={{ color: '#cbd5e1', fontSize: '0.8rem', userSelect: 'none' }}>|</span>
+                                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
                                     by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span>
                                   </span>
                                 </div>
@@ -866,26 +867,6 @@ export default function NotificationsPage() {
                               {formatMessageTime(act.timestamp)}
                             </div>
                           </div>
-
-                          {act.emailDetails && (
-                            <div style={{ paddingLeft: '2.1rem', marginTop: '0.2rem' }}>
-                              <button
-                                onClick={() => setEmailPreviewModal(act.emailDetails)}
-                                style={{
-                                  background: '#f8fafc',
-                                  border: '1px solid #cbd5e1',
-                                  borderRadius: '4px',
-                                  padding: '0.2rem 0.55rem',
-                                  fontSize: '0.72rem',
-                                  color: '#475569',
-                                  cursor: 'pointer',
-                                  fontWeight: '500'
-                                }}
-                              >
-                                <i className='bx bx-search'></i> View Dispatched Email
-                              </button>
-                            </div>
-                          )}
                         </div>
                       </React.Fragment>
                     );

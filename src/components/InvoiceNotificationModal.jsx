@@ -414,13 +414,14 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                                   }}>
                                     <i className={`bx ${iconStyle.icon}`}></i>
                                   </span>
-                                  <div>
-                                    <div style={{ fontWeight: '600', fontSize: '0.88rem', color: '#1e293b' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: '600', fontSize: '0.88rem', color: '#1e293b' }}>
                                       {act.title || 'System Notification'}
-                                    </div>
-                                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                    </span>
+                                    <span style={{ color: '#cbd5e1', fontSize: '0.8rem', userSelect: 'none' }}>|</span>
+                                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
                                       by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span>
-                                    </div>
+                                    </span>
                                   </div>
                                 </div>
 
@@ -524,29 +525,6 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                             {formatMessageTime(act.timestamp)}
                           </div>
                         </div>
-
-                        {act.emailDetails && (
-                          <div style={{ paddingLeft: '2.3rem', display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                            <button
-                              onClick={() => setPreviewEmail(act.emailDetails)}
-                              style={{
-                                background: '#f8fafc',
-                                border: '1px solid #cbd5e1',
-                                borderRadius: '4px',
-                                padding: '0.25rem 0.6rem',
-                                fontSize: '0.74rem',
-                                color: '#475569',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.3rem',
-                                fontWeight: '500'
-                              }}
-                            >
-                              <i className='bx bx-search-alt'></i> Preview Dispatched Email
-                            </button>
-                          </div>
-                        )}
                       </div>
                     </React.Fragment>
                   );
