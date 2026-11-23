@@ -1951,6 +1951,15 @@ function EditDivision() {
                                       Including Tax
                                     </span>
                                   )}
+                                  {cnt.taxAdjustments && cnt.taxAdjustments.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.3rem' }}>
+                                      {cnt.taxAdjustments.map((t, tIdx) => (
+                                        <span key={tIdx} style={{ fontSize: '0.68rem', color: '#0369a1', background: '#f0f9ff', border: '1px solid #bae6fd', padding: '0.08rem 0.4rem', borderRadius: '4px', fontWeight: '600' }}>
+                                          {t.type}{t.percentage ? `: ${t.percentage}%` : (t.amount ? `: ${t.amount}` : '')}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem', color: '#0284c7', fontWeight: '700' }}>
                                   ${cnt.amountInUSD?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}

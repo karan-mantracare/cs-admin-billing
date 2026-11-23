@@ -90,6 +90,7 @@ export default function ContractModal({
   });
 
   const [errors, setErrors] = useState({});
+  const [taxAdjustments, setTaxAdjustments] = useState([]);
   const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -242,6 +243,11 @@ export default function ContractModal({
           bankDetailsLink: initialData.bankDetailsLink || '',
           remarks: initialData.remarks || ''
         });
+        if (initialData.taxAdjustments && Array.isArray(initialData.taxAdjustments)) {
+          setTaxAdjustments(initialData.taxAdjustments);
+        } else {
+          setTaxAdjustments([]);
+        }
       } else {
         const defaultDate = new Date().toISOString().split('T')[0];
         setFormData({
@@ -256,6 +262,7 @@ export default function ContractModal({
           bankDetailsLink: getBankDetailsLink('MCHI', 'AirWallex', 'EUR'),
           remarks: ''
         });
+        setTaxAdjustments([]);
         setCustomForm({ companyName: '', taxDetails: '', address: '' });
       }
       setErrors({});
@@ -307,6 +314,77 @@ export default function ContractModal({
     }
   };
 
+  // Recalculate tax adjustment amounts when contract value changes
+  useEffect(() => {
+    const contractVal = parseFloat(formData.contractValue) || 0;
+    if (contractVal > 0) {
+      setTaxAdjustments(prev => prev.map(item => {
+        if (item.percentage !== undefined && item.percentage !== '' && !isNaN(parseFloat(item.percentage))) {
+          const calculatedAmt = ((contractVal * parseFloat(item.percentage)) / 100).toFixed(2);
+          return { ...item, amount: calculatedAmt };
+        }
+        return item;
+      }));
+    }
+  }, [formData.contractValue]);
+
+  const handleAddAdjustmentRow = () => {
+    setTaxAdjustments(prev => [
+      ...prev,
+      {
+        id: 'adj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        type: 'GST',
+        percentage: '',
+        amount: '',
+        details: ''
+      }
+    ]);
+  };
+
+  const handleRemoveAdjustmentRow = (index) => {
+    setTaxAdjustments(prev => prev.filter((_, i) => i !== index));
+    setErrors(prev => {
+      const copy = { ...prev };
+      delete copy[`adj_details_${index}`];
+      delete copy[`adj_type_${index}`];
+      return copy;
+    });
+  };
+
+  const handleAdjustmentChange = (index, field, value) => {
+    setTaxAdjustments(prev => {
+      const updated = [...prev];
+      const item = { ...updated[index], [field]: value };
+      const contractVal = parseFloat(formData.contractValue) || 0;
+
+      if (field === 'percentage') {
+        const pct = parseFloat(value);
+        if (!isNaN(pct) && contractVal > 0) {
+          item.amount = ((contractVal * pct) / 100).toFixed(2);
+        } else if (value === '') {
+          item.amount = '';
+        }
+      } else if (field === 'amount') {
+        const amt = parseFloat(value);
+        if (!isNaN(amt) && contractVal > 0) {
+          item.percentage = ((amt / contractVal) * 100).toFixed(2);
+        } else if (value === '') {
+          item.percentage = '';
+        }
+      }
+      updated[index] = item;
+      return updated;
+    });
+
+    if (errors[`adj_details_${index}`] && field === 'details' && value.trim()) {
+      setErrors(prev => {
+        const copy = { ...prev };
+        delete copy[`adj_details_${index}`];
+        return copy;
+      });
+    }
+  };
+
   const validate = () => {
     const newErrors = {};
     if (entityMode === 'select') {
@@ -325,6 +403,14 @@ export default function ContractModal({
     if (!formData.receivingBankName) newErrors.receivingBankName = 'Receiving Bank Name is required';
     if (!formData.billingDate) newErrors.billingDate = 'Billing Date is required';
     if (!formData.bankDetailsLink) newErrors.bankDetailsLink = 'Bank Details link is required';
+
+    // Validate taxAdjustments: Details mandatory if Deduction and Adjustment is selected
+    taxAdjustments.forEach((adj, idx) => {
+      const isMandatoryDetails = adj.type === 'Deductions' || adj.type === 'Adjustment';
+      if (isMandatoryDetails && (!adj.details || !adj.details.trim())) {
+        newErrors[`adj_details_${idx}`] = 'Details are mandatory for Deductions and Adjustment';
+      }
+    });
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -354,6 +440,10 @@ export default function ContractModal({
       });
     }
 
+    const cleanTaxAdjustments = taxAdjustments.filter(t => 
+      t.type && (t.percentage !== '' || t.amount !== '' || (t.details && t.details.trim() !== ''))
+    );
+
     const savedContract = {
       id: initialData?.id || (Date.now() + Math.random()),
       divisionId: divisionId || initialData?.divisionId || '',
@@ -374,6 +464,7 @@ export default function ContractModal({
       receivingBankName: formData.receivingBankName,
       billingDate: formData.billingDate,
       bankDetailsLink: formData.bankDetailsLink,
+      taxAdjustments: cleanTaxAdjustments,
       remarks: formData.remarks,
       createdAt: initialData?.createdAt || new Date().toISOString().split('T')[0]
     };
@@ -1065,6 +1156,249 @@ export default function ContractModal({
                 </div>
                 {errors.bankDetailsLink && <span style={{ color: '#ef4444', fontSize: '0.75rem' }}>{errors.bankDetailsLink}</span>}
               </div>
+            </div>
+
+            {/* Taxes & Adjustment Details Section */}
+            <div style={{
+              marginTop: '0.85rem',
+              padding: '0.9rem 1rem',
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '0.75rem',
+                flexWrap: 'wrap',
+                gap: '0.5rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <label style={{ ...labelStyle, marginBottom: 0, fontWeight: '700', color: '#0f172a' }}>
+                    Taxes &amp; Adjustment Details
+                  </label>
+                  <Tooltip text="Please note this will be applicable on all the invoices/schedules" align="left" />
+                </div>
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={handleAddAdjustmentRow}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      padding: '0.32rem 0.7rem',
+                      backgroundColor: '#ffffff',
+                      border: '1.5px solid #0284c7',
+                      borderRadius: '6px',
+                      color: '#0284c7',
+                      fontSize: '0.78rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      boxShadow: '0 1px 2px rgba(2, 132, 199, 0.08)',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f0f9ff'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
+                  >
+                    <i className="bx bx-plus" style={{ fontSize: '0.95rem' }}></i>
+                    <span>Add Adjustment / Tax</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Adjustment Rows / Table */}
+              {taxAdjustments.length === 0 ? (
+                <div style={{
+                  padding: '0.85rem',
+                  backgroundColor: '#ffffff',
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: '6px',
+                  textAlign: 'center',
+                  color: '#64748b',
+                  fontSize: '0.82rem'
+                }}>
+                  No taxes or adjustments configured.{' '}
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={handleAddAdjustmentRow}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#0284c7',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        padding: 0,
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Click to add (GST, With Holding Tax, Deductions, or Adjustment)
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                  {/* Table Header */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1.4fr 0.75fr 1fr 2fr 34px',
+                    gap: '0.5rem',
+                    padding: '0 0.35rem',
+                    fontSize: '0.74rem',
+                    fontWeight: '700',
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.02em'
+                  }}>
+                    <div>Select Adjustment Type</div>
+                    <div>%</div>
+                    <div>Amount ({formData.contractCurrency || 'EUR'})</div>
+                    <div>
+                      Details{' '}
+                      <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: '500', textTransform: 'none' }}>
+                        (Mandatory if Deduction &amp; Adjustment selected)
+                      </span>
+                    </div>
+                    <div></div>
+                  </div>
+
+                  {/* Table Rows */}
+                  {taxAdjustments.map((adj, idx) => {
+                    const isMandatoryDetails = adj.type === 'Deductions' || adj.type === 'Adjustment';
+                    const hasDetailsError = errors[`adj_details_${idx}`];
+
+                    return (
+                      <div key={adj.id || idx}>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1.4fr 0.75fr 1fr 2fr 34px',
+                          gap: '0.5rem',
+                          alignItems: 'center'
+                        }}>
+                          {/* 1. Select Adjustment Type */}
+                          <div>
+                            <select
+                              disabled={isReadOnly}
+                              value={adj.type}
+                              onChange={(e) => handleAdjustmentChange(idx, 'type', e.target.value)}
+                              style={{
+                                ...inputStyle,
+                                padding: '0.5rem 0.65rem',
+                                fontSize: '0.84rem',
+                                fontWeight: '500',
+                                cursor: isReadOnly ? 'default' : 'pointer'
+                              }}
+                            >
+                              <option value="GST">GST</option>
+                              <option value="With Holding Tax">With Holding Tax</option>
+                              <option value="Deductions">Deductions</option>
+                              <option value="Adjustment">Adjustment</option>
+                            </select>
+                          </div>
+
+                          {/* 2. % */}
+                          <div style={{ position: 'relative' }}>
+                            <input
+                              type="number"
+                              disabled={isReadOnly}
+                              placeholder="0"
+                              value={adj.percentage !== undefined ? adj.percentage : ''}
+                              onChange={(e) => handleAdjustmentChange(idx, 'percentage', e.target.value)}
+                              style={{
+                                ...inputStyle,
+                                padding: '0.5rem 1.45rem 0.5rem 0.55rem',
+                                fontSize: '0.84rem'
+                              }}
+                            />
+                            <span style={{
+                              position: 'absolute',
+                              right: '0.45rem',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              color: '#94a3b8',
+                              fontSize: '0.8rem',
+                              pointerEvents: 'none'
+                            }}>
+                              %
+                            </span>
+                          </div>
+
+                          {/* 3. Amount */}
+                          <div>
+                            <input
+                              type="number"
+                              disabled={isReadOnly}
+                              placeholder="0.00"
+                              value={adj.amount !== undefined ? adj.amount : ''}
+                              onChange={(e) => handleAdjustmentChange(idx, 'amount', e.target.value)}
+                              style={{
+                                ...inputStyle,
+                                padding: '0.5rem 0.55rem',
+                                fontSize: '0.84rem'
+                              }}
+                            />
+                          </div>
+
+                          {/* 4. Details */}
+                          <div>
+                            <input
+                              type="text"
+                              disabled={isReadOnly}
+                              placeholder={isMandatoryDetails ? "Mandatory: Enter deduction/adjustment reason *" : "Optional details / notes..."}
+                              value={adj.details || ''}
+                              onChange={(e) => handleAdjustmentChange(idx, 'details', e.target.value)}
+                              style={{
+                                ...inputStyle,
+                                padding: '0.5rem 0.65rem',
+                                fontSize: '0.84rem',
+                                borderColor: hasDetailsError ? '#ef4444' : (isMandatoryDetails && !adj.details ? '#f59e0b' : '#cbd5e1'),
+                                backgroundColor: hasDetailsError ? '#fef2f2' : '#ffffff'
+                              }}
+                            />
+                          </div>
+
+                          {/* 5. Delete Action */}
+                          <div style={{ textAlign: 'center' }}>
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                title="Remove Line"
+                                onClick={() => handleRemoveAdjustmentRow(idx)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#94a3b8',
+                                  cursor: 'pointer',
+                                  padding: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: '4px',
+                                  transition: 'color 0.15s ease'
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; }}
+                              >
+                                <i className="bx bx-trash" style={{ fontSize: '1.15rem' }}></i>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Row Error Message */}
+                        {hasDetailsError && (
+                          <div style={{ color: '#ef4444', fontSize: '0.74rem', marginTop: '0.2rem', paddingLeft: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <i className="bx bx-error-circle"></i>
+                            <span>{hasDetailsError}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Remarks (Invoice Notes) */}
