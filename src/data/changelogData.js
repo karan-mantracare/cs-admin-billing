@@ -1,5 +1,21 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-providers-menu-session-feedback-20261123',
+    date: '2026-11-23',
+    formattedDate: 'Nov 23, 2026',
+    page: 'Navigation',
+    subPage: 'Sidebar / Providers Menu Navigation',
+    summary: 'Added Session Feedback submodule under Providers in sidebar navigation',
+    details: 'Updated the Providers section of the left sidebar to include the Session Feedback submodule between Sessions and Appointment Report, routing cleanly to /providers/session-feedback.',
+    plainLanguage: 'Added Session Feedback to the Providers left sidebar menu so users can easily navigate to session feedback records.',
+    highlights: [
+      'Navigation Parity: Added Session Feedback between Sessions and Appointment Report in the Providers menu',
+      'Unified Route Mapping: Configured route to /providers/session-feedback with icon matching design specifications'
+    ],
+    path: '/providers/session-feedback',
+    linkText: 'Session Feedback'
+  },
+  {
     id: 'cl-client-onboarding-multiple-spocs-20261121',
     date: '2026-11-21',
     formattedDate: 'Nov 21, 2026',

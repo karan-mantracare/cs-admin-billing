@@ -175,6 +175,7 @@ function Sidebar({ isOpen, onClose }) {
         { label: 'Payments', path: '/providers/payments', icon: 'bx-credit-card' },
         { label: 'Efficiency', path: '/providers/efficiency', icon: 'bx-bar-chart-alt-2' },
         { label: 'Sessions', path: '/providers/sessions', icon: 'bx-time' },
+        { label: 'Session Feedback', path: '/providers/session-feedback', icon: 'bx-file' },
         { label: 'Appointment Report', path: '/providers/appointment-report', icon: 'bx-calendar' },
         { label: 'Malicious Chat', path: '/providers/malicious-chat', icon: 'bx-error-alt' },
         { label: 'Country × service counts', path: '/providers/country-service-counts', icon: 'bx-globe' },
