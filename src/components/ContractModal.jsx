@@ -1492,36 +1492,13 @@ export default function ContractModal({
                           </div>
                         </div>
 
-                        {/* Row Helper / Caption with Tooltip Description */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginTop: '0.25rem',
-                          padding: '0 0.25rem',
-                          fontSize: '0.72rem'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span style={{
-                              background: def.badgeBg,
-                              color: def.badgeColor,
-                              fontWeight: '700',
-                              fontSize: '0.68rem',
-                              padding: '0.08rem 0.35rem',
-                              borderRadius: '3px'
-                            }}>
-                              {def.badgeText}
-                            </span>
-                            <span style={{ color: '#64748b' }}>
-                              {def.tooltip}
-                            </span>
+                        {/* Row Error Message if any */}
+                        {hasDetailsError && (
+                          <div style={{ color: '#ef4444', fontSize: '0.73rem', marginTop: '0.2rem', paddingLeft: '0.25rem' }}>
+                            <i className="bx bx-error-circle" style={{ marginRight: '0.25rem', verticalAlign: 'middle' }}></i>
+                            <span>{hasDetailsError}</span>
                           </div>
-                          {hasDetailsError && (
-                            <span style={{ color: '#ef4444', fontWeight: '600' }}>
-                              * {hasDetailsError}
-                            </span>
-                          )}
-                        </div>
+                        )}
                       </div>
                     );
                   })}
