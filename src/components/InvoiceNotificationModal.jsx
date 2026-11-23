@@ -756,51 +756,6 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                   </p>
                 </div>
               </div>
-
-              {/* Email Audit Log */}
-              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-                <div style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: '600', fontSize: '0.85rem', color: '#1e293b' }}>
-                  Audit Log of Dispatched Notifications for this Invoice
-                </div>
-                {activities.filter(a => a.emailDetails).length === 0 ? (
-                  <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem' }}>
-                    No automated emails have been dispatched for this invoice yet.
-                  </div>
-                ) : (
-                  <div style={{ divideY: '1px solid #f1f5f9' }}>
-                    {activities.filter(a => a.emailDetails).map(act => (
-                      <div key={act.id} style={{ padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9' }}>
-                        <div>
-                          <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b' }}>
-                            {act.emailDetails.subject}
-                          </div>
-                          <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '0.15rem' }}>
-                            Recipients: {act.emailDetails.recipients.map(r => r.email).join(', ')} • {new Date(act.timestamp).toLocaleString()}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => setPreviewEmail(act.emailDetails)}
-                          style={{
-                            background: '#eff6ff',
-                            border: '1px solid #bfdbfe',
-                            borderRadius: '4px',
-                            color: '#2563eb',
-                            padding: '0.3rem 0.7rem',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.3rem'
-                          }}
-                        >
-                          <i className='bx bx-search'></i> View HTML
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
