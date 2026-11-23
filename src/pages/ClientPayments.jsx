@@ -24,7 +24,7 @@ const DEFAULT_BILLING_COLUMNS = [
   { id: 'invoiceLink', label: 'Invoice Link' },
   { id: 'totalPaid', label: 'Total Paid $' },
   { id: 'dueAmount', label: 'Due (Amount)' },
-  { id: 'overdueDays', label: 'Overdue Days' },
+  { id: 'overdueDays', label: 'Status' },
   { id: 'actions', label: 'Actions' }
 ];
 // Custom Multi-Select Dropdown Component
@@ -87,6 +87,34 @@ function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
     </div>
   );
 }
+
+export const resolvePaymentStatus = (p) => {
+  if (!p) return 'To be raised';
+
+  const totalPaid = Number(p.totalPaid || 0);
+  const totalDue = Number(p.amountDueUsd !== undefined ? p.amountDueUsd : (p.amountDue || 0));
+  const remainingDue = p.dueAmount !== undefined ? Number(p.dueAmount) : Math.max(0, totalDue - totalPaid);
+
+  if (p.status === 'Received' || (totalPaid > 0 && remainingDue <= 0.01)) {
+    return 'Received';
+  }
+  if (p.status === 'Partial' || (totalPaid > 0 && remainingDue > 0.01)) {
+    return 'Partial';
+  }
+
+  const hasInvoice = Boolean(
+    (p.invoiceLink && p.invoiceLink !== '' && p.invoiceLink !== '-') ||
+    (p.invoiceNumber && p.invoiceNumber !== '' && p.invoiceNumber !== '-') ||
+    (p.invoiceDate && p.invoiceDate !== '' && p.invoiceDate !== '-') ||
+    (p.status && p.status !== 'To be Raised' && p.status !== 'To be raised' && p.status !== 'Invoice Pending')
+  );
+
+  if (hasInvoice) {
+    return 'Payment pending';
+  }
+
+  return 'To be raised';
+};
 
 function ClientPayments() {
   const navigate = useNavigate();
@@ -544,10 +572,12 @@ function ClientPayments() {
         }
       }
       if (activeLinkFilter.type === 'received') {
-        const isReceived = Number(p.totalPaid || 0) > 0 || p.status === 'Received' || p.status === 'Partial';
+        const status = resolvePaymentStatus(p);
+        const isReceived = Number(p.totalPaid || 0) > 0 || status === 'Received' || status === 'Partial';
         if (!isReceived) return false;
       } else if (activeLinkFilter.type === 'due') {
-        const isDue = Number(p.dueAmount || 0) > 0 || p.status === 'Pending' || p.status === 'Overdue' || p.status === 'Partial' || p.status === 'To be Raised' || p.status === 'Invoice Pending';
+        const status = resolvePaymentStatus(p);
+        const isDue = Number(p.dueAmount || 0) > 0 || status !== 'Received';
         if (!isDue) return false;
       }
     }
@@ -570,15 +600,17 @@ function ClientPayments() {
          continue;
        }
 
-       const fieldVal = cond.fieldId === 'csResponsible' ? String(csVal || '') : String(p[cond.fieldId] || '');
+       const fieldVal = cond.fieldId === 'csResponsible' 
+         ? String(csVal || '') 
+         : (cond.fieldId === 'status' ? resolvePaymentStatus(p) : String(p[cond.fieldId] || ''));
        if (cond.operator === 'Is') {
-          if (fieldVal !== cond.value) matchesConditions = false;
+          if (fieldVal.toLowerCase() !== String(cond.value || '').toLowerCase()) matchesConditions = false;
        } else if (cond.operator === 'Is not') {
-          if (fieldVal === cond.value) matchesConditions = false;
+          if (fieldVal.toLowerCase() === String(cond.value || '').toLowerCase()) matchesConditions = false;
        } else if (cond.operator === 'Contains') {
-          if (!fieldVal.toLowerCase().includes((cond.value || '').toLowerCase())) matchesConditions = false;
+          if (!fieldVal.toLowerCase().includes(String(cond.value || '').toLowerCase())) matchesConditions = false;
        } else if (cond.operator === 'Not Contains') {
-          if (fieldVal.toLowerCase().includes((cond.value || '').toLowerCase())) matchesConditions = false;
+          if (fieldVal.toLowerCase().includes(String(cond.value || '').toLowerCase())) matchesConditions = false;
        } else if (cond.operator === 'Between' && Array.isArray(cond.value)) {
           // date logic
           const d = new Date(fieldVal);
@@ -666,10 +698,10 @@ function ClientPayments() {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const paginatedPayments = filteredPayments.slice(startIndex, startIndex + rowsPerPage);
 
-  const totalBilled = filteredPayments.filter(p => p.status !== 'To be Raised').reduce((sum, p) => sum + p.amountDueUsd, 0);
-  const totalReceived = filteredPayments.reduce((sum, p) => sum + p.totalPaid, 0);
-  const totalOverdue = filteredPayments.filter(p => p.overdueDays > 0).reduce((sum, p) => sum + p.dueAmount, 0);
-  const toBeBilled = filteredPayments.filter(p => p.status === 'To be Raised').reduce((sum, p) => sum + p.amountDueUsd, 0);
+  const totalBilled = filteredPayments.filter(p => resolvePaymentStatus(p) !== 'To be raised').reduce((sum, p) => sum + (Number(p.amountDueUsd) || 0), 0);
+  const totalReceived = filteredPayments.reduce((sum, p) => sum + (Number(p.totalPaid) || 0), 0);
+  const totalOverdue = filteredPayments.filter(p => p.overdueDays > 0).reduce((sum, p) => sum + (Number(p.dueAmount) || 0), 0);
+  const toBeBilled = filteredPayments.filter(p => resolvePaymentStatus(p) === 'To be raised').reduce((sum, p) => sum + (Number(p.amountDueUsd) || 0), 0);
 
   const handleSaveEdit = (updatedPayment) => {
     setPayments(prev => {
@@ -737,7 +769,7 @@ function ClientPayments() {
                 { id: 'corporateName', label: 'Corporate Name', type: 'text' },
                 { id: 'billingCompany', label: 'Billing Company', type: 'text' },
                 { id: 'taxAmount', label: 'Adjustment Amount', type: 'number' },
-                { id: 'status', label: 'Status', type: 'select', options: ['To be Raised', 'Pending', 'Partial', 'Received', 'Overdue', 'Invoice Pending'] },
+                { id: 'status', label: 'Status', type: 'select', options: ['To be raised', 'Payment pending', 'Partial', 'Received'] },
                 { id: 'dueByDate', label: 'Due By Date', type: 'date' },
                 { id: 'invoiceByDate', label: 'Invoice By Date', type: 'date' },
                 { id: 'invoiceDate', label: 'Invoice Date', type: 'date' }
@@ -1033,7 +1065,7 @@ function ClientPayments() {
               {visibleColumns.includes('invoiceLink') && <th>INVOICE LINK</th>}
               {visibleColumns.includes('totalPaid') && <th>TOTAL PAID $</th>}
               {visibleColumns.includes('dueAmount') && <th>DUE (AMOUNT)</th>}
-              {visibleColumns.includes('overdueDays') && <th>OVERDUE DAYS</th>}
+              {visibleColumns.includes('overdueDays') && <th>STATUS</th>}
               {visibleColumns.includes('actions') && <th style={{ minWidth: '140px' }}>ACTIONS</th>}
             </tr>
           </thead>
@@ -1176,49 +1208,16 @@ function ClientPayments() {
                 {visibleColumns.includes('overdueDays') && (
                   <td>
                     {(() => {
-                      let s = p.status;
-                      let text = s;
-                      
-                      const today = new Date();
-                      today.setHours(0,0,0,0);
-
-                      if (s === 'To be Raised' && p.dueByDate && p.invoiceByDate) {
-                        const due = new Date(p.dueByDate);
-                        due.setHours(0,0,0,0);
-                        
-                        if (today > due) {
-                          const invoiceBy = new Date(p.invoiceByDate);
-                          invoiceBy.setHours(0,0,0,0);
-                          const diffTime = today.getTime() - invoiceBy.getTime();
-                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                          
-                          s = 'Invoice Pending';
-                          text = `Invoice Pending ${diffDays > 0 ? diffDays : 0} Days`;
-                        }
-                      } else if (s !== 'Received' && s !== 'To be Raised' && p.dueByDate) {
-                        const due = new Date(p.dueByDate);
-                        due.setHours(0,0,0,0);
-                        
-                        const diffTime = today.getTime() - due.getTime();
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        
-                        if (diffDays > 0) {
-                          s = 'Overdue';
-                          text = `${diffDays} Days`;
-                        }
-                      }
-
+                      const status = resolvePaymentStatus(p);
                       const cfg = {
-                        'To be Raised': { bg: '#fef9c3', color: '#a16207', icon: 'bx-time' },
-                        'Pending':      { bg: '#e0f2fe', color: '#0369a1', icon: 'bx-loader-circle' },
-                        'Partial':      { bg: '#fff7ed', color: '#c2410c', icon: 'bx-minus-circle' },
-                        'Received':     { bg: '#dcfce7', color: '#15803d', icon: 'bx-check-circle' },
-                        'Overdue':      { bg: '#fee2e2', color: '#b91c1c', icon: 'bx-error' },
-                        'Invoice Pending': { bg: '#ffedd5', color: '#c2410c', icon: 'bx-file-blank' },
-                      }[s] || { bg: '#f1f5f9', color: '#475569', icon: 'bx-circle' };
+                        'To be raised':    { bg: '#fef9c3', color: '#a16207', icon: 'bx-time' },
+                        'Payment pending': { bg: '#e0f2fe', color: '#0369a1', icon: 'bx-time-five' },
+                        'Partial':         { bg: '#fff7ed', color: '#c2410c', icon: 'bx-minus-circle' },
+                        'Received':        { bg: '#dcfce7', color: '#15803d', icon: 'bx-check-circle' },
+                      }[status] || { bg: '#f1f5f9', color: '#475569', icon: 'bx-circle' };
                       return (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: cfg.bg, color: cfg.color, padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                          <i className={`bx ${cfg.icon}`}></i>{text}
+                          <i className={`bx ${cfg.icon}`}></i>{status}
                         </span>
                       );
                     })()}
@@ -1226,7 +1225,7 @@ function ClientPayments() {
                 )}
                 {visibleColumns.includes('actions') && (
                   <td className="actions" style={{ gap: '0.35rem' }}>
-                    <button className="action-btn edit" title="Edit" style={{ border: '1px solid #e2e8f0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#fff', cursor: p.status !== 'To be Raised' ? 'not-allowed' : 'pointer', color: '#64748b', opacity: p.status !== 'To be Raised' ? 0.4 : 1 }} disabled={p.status !== 'To be Raised'} onClick={() => setEditingPaymentId(p.id)}>
+                    <button className="action-btn edit" title="Edit" style={{ border: '1px solid #e2e8f0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#fff', cursor: resolvePaymentStatus(p) !== 'To be raised' ? 'not-allowed' : 'pointer', color: '#64748b', opacity: resolvePaymentStatus(p) !== 'To be raised' ? 0.4 : 1 }} disabled={resolvePaymentStatus(p) !== 'To be raised'} onClick={() => setEditingPaymentId(p.id)}>
                       <i className='bx bx-pencil'></i>
                     </button>
                     <button title="Add Payment" style={{ border: '1px solid #bbf7d0', borderRadius: '5px', padding: '0.3rem 0.5rem', background: '#f0fdf4', cursor: 'pointer', color: '#16a34a', display: 'inline-flex', alignItems: 'center' }} onClick={() => setActivePaymentId(p.id)}>
@@ -1805,7 +1804,7 @@ function ClientPayments() {
                             invoiceLink: finalDoc,
                             invoiceNumber: invoiceForm.invoiceNumber,
                             dueAmount: updatedDueAmount,
-                            status: updatedDueAmount <= 0 ? 'Received' : (currentPaid > 0 ? 'Partial' : (p.status === 'To be Raised' ? 'Pending' : p.status))
+                            status: updatedDueAmount <= 0 ? 'Received' : (currentPaid > 0 ? 'Partial' : 'Payment pending')
                           };
                         }
                         return p;
@@ -2095,7 +2094,8 @@ function ClientPayments() {
                                     if (p.id === activePaymentId) {
                                       const newTotalPaid = Math.max(0, p.totalPaid - deductAmtUsd);
                                       const newDue = p.amountDueUsd - newTotalPaid;
-                                      return { ...p, totalPaid: newTotalPaid, dueAmount: newDue, status: newDue <= 0 ? 'Received' : 'Partial' };
+                                      const isInvRaised = Boolean((p.invoiceLink && p.invoiceLink !== '' && p.invoiceLink !== '-') || (p.invoiceNumber && p.invoiceNumber !== '' && p.invoiceNumber !== '-') || (p.invoiceDate && p.invoiceDate !== '' && p.invoiceDate !== '-'));
+                                      return { ...p, totalPaid: newTotalPaid, dueAmount: newDue, status: newDue <= 0 ? 'Received' : (newTotalPaid > 0 ? 'Partial' : (isInvRaised ? 'Payment pending' : 'To be raised')) };
                                     }
                                     return p;
                                   }));
@@ -2288,12 +2288,13 @@ function ClientPayments() {
                         }
                       }
 
+                      const isInvRaised = Boolean((p.invoiceLink && p.invoiceLink !== '' && p.invoiceLink !== '-') || (p.invoiceNumber && p.invoiceNumber !== '' && p.invoiceNumber !== '-') || (p.invoiceDate && p.invoiceDate !== '' && p.invoiceDate !== '-'));
                       return { 
                         ...p, 
                         totalPaid: newTotalPaid,
                         dueAmount: newDue,
                         overdueDays: newOverdueDays,
-                        status: newDue <= 0 ? 'Received' : 'Partial'
+                        status: newDue <= 0 ? 'Received' : (newTotalPaid > 0 ? 'Partial' : (isInvRaised ? 'Payment pending' : 'To be raised'))
                       };
                     }
                     return p;
@@ -2379,7 +2380,7 @@ function ClientPayments() {
               totalPaid: 0,
               dueAmount: duePerTermUsd,
               overdueDays: 0,
-              status: 'To be Raised',
+              status: 'To be raised',
               remarks: formData.remarks || ''
             });
           }
