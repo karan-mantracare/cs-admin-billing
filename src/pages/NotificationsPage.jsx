@@ -24,7 +24,9 @@ import {
   markAllInvoicesRead,
   getInvoiceParticipants,
   toggleInvoiceActivityReaction,
-  toggleUserCommentReaction
+  toggleUserCommentReaction,
+  formatMessageTime,
+  getMessageDateCategory
 } from '../utils/notificationService';
 
 export default function NotificationsPage() {
@@ -80,6 +82,8 @@ export default function NotificationsPage() {
   const [userReplyText, setUserReplyText] = useState('');
   const [userReplyingTo, setUserReplyingTo] = useState(null);
   const [showUserEmojiPicker, setShowUserEmojiPicker] = useState(false);
+  const [hoveredCommentId, setHoveredCommentId] = useState(null);
+  const [activeReactionPickerId, setActiveReactionPickerId] = useState(null);
 
   // ----------------------------------------------------
   // DATA LOADING
@@ -144,6 +148,8 @@ export default function NotificationsPage() {
     addInvoiceComment(selectedInvoiceKey, arCommentText.trim(), currentUserName, arReplyingTo);
     setArCommentText('');
     setArReplyingTo(null);
+    const inputEl = document.getElementById('ar-comment-input');
+    if (inputEl) inputEl.style.height = '24px';
     setSelectedInvoiceActivities(getInvoiceActivities(selectedInvoiceKey));
     setUpdateTrigger(prev => prev + 1);
   };
@@ -155,6 +161,8 @@ export default function NotificationsPage() {
     postUserComment(selectedUserId, userReplyText.trim(), currentUserName, loggedInUser.role || 'Admin', userReplyingTo);
     setUserReplyText('');
     setUserReplyingTo(null);
+    const inputEl = document.getElementById('user-reply-input');
+    if (inputEl) inputEl.style.height = '24px';
     setUserThreadComments(getUserCommentsThread(selectedUserId));
     setUpdateTrigger(prev => prev + 1);
   };
@@ -681,7 +689,7 @@ export default function NotificationsPage() {
                                 {act.title || 'Notification'}
                               </strong>
                               <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                                by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span> • {new Date(act.timestamp).toLocaleString()}
+                                by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span> • {new Date(act.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} • {formatMessageTime(act.timestamp)}
                               </span>
                             </div>
 
@@ -903,15 +911,20 @@ export default function NotificationsPage() {
                       boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
                     }}
                   >
-                    <input
+                    <textarea
                       id="ar-comment-input"
-                      type="text"
+                      rows={1}
                       value={arCommentText}
-                      onChange={(e) => setArCommentText(e.target.value)}
+                      onChange={(e) => {
+                        setArCommentText(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                      }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
                           handleSendARComment(e);
+                          e.target.style.height = '24px';
                         }
                       }}
                       placeholder={arReplyingTo ? `Reply to ${arReplyingTo.author}...` : `Comment on invoice ${activeInvoice.invoiceNumber}...`}
@@ -922,8 +935,14 @@ export default function NotificationsPage() {
                         fontSize: '0.84rem',
                         color: '#1e293b',
                         background: 'transparent',
-                        padding: '0.35rem 0',
-                        fontFamily: 'inherit'
+                        padding: '0.2rem 0',
+                        fontFamily: 'inherit',
+                        lineHeight: '1.4',
+                        height: '24px',
+                        minHeight: '24px',
+                        maxHeight: '120px',
+                        resize: 'none',
+                        overflowY: 'auto'
                       }}
                     />
 
@@ -1123,7 +1142,7 @@ export default function NotificationsPage() {
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                       <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        {new Date(notif.timestamp).toLocaleString()}
+                        {new Date(notif.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} • {formatMessageTime(notif.timestamp)}
                       </span>
                       <button
                         onClick={(e) => {
@@ -1431,109 +1450,278 @@ export default function NotificationsPage() {
                       <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem' }}>Type below to send a comment.</p>
                     </div>
                   ) : (
-                    userThreadComments.map((comm) => {
-                      const isMe = comm.senderId === 'currentUser';
-                      return (
-                        <div
-                          key={comm.id}
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: isMe ? 'flex-end' : 'flex-start'
-                          }}
-                        >
-                          <div style={{
-                            maxWidth: '75%',
-                            background: isMe ? '#4f46e5' : '#f1f5f9',
-                            color: isMe ? '#ffffff' : '#0f172a',
-                            borderRadius: isMe ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-                            padding: '0.75rem 1rem',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-                          }}>
-                            <div style={{
-                              fontSize: '0.7rem',
-                              fontWeight: '600',
-                              marginBottom: '0.25rem',
-                              color: isMe ? '#c7d2fe' : '#475569'
-                            }}>
-                              {comm.senderName} ({comm.role})
-                            </div>
+                    (() => {
+                      let lastDateCategory = null;
+                      return userThreadComments.map((comm) => {
+                        const isMe = comm.senderId === 'currentUser';
+                        const dateCategory = getMessageDateCategory(comm.timestamp);
+                        const showDateDivider = dateCategory !== lastDateCategory;
+                        lastDateCategory = dateCategory;
+                        const reactionsEntries = Object.entries(comm.reactions || {}).filter(([_, u]) => Array.isArray(u) && u.length > 0);
+                        const hasReactions = reactionsEntries.length > 0;
 
-                            {/* Quoted Reply inside bubble */}
-                            {comm.replyTo && (
-                              <div style={{
-                                background: isMe ? 'rgba(255,255,255,0.18)' : '#e2e8f0',
-                                borderLeft: `3px solid ${isMe ? '#ffffff' : '#0284c7'}`,
-                                padding: '0.25rem 0.5rem',
-                                borderRadius: '4px',
-                                marginBottom: '0.4rem',
-                                fontSize: '0.72rem',
-                                color: isMe ? '#e0e7ff' : '#475569'
-                              }}>
-                                <div style={{ fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                  <i className='bx bx-reply' style={{ transform: 'rotate(180deg)' }}></i>
-                                  <span>Replying to {comm.replyTo.author}:</span>
-                                </div>
-                                <div style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '0.1rem' }}>
-                                  "{comm.replyTo.text}"
-                                </div>
+                        return (
+                          <React.Fragment key={comm.id}>
+                            {/* WhatsApp Date Segregator Pill */}
+                            {showDateDivider && (
+                              <div style={{ display: 'flex', justifyContent: 'center', margin: '0.85rem 0 0.5rem' }}>
+                                <span style={{
+                                  background: '#e2e8f0',
+                                  color: '#475569',
+                                  fontSize: '0.72rem',
+                                  fontWeight: '600',
+                                  padding: '0.2rem 0.75rem',
+                                  borderRadius: '8px',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                  textTransform: 'capitalize'
+                                }}>
+                                  {dateCategory}
+                                </span>
                               </div>
                             )}
 
-                            <div style={{ fontSize: '0.86rem', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>
-                              {comm.text}
-                            </div>
-                          </div>
-
-                          {/* Comment Reactions & Reply Action */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem', flexDirection: isMe ? 'row-reverse' : 'row' }}>
-                            <CommentReactions
-                              reactions={comm.reactions}
-                              currentUserName={currentUserName}
-                              align={isMe ? 'right' : 'left'}
-                              onToggleReaction={(emoji) => {
-                                toggleUserCommentReaction(activeUser.id, comm.id, emoji, currentUserName);
-                                setUpdateTrigger(prev => prev + 1);
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setUserReplyingTo({
-                                  id: comm.id,
-                                  author: comm.senderName || 'Teammate',
-                                  text: comm.text || ''
-                                });
-                                const inputEl = document.getElementById('user-reply-input');
-                                if (inputEl) inputEl.focus();
-                              }}
+                            <div
+                              onMouseEnter={() => setHoveredCommentId(comm.id)}
+                              onMouseLeave={() => setHoveredCommentId(null)}
                               style={{
-                                background: 'none',
-                                border: 'none',
-                                color: '#94a3b8',
-                                fontSize: '0.72rem',
-                                fontWeight: '500',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.2rem',
-                                padding: '0.1rem 0.3rem',
-                                borderRadius: '4px'
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: isMe ? 'flex-end' : 'flex-start',
+                                marginBottom: hasReactions ? '0.75rem' : '0.35rem',
+                                position: 'relative'
                               }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = '#0284c7'}
-                              onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
-                              title="Reply to this message"
                             >
-                              <i className='bx bx-reply' style={{ fontSize: '0.88rem' }}></i> Reply
-                            </button>
-                          </div>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                flexDirection: isMe ? 'row-reverse' : 'row',
+                                maxWidth: '80%'
+                              }}>
+                                {/* Message Bubble */}
+                                <div style={{
+                                  position: 'relative',
+                                  background: isMe ? '#4f46e5' : '#f1f5f9',
+                                  color: isMe ? '#ffffff' : '#0f172a',
+                                  borderRadius: isMe ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                                  padding: '0.55rem 0.85rem 0.45rem',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                                  wordBreak: 'break-word',
+                                  minWidth: '90px'
+                                }}>
+                                  {/* Sender name for teammate */}
+                                  {!isMe && (
+                                    <div style={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: '700',
+                                      marginBottom: '0.2rem',
+                                      color: '#0284c7'
+                                    }}>
+                                      {comm.senderName} ({comm.role})
+                                    </div>
+                                  )}
 
-                          <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '0.2rem', padding: '0 0.35rem' }}>
-                            {new Date(comm.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </div>
-                      );
-                    })
+                                  {/* Quoted Reply inside bubble */}
+                                  {comm.replyTo && (
+                                    <div style={{
+                                      background: isMe ? 'rgba(255,255,255,0.18)' : '#e2e8f0',
+                                      borderLeft: `3px solid ${isMe ? '#ffffff' : '#0284c7'}`,
+                                      padding: '0.25rem 0.5rem',
+                                      borderRadius: '4px',
+                                      marginBottom: '0.35rem',
+                                      fontSize: '0.72rem',
+                                      color: isMe ? '#e0e7ff' : '#475569'
+                                    }}>
+                                      <div style={{ fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                        <i className='bx bx-reply' style={{ transform: 'rotate(180deg)' }}></i>
+                                        <span>Replying to {comm.replyTo.author}:</span>
+                                      </div>
+                                      <div style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '0.1rem' }}>
+                                        "{comm.replyTo.text}"
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Message Text and Time at bottom right (HH:MM, no seconds) */}
+                                  <div style={{ fontSize: '0.86rem', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>
+                                    {comm.text}
+                                    <span style={{
+                                      fontSize: '0.65rem',
+                                      color: isMe ? 'rgba(255,255,255,0.72)' : '#94a3b8',
+                                      marginLeft: '0.65rem',
+                                      float: 'right',
+                                      marginTop: '0.35rem',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.2rem',
+                                      lineHeight: 1
+                                    }}>
+                                      {formatMessageTime(comm.timestamp)}
+                                      {isMe && <i className='bx bx-check-double' style={{ color: '#c7d2fe', fontSize: '0.85rem' }}></i>}
+                                    </span>
+                                  </div>
+
+                                  {/* WhatsApp Reaction Pill (at bottom edge of bubble) */}
+                                  {hasReactions && (
+                                    <div
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveReactionPickerId(activeReactionPickerId === comm.id ? null : comm.id);
+                                      }}
+                                      style={{
+                                        position: 'absolute',
+                                        bottom: '-10px',
+                                        right: isMe ? '8px' : 'auto',
+                                        left: isMe ? 'auto' : '8px',
+                                        background: '#ffffff',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '12px',
+                                        padding: '1px 5px',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '2px',
+                                        cursor: 'pointer',
+                                        zIndex: 3,
+                                        fontSize: '0.74rem'
+                                      }}
+                                      title={reactionsEntries.map(([em, us]) => `${em} by ${us.join(', ')}`).join('\n')}
+                                    >
+                                      {reactionsEntries.map(([emoji, users]) => (
+                                        <span key={emoji} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                          {emoji}
+                                          {users.length > 1 && (
+                                            <span style={{ fontSize: '0.66rem', fontWeight: '700', color: '#475569', marginLeft: '2px' }}>
+                                              {users.length}
+                                            </span>
+                                          )}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Hover Action Bar: Option to add reaction and reply at the end of the message */}
+                                {(hoveredCommentId === comm.id || activeReactionPickerId === comm.id) && (
+                                  <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.15rem',
+                                    background: '#ffffff',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '16px',
+                                    padding: '0.1rem 0.3rem',
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                                    position: 'relative'
+                                  }}>
+                                    {/* Smiley reaction button */}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveReactionPickerId(activeReactionPickerId === comm.id ? null : comm.id);
+                                      }}
+                                      style={{
+                                        background: activeReactionPickerId === comm.id ? '#e0e7ff' : 'none',
+                                        border: 'none',
+                                        color: activeReactionPickerId === comm.id ? '#4f46e5' : '#64748b',
+                                        cursor: 'pointer',
+                                        fontSize: '0.95rem',
+                                        padding: '0.15rem',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                      }}
+                                      title="Add reaction"
+                                    >
+                                      <i className='bx bx-smile'></i>
+                                    </button>
+
+                                    {/* Reply button */}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setUserReplyingTo({
+                                          id: comm.id,
+                                          author: comm.senderName || 'Teammate',
+                                          text: comm.text || ''
+                                        });
+                                        const inputEl = document.getElementById('user-reply-input');
+                                        if (inputEl) inputEl.focus();
+                                      }}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#64748b',
+                                        cursor: 'pointer',
+                                        fontSize: '0.9rem',
+                                        padding: '0.15rem',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                      }}
+                                      title="Reply"
+                                    >
+                                      <i className='bx bx-reply'></i>
+                                    </button>
+
+                                    {/* Reaction Popover */}
+                                    {activeReactionPickerId === comm.id && (
+                                      <div
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                          position: 'absolute',
+                                          bottom: 'calc(100% + 6px)',
+                                          left: isMe ? 'auto' : 0,
+                                          right: isMe ? 0 : 'auto',
+                                          background: '#ffffff',
+                                          borderRadius: '24px',
+                                          padding: '0.2rem 0.45rem',
+                                          display: 'flex',
+                                          gap: '0.25rem',
+                                          boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+                                          border: '1px solid #e2e8f0',
+                                          zIndex: 100
+                                        }}
+                                      >
+                                        {['👍', '❤️', '😂', '😮', '😢', '🙏', '✅', '🚀'].map(emoji => (
+                                          <button
+                                            key={emoji}
+                                            type="button"
+                                            onClick={() => {
+                                              toggleUserCommentReaction(activeUser.id, comm.id, emoji, currentUserName);
+                                              setActiveReactionPickerId(null);
+                                              setUpdateTrigger(prev => prev + 1);
+                                            }}
+                                            style={{
+                                              background: 'none',
+                                              border: 'none',
+                                              cursor: 'pointer',
+                                              fontSize: '1.15rem',
+                                              padding: '0.15rem',
+                                              borderRadius: '50%',
+                                              lineHeight: 1,
+                                              transition: 'transform 0.12s'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.25)'}
+                                            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                          >
+                                            {emoji}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </React.Fragment>
+                        );
+                      });
+                    })()
                   )}
                 </div>
 
@@ -1636,15 +1824,20 @@ export default function NotificationsPage() {
                       boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
                     }}
                   >
-                    <input
+                    <textarea
                       id="user-reply-input"
-                      type="text"
+                      rows={1}
                       value={userReplyText}
-                      onChange={(e) => setUserReplyText(e.target.value)}
+                      onChange={(e) => {
+                        setUserReplyText(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                      }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
                           handleSendUserReply(e);
+                          e.target.style.height = '24px';
                         }
                       }}
                       placeholder={userReplyingTo ? `Reply to ${userReplyingTo.author}...` : `Send a comment to ${activeUser.name}...`}
@@ -1655,8 +1848,14 @@ export default function NotificationsPage() {
                         fontSize: '0.84rem',
                         color: '#1e293b',
                         background: 'transparent',
-                        padding: '0.35rem 0',
-                        fontFamily: 'inherit'
+                        padding: '0.2rem 0',
+                        fontFamily: 'inherit',
+                        lineHeight: '1.4',
+                        height: '24px',
+                        minHeight: '24px',
+                        maxHeight: '120px',
+                        resize: 'none',
+                        overflowY: 'auto'
                       }}
                     />
 

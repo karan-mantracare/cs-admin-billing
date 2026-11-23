@@ -1055,6 +1055,37 @@ const SEED_GENERAL_NOTIFICATIONS = [
   }
 ];
 
+/**
+ * Format message timestamp into WhatsApp HH:MM format (e.g. "7:43 pm", no seconds)
+ */
+export const formatMessageTime = (isoString) => {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+};
+
+/**
+ * Format message date into WhatsApp date category ("Today", "Yesterday", or "D/M/YYYY")
+ */
+export const getMessageDateCategory = (isoString) => {
+  if (!isoString) return 'Today';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return 'Today';
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  const diffTime = today.getTime() - target.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+};
+
 export const OTHER_USERS_DIRECTORY = [
   { id: 'ananya', name: 'Ananya Patel', role: 'Finance Operations', email: 'ananya@mantracare.com', avatar: 'A', department: 'Finance' },
   { id: 'vikram', name: 'Vikram Malhotra', role: 'Billing Specialist', email: 'vikram@mantracare.com', avatar: 'V', department: 'Accounts' },
@@ -1066,12 +1097,29 @@ export const OTHER_USERS_DIRECTORY = [
 const SEED_OTHER_USER_COMMENTS = {
   ananya: [
     {
+      id: 'comm-a0',
+      senderId: 'ananya',
+      senderName: 'Ananya Patel',
+      role: 'Finance Operations',
+      text: 'Hi Karan, let us know once the October invoices are generated so we can initiate client follow-up.',
+      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 - 3 * 3600 * 1000).toISOString()
+    },
+    {
+      id: 'comm-a0-reply',
+      senderId: 'currentUser',
+      senderName: 'You',
+      role: 'Customer Success',
+      text: 'Working on these now, will be ready shortly.',
+      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 - 2 * 3600 * 1000).toISOString(),
+      reactions: { '👍': ['Ananya Patel'] }
+    },
+    {
       id: 'comm-a1',
       senderId: 'ananya',
       senderName: 'Ananya Patel',
       role: 'Finance Operations',
-      text: 'Hi team, please ensure all withholding tax certificates for October invoices are uploaded to the billing repository.',
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
+      text: 'Please ensure all withholding tax certificates for October invoices are uploaded to the billing repository.',
+      timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString()
     },
     {
       id: 'comm-a2',
@@ -1079,7 +1127,8 @@ const SEED_OTHER_USER_COMMENTS = {
       senderName: 'You',
       role: 'Customer Success',
       text: 'Noted Ananya, will have the CS team collect them from client finance teams.',
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+      reactions: { '👍': ['Ananya Patel'], '❤️': ['Karan Hinduja'] }
     },
     {
       id: 'comm-a3',
@@ -1092,12 +1141,21 @@ const SEED_OTHER_USER_COMMENTS = {
   ],
   vikram: [
     {
+      id: 'comm-v0',
+      senderId: 'vikram',
+      senderName: 'Vikram Malhotra',
+      role: 'Billing Specialist',
+      text: 'Checked the bank statement for last week.',
+      timestamp: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString()
+    },
+    {
       id: 'comm-v1',
       senderId: 'vikram',
       senderName: 'Vikram Malhotra',
       role: 'Billing Specialist',
       text: 'Invoice INV_2026_00220 payment has been confirmed via bank wire. Status updated to Partial on the ledger.',
-      timestamp: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString()
+      timestamp: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
+      reactions: { '✅': ['Karan Hinduja'] }
     }
   ],
   karan: [

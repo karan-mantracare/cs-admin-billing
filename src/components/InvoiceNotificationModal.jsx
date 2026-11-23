@@ -10,7 +10,8 @@ import {
   markInvoiceActivitiesUnread,
   getInvoiceUnreadCount,
   toggleInvoiceActivityReaction,
-  getEmailTemplatePreview
+  getEmailTemplatePreview,
+  formatMessageTime
 } from '../utils/notificationService';
 
 export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
@@ -91,6 +92,8 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
     addInvoiceComment(invoiceKey, commentText.trim(), currentUserName, replyingTo);
     setCommentText('');
     setReplyingTo(null);
+    const inputEl = document.getElementById('modal-comment-input');
+    if (inputEl) inputEl.style.height = '24px';
     reloadData();
   };
 
@@ -375,7 +378,7 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                                 {act.title || 'System Notification'}
                               </div>
                               <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                                by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span> • {new Date(act.timestamp).toLocaleString()}
+                                by <span style={{ fontWeight: '500', color: '#334155' }}>{act.author || 'System'}</span> • {new Date(act.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} • {formatMessageTime(act.timestamp)}
                               </div>
                             </div>
                           </div>
@@ -614,15 +617,20 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                     boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
                   }}
                 >
-                  <input
+                  <textarea
                     id="modal-comment-input"
-                    type="text"
+                    rows={1}
                     value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
+                    onChange={(e) => {
+                      setCommentText(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                    }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         handleAddComment(e);
+                        e.target.style.height = '24px';
                       }
                     }}
                     placeholder={replyingTo ? `Reply to ${replyingTo.author}...` : "Write a comment..."}
@@ -633,8 +641,14 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                       fontSize: '0.84rem',
                       color: '#1e293b',
                       background: 'transparent',
-                      padding: '0.35rem 0',
-                      fontFamily: 'inherit'
+                      padding: '0.2rem 0',
+                      fontFamily: 'inherit',
+                      lineHeight: '1.4',
+                      height: '24px',
+                      minHeight: '24px',
+                      maxHeight: '120px',
+                      resize: 'none',
+                      overflowY: 'auto'
                     }}
                   />
 
