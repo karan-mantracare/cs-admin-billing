@@ -1137,6 +1137,14 @@ const SEED_OTHER_USER_COMMENTS = {
       role: 'Finance Operations',
       text: 'Great, thanks! We also need the signed schedule for Nova FinTech once approved.',
       timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'comm-a4',
+      senderId: 'ananya',
+      senderName: 'Ananya Patel',
+      role: 'Finance Operations',
+      text: 'Are we covering how to add dependants in this session?',
+      timestamp: new Date(Date.now() - 42 * 60 * 1000).toISOString()
     }
   ],
   vikram: [
@@ -1147,6 +1155,14 @@ const SEED_OTHER_USER_COMMENTS = {
       role: 'Billing Specialist',
       text: 'Checked the bank statement for last week.',
       timestamp: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'comm-v0-b',
+      senderId: 'vikram',
+      senderName: 'Vikram Malhotra',
+      role: 'Billing Specialist',
+      text: 'All reconciliations for overseas entities are complete.',
+      timestamp: new Date(Date.now() - 26 * 60 * 60 * 1000 + 3 * 60 * 1000).toISOString()
     },
     {
       id: 'comm-v1',

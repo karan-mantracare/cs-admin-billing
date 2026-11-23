@@ -1559,11 +1559,31 @@ export default function NotificationsPage() {
                   ) : (
                     (() => {
                       let lastDateCategory = null;
+                      let lastSenderId = null;
+
+                      // Vibrant sender colors matching WhatsApp group style
+                      const getSenderColor = (senderId) => {
+                        const colors = {
+                          ananya: '#0284c7',   // Sky blue
+                          vikram: '#10b981',   // Emerald green
+                          karan: '#8b5cf6',    // Violet
+                          sneha: '#f59e0b',    // Amber
+                          rahul: '#ec4899',    // Pink
+                          system: '#64748b'
+                        };
+                        return colors[senderId] || '#0284c7';
+                      };
+
                       return userThreadComments.map((comm) => {
                         const isMe = comm.senderId === 'currentUser';
                         const dateCategory = getMessageDateCategory(comm.timestamp);
                         const showDateDivider = dateCategory !== lastDateCategory;
                         lastDateCategory = dateCategory;
+
+                        // Check if this message is back-to-back from the same sender on the same day
+                        const isConsecutive = !showDateDivider && comm.senderId === lastSenderId;
+                        lastSenderId = comm.senderId;
+
                         const reactionsEntries = Object.entries(comm.reactions || {}).filter(([_, u]) => Array.isArray(u) && u.length > 0);
                         const hasReactions = reactionsEntries.length > 0;
 
@@ -1594,37 +1614,73 @@ export default function NotificationsPage() {
                                 display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: isMe ? 'flex-end' : 'flex-start',
-                                marginBottom: hasReactions ? '0.75rem' : '0.35rem',
+                                marginTop: isConsecutive ? '2px' : '8px',
+                                marginBottom: hasReactions ? '0.75rem' : '2px',
                                 position: 'relative'
                               }}
                             >
                               <div style={{
                                 display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.35rem',
+                                alignItems: 'flex-end',
+                                gap: '0.45rem',
                                 flexDirection: isMe ? 'row-reverse' : 'row',
-                                maxWidth: '80%'
+                                maxWidth: '82%'
                               }}>
+                                {/* Avatar for teammate (only shown on the first message of a consecutive series) */}
+                                {!isMe && (
+                                  !isConsecutive ? (
+                                    <span style={{
+                                      width: '28px',
+                                      height: '28px',
+                                      borderRadius: '50%',
+                                      background: getSenderColor(comm.senderId),
+                                      color: '#ffffff',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontWeight: '700',
+                                      fontSize: '0.75rem',
+                                      flexShrink: 0,
+                                      marginBottom: '2px',
+                                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                    }}>
+                                      {comm.senderName ? comm.senderName.charAt(0) : 'T'}
+                                    </span>
+                                  ) : (
+                                    <div style={{ width: '28px', height: '28px', flexShrink: 0 }} />
+                                  )
+                                )}
+
                                 {/* Message Bubble */}
                                 <div style={{
                                   position: 'relative',
                                   background: isMe ? '#4f46e5' : '#f1f5f9',
                                   color: isMe ? '#ffffff' : '#0f172a',
-                                  borderRadius: isMe ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                                  borderRadius: isMe
+                                    ? (isConsecutive ? '12px 6px 6px 12px' : '12px 12px 2px 12px')
+                                    : (isConsecutive ? '6px 12px 12px 6px' : '12px 12px 12px 2px'),
                                   padding: '0.55rem 0.85rem 0.45rem',
                                   boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                                   wordBreak: 'break-word',
-                                  minWidth: '90px'
+                                  minWidth: '95px'
                                 }}>
-                                  {/* Sender name for teammate */}
-                                  {!isMe && (
+                                  {/* Sender name for teammate - ONLY shown on first message in a back-to-back sequence */}
+                                  {!isMe && !isConsecutive && (
                                     <div style={{
-                                      fontSize: '0.7rem',
+                                      fontSize: '0.74rem',
                                       fontWeight: '700',
-                                      marginBottom: '0.2rem',
-                                      color: '#0284c7'
+                                      marginBottom: '0.25rem',
+                                      display: 'flex',
+                                      alignItems: 'baseline',
+                                      justifyContent: 'space-between',
+                                      gap: '0.65rem'
                                     }}>
-                                      {comm.senderName} ({comm.role})
+                                      <span style={{ color: getSenderColor(comm.senderId) }}>
+                                        ~ {comm.senderName}
+                                      </span>
+                                      <span style={{ fontSize: '0.67rem', fontWeight: '500', color: '#64748b' }}>
+                                        {comm.role}
+                                      </span>
                                     </div>
                                   )}
 
