@@ -1,16 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { calculateTaxAdjustments } from '../utils/taxAdjustmentUtils';
 
 export function BillingMessageContent({ payment, orderDetails, onCopy, copied, onUpdateRemarks }) {
   // Resolve associated contract from division_contracts
   const contract = useMemo(() => {
-    if (!payment?.contractId) return null;
     try {
       const contracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
-      return contracts.find(c => String(c.id) === String(payment.contractId)) || null;
+      if (payment?.contractId) {
+        const found = contracts.find(c => String(c.id) === String(payment.contractId));
+        if (found) return found;
+      }
+      if (payment?.orderId && payment.orderId !== 'Null') {
+        const found = contracts.find(c => String(c.orderId) === String(payment.orderId));
+        if (found) return found;
+      }
+      return null;
     } catch (e) {
       return null;
     }
-  }, [payment?.contractId]);
+  }, [payment?.contractId, payment?.orderId]);
 
   const billing = orderDetails?.billingDetails || {};
 
@@ -40,10 +48,27 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
   // --- Current Invoice Details ---
   const rawInvoiceVal = payment?.amountDue ?? contract?.contractValue ?? 0;
   const invoiceCurrency = payment?.currency || contractCurrency || 'EUR';
-  const invoiceValue = `${invoiceCurrency} ${Number(rawInvoiceVal).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
 
-  const isTaxIncluded = !!(payment?.includingTax || contract?.includingTax || billing?.includingTax);
+  const isTaxIncluded = !!(payment?.includingTax !== undefined ? payment.includingTax : (contract?.includingTax !== undefined ? contract.includingTax : billing?.includingTax));
   const taxStatusText = isTaxIncluded ? 'Included in Invoice Value' : 'Excluded';
+
+  // Resolve taxAdjustments list from payment or contract
+  const rawTaxAdjustments = useMemo(() => {
+    if (payment?.taxAdjustments && Array.isArray(payment.taxAdjustments) && payment.taxAdjustments.length > 0) {
+      return payment.taxAdjustments;
+    }
+    if (contract?.taxAdjustments && Array.isArray(contract.taxAdjustments)) {
+      return contract.taxAdjustments;
+    }
+    return [];
+  }, [payment?.taxAdjustments, contract?.taxAdjustments]);
+
+  // Compute Tax, Deduction, Adjustments and WHT based on AR rules
+  const calc = useMemo(() => {
+    return calculateTaxAdjustments(rawInvoiceVal, rawTaxAdjustments, isTaxIncluded);
+  }, [rawInvoiceVal, rawTaxAdjustments, isTaxIncluded]);
+
+  const invoiceValue = `${invoiceCurrency} ${Number(calc.finalAmountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
 
   const invoiceDate = payment?.invoiceByDate || contract?.billingDate || '—';
   const dueByDate   = payment?.dueByDate || '—';
@@ -56,7 +81,7 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
   const bankDetailsLink = payment?.bankDetailsLink || contract?.bankDetailsLink || billing.bankDetailsLink || null;
 
   // Remarks handling: payment.remarks -> contract.remarks -> default meaningful remark
-  const defaultRemark = `Invoice for ${clientBillingEntity !== '—' ? clientBillingEntity : 'Contract'} - ${invoiceCurrency} ${Number(rawInvoiceVal).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  const defaultRemark = `Invoice for ${clientBillingEntity !== '—' ? clientBillingEntity : 'Contract'} - ${invoiceCurrency} ${Number(calc.finalAmountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
   const [remarks, setRemarks] = useState(payment?.remarks || contract?.remarks || defaultRemark);
   const [isEditingRemarks, setIsEditingRemarks] = useState(false);
   const [localCopied, setLocalCopied] = useState(false);
@@ -100,7 +125,7 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
   );
 
   const handleCopyMessage = () => {
-    const text = [
+    const textLines = [
       'Billing Message',
       '─────────────────────────────',
       `Client Billing Entity Name : ${clientBillingEntity}`,
@@ -111,14 +136,32 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
       'Current Invoice',
       '─────────────────────────────',
       `Invoice Value              : ${invoiceValue}`,
-      `Tax Status                 : ${taxStatusText}`,
       `Invoice Date               : ${invoiceDate}`,
       `Due By Date                : ${dueByDate}`,
       `Remarks                    : ${remarks || '—'}`,
       `Service Period             : ${servicePeriod}`,
       `Bill From / Bank           : ${billFrom} (${receivingBank})`,
       bankDetailsLink ? `Bank Details Link          : ${bankDetailsLink}` : null,
-    ].filter(l => l !== null).join('\n');
+      '',
+      'Deductions & Adjustments',
+      '─────────────────────────────',
+      `Tax Status                 : ${taxStatusText}`
+    ];
+
+    if (calc.calculatedItems && calc.calculatedItems.length > 0) {
+      textLines.push('Type (details) | % | Amount | Currency');
+      calc.calculatedItems.forEach(item => {
+        const typeStr = `${item.type}${item.details ? ` (${item.details})` : ''}`;
+        const pctStr = item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—';
+        textLines.push(`${typeStr} : ${pctStr} | ${item.formattedImpact} ${invoiceCurrency}`);
+      });
+      textLines.push(`Final Invoice Amount       : ${invoiceCurrency} ${calc.finalAmountDue.toFixed(2)}`);
+      if (calc.totalWht > 0) {
+        textLines.push(`Net Payable after WHT      : ${invoiceCurrency} ${calc.netReceivableAfterWht.toFixed(2)}`);
+      }
+    }
+
+    const text = textLines.filter(l => l !== null).join('\n');
 
     navigator.clipboard.writeText(text).then(() => {
       setLocalCopied(true);
@@ -148,7 +191,6 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
           Current Invoice
         </div>
         <Row label="Invoice Value" value={invoiceValue} valueColor="#10b981" />
-        <Row label="Tax Status" value={taxStatusText} valueColor={isTaxIncluded ? '#10b981' : '#64748b'} />
         <Row label="Invoice Date" value={invoiceDate} />
         <Row label="Due By Date" value={dueByDate} valueColor="#ef4444" />
         
@@ -212,6 +254,167 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
         <Row label="Service Period" value={servicePeriod} />
         <Row label="Bill From / Bank" value={`${billFrom} • ${receivingBank}`} />
         <LastRow label="Bank Details" value={bankDetailsLink ? "View Details" : "—"} href={bankDetailsLink} />
+      </div>
+
+      {/* Section 3: Deductions & Adjustments */}
+      <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '1rem', border: '1px solid #e2e8f0' }}>
+        <div style={sectionTitleStyle}>
+          <i className='bx bx-calculator' style={{ color: '#8b5cf6' }}></i>
+          Deductions & Adjustments
+        </div>
+
+        {/* Tax Status moved here */}
+        <div style={{ ...rowStyle, borderBottom: calc.calculatedItems && calc.calculatedItems.length > 0 ? '1px solid #f1f5f9' : 'none', marginBottom: '0.5rem', paddingBottom: '0.5rem' }}>
+          <span style={labelStyle}>Tax Status</span>
+          <span style={{
+            ...valueStyle,
+            color: isTaxIncluded ? '#059669' : '#64748b',
+            background: isTaxIncluded ? '#ecfdf5' : '#f1f5f9',
+            border: isTaxIncluded ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
+            padding: '0.15rem 0.55rem',
+            borderRadius: '4px',
+            fontSize: '0.78rem'
+          }}>
+            {taxStatusText}
+          </span>
+        </div>
+
+        {/* Values of Deductions and Adjustments */}
+        {calc.calculatedItems && calc.calculatedItems.length > 0 ? (
+          <div style={{ marginTop: '0.65rem' }}>
+            {/* Table Header */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1.9fr 0.7fr 1.1fr 0.8fr',
+              gap: '0.45rem',
+              padding: '0.45rem 0.6rem',
+              background: '#e2e8f0',
+              borderRadius: '6px',
+              fontSize: '0.72rem',
+              fontWeight: '700',
+              color: '#334155',
+              textTransform: 'uppercase',
+              letterSpacing: '0.03em',
+              alignItems: 'center'
+            }}>
+              <div>Type (details)</div>
+              <div style={{ textAlign: 'center' }}>%</div>
+              <div style={{ textAlign: 'right' }}>Amount</div>
+              <div style={{ textAlign: 'right' }}>Currency</div>
+            </div>
+
+            {/* Table Rows */}
+            {calc.calculatedItems.map((item, idx) => {
+              const typeLower = (item.type || '').toLowerCase();
+              let typeColor = '#0f172a';
+              let amtColor = '#0f172a';
+
+              if (typeLower.includes('adjust')) {
+                typeColor = '#0284c7';
+                amtColor = '#0284c7';
+              } else if (typeLower.includes('deduct')) {
+                typeColor = '#7c3aed';
+                amtColor = '#7c3aed';
+              } else if (typeLower.includes('withhold') || typeLower.includes('wht')) {
+                typeColor = '#d97706';
+                amtColor = '#d97706';
+              } else {
+                // Tax
+                typeColor = '#059669';
+                amtColor = isTaxIncluded ? '#059669' : '#059669';
+              }
+
+              return (
+                <div key={idx} style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1.9fr 0.7fr 1.1fr 0.8fr',
+                  gap: '0.45rem',
+                  padding: '0.5rem 0.6rem',
+                  borderBottom: '1px solid #f1f5f9',
+                  fontSize: '0.82rem',
+                  alignItems: 'center'
+                }}>
+                  <div>
+                    <span style={{ fontWeight: '600', color: typeColor }}>{item.type}</span>
+                    {item.details && (
+                      <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.35rem', fontStyle: 'italic' }}>
+                        ({item.details})
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'center', color: '#334155', fontWeight: '500', fontSize: '0.8rem' }}>
+                    {item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—'}
+                  </div>
+                  <div style={{ textAlign: 'right', fontWeight: '700', color: amtColor, fontSize: '0.82rem' }}>
+                    {item.formattedImpact}
+                  </div>
+                  <div style={{ textAlign: 'right', color: '#64748b', fontWeight: '500', fontSize: '0.8rem' }}>
+                    {invoiceCurrency}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Summary calculation breakdown */}
+            <div style={{
+              marginTop: '0.75rem',
+              paddingTop: '0.65rem',
+              borderTop: '1px dashed #cbd5e1',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.35rem',
+              fontSize: '0.78rem',
+              color: '#64748b'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Base Amount Due:</span>
+                <span style={{ fontWeight: '600', color: '#0f172a' }}>{invoiceCurrency} {Number(calc.baseAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              {calc.totalAdjustments > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0284c7' }}>
+                  <span>Total Adjustments:</span>
+                  <span style={{ fontWeight: '600' }}>+{invoiceCurrency} {calc.totalAdjustments.toFixed(2)}</span>
+                </div>
+              )}
+              {calc.totalDeductions > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#7c3aed' }}>
+                  <span>Total Deductions:</span>
+                  <span style={{ fontWeight: '600' }}>-{invoiceCurrency} {calc.totalDeductions.toFixed(2)}</span>
+                </div>
+              )}
+              {calc.totalTax > 0 && !isTaxIncluded && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
+                  <span>Tax Impact (GST/VAT):</span>
+                  <span style={{ fontWeight: '600' }}>+{invoiceCurrency} {calc.totalTax.toFixed(2)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', color: '#0f172a', fontSize: '0.84rem', marginTop: '0.2rem', paddingTop: '0.35rem', borderTop: '1px solid #e2e8f0' }}>
+                <span>Total Invoice Value:</span>
+                <span style={{ color: '#10b981' }}>{invoiceCurrency} {calc.finalAmountDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              {calc.totalWht > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d97706', fontSize: '0.8rem' }}>
+                  <span>Net Receivable after WHT (TDS):</span>
+                  <span style={{ fontWeight: '700' }}>{invoiceCurrency} {calc.netReceivableAfterWht.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            padding: '0.65rem 0.8rem',
+            textAlign: 'center',
+            color: '#94a3b8',
+            fontSize: '0.78rem',
+            fontStyle: 'italic',
+            background: '#ffffff',
+            borderRadius: '6px',
+            border: '1px dashed #e2e8f0',
+            marginTop: '0.5rem'
+          }}>
+            No deductions or adjustments recorded for this invoice
+          </div>
+        )}
       </div>
 
       {/* Buttons inside content for copying */}

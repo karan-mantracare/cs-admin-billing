@@ -7,6 +7,7 @@ import EditPaymentModal from '../components/EditPaymentModal';
 import BillingMessageModal, { BillingMessageContent } from '../components/BillingMessageModal';
 import UniversalFilter from '../components/UniversalFilter';
 import { getPrimaryCS } from '../utils/roleUtils';
+import { calculateTaxAdjustments } from '../utils/taxAdjustmentUtils';
 
 const DEFAULT_BILLING_COLUMNS = [
   { id: 'clientName', label: 'Client Name' },
@@ -1540,18 +1541,24 @@ function ClientPayments() {
           const rawContractVal      = contract?.contractValue ?? billing.contractValue ?? payment.contractValue ?? payment.amountDue;
           const contractValue       = rawContractVal ? `${contractCurrency} ${Number(rawContractVal).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
           const rawInvoiceVal       = payment.amountDue || contract?.contractValue || 0;
-          const invoiceValue        = payment.amountDue ? `${payment.currency || contractCurrency} ${Number(payment.amountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
-          const isTaxIncluded       = !!(payment.includingTax || contract?.includingTax || billing.includingTax);
+          const invoiceCurrency     = payment?.currency || contractCurrency || 'EUR';
+
+          const isTaxIncluded       = !!(payment.includingTax !== undefined ? payment.includingTax : (contract?.includingTax !== undefined ? contract.includingTax : billing.includingTax));
           const taxStatusText       = isTaxIncluded ? 'Included in Invoice Value' : 'Excluded';
+
+          const rawTaxAdjustments   = (payment.taxAdjustments && payment.taxAdjustments.length > 0) ? payment.taxAdjustments : (contract?.taxAdjustments || []);
+          const calc = calculateTaxAdjustments(rawInvoiceVal, rawTaxAdjustments, isTaxIncluded);
+
+          const invoiceValue        = `${invoiceCurrency} ${Number(calc.finalAmountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
           const invoiceDate         = payment.invoiceByDate || contract?.billingDate || '—';
           const dueByDate           = payment.dueByDate || '—';
           const servicePeriod       = `${contract?.paymentDueDays ?? billing.paymentDueDays ?? payment.paymentDueDays ?? 15} days`;
           const billFrom            = payment.billingCompany || contract?.billFrom || billing.billingCompany || 'MCHI';
           const receivingBank       = payment.receivingBankName || contract?.receivingBankName || billing.receivingBank || 'AirWallex';
           const bankDetailsLink     = payment.bankDetailsLink || contract?.bankDetailsLink || billing.bankDetailsLink || null;
-          const remarks             = payment.remarks || contract?.remarks || `Invoice for ${clientBillingEntity} - ${contractCurrency} ${Number(payment.amountDue || rawContractVal || 0).toLocaleString()}`;
+          const remarks             = payment.remarks || contract?.remarks || `Invoice for ${clientBillingEntity} - ${contractCurrency} ${Number(calc.finalAmountDue || rawContractVal || 0).toLocaleString()}`;
 
-          const messageText = [
+          const messageLines = [
             'Billing Message',
             '─────────────────────────────',
             `Client Billing Entity Name : ${clientBillingEntity}`,
@@ -1562,14 +1569,32 @@ function ClientPayments() {
             'Current Invoice',
             '─────────────────────────────',
             `Invoice Value              : ${invoiceValue}`,
-            `Tax Status                 : ${taxStatusText}`,
             `Invoice Date               : ${invoiceDate}`,
             `Due By Date                : ${dueByDate}`,
             `Remarks                    : ${remarks}`,
             `Service Period             : ${servicePeriod}`,
             `Bill From / Bank           : ${billFrom} (${receivingBank})`,
             bankDetailsLink ? `Bank Details Link          : ${bankDetailsLink}` : null,
-          ].filter(l => l !== null).join('\n');
+            '',
+            'Deductions & Adjustments',
+            '─────────────────────────────',
+            `Tax Status                 : ${taxStatusText}`
+          ];
+
+          if (calc.calculatedItems && calc.calculatedItems.length > 0) {
+            messageLines.push('Type (details) | % | Amount | Currency');
+            calc.calculatedItems.forEach(item => {
+              const typeStr = `${item.type}${item.details ? ` (${item.details})` : ''}`;
+              const pctStr = item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—';
+              messageLines.push(`${typeStr} : ${pctStr} | ${item.formattedImpact} ${invoiceCurrency}`);
+            });
+            messageLines.push(`Final Invoice Amount       : ${invoiceCurrency} ${calc.finalAmountDue.toFixed(2)}`);
+            if (calc.totalWht > 0) {
+              messageLines.push(`Net Payable after WHT      : ${invoiceCurrency} ${calc.netReceivableAfterWht.toFixed(2)}`);
+            }
+          }
+
+          const messageText = messageLines.filter(l => l !== null).join('\n');
 
           navigator.clipboard.writeText(messageText).then(() => {
             setCopied(true);

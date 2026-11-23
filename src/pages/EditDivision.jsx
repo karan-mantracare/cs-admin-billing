@@ -8,6 +8,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
 import ContractModal from '../components/ContractModal';
 import { saveUser, getAllUsers, getUserById } from '../utils/userStorage';
+import { calculateTaxAdjustments } from '../utils/taxAdjustmentUtils';
 
 function EditDivision() {
   const location = useLocation();
@@ -480,6 +481,11 @@ function EditDivision() {
       if (pIdx >= 0) {
         const existingP = clientPayments[pIdx];
         const targetOrder = contractData.orderId ? contractData.orderId : (existingP.orderId || 'Null');
+        const taxAdjustments = contractData.taxAdjustments || existingP.taxAdjustments || [];
+        const isTaxIncluded = contractData.includingTax !== undefined ? !!contractData.includingTax : existingP.includingTax;
+        const baseVal = Number(contractData.contractValue) || existingP.contractValue || 0;
+        const calc = calculateTaxAdjustments(baseVal, taxAdjustments, isTaxIncluded);
+
         const updatedPayments = clientPayments.map(p => {
           if (p.contractId === contractData.id) {
             return {
@@ -489,16 +495,19 @@ function EditDivision() {
               clientBillingEntity: contractData.companyName || p.clientBillingEntity,
               clientTaxDetails: contractData.taxDetails || (contractData.companyEntities?.[0]?.taxDetails) || p.clientTaxDetails,
               clientAddress: contractData.address || (contractData.companyEntities?.[0]?.address) || p.clientAddress,
-              contractValue: Number(contractData.contractValue) || p.contractValue,
-              includingTax: contractData.includingTax !== undefined ? !!contractData.includingTax : p.includingTax,
+              contractValue: baseVal,
+              baseAmountDue: baseVal,
+              includingTax: isTaxIncluded,
               paymentDueDays: contractData.paymentDueDays || p.paymentDueDays,
               billingCompany: contractData.billFrom || p.billingCompany,
               receivingBankName: contractData.receivingBankName || p.receivingBankName,
               bankDetailsLink: contractData.bankDetailsLink || p.bankDetailsLink,
               amountDueUsd: Number(contractData.amountInUSD) || p.amountDueUsd,
-              amountDue: Number(contractData.contractValue) || p.amountDue,
+              amountDue: Number(calc.finalAmountDue) || baseVal || p.amountDue,
+              taxAmount: calc.totalTax > 0 ? calc.totalTax : p.taxAmount,
               currency: contractData.contractCurrency || p.currency,
-              remarks: contractData.remarks || p.remarks
+              remarks: contractData.remarks || p.remarks,
+              taxAdjustments: taxAdjustments
             };
           }
           return p;

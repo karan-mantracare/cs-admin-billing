@@ -508,6 +508,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
         bankDetailsLink: c.bankDetailsLink || matched?.bankDetailsLink || '',
         billingDate: c.billingDate || matched?.billingDate || c.billingStartDate || c.startDate || c.contractStart || '',
         paymentDueDays: c.paymentDueDays || matched?.paymentDueDays || 15,
+        taxAdjustments: c.taxAdjustments || matched?.taxAdjustments || [],
+        includingTax: c.includingTax !== undefined ? c.includingTax : (matched?.includingTax || false),
         selected: true
       };
     };
@@ -985,6 +987,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
             amountDueUsd: splitUsd,
             amountDue: splitVal,
             currency: splitCurrency,
+            taxAdjustments: split.taxAdjustments || [],
+            includingTax: split.includingTax !== undefined ? split.includingTax : false,
             status: 'To be Raised',
             invoiceByDate: invoiceByDateStr,
             dueByDate: dueByDateStr,
@@ -1028,6 +1032,8 @@ function AddScheduleModal({ isOpen, onClose, onSave, mode = 'schedule', initialS
           amountDueUsd: termUsd,
           amountDue: termValue,
           currency: defaultCurrency,
+          taxAdjustments: activeSplits[0]?.taxAdjustments || unlinkedContract?.taxAdjustments || [],
+          includingTax: activeSplits[0]?.includingTax !== undefined ? activeSplits[0].includingTax : (unlinkedContract?.includingTax || false),
           status: 'To be Raised',
           invoiceByDate: invoiceByDateStr,
           dueByDate: dueByDateStr,

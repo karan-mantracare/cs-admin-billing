@@ -1,5 +1,24 @@
 export const CHANGELOG_DATA = [
   {
+    id: 'cl-ar-deductions-and-adjustments-impact-20261123',
+    date: '2026-11-23',
+    formattedDate: 'Nov 23, 2026',
+    page: 'Accounts Receivable',
+    subPage: 'Invoice Details / Deductions & Adjustments',
+    summary: 'Calculated impact of Tax, WHT, Deduction and Adjustments with itemized table in Invoice Details',
+    details: 'Implemented calculation rules for Accounts Receivable: Adjustments calculated on Amount Due, Deductions calculated on (Amount Due + Adjustments), Tax calculated on (Amount Due + Adjustments) when Tax Status is Excluded, and Withholding Tax. Moved Tax Status into a new dedicated "Deductions & Adjustments" section in Invoice Details / Billing Message, displaying a Type (details) | % | Amount | Currency breakdown table with real-time financial totals.',
+    plainLanguage: 'Calculated the impact of tax, adjustments, deductions, and withholding tax in Accounts Receivable, moved Tax Status into a new Deductions & Adjustments section, and added an itemized breakdown table.',
+    highlights: [
+      'Sequential Impact Calculation: Adjustment % on Amount Due, Deduction % on (Amount Due + Adjustments), Tax % on (Amount Due + Adjustments) when Excluded',
+      'New Deductions & Adjustments Section: Added dedicated card in Invoice Details / Billing Message with Tax Status badge',
+      'Itemized Breakdown Table: Clean table displaying Type (details) | % | Amount | Currency with colored status badges',
+      'Summary Financial Breakdown: Real-time calculation showing Base Amount, Adjustments, Deductions, Tax, Total Invoice Value, and Net Receivable after WHT',
+      'Accurate Clipboard Copying: Enhanced Copy Message to include itemized breakdown and updated totals'
+    ],
+    path: '/accounts-receivable',
+    linkText: 'Accounts Receivable'
+  },
+  {
     id: 'cl-contract-taxes-and-adjustment-details-20261123',
     date: '2026-11-23',
     formattedDate: 'Nov 23, 2026',
