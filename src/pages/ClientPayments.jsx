@@ -1627,7 +1627,20 @@ function ClientPayments() {
               const pctStr = item.percentage !== undefined && item.percentage !== null && item.percentage !== '' ? `${item.percentage}%` : '—';
               messageLines.push(`${typeStr} : ${pctStr} | ${item.formattedImpact} ${invoiceCurrency}`);
             });
-            messageLines.push(`Final Invoice Amount       : ${invoiceCurrency} ${calc.finalAmountDue.toFixed(2)}`);
+            messageLines.push('');
+            messageLines.push(`Base Amount Due            : ${invoiceCurrency} ${Number(calc.baseAmount).toFixed(2)}`);
+            if (calc.totalAdjustments > 0) {
+              messageLines.push(`  Total Adjustments        : +${invoiceCurrency} ${calc.totalAdjustments.toFixed(2)}`);
+            }
+            if (calc.totalDeductions > 0) {
+              messageLines.push(`  Total Deductions         : -${invoiceCurrency} ${calc.totalDeductions.toFixed(2)}`);
+            }
+            if (calc.totalTax > 0 && !isTaxIncluded) {
+              messageLines.push(`  Tax Impact (GST/VAT)     : +${invoiceCurrency} ${calc.totalTax.toFixed(2)}`);
+            }
+            const netAdj = calc.totalAdjustments - calc.totalDeductions + (isTaxIncluded ? 0 : calc.totalTax);
+            messageLines.push(`Total Adjustment           : ${netAdj >= 0 ? '+' : '-'}${invoiceCurrency} ${Math.abs(netAdj).toFixed(2)}`);
+            messageLines.push(`Total Invoice Value        : ${invoiceCurrency} ${calc.finalAmountDue.toFixed(2)}`);
             if (calc.totalWht > 0) {
               messageLines.push(`Net Payable after WHT      : ${invoiceCurrency} ${calc.netReceivableAfterWht.toFixed(2)}`);
             }
