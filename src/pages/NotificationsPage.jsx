@@ -771,7 +771,7 @@ export default function NotificationsPage() {
                                   </span>
                                 </div>
 
-                            {act.emailSent ? (
+                            {act.emailSent && (
                               <span style={{
                                 background: '#ecfdf5',
                                 color: '#059669',
@@ -782,17 +782,6 @@ export default function NotificationsPage() {
                                 fontWeight: '600'
                               }}>
                                 Email Dispatched
-                              </span>
-                            ) : (
-                              <span style={{
-                                background: '#f1f5f9',
-                                color: '#64748b',
-                                border: '1px solid #e2e8f0',
-                                padding: '0.1rem 0.45rem',
-                                borderRadius: '999px',
-                                fontSize: '0.68rem'
-                              }}>
-                                In-App Comment
                               </span>
                             )}
                           </div>

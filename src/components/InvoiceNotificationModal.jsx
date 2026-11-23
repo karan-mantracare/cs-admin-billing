@@ -391,7 +391,7 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                                 </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            {act.emailSent ? (
+                            {act.emailSent && (
                               <span style={{
                                 background: '#ecfdf5',
                                 color: '#059669',
@@ -405,18 +405,6 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
                                 gap: '0.25rem'
                               }}>
                                 <i className='bx bx-check'></i> Email Dispatched
-                              </span>
-                            ) : (
-                              <span style={{
-                                background: '#f1f5f9',
-                                color: '#64748b',
-                                border: '1px solid #e2e8f0',
-                                padding: '0.15rem 0.5rem',
-                                borderRadius: '999px',
-                                fontSize: '0.7rem',
-                                fontWeight: '500'
-                              }}>
-                                In-App Only
                               </span>
                             )}
                           </div>
