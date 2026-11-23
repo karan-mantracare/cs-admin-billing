@@ -1335,7 +1335,7 @@ export default function ContractModal({
                     letterSpacing: '0.02em',
                     alignItems: 'center'
                   }}>
-                    <div>Select Adjustment Type</div>
+                    <div>Select Type</div>
                     <div>%</div>
                     <div>Amount ({formData.contractCurrency || 'EUR'})</div>
                     <div>Details</div>
