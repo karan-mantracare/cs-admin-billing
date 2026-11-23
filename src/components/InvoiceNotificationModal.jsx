@@ -6,6 +6,7 @@ import {
   getInvoiceActivities,
   addInvoiceComment,
   markInvoiceActivitiesRead,
+  markInvoiceActivitiesUnread,
   getInvoiceUnreadCount
 } from '../utils/notificationService';
 
@@ -773,21 +774,45 @@ export default function InvoiceNotificationModal({ isOpen, onClose, payment }) {
             <i className='bx bx-check-shield' style={{ color: '#16a34a', fontSize: '1rem' }}></i>
             Zero-Amount Email Transmission Active
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '0.45rem 1.25rem',
-              borderRadius: '6px',
-              border: '1px solid #cbd5e1',
-              background: '#ffffff',
-              color: '#475569',
-              fontSize: '0.82rem',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            Close
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <button
+              onClick={() => {
+                markInvoiceActivitiesUnread(invoiceKey);
+                onClose();
+              }}
+              style={{
+                padding: '0.45rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: '#64748b',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem'
+              }}
+              title="Flag this invoice as unread"
+            >
+              <i className='bx bx-envelope'></i> Mark as Unread
+            </button>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '0.45rem 1.25rem',
+                borderRadius: '6px',
+                border: 'none',
+                background: '#4f46e5',
+                color: '#ffffff',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
 

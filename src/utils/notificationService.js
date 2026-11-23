@@ -175,6 +175,38 @@ export const markInvoiceActivitiesRead = (invoiceKey) => {
 };
 
 /**
+ * Mark an invoice's activities as unread
+ */
+export const markInvoiceActivitiesUnread = (invoiceKey) => {
+  if (!invoiceKey) return;
+  try {
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_READ_STATE) || '{}');
+    readStore[String(invoiceKey)] = 0; // Reset to 0 so all activities count as unread
+    localStorage.setItem(STORAGE_READ_STATE, JSON.stringify(readStore));
+    window.dispatchEvent(new Event('ar_notification_update'));
+  } catch (e) {
+    console.error('Failed to mark invoice unread', e);
+  }
+};
+
+/**
+ * Mark all invoices as read
+ */
+export const markAllInvoicesRead = () => {
+  try {
+    const list = getARInvoicesWithNotifications();
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_READ_STATE) || '{}');
+    list.forEach(inv => {
+      readStore[String(inv.invoiceKey)] = Date.now();
+    });
+    localStorage.setItem(STORAGE_READ_STATE, JSON.stringify(readStore));
+    window.dispatchEvent(new Event('ar_notification_update'));
+  } catch (e) {
+    console.error('Failed to mark all invoices read', e);
+  }
+};
+
+/**
  * Dispatch an email notification and log it (simulated transactional email dispatch)
  */
 const recordEmailDispatch = (type, invoiceKey, recipients, subject, htmlBody, textBody) => {
@@ -854,6 +886,21 @@ export const markGeneralNotificationRead = (notifId) => {
 };
 
 /**
+ * Mark a single general notification as unread
+ */
+export const markGeneralNotificationUnread = (notifId) => {
+  if (!notifId) return;
+  try {
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_GENERAL_READ_STATE) || '{}');
+    delete readStore[String(notifId)];
+    localStorage.setItem(STORAGE_GENERAL_READ_STATE, JSON.stringify(readStore));
+    window.dispatchEvent(new Event('ar_notification_update'));
+  } catch (e) {
+    console.error('Failed to mark general notification unread', e);
+  }
+};
+
+/**
  * Mark all general notifications as read
  */
 export const markAllGeneralNotificationsRead = () => {
@@ -980,6 +1027,38 @@ export const markUserThreadRead = (userId) => {
     window.dispatchEvent(new Event('ar_notification_update'));
   } catch (e) {
     console.error('Failed to mark user thread read', e);
+  }
+};
+
+/**
+ * Mark a user's comment thread as unread
+ */
+export const markUserThreadUnread = (userId) => {
+  if (!userId) return;
+  try {
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_OTHER_USERS_READ_STATE) || '{}');
+    readStore[userId] = 0; // Reset to 0 so all comments from this user count as unread
+    localStorage.setItem(STORAGE_OTHER_USERS_READ_STATE, JSON.stringify(readStore));
+    window.dispatchEvent(new Event('ar_notification_update'));
+  } catch (e) {
+    console.error('Failed to mark user thread unread', e);
+  }
+};
+
+/**
+ * Mark all user comment threads as read
+ */
+export const markAllUserThreadsRead = () => {
+  try {
+    const users = getOtherUsersWithStats();
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_OTHER_USERS_READ_STATE) || '{}');
+    users.forEach(u => {
+      readStore[u.id] = Date.now();
+    });
+    localStorage.setItem(STORAGE_OTHER_USERS_READ_STATE, JSON.stringify(readStore));
+    window.dispatchEvent(new Event('ar_notification_update'));
+  } catch (e) {
+    console.error('Failed to mark all user threads read', e);
   }
 };
 

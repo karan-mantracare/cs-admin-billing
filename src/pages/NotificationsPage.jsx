@@ -7,15 +7,20 @@ import {
   getGeneralUnreadCount,
   addGeneralNotification,
   markGeneralNotificationRead,
+  markGeneralNotificationUnread,
   markAllGeneralNotificationsRead,
   getOtherUsersWithStats,
   getOtherUsersTotalUnreadCount,
   getUserCommentsThread,
   postUserComment,
   markUserThreadRead,
+  markUserThreadUnread,
+  markAllUserThreadsRead,
   getInvoiceActivities,
   addInvoiceComment,
   markInvoiceActivitiesRead,
+  markInvoiceActivitiesUnread,
+  markAllInvoicesRead,
   getInvoiceParticipants
 } from '../utils/notificationService';
 
@@ -392,7 +397,7 @@ export default function NotificationsPage() {
             flexDirection: 'column'
           }}>
             {/* Search Invoices */}
-            <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', background: '#ffffff' }}>
+            <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
               <div style={{ position: 'relative' }}>
                 <i className='bx bx-search' style={{ position: 'absolute', left: '10px', top: '10px', color: '#94a3b8' }}></i>
                 <input
@@ -411,6 +416,30 @@ export default function NotificationsPage() {
                   }}
                 />
               </div>
+              {arUnreadCount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => {
+                      markAllInvoicesRead();
+                      setUpdateTrigger(prev => prev + 1);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#4f46e5',
+                      fontSize: '0.74rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      padding: 0
+                    }}
+                  >
+                    <i className='bx bx-check-double'></i> Mark all {arUnreadCount} as read
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Invoices List */}
@@ -512,25 +541,75 @@ export default function NotificationsPage() {
                     </div>
                   </div>
 
-                  {/* Direct link button to Accounts Receivable */}
-                  <button
-                    onClick={() => navigate(`/client-payments?invoiceId=${encodeURIComponent(activeInvoice.invoiceNumber)}`)}
-                    style={{
-                      background: '#ffffff',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '6px',
-                      padding: '0.4rem 0.85rem',
-                      fontSize: '0.8rem',
-                      fontWeight: '600',
-                      color: '#2563eb',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.35rem'
-                    }}
-                  >
-                    <i className='bx bx-link-external'></i> View in Accounts Receivable
-                  </button>
+                  {/* Action Buttons: Mark as Read/Unread & View in AR */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {activeInvoice.unreadCount > 0 ? (
+                      <button
+                        onClick={() => {
+                          markInvoiceActivitiesRead(activeInvoice.invoiceKey);
+                          setUpdateTrigger(prev => prev + 1);
+                        }}
+                        style={{
+                          background: '#ecfdf5',
+                          border: '1px solid #a7f3d0',
+                          borderRadius: '6px',
+                          padding: '0.4rem 0.85rem',
+                          fontSize: '0.8rem',
+                          fontWeight: '600',
+                          color: '#059669',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem'
+                        }}
+                        title="Mark this invoice's notifications as read"
+                      >
+                        <i className='bx bx-check'></i> Mark as Read
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          markInvoiceActivitiesUnread(activeInvoice.invoiceKey);
+                          setUpdateTrigger(prev => prev + 1);
+                        }}
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '0.4rem 0.85rem',
+                          fontSize: '0.8rem',
+                          fontWeight: '600',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem'
+                        }}
+                        title="Flag this invoice as unread"
+                      >
+                        <i className='bx bx-envelope'></i> Mark as Unread
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => navigate(`/client-payments?invoiceId=${encodeURIComponent(activeInvoice.invoiceNumber)}`)}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        padding: '0.4rem 0.85rem',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        color: '#2563eb',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem'
+                      }}
+                    >
+                      <i className='bx bx-link-external'></i> View in Accounts Receivable
+                    </button>
+                  </div>
                 </div>
 
                 {/* Activities & Comments Timeline */}
@@ -850,8 +929,38 @@ export default function NotificationsPage() {
                       )}
                     </div>
 
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                      {new Date(notif.timestamp).toLocaleString()}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        {new Date(notif.timestamp).toLocaleString()}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isUnread) {
+                            markGeneralNotificationRead(notif.id);
+                          } else {
+                            markGeneralNotificationUnread(notif.id);
+                          }
+                          setUpdateTrigger(prev => prev + 1);
+                        }}
+                        style={{
+                          background: isUnread ? '#ecfdf5' : '#f8fafc',
+                          border: `1px solid ${isUnread ? '#a7f3d0' : '#cbd5e1'}`,
+                          color: isUnread ? '#059669' : '#64748b',
+                          borderRadius: '4px',
+                          padding: '0.2rem 0.55rem',
+                          fontSize: '0.72rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}
+                        title={isUnread ? "Click to mark as read" : "Click to mark as unread"}
+                      >
+                        <i className={`bx ${isUnread ? 'bx-check' : 'bx-envelope'}`}></i>
+                        {isUnread ? 'Mark Read' : 'Mark Unread'}
+                      </button>
                     </div>
                   </div>
 
@@ -893,7 +1002,7 @@ export default function NotificationsPage() {
             flexDirection: 'column'
           }}>
             {/* Search Users */}
-            <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', background: '#ffffff' }}>
+            <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
               <div style={{ position: 'relative' }}>
                 <i className='bx bx-search' style={{ position: 'absolute', left: '10px', top: '10px', color: '#94a3b8' }}></i>
                 <input
@@ -912,6 +1021,30 @@ export default function NotificationsPage() {
                   }}
                 />
               </div>
+              {otherUsersUnreadCount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => {
+                      markAllUserThreadsRead();
+                      setUpdateTrigger(prev => prev + 1);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#0284c7',
+                      fontSize: '0.74rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      padding: 0
+                    }}
+                  >
+                    <i className='bx bx-check-double'></i> Mark all {otherUsersUnreadCount} as read
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* User List */}
@@ -1019,19 +1152,69 @@ export default function NotificationsPage() {
                     </div>
                   </div>
 
-                  <span style={{
-                    background: '#ecfdf5',
-                    color: '#059669',
-                    fontSize: '0.72rem',
-                    fontWeight: '600',
-                    padding: '0.2rem 0.55rem',
-                    borderRadius: '4px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.3rem'
-                  }}>
-                    <i className='bx bx-check-circle'></i> Active Teammate
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    {activeUser.unreadCount > 0 ? (
+                      <button
+                        onClick={() => {
+                          markUserThreadRead(activeUser.id);
+                          setUpdateTrigger(prev => prev + 1);
+                        }}
+                        style={{
+                          background: '#ecfdf5',
+                          border: '1px solid #a7f3d0',
+                          borderRadius: '6px',
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.76rem',
+                          fontWeight: '600',
+                          color: '#059669',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem'
+                        }}
+                        title="Mark this user's thread as read"
+                      >
+                        <i className='bx bx-check'></i> Mark as Read
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          markUserThreadUnread(activeUser.id);
+                          setUpdateTrigger(prev => prev + 1);
+                        }}
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.76rem',
+                          fontWeight: '600',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem'
+                        }}
+                        title="Flag this conversation as unread"
+                      >
+                        <i className='bx bx-envelope'></i> Mark as Unread
+                      </button>
+                    )}
+
+                    <span style={{
+                      background: '#ecfdf5',
+                      color: '#059669',
+                      fontSize: '0.72rem',
+                      fontWeight: '600',
+                      padding: '0.2rem 0.55rem',
+                      borderRadius: '4px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem'
+                    }}>
+                      <i className='bx bx-check-circle'></i> Active Teammate
+                    </span>
+                  </div>
                 </div>
 
                 {/* Conversation Thread */}
