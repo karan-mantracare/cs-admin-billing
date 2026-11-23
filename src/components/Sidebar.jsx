@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useGlobal } from '../context/GlobalContext';
 import { DEFAULT_USER } from '../utils/userStorage';
+import { getGlobalUnreadNotificationCount } from '../utils/notificationService';
 
 function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
@@ -17,6 +18,15 @@ function Sidebar({ isOpen, onClose }) {
   })();
 
   const isAdmin = currentUser?.role === 'Admin' || currentUser?.email === 'hinduja1988@gmail.com';
+
+  // Live global unread notifications count
+  const [globalUnreadCount, setGlobalUnreadCount] = useState(() => getGlobalUnreadNotificationCount());
+
+  useEffect(() => {
+    const handleUpdate = () => setGlobalUnreadCount(getGlobalUnreadNotificationCount());
+    window.addEventListener('ar_notification_update', handleUpdate);
+    return () => window.removeEventListener('ar_notification_update', handleUpdate);
+  }, []);
 
   // All menu items collapsed by default
   const [expandedGroup, setExpandedGroup] = useState(null);
@@ -45,6 +55,13 @@ function Sidebar({ isOpen, onClose }) {
       path: '/home',
       icon: 'bx-home-alt',
       isDirect: true
+    },
+    {
+      title: 'Notifications',
+      path: '/notifications',
+      icon: 'bx-bell',
+      isDirect: true,
+      badge: globalUnreadCount > 0 ? String(globalUnreadCount) : null
     },
     {
       isDivider: true
@@ -80,6 +97,13 @@ function Sidebar({ isOpen, onClose }) {
       path: '/cs/home',
       icon: 'bx-home-alt',
       isDirect: true
+    },
+    {
+      title: 'Notifications',
+      path: '/notifications',
+      icon: 'bx-bell',
+      isDirect: true,
+      badge: globalUnreadCount > 0 ? String(globalUnreadCount) : null
     },
     {
       title: 'Summary',
@@ -147,6 +171,13 @@ function Sidebar({ isOpen, onClose }) {
   // Admin Portal Menu Structure (from user screenshots)
   const adminMenuSections = [
     {
+      title: 'Notifications',
+      path: '/notifications',
+      icon: 'bx-bell',
+      isDirect: true,
+      badge: globalUnreadCount > 0 ? String(globalUnreadCount) : null
+    },
+    {
       title: 'Users',
       path: '/user',
       icon: 'bx-user-check',
@@ -201,6 +232,7 @@ function Sidebar({ isOpen, onClose }) {
         { label: 'Wellness Events', path: '/calendar', icon: 'bx-play-circle', isProjectModule: true },
         { label: 'Session Requests', path: '/corporate/session-requests', icon: 'bx-time' },
         { label: 'Expense Approval', path: '/expense-approval', icon: 'bx-dollar-circle', isProjectModule: true },
+        { label: 'Notifications', path: '/notifications', icon: 'bx-bell', isProjectModule: true },
         { label: 'Accounts Receivable', path: '/client-payments', icon: 'bx-dollar-circle', isProjectModule: true },
         { label: 'Expert Assignment', path: '/expert-assignment', icon: 'bx-group', isProjectModule: true },
       ]
@@ -423,11 +455,11 @@ function Sidebar({ isOpen, onClose }) {
                       <span style={{
                         fontSize: '0.68rem',
                         fontWeight: '700',
-                        padding: '0.12rem 0.5rem',
-                        borderRadius: '4px',
-                        background: '#e0f2fe',
-                        color: '#0284c7',
-                        textTransform: 'uppercase',
+                        padding: (!isNaN(section.badge)) ? '0.1rem 0.45rem' : '0.12rem 0.5rem',
+                        borderRadius: (!isNaN(section.badge)) ? '999px' : '4px',
+                        background: (!isNaN(section.badge)) ? '#fee2e2' : '#e0f2fe',
+                        color: (!isNaN(section.badge)) ? '#dc2626' : '#0284c7',
+                        textTransform: (!isNaN(section.badge)) ? 'none' : 'uppercase',
                         letterSpacing: '0.03em'
                       }}>
                         {section.badge}

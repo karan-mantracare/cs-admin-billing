@@ -28,6 +28,7 @@ import ClientCadence from './pages/ClientCadence';
 import SensitiveCases from './pages/SensitiveCases';
 import ManagerReferralPage from './pages/ManagerReferralPage';
 import SessionFeedback from './pages/SessionFeedback';
+import NotificationsPage from './pages/NotificationsPage';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -333,6 +334,7 @@ function App() {
         <Route path="/client-payments" element={<ClientPayments />} />
         <Route path="/billing-and-payments" element={<ClientPayments />} />
         <Route path="/accounts-receivable" element={<ClientPayments />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/expert-assignment" element={<ExpertAssignment />} />
         <Route path="/expense-tracker" element={<ExpenseTracker />} />
         <Route path="/client-pl" element={<ExpenseTracker />} />

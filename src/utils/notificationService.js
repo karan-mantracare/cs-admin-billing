@@ -682,3 +682,418 @@ Delivered to: ${participants.map(p => `${p.name} (${p.email})`).join(', ')}
 
   return { subject, participants, directLink, emailRecord };
 };
+
+/* =========================================================================
+   GENERAL NOTIFICATIONS & OTHER USER COMMENTS (NO EMAILS DISPATCHED)
+   ========================================================================= */
+
+const STORAGE_GENERAL_NOTIFICATIONS = 'general_notifications';
+const STORAGE_GENERAL_READ_STATE = 'general_notifications_read_state';
+const STORAGE_OTHER_USERS_COMMENTS = 'other_users_comments';
+const STORAGE_OTHER_USERS_READ_STATE = 'other_users_read_state';
+
+const SEED_GENERAL_NOTIFICATIONS = [
+  {
+    id: 'gen-1',
+    title: 'Q4 Corporate Billing Schedule Policies Activated',
+    message: 'All corporate client contracts transitioning to milestone-based schedules must follow the new anti-data leakage guidelines. Invoices should exclude tax inclusion and adhere to the 4 standardized status updates: To be raised, Payment pending, Partial, and Received.',
+    category: 'Billing Policy',
+    priority: 'High',
+    sender: 'Admin Panel',
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'gen-2',
+    title: 'Anti-Data Leakage Security Standard in Effect',
+    message: 'Automated email notifications to clients and CS managers now enforce zero-amount disclosure. Complete financial figures must only be accessed through the authenticated portal.',
+    category: 'Security',
+    priority: 'Critical',
+    sender: 'Security & Compliance',
+    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'gen-3',
+    title: 'Scheduled System Maintenance Window',
+    message: 'Scheduled server maintenance on Saturday from 02:00 AM to 04:00 AM UTC. Billing services and report exports will experience brief intermittent downtime.',
+    category: 'System Notice',
+    priority: 'Normal',
+    sender: 'DevOps / IT',
+    timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+  }
+];
+
+export const OTHER_USERS_DIRECTORY = [
+  { id: 'ananya', name: 'Ananya Patel', role: 'Finance Operations', email: 'ananya@mantracare.com', avatar: 'A', department: 'Finance' },
+  { id: 'vikram', name: 'Vikram Malhotra', role: 'Billing Specialist', email: 'vikram@mantracare.com', avatar: 'V', department: 'Accounts' },
+  { id: 'karan', name: 'Karan Hinduja', role: 'Accounts & CS Admin', email: 'karan@mantracare.com', avatar: 'K', department: 'Management' },
+  { id: 'priya', name: 'Priya Sharma', role: 'CS Lead', email: 'priya.sharma@mantracare.com', avatar: 'P', department: 'Customer Success' },
+  { id: 'rahul', name: 'Rahul Verma', role: 'Operations Manager', email: 'rahul.verma@mantracare.com', avatar: 'R', department: 'Operations' }
+];
+
+const SEED_OTHER_USER_COMMENTS = {
+  ananya: [
+    {
+      id: 'comm-a1',
+      senderId: 'ananya',
+      senderName: 'Ananya Patel',
+      role: 'Finance Operations',
+      text: 'Hi team, please ensure all withholding tax certificates for October invoices are uploaded to the billing repository.',
+      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'comm-a2',
+      senderId: 'currentUser',
+      senderName: 'You',
+      role: 'Customer Success',
+      text: 'Noted Ananya, will have the CS team collect them from client finance teams.',
+      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'comm-a3',
+      senderId: 'ananya',
+      senderName: 'Ananya Patel',
+      role: 'Finance Operations',
+      text: 'Great, thanks! We also need the signed schedule for Nova FinTech once approved.',
+      timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString()
+    }
+  ],
+  vikram: [
+    {
+      id: 'comm-v1',
+      senderId: 'vikram',
+      senderName: 'Vikram Malhotra',
+      role: 'Billing Specialist',
+      text: 'Invoice INV_2026_00220 payment has been confirmed via bank wire. Status updated to Partial on the ledger.',
+      timestamp: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString()
+    }
+  ],
+  karan: [
+    {
+      id: 'comm-k1',
+      senderId: 'karan',
+      senderName: 'Karan Hinduja',
+      role: 'Accounts & CS Admin',
+      text: 'Please review the updated billing message template for European clients. Tax status has been excluded as discussed.',
+      timestamp: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString()
+    }
+  ]
+};
+
+/**
+ * Get General Notifications list
+ */
+export const getGeneralNotifications = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_GENERAL_NOTIFICATIONS);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    // Initialize with seed data
+    localStorage.setItem(STORAGE_GENERAL_NOTIFICATIONS, JSON.stringify(SEED_GENERAL_NOTIFICATIONS));
+    return SEED_GENERAL_NOTIFICATIONS;
+  } catch (e) {
+    console.error('Failed to get general notifications', e);
+    return SEED_GENERAL_NOTIFICATIONS;
+  }
+};
+
+/**
+ * Add a new General Notification from Admin Panel
+ * (No email sent)
+ */
+export const addGeneralNotification = ({ title, message, category = 'General', priority = 'Normal', sender = 'Admin Panel' }) => {
+  if (!title || !message) return null;
+  try {
+    const list = getGeneralNotifications();
+    const newNotif = {
+      id: `gen-${Date.now()}`,
+      title: title.trim(),
+      message: message.trim(),
+      category,
+      priority,
+      sender,
+      timestamp: new Date().toISOString()
+    };
+    const updated = [newNotif, ...list];
+    localStorage.setItem(STORAGE_GENERAL_NOTIFICATIONS, JSON.stringify(updated));
+    window.dispatchEvent(new Event('ar_notification_update'));
+    return newNotif;
+  } catch (e) {
+    console.error('Failed to add general notification', e);
+    return null;
+  }
+};
+
+/**
+ * Check if a general notification is unread
+ */
+export const isGeneralNotificationUnread = (notifId, timestamp) => {
+  try {
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_GENERAL_READ_STATE) || '{}');
+    if (readStore[String(notifId)]) return false;
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
+/**
+ * Mark a single general notification as read
+ */
+export const markGeneralNotificationRead = (notifId) => {
+  if (!notifId) return;
+  try {
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_GENERAL_READ_STATE) || '{}');
+    readStore[String(notifId)] = Date.now();
+    localStorage.setItem(STORAGE_GENERAL_READ_STATE, JSON.stringify(readStore));
+    window.dispatchEvent(new Event('ar_notification_update'));
+  } catch (e) {
+    console.error('Failed to mark general notification read', e);
+  }
+};
+
+/**
+ * Mark all general notifications as read
+ */
+export const markAllGeneralNotificationsRead = () => {
+  try {
+    const list = getGeneralNotifications();
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_GENERAL_READ_STATE) || '{}');
+    list.forEach(n => {
+      readStore[String(n.id)] = Date.now();
+    });
+    localStorage.setItem(STORAGE_GENERAL_READ_STATE, JSON.stringify(readStore));
+    window.dispatchEvent(new Event('ar_notification_update'));
+  } catch (e) {
+    console.error('Failed to mark all general notifications read', e);
+  }
+};
+
+/**
+ * Get total unread count for General Notifications
+ */
+export const getGeneralUnreadCount = () => {
+  try {
+    const list = getGeneralNotifications();
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_GENERAL_READ_STATE) || '{}');
+    return list.filter(n => !readStore[String(n.id)]).length;
+  } catch (e) {
+    return 0;
+  }
+};
+
+/**
+ * Get Other Users list with last message snippet and unread count
+ */
+export const getOtherUsersWithStats = () => {
+  try {
+    const commentsStore = JSON.parse(localStorage.getItem(STORAGE_OTHER_USERS_COMMENTS) || '{}');
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_OTHER_USERS_READ_STATE) || '{}');
+
+    // Ensure seed data loaded if empty
+    let allComments = commentsStore;
+    if (Object.keys(commentsStore).length === 0) {
+      allComments = SEED_OTHER_USER_COMMENTS;
+      localStorage.setItem(STORAGE_OTHER_USERS_COMMENTS, JSON.stringify(SEED_OTHER_USER_COMMENTS));
+    }
+
+    return OTHER_USERS_DIRECTORY.map(user => {
+      const thread = allComments[user.id] || [];
+      const lastMsg = thread.length > 0 ? thread[thread.length - 1] : null;
+      const lastReadTime = readStore[user.id] || 0;
+      
+      const unreadCount = thread.filter(m => m.senderId !== 'currentUser' && new Date(m.timestamp).getTime() > lastReadTime).length;
+
+      return {
+        ...user,
+        lastMessage: lastMsg ? lastMsg.text : 'No comments yet',
+        lastMessageTime: lastMsg ? lastMsg.timestamp : null,
+        unreadCount
+      };
+    });
+  } catch (e) {
+    console.error('Failed to get other users with stats', e);
+    return OTHER_USERS_DIRECTORY.map(u => ({ ...u, lastMessage: 'No comments yet', unreadCount: 0 }));
+  }
+};
+
+/**
+ * Get comments thread with a specific user
+ */
+export const getUserCommentsThread = (userId) => {
+  if (!userId) return [];
+  try {
+    const commentsStore = JSON.parse(localStorage.getItem(STORAGE_OTHER_USERS_COMMENTS) || '{}');
+    if (commentsStore[userId]) return commentsStore[userId];
+
+    if (SEED_OTHER_USER_COMMENTS[userId]) {
+      commentsStore[userId] = SEED_OTHER_USER_COMMENTS[userId];
+      localStorage.setItem(STORAGE_OTHER_USERS_COMMENTS, JSON.stringify(commentsStore));
+      return SEED_OTHER_USER_COMMENTS[userId];
+    }
+    return [];
+  } catch (e) {
+    return [];
+  }
+};
+
+/**
+ * Post a comment in a user's thread
+ * (No email sent, in-app only)
+ */
+export const postUserComment = (userId, text, authorName = 'You', role = 'Customer Success') => {
+  if (!userId || !text?.trim()) return null;
+  try {
+    const commentsStore = JSON.parse(localStorage.getItem(STORAGE_OTHER_USERS_COMMENTS) || '{}');
+    const currentThread = commentsStore[userId] || (SEED_OTHER_USER_COMMENTS[userId] ? [...SEED_OTHER_USER_COMMENTS[userId]] : []);
+
+    const newComment = {
+      id: `comm-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      senderId: 'currentUser',
+      senderName: authorName,
+      role,
+      text: text.trim(),
+      timestamp: new Date().toISOString()
+    };
+
+    const updatedThread = [...currentThread, newComment];
+    commentsStore[userId] = updatedThread;
+    localStorage.setItem(STORAGE_OTHER_USERS_COMMENTS, JSON.stringify(commentsStore));
+    window.dispatchEvent(new Event('ar_notification_update'));
+    return newComment;
+  } catch (e) {
+    console.error('Failed to post user comment', e);
+    return null;
+  }
+};
+
+/**
+ * Mark a user's comment thread as read
+ */
+export const markUserThreadRead = (userId) => {
+  if (!userId) return;
+  try {
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_OTHER_USERS_READ_STATE) || '{}');
+    readStore[userId] = Date.now();
+    localStorage.setItem(STORAGE_OTHER_USERS_READ_STATE, JSON.stringify(readStore));
+    window.dispatchEvent(new Event('ar_notification_update'));
+  } catch (e) {
+    console.error('Failed to mark user thread read', e);
+  }
+};
+
+/**
+ * Get total unread count across all other user comment threads
+ */
+export const getOtherUsersTotalUnreadCount = () => {
+  try {
+    const users = getOtherUsersWithStats();
+    return users.reduce((sum, u) => sum + (u.unreadCount || 0), 0);
+  } catch (e) {
+    return 0;
+  }
+};
+
+/**
+ * Get all Accounts Receivable Invoices with notification stats
+ */
+export const getARInvoicesWithNotifications = () => {
+  try {
+    const payments = JSON.parse(localStorage.getItem('client_payments') || '[]');
+    const activitiesStore = JSON.parse(localStorage.getItem(STORAGE_ACTIVITIES) || '{}');
+    const readStore = JSON.parse(localStorage.getItem(STORAGE_READ_STATE) || '{}');
+
+    // Group activities by invoice key
+    const result = [];
+    const processedKeys = new Set();
+
+    // First process all registered payments
+    payments.forEach(p => {
+      const key = String(p.id);
+      processedKeys.add(key);
+      const acts = activitiesStore[key] || [];
+      const lastRead = readStore[key] || 0;
+      const unreadCount = acts.filter(a => new Date(a.timestamp).getTime() > lastRead).length;
+      const lastAct = acts.length > 0 ? acts[0] : null;
+
+      result.push({
+        id: p.id,
+        invoiceKey: key,
+        invoiceNumber: p.invoiceNumber || (p.invoiceLink ? p.invoiceLink.split('/').pop() : `INV-${p.id}`),
+        clientName: p.clientName || 'Corporate Client',
+        billingCompany: p.billingCompany || 'MCHI',
+        status: p.status || 'To be raised',
+        invoiceDate: p.invoiceDate || '-',
+        dueByDate: p.dueByDate || '-',
+        dueAmount: p.dueAmount || 0,
+        currency: p.currency || 'USD',
+        activityCount: acts.length,
+        unreadCount,
+        lastActivity: lastAct,
+        orderId: p.orderId || ''
+      });
+    });
+
+    // Also include any invoice keys in activitiesStore not in client_payments
+    Object.keys(activitiesStore).forEach(key => {
+      if (!processedKeys.has(key)) {
+        const acts = activitiesStore[key] || [];
+        const lastRead = readStore[key] || 0;
+        const unreadCount = acts.filter(a => new Date(a.timestamp).getTime() > lastRead).length;
+        const lastAct = acts.length > 0 ? acts[0] : null;
+
+        result.push({
+          id: key,
+          invoiceKey: key,
+          invoiceNumber: key.startsWith('INV') ? key : `INV-${key}`,
+          clientName: acts[0]?.clientName || 'Corporate Client',
+          billingCompany: 'MCHI',
+          status: 'Active',
+          invoiceDate: '-',
+          dueByDate: '-',
+          dueAmount: 0,
+          currency: 'USD',
+          activityCount: acts.length,
+          unreadCount,
+          lastActivity: lastAct,
+          orderId: ''
+        });
+      }
+    });
+
+    // Sort by unread first, then by last activity timestamp
+    result.sort((a, b) => {
+      if (b.unreadCount !== a.unreadCount) {
+        return b.unreadCount - a.unreadCount;
+      }
+      const timeA = a.lastActivity ? new Date(a.lastActivity.timestamp).getTime() : 0;
+      const timeB = b.lastActivity ? new Date(b.lastActivity.timestamp).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    return result;
+  } catch (e) {
+    console.error('Failed to get AR invoices with notifications', e);
+    return [];
+  }
+};
+
+/**
+ * Total unread count for Accounts Receivable
+ */
+export const getARTotalUnreadCount = () => {
+  try {
+    const list = getARInvoicesWithNotifications();
+    return list.reduce((sum, item) => sum + (item.unreadCount || 0), 0);
+  } catch (e) {
+    return 0;
+  }
+};
+
+/**
+ * Global combined unread count (AR + General + Other Users)
+ */
+export const getGlobalUnreadNotificationCount = () => {
+  return getARTotalUnreadCount() + getGeneralUnreadCount() + getOtherUsersTotalUnreadCount();
+};
