@@ -64,7 +64,7 @@ export const ADJUSTMENT_OPTIONS = [
     badgeColor: '#059669',
     badgeBg: '#ecfdf5',
     isMandatoryDetails: true,
-    placeholder: 'Mandatory: Enter GST or VAT details *'
+    placeholder: 'Enter GST or VAT details *'
   },
   {
     value: 'Withholding Tax',
@@ -74,7 +74,7 @@ export const ADJUSTMENT_OPTIONS = [
     badgeColor: '#d97706',
     badgeBg: '#fef3c7',
     isMandatoryDetails: false,
-    placeholder: 'Optional: e.g. WHT rate / TDS section...'
+    placeholder: 'e.g. WHT rate / TDS section (optional)'
   },
   {
     value: 'Deduction',
@@ -84,7 +84,7 @@ export const ADJUSTMENT_OPTIONS = [
     badgeColor: '#7c3aed',
     badgeBg: '#f5f3ff',
     isMandatoryDetails: true,
-    placeholder: 'Mandatory: Enter deduction reason (discount, offer) *'
+    placeholder: 'Enter deduction reason (discount, offer) *'
   },
   {
     value: 'Adjustments',
@@ -94,7 +94,7 @@ export const ADJUSTMENT_OPTIONS = [
     badgeColor: '#0284c7',
     badgeBg: '#f0f9ff',
     isMandatoryDetails: true,
-    placeholder: 'Mandatory: Enter adjustment reason (additional charge) *'
+    placeholder: 'Enter adjustment reason (additional charge) *'
   }
 ];
 
@@ -1451,7 +1451,7 @@ export default function ContractModal({
                             <input
                               type="text"
                               disabled={isReadOnly}
-                              placeholder={def.placeholder || (isMandatoryDetails ? "Mandatory: Enter details *" : "Optional details / notes...")}
+                              placeholder={def.placeholder || (isMandatoryDetails ? "Enter details *" : "Optional details / notes...")}
                               value={adj.details || ''}
                               onChange={(e) => handleAdjustmentChange(idx, 'details', e.target.value)}
                               style={{
