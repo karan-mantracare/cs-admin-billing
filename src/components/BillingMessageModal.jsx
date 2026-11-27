@@ -1,6 +1,79 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { calculateTaxAdjustments } from '../utils/taxAdjustmentUtils';
 
+// Helper function to convert numeric amount to words
+export function numberToWords(num, currency = 'USD') {
+  if (num === null || num === undefined || isNaN(num)) return '';
+
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  function convertGroup(n) {
+    let str = '';
+    if (n >= 100) {
+      str += ones[Math.floor(n / 100)] + ' Hundred ';
+      n %= 100;
+    }
+    if (n >= 20) {
+      str += tens[Math.floor(n / 10)] + (n % 10 !== 0 ? '-' + ones[n % 10] : '') + ' ';
+    } else if (n > 0) {
+      str += ones[n] + ' ';
+    }
+    return str.trim();
+  }
+
+  const fixed = Number(num).toFixed(2);
+  const [intPartStr, decPartStr] = fixed.split('.');
+  let intPart = parseInt(intPartStr, 10);
+  const decPart = parseInt(decPartStr, 10);
+
+  if (intPart === 0 && decPart === 0) return 'Zero';
+
+  let result = '';
+  if (intPart >= 1000000000) {
+    result += convertGroup(Math.floor(intPart / 1000000000)) + ' Billion ';
+    intPart %= 1000000000;
+  }
+  if (intPart >= 1000000) {
+    result += convertGroup(Math.floor(intPart / 1000000)) + ' Million ';
+    intPart %= 1000000;
+  }
+  if (intPart >= 1000) {
+    result += convertGroup(Math.floor(intPart / 1000)) + ' Thousand ';
+    intPart %= 1000;
+  }
+  if (intPart > 0) {
+    result += convertGroup(intPart) + ' ';
+  }
+  result = result.trim();
+
+  // Currency names & subunits
+  const curr = (currency || 'USD').toUpperCase();
+  let currName = curr;
+  let subName = 'Cents';
+
+  if (curr === 'USD') { currName = 'US Dollars'; subName = 'Cents'; }
+  else if (curr === 'EUR') { currName = 'Euros'; subName = 'Cents'; }
+  else if (curr === 'GBP') { currName = 'Pounds'; subName = 'Pence'; }
+  else if (curr === 'INR') { currName = 'Rupees'; subName = 'Paise'; }
+  else if (curr === 'AED') { currName = 'UAE Dirhams'; subName = 'Fils'; }
+  else if (curr === 'AUD') { currName = 'Australian Dollars'; subName = 'Cents'; }
+  else if (curr === 'CAD') { currName = 'Canadian Dollars'; subName = 'Cents'; }
+  else if (curr === 'SGD') { currName = 'Singapore Dollars'; subName = 'Cents'; }
+
+  if (result) {
+    result = `${result} ${currName}`;
+  }
+
+  if (decPart > 0) {
+    const decWords = convertGroup(decPart);
+    result = result ? `${result} and ${decWords} ${subName}` : `${decWords} ${subName}`;
+  }
+
+  return (result + ' Only').trim();
+}
+
 export function BillingMessageContent({ payment, orderDetails, onCopy, copied, onUpdateRemarks }) {
   // Resolve associated contract from division_contracts
   const contract = useMemo(() => {
@@ -864,6 +937,12 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                     }}>
                       <span>Total</span>
                       <span>{invoiceCurrency} {calc.finalAmountDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+
+                    {/* Amount in Words */}
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.82rem', color: '#475569', textAlign: 'right', fontStyle: 'italic', lineHeight: '1.4' }}>
+                      <span style={{ fontWeight: '600', color: '#1e293b', fontStyle: 'normal' }}>Amount in Words: </span>
+                      {numberToWords(calc.finalAmountDue, invoiceCurrency)}
                     </div>
                   </div>
                 </div>
