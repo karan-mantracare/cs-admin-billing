@@ -755,8 +755,8 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
 
                 {/* Invoice Title & Number */}
                 <div style={{ marginBottom: '1.75rem' }}>
-                  <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: '700', color: '#0f172a', letterSpacing: '-0.02em' }}>
-                    Invoice {payment?.invoiceNumber || (payment?.id ? `INV/2026/00${payment.id}` : 'INV/2026/00174')}
+                  <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: '700', color: '#0f172a', letterSpacing: '-0.02em', wordBreak: 'break-all' }}>
+                    Invoice {payment?.invoiceNumber || payment?.id || 'INV-001'}
                   </h1>
                 </div>
 
@@ -823,8 +823,8 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                       <strong>Payment terms:</strong> {servicePeriod || '30 Days'}
                     </div>
 
-                    <div style={{ fontSize: '0.88rem', color: '#0f172a' }}>
-                      <strong>Payment Communication:</strong> {payment?.invoiceNumber || (payment?.id ? `INV/2026/00${payment.id}` : 'INV/2026/00174')}
+                    <div style={{ fontSize: '0.88rem', color: '#0f172a', wordBreak: 'break-all' }}>
+                      <strong>Payment Communication:</strong> {payment?.invoiceNumber || payment?.id || 'INV-001'}
                     </div>
                   </div>
 
