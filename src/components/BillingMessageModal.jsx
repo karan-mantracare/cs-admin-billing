@@ -10,6 +10,20 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
         const found = contracts.find(c => String(c.id) === String(payment.contractId));
         if (found) return found;
       }
+      if (payment?.contractName) {
+        const found = contracts.find(c => 
+          (c.companyName && c.companyName.toLowerCase().includes(payment.contractName.toLowerCase())) ||
+          (c.name && c.name.toLowerCase().includes(payment.contractName.toLowerCase()))
+        );
+        if (found) return found;
+      }
+      if (payment?.clientName) {
+        const found = contracts.find(c => 
+          (c.companyName && (c.companyName.toLowerCase().includes(payment.clientName.toLowerCase()) || payment.clientName.toLowerCase().includes(c.companyName.toLowerCase()))) ||
+          (c.name && (c.name.toLowerCase().includes(payment.clientName.toLowerCase()) || payment.clientName.toLowerCase().includes(c.name.toLowerCase())))
+        );
+        if (found) return found;
+      }
       if (payment?.orderId && payment.orderId !== 'Null') {
         const found = contracts.find(c => String(c.orderId) === String(payment.orderId));
         if (found) return found;
@@ -18,7 +32,7 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
     } catch (e) {
       return null;
     }
-  }, [payment?.contractId, payment?.orderId]);
+  }, [payment?.contractId, payment?.contractName, payment?.clientName, payment?.orderId]);
 
   const billing = orderDetails?.billingDetails || {};
 
@@ -76,9 +90,10 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
   const rawDueDays = contract?.paymentDueDays ?? billing.paymentDueDays ?? payment?.paymentDueDays ?? 15;
   const servicePeriod = `${rawDueDays} days`;
 
-  const billFrom = payment?.billingCompany || contract?.billFrom || billing.billingCompany || 'MCHI';
-  const receivingBank = payment?.receivingBankName || contract?.receivingBankName || billing.receivingBank || 'AirWallex';
-  const bankDetailsLink = payment?.bankDetailsLink || contract?.bankDetailsLink || billing.bankDetailsLink || null;
+  // Prioritize contract.billFrom from Division Contract, then payment, then billing details
+  const billFrom = contract?.billFrom || payment?.billingCompany || billing.billingCompany || 'MCC';
+  const receivingBank = contract?.receivingBankName || payment?.receivingBankName || billing.receivingBank || 'AirWallex';
+  const bankDetailsLink = contract?.bankDetailsLink || payment?.bankDetailsLink || billing.bankDetailsLink || null;
 
   // Resolve client address & details
   const clientAddress = payment?.clientAddress 
@@ -110,13 +125,15 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
 
   // Full formal name for Bill From entity
   const getBillFromFullName = (company) => {
-    const c = (company || '').toUpperCase().trim();
+    // If contract has a designated billFrom, match formal or fallback
+    const c = (company || contract?.billFrom || '').toUpperCase().trim();
     if (c === 'MCHI') return 'MCH International LLC';
     if (c === 'MCC') return 'Mantra Care Corp';
     if (c === 'MR UK') return 'Mantra Resources UK Ltd';
     if (c === 'MCHPL') return 'MCH Health Private Limited';
     if (c === 'MRC UAE') return 'Mantra Resources Care FZCO';
-    return billFrom;
+    if (contract?.billFrom) return contract.billFrom;
+    return company || billFrom || 'MCC';
   };
 
   // Remarks handling: payment.remarks -> contract.remarks -> default meaningful remark

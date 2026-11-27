@@ -1792,12 +1792,27 @@ function ClientPayments() {
         }
 
         let contract = null;
-        if (payment.contractId) {
-          try {
-            const contracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+        try {
+          const contracts = JSON.parse(localStorage.getItem('division_contracts') || '[]');
+          if (payment.contractId) {
             contract = contracts.find(c => String(c.id) === String(payment.contractId)) || null;
-          } catch (e) {}
-        }
+          }
+          if (!contract && payment.contractName) {
+            contract = contracts.find(c => 
+              (c.companyName && c.companyName.toLowerCase().includes(payment.contractName.toLowerCase())) ||
+              (c.name && c.name.toLowerCase().includes(payment.contractName.toLowerCase()))
+            ) || null;
+          }
+          if (!contract && payment.clientName) {
+            contract = contracts.find(c => 
+              (c.companyName && (c.companyName.toLowerCase().includes(payment.clientName.toLowerCase()) || payment.clientName.toLowerCase().includes(c.companyName.toLowerCase()))) ||
+              (c.name && (c.name.toLowerCase().includes(payment.clientName.toLowerCase()) || payment.clientName.toLowerCase().includes(c.name.toLowerCase())))
+            ) || null;
+          }
+          if (!contract && payment.orderId && payment.orderId !== 'Null') {
+            contract = contracts.find(c => String(c.orderId) === String(payment.orderId)) || null;
+          }
+        } catch (e) {}
 
         const handleCopy = () => {
           const billing = orderDetails?.billingDetails || {};
@@ -1819,7 +1834,7 @@ function ClientPayments() {
           const invoiceDate         = payment.invoiceByDate || contract?.billingDate || '—';
           const dueByDate           = payment.dueByDate || '—';
           const servicePeriod       = `${contract?.paymentDueDays ?? billing.paymentDueDays ?? payment.paymentDueDays ?? 15} days`;
-          const billFrom            = payment.billingCompany || contract?.billFrom || billing.billingCompany || 'MCHI';
+          const billFrom            = contract?.billFrom || payment.billingCompany || billing.billingCompany || 'MCC';
           const receivingBank       = payment.receivingBankName || contract?.receivingBankName || billing.receivingBank || 'AirWallex';
           const bankDetailsLink     = payment.bankDetailsLink || contract?.bankDetailsLink || billing.bankDetailsLink || null;
           const remarks             = payment.remarks || contract?.remarks || `Invoice for ${clientBillingEntity} - ${contractCurrency} ${Number(calc.finalAmountDue || rawContractVal || 0).toLocaleString()}`;
