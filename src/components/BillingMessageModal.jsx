@@ -822,10 +822,6 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                     <div style={{ fontSize: '0.88rem', color: '#0f172a', marginBottom: '1.5rem' }}>
                       <strong>Payment terms:</strong> {servicePeriod || '30 Days'}
                     </div>
-
-                    <div style={{ fontSize: '0.88rem', color: '#0f172a', wordBreak: 'break-all' }}>
-                      <strong>Payment Communication:</strong> {payment?.invoiceNumber || payment?.id || 'INV-001'}
-                    </div>
                   </div>
 
                   {/* Right Column: Tax, Discount, Adjustment & Total */}
