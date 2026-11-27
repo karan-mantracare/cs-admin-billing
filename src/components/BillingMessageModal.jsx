@@ -80,11 +80,51 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
   const receivingBank = payment?.receivingBankName || contract?.receivingBankName || billing.receivingBank || 'AirWallex';
   const bankDetailsLink = payment?.bankDetailsLink || contract?.bankDetailsLink || billing.bankDetailsLink || null;
 
+  // Resolve client address & details
+  const clientAddress = payment?.clientAddress 
+    || contract?.address 
+    || (contract?.companyEntities?.[0]?.address) 
+    || billing?.address 
+    || '';
+
+  // Bill From address mapping (as in Division Contract / company profile)
+  const getBillFromAddress = (company) => {
+    const c = (company || '').toUpperCase().trim();
+    if (c === 'MCC' || c.includes('MANTRA CARE CORP')) {
+      return '1021 E Lincolnway, 7051\nCheyenne, Wyoming 82001\nUnited States';
+    }
+    if (c === 'MCHI' || c.includes('INTERNATIONAL') || c.includes('MCH INTERNATIONAL')) {
+      return '1021 E Lincolnway, 7051\nCheyenne, Wyoming 82001\nUnited States';
+    }
+    if (c === 'MR UK' || c.includes('UK')) {
+      return '71-75 Shelton Street, Covent Garden\nLondon, WC2H 9JQ\nUnited Kingdom';
+    }
+    if (c === 'MCHPL' || c.includes('INDIA')) {
+      return 'Plot No. 14, Sector 44\nGurugram, Haryana 122003\nIndia';
+    }
+    if (c === 'MRC UAE' || c.includes('UAE') || c.includes('FZCO')) {
+      return 'IFZA Business Park, DDP\nDubai Silicon Oasis, Dubai\nUnited Arab Emirates';
+    }
+    return contract?.companyAddress || contract?.billFromAddress || billing?.companyAddress || '1021 E Lincolnway, 7051\nCheyenne, Wyoming 82001\nUnited States';
+  };
+
+  // Full formal name for Bill From entity
+  const getBillFromFullName = (company) => {
+    const c = (company || '').toUpperCase().trim();
+    if (c === 'MCHI') return 'MCH International LLC';
+    if (c === 'MCC') return 'Mantra Care Corp';
+    if (c === 'MR UK') return 'Mantra Resources UK Ltd';
+    if (c === 'MCHPL') return 'MCH Health Private Limited';
+    if (c === 'MRC UAE') return 'Mantra Resources Care FZCO';
+    return billFrom;
+  };
+
   // Remarks handling: payment.remarks -> contract.remarks -> default meaningful remark
   const defaultRemark = `Invoice for ${clientBillingEntity !== '—' ? clientBillingEntity : 'Contract'} - ${invoiceCurrency} ${Number(calc.finalAmountDue).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
   const [remarks, setRemarks] = useState(payment?.remarks || contract?.remarks || defaultRemark);
   const [isEditingRemarks, setIsEditingRemarks] = useState(false);
   const [localCopied, setLocalCopied] = useState(false);
+  const [showDummyInvoice, setShowDummyInvoice] = useState(false);
 
   useEffect(() => {
     setRemarks(payment?.remarks || contract?.remarks || defaultRemark);
@@ -196,8 +236,9 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
   };
 
   return (
-    <div style={{ padding: '1.25rem 1.5rem', maxHeight: '62vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      {/* Section 1: Client Billing */}
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
+        {/* Section 1: Client Billing */}
       <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '1rem', border: '1px solid #e2e8f0' }}>
         <div style={sectionTitleStyle}>
           <i className='bx bx-building' style={{ color: '#0ea5e9' }}></i>
@@ -499,21 +540,358 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
           );
         })()}
       </div>
+      </div>
 
-      {/* Buttons inside content for copying */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+      {/* Sticky / Frozen Bottom Bar for View & Copy Message */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        gap: '0.75rem',
+        padding: '0.85rem 1.5rem',
+        borderTop: '1px solid #e2e8f0',
+        background: '#ffffff',
+        boxShadow: '0 -4px 12px rgba(0,0,0,0.05)',
+        zIndex: 10
+      }}>
+        <button
+          type="button"
+          onClick={() => setShowDummyInvoice(true)}
+          title="View Dummy Invoice Preview"
+          style={{
+            background: '#ffffff',
+            color: '#0284c7',
+            border: '1.5px solid #0284c7',
+            borderRadius: '6px',
+            padding: '0.6rem 1.15rem',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            transition: 'all 0.2s ease',
+            boxShadow: '0 1px 2px rgba(2,132,199,0.08)'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.background = '#f0f9ff';
+            e.currentTarget.style.borderColor = '#0369a1';
+            e.currentTarget.style.color = '#0369a1';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.background = '#ffffff';
+            e.currentTarget.style.borderColor = '#0284c7';
+            e.currentTarget.style.color = '#0284c7';
+          }}
+        >
+          <i className='bx bx-show' style={{ fontSize: '1.05rem' }}></i>
+          View (Dummy Invoice)
+        </button>
+
         <button
           onClick={handleCopyMessage}
           style={{
             background: (copied || localCopied) ? '#10b981' : '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px',
             padding: '0.6rem 1.25rem', fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s ease'
+            display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s ease',
+            boxShadow: '0 2px 4px rgba(14,165,233,0.2)'
           }}
         >
           <i className={`bx ${(copied || localCopied) ? 'bx-check' : 'bx-copy'}`}></i>
           {(copied || localCopied) ? 'Copied to Clipboard!' : 'Copy Message'}
         </button>
       </div>
+
+      {/* Dummy Invoice Preview Modal */}
+      {showDummyInvoice && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 1300,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '1.25rem'
+          }}
+          onClick={() => setShowDummyInvoice(false)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '680px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden',
+              border: '1px solid #e2e8f0'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Top Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+              padding: '1rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              color: 'white'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className='bx bx-file' style={{ fontSize: '1.3rem' }}></i>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700' }}>Dummy Invoice Preview</h3>
+                  <span style={{ fontSize: '0.72rem', opacity: 0.85 }}>Generated from current billing details</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDummyInvoice(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: 'none',
+                  color: 'white',
+                  borderRadius: '6px',
+                  width: '30px',
+                  height: '30px',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Invoice Document Paper Body */}
+            <div style={{ padding: '2rem', overflowY: 'auto', flex: 1, background: '#f1f5f9' }}>
+              <div style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '2.5rem 3rem',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                color: '#0f172a',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+              }}>
+                {/* Top Section: Logo & Bill From on Left, "Invoice" and Client Contact Details on Right */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
+                  {/* Left: Mantra Logo + Bill From Entity & Address */}
+                  <div style={{ maxWidth: '300px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '1rem' }}>
+                      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#0284c7" fillOpacity="0.15" stroke="#0284c7" strokeWidth="1.8"/>
+                        <circle cx="12" cy="10" r="2.5" fill="#1e293b"/>
+                        <path d="M7 16c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="#1e293b" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                      <span style={{ fontSize: '1.75rem', fontWeight: '700', color: '#1e3a8a', letterSpacing: '-0.02em' }}>Mantra</span>
+                    </div>
+
+                    <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#1e293b', marginBottom: '0.25rem' }}>
+                      {getBillFromFullName(billFrom)}
+                    </div>
+                    <div style={{ fontSize: '0.88rem', color: '#334155', lineHeight: '1.45', whiteSpace: 'pre-line' }}>
+                      {getBillFromAddress(billFrom)}
+                    </div>
+                  </div>
+
+                  {/* Right: "Invoice" Header + Client Contact Details */}
+                  <div style={{ textAlign: 'right', maxWidth: '340px' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: '600', color: '#1e293b', marginBottom: '1.75rem' }}>
+                      Invoice
+                    </div>
+
+                    {/* Client Details, Address & Tax Details */}
+                    <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#1e293b', lineHeight: '1.35', marginBottom: '0.35rem' }}>
+                      {clientBillingEntity}
+                    </div>
+
+                    {clientAddress ? (
+                      <div style={{ fontSize: '0.88rem', color: '#334155', lineHeight: '1.45', whiteSpace: 'pre-line', marginBottom: '0.75rem' }}>
+                        {clientAddress}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.88rem', color: '#334155', lineHeight: '1.45', whiteSpace: 'pre-line', marginBottom: '0.75rem' }}>
+                        Mussafah Building, 01 Abdul Aziz Abdullah{'\n'}
+                        Suleiman Saif{'\n'}
+                        Abu Dhabi, UAE{'\n'}
+                        Abu Dhabi{'\n'}
+                        United Arab Emirates
+                      </div>
+                    )}
+
+                    <div style={{ fontSize: '0.88rem', color: '#1e293b', fontWeight: '500' }}>
+                      Tax ID: <span style={{ fontWeight: '600' }}>{clientTaxDetails !== '—' ? clientTaxDetails : '104798850400003'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Invoice Title & Number */}
+                <div style={{ marginBottom: '1.75rem' }}>
+                  <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: '700', color: '#0f172a', letterSpacing: '-0.02em' }}>
+                    Invoice {payment?.invoiceNumber || (payment?.id ? `INV/2026/00${payment.id}` : 'INV/2026/00174')}
+                  </h1>
+                </div>
+
+                {/* Dates: Invoice Date & Due Date */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', maxWidth: '420px', marginBottom: '2.5rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: '600', color: '#1e3a8a', marginBottom: '0.35rem' }}>
+                      Invoice Date
+                    </div>
+                    <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: '500' }}>
+                      {invoiceDate !== '—' ? invoiceDate : '04/08/2026'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: '600', color: '#1e3a8a', marginBottom: '0.35rem' }}>
+                      Due Date
+                    </div>
+                    <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: '500' }}>
+                      {dueByDate !== '—' ? dueByDate : '03/09/2026'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Line Items Table */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #0f172a' }}>
+                        <th style={{ padding: '0.75rem 0', fontSize: '0.9rem', fontWeight: '600', color: '#0f172a' }}>Description</th>
+                        <th style={{ padding: '0.75rem 0', fontSize: '0.9rem', fontWeight: '600', color: '#0f172a', textAlign: 'center' }}>Quantity</th>
+                        <th style={{ padding: '0.75rem 0', fontSize: '0.9rem', fontWeight: '600', color: '#0f172a', textAlign: 'right' }}>Unit Price</th>
+                        <th style={{ padding: '0.75rem 0', fontSize: '0.9rem', fontWeight: '600', color: '#0f172a', textAlign: 'right' }}>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '1rem 0 0.4rem 0', fontSize: '0.92rem', color: '#0f172a', fontWeight: '500' }}>
+                          Employee Assistance Program
+                        </td>
+                        <td style={{ padding: '1rem 0 0.4rem 0', fontSize: '0.92rem', color: '#0f172a', textAlign: 'center' }}>
+                          1.00 Unit
+                        </td>
+                        <td style={{ padding: '1rem 0 0.4rem 0', fontSize: '0.92rem', color: '#0f172a', textAlign: 'right', fontWeight: '500' }}>
+                          {invoiceCurrency} {Number(calc.baseAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ padding: '1rem 0 0.4rem 0', fontSize: '0.92rem', color: '#0f172a', textAlign: 'right', fontWeight: '600' }}>
+                          {invoiceCurrency} {Number(calc.baseAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Subtext description & payment terms on Left vs Totals / Breakdown on Right */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '0.5rem', marginBottom: '2.5rem' }}>
+                  {/* Left Column: Period info & Payment Terms */}
+                  <div style={{ maxWidth: '360px' }}>
+                    <div style={{ fontSize: '0.88rem', fontStyle: 'italic', color: '#334155', marginBottom: '1.25rem' }}>
+                      Invoice for the period of {servicePeriod ? `${servicePeriod}` : '01-09-2026 to 30-11-2026'}
+                    </div>
+
+                    <div style={{ fontSize: '0.88rem', color: '#0f172a', marginBottom: '1.5rem' }}>
+                      <strong>Payment terms:</strong> {servicePeriod || '30 Days'}
+                    </div>
+
+                    <div style={{ fontSize: '0.88rem', color: '#0f172a' }}>
+                      <strong>Payment Communication:</strong> {payment?.invoiceNumber || (payment?.id ? `INV/2026/00${payment.id}` : 'INV/2026/00174')}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Tax, Discount, Adjustment & Total */}
+                  <div style={{ width: '280px' }}>
+                    {/* Tax Row if present */}
+                    {calc.totalTax > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', fontSize: '0.9rem', color: '#334155' }}>
+                        <span>Tax:</span>
+                        <span style={{ fontWeight: '500' }}>+{invoiceCurrency} {calc.totalTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+
+                    {/* Discount / Deduction Row if present */}
+                    {calc.totalDeductions > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', fontSize: '0.9rem', color: '#dc2626' }}>
+                        <span>Discount:</span>
+                        <span style={{ fontWeight: '500' }}>-{invoiceCurrency} {calc.totalDeductions.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+
+                    {/* Adjustments Row if present */}
+                    {calc.totalAdjustments > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', fontSize: '0.9rem', color: '#334155' }}>
+                        <span>Adjustment:</span>
+                        <span style={{ fontWeight: '500' }}>+{invoiceCurrency} {calc.totalAdjustments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+
+                    {/* Total Row */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderTop: '1px solid #0f172a',
+                      paddingTop: '0.75rem',
+                      marginTop: '0.5rem',
+                      fontSize: '1.1rem',
+                      fontWeight: '700',
+                      color: '#0f172a'
+                    }}>
+                      <span>Total</span>
+                      <span>{invoiceCurrency} {calc.finalAmountDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+
+                    {/* Withholding tax note if applicable */}
+                    {calc.totalWht > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', fontSize: '0.85rem', color: '#b45309', fontWeight: '600' }}>
+                        <span>Net Receivable (After WHT):</span>
+                        <span>{invoiceCurrency} {calc.netReceivableAfterWht.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer notes */}
+                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', borderTop: '1px dashed #e2e8f0', paddingTop: '1.25rem' }}>
+                  This is a computer-generated dummy invoice for internal tracking &amp; AR validation.
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Bottom Close */}
+            <div style={{ padding: '0.75rem 1.5rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowDummyInvoice(false)}
+                style={{
+                  background: '#64748b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '0.5rem 1.25rem',
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -598,6 +976,8 @@ function BillingMessageModal({ isOpen, onClose, payment }) {
 
   const modalStyle = {
     background: 'white', borderRadius: '12px', width: '100%', maxWidth: '560px',
+    maxHeight: '90vh',
+    display: 'flex', flexDirection: 'column',
     boxShadow: '0 20px 40px rgba(0,0,0,0.2)', overflow: 'hidden'
   };
 

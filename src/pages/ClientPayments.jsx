@@ -1908,6 +1908,7 @@ function ClientPayments() {
           }} onClick={resetModal}>
             <div style={{
               background: 'white', borderRadius: '12px', width: '90%', maxWidth: '560px',
+              maxHeight: '90vh',
               boxShadow: '0 20px 40px rgba(0,0,0,0.2)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
             }} onClick={(e) => e.stopPropagation()}>
               
