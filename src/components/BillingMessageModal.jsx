@@ -869,14 +869,6 @@ export function BillingMessageContent({ payment, orderDetails, onCopy, copied, o
                       <span>Total</span>
                       <span>{invoiceCurrency} {calc.finalAmountDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
-
-                    {/* Withholding tax note if applicable */}
-                    {calc.totalWht > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', fontSize: '0.85rem', color: '#b45309', fontWeight: '600' }}>
-                        <span>Net Receivable (After WHT):</span>
-                        <span>{invoiceCurrency} {calc.netReceivableAfterWht.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
